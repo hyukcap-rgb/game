@@ -18,6 +18,14 @@
 
 GitHub Pages를 켜면(Settings → Pages → Branch: `main` / root) 링크로 공유할 수 있습니다.
 
+## 실시간 대전 서버
+함대 결전의 사람 대 사람 대전은 Railway에 올린 중계 서버(`server/index.ts`, Bun)를 거칩니다.
+- 주소: `wss://battle-production-c11b.up.railway.app/ws` (상태 확인: `/stats`)
+- Railway 프로젝트 `haru-puzzle-league` → 서비스 `battle` (Railway Function)
+- 서버는 방마다 접속자와 각자 올린 작은 데이터만 전달하고, 게임 규칙은 브라우저가 처리합니다.
+- Claude 링크로 열면 Claude의 room 기능을, 그 밖(GitHub Pages 등)에서는 이 서버를 씁니다. 연결이 안 되면 AI 대전으로 넘어갑니다.
+- 서버 코드를 바꾸면 Railway의 `battle` 함수 코드도 같이 바꿔야 합니다.
+
 ## 문서
 - [기획서](docs/01_기획서.md)
 - [결정 로그](docs/02_결정로그.md): 기획서와 충돌하면 이 로그가 우선합니다.
