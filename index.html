@@ -212,7 +212,9 @@ body[data-mode="tower"] #play > .pbar{display:none!important}
 .pnum{width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-family:var(--heavy); font-size:15px; color:#fff; background:linear-gradient(#7B5CD6,#4B2C8F); border:2px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.35)}
 .pnum.none{background:#CDBEA0; color:#fff; box-shadow:none; border-color:#A8966F}
 .av{position:relative; width:46px; height:46px; border-radius:50%; overflow:hidden; display:grid; place-items:center; border:3px solid #fff; box-shadow:0 0 0 2px var(--outline), 0 3px 0 2px rgba(42,22,80,.35); background:var(--avbg, #FFD6E0)}
-.av svg{width:100%; height:100%; display:block}
+.av svg, .av img.toy{width:100%; height:100%; display:block}
+.av img.toy{width:112%; height:112%; margin:-2% -6% -10%; max-width:none}
+img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-select:none}
 .who{min-width:0; line-height:1.2}
 .who b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .who small{display:flex; gap:3px; margin-top:4px; font-size:12px; color:var(--sub); font-weight:500; white-space:nowrap}
@@ -467,8 +469,10 @@ body.fxmode #play > .pbar, body.fxmode #play > .stats{display:none!important}
 .fx-board{--n:9; position:relative; display:grid; grid-template-columns:repeat(var(--n),minmax(0,1fr)); grid-template-rows:repeat(var(--n),minmax(0,1fr)); gap:calc(26px / var(--n)); padding:8px; border-radius:20px; background:#fff; aspect-ratio:1; touch-action:none; box-shadow:0 4px 14px rgba(122,68,80,.08)}
 .fx-wait{grid-column:1/-1; align-self:center; text-align:center; font-weight:700; color:#B08A92}
 .fxc{aspect-ratio:1; min-width:0; min-height:0; border-radius:22%; display:grid; place-items:center; position:relative; overflow:visible; cursor:pointer}
+/* 칸도 공용 캐릭터와 같은 도톰한 질감: 위는 살짝 밝게, 아래는 살짝 그늘 */
+.fxc{box-shadow:inset 0 2px 0 rgba(255,255,255,.32), inset 0 -3px 0 rgba(0,0,0,.12); background-image:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%, rgba(0,0,0,.05))}
 .fxc svg{width:74%; height:74%; pointer-events:none}
-.fxc.fox svg{width:96%; height:96%; filter:drop-shadow(0 2px 1px rgba(0,0,0,.18))}
+.fxc.fox svg{width:100%; height:100%}
 .fxc.in{animation:cellin .38s cubic-bezier(.2,1.4,.5,1) both}
 @keyframes cellin{from{transform:scale(.15); opacity:0}}
 .fxc.pop svg{animation:foxpop .45s cubic-bezier(.2,1.6,.5,1)}
@@ -1857,25 +1861,95 @@ function medal(n, big){
   </svg>`;
 }
 
+/* ===== 공용 캐릭터(디자인팀 v3): 3D 비닐 장난감 질감. 사이트 전체의 동물은 모두 이 그림을 쓴다 =====
+   평면 도형을 SVG 조명 필터(확산광+반사광)로 부풀려 광택·그늘을 만든다. 외곽선 없음, 색 하나 + 실루엣.
+   종류: fox octopus whale chick frog owl panda rabbit bear cat dog tiger (모두 직접 그린 오리지널)
+   HTML에는 toyImg(kind), SVG 안에는 toyImage(kind,x,y,w,h), 주소만 필요하면 toySrc(kind) */
+const TOY = (() => {
+  const PUFF = (id, blur, scale, spec) => `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="${blur}" result="h"/>
+    <feDiffuseLighting in="h" surfaceScale="${scale}" diffuseConstant="1" lighting-color="#fff" result="d0"><feDistantLight azimuth="250" elevation="62"/></feDiffuseLighting>
+    <feGaussianBlur in="d0" stdDeviation=".9" result="d"/>
+    <feComposite in="SourceGraphic" in2="d" operator="arithmetic" k1=".88" k2=".17" result="sh"/>
+    <feSpecularLighting in="h" surfaceScale="${scale}" specularConstant="${spec}" specularExponent="10" lighting-color="#fff" result="s0"><feDistantLight azimuth="240" elevation="66"/></feSpecularLighting>
+    <feGaussianBlur in="s0" stdDeviation="1.4" result="s"/>
+    <feComposite in="s" in2="SourceAlpha" operator="in" result="sm"/>
+    <feComposite in="sh" in2="sm" operator="arithmetic" k2="1" k3=".42" result="o"/>
+    <feComposite in="o" in2="SourceAlpha" operator="in"/>
+  </filter>`;
+  const DEFS = PUFF('pb', 7, 4.2, .8) + PUFF('pm', 3.6, 3.2, .7) + PUFF('ps', 1.6, 3, 1)
+    + `<radialGradient id="gl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101845" stop-opacity=".35"/><stop offset="1" stop-color="#101845" stop-opacity="0"/></radialGradient>`;
+  const EYE = (x, y, r = 5.2) => `<g filter="url(#ps)"><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.2}" fill="#231A2E"/></g><ellipse cx="${x - r * .32}" cy="${y - r * .45}" rx="${r * .38}" ry="${r * .42}" fill="#fff"/><circle cx="${x + r * .35}" cy="${y + r * .4}" r="${r * .16}" fill="#fff" opacity=".85"/>`;
+  const CHEEK = (x, y, c) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="3.8" fill="${c}" opacity=".55"/>`;
+  const GL = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="url(#gl)"/>`;
+  const SH = `<ellipse cx="50" cy="92" rx="30" ry="6" fill="url(#gs)"/>`;
+  const A = {
+    octopus:() => SH + `<g filter="url(#pb)"><path d="M18 52C18 27 32 13 50 13S82 27 82 52c0 8 4 14 9 19-5 6-12 4-16-1-2 9-10 12-15 5-4 7-16 7-20 0-5 7-13 4-15-5-4 5-11 7-16 1 5-5 9-11 9-19z" fill="#F0364A"/></g>${GL(36, 28, 14, 8)}
+      <g filter="url(#ps)"><circle cx="35" cy="27" r="4" fill="#FF8C98"/><circle cx="64" cy="24" r="3" fill="#FF8C98"/></g>
+      ${EYE(40, 47)}${EYE(60, 47)}${CHEEK(30, 57, '#FF9AA8')}${CHEEK(70, 57, '#FF9AA8')}<path d="M45 58q5 5 10 0" fill="none" stroke="#7A0F1E" stroke-width="2.6" stroke-linecap="round"/>`,
+    whale:() => SH + `<g filter="url(#pm)"><path d="M50 30c0-8-1-13-1-16" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M49 18c-4-8-12-9-16-4M51 18c4-8 12-9 16-4" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/></g>
+      <g filter="url(#pb)"><path d="M12 60c0-21 16-32 38-32s38 11 38 30c0 18-15 28-38 28S12 79 12 60z" fill="#1F74E0"/></g>${GL(34, 40, 15, 7)}
+      <g filter="url(#pm)"><path d="M24 74c9 6 43 6 52 0-5 8-14 12-26 12s-21-4-26-12z" fill="#8FC8FF"/></g>
+      ${EYE(37, 54)}${EYE(63, 54)}${CHEEK(27, 63, '#7FB6FF')}${CHEEK(73, 63, '#7FB6FF')}<path d="M45 62q5 4.5 10 0" fill="none" stroke="#0B3F86" stroke-width="2.6" stroke-linecap="round"/>`,
+    chick:() => SH + `<g filter="url(#pm)"><path d="M45 26c-4-9 3-15 7-8 4-8 12-3 6 8z" fill="#FFB300"/><path d="M17 60c-9 1-10 13 1 13zM83 60c9 1 10 13-1 13z" fill="#FFB300"/></g>
+      <g filter="url(#pb)"><circle cx="50" cy="56" r="33" fill="#FFC40D"/></g>${GL(38, 36, 14, 8)}
+      ${EYE(39, 50)}${EYE(61, 50)}${CHEEK(29, 61, '#FF9C5A')}${CHEEK(71, 61, '#FF9C5A')}<g filter="url(#ps)"><path d="M42 58l8-6 8 6-8 7z" fill="#FF6A1A"/></g>`,
+    frog:() => SH + `<g filter="url(#pb)"><circle cx="30" cy="35" r="14" fill="#27AE3B"/><circle cx="70" cy="35" r="14" fill="#27AE3B"/><path d="M11 63c0-18 17-28 39-28s39 10 39 28c0 16-17 25-39 25S11 79 11 63z" fill="#27AE3B"/></g>${GL(26, 27, 7, 4)}${GL(66, 27, 7, 4)}${GL(40, 46, 14, 5, -10)}
+      <g filter="url(#pm)"><ellipse cx="50" cy="75" rx="22" ry="9" fill="#C6F09A"/></g>
+      ${EYE(30, 35, 5.6)}${EYE(70, 35, 5.6)}${CHEEK(24, 60, '#8BE06A')}${CHEEK(76, 60, '#8BE06A')}<path d="M36 59q14 10 28 0" fill="none" stroke="#0E5A17" stroke-width="2.8" stroke-linecap="round"/>`,
+    owl:() => SH + `<g filter="url(#pb)"><path d="M24 34L18 10l21 13zM76 34l6-24-21 13z" fill="#8A3FEA"/><path d="M50 17c22 0 35 16 35 38 0 21-15 33-35 33S15 76 15 55c0-22 13-38 35-38z" fill="#8A3FEA"/></g>${GL(36, 28, 13, 7)}
+      <g filter="url(#pm)"><circle cx="37" cy="48" r="12.5" fill="#EBDDFF"/><circle cx="63" cy="48" r="12.5" fill="#EBDDFF"/><ellipse cx="50" cy="75" rx="17" ry="10" fill="#B58CFF"/></g>
+      ${EYE(37, 48, 5.8)}${EYE(63, 48, 5.8)}<g filter="url(#ps)"><path d="M45 57h10l-5 7z" fill="#FFA000"/></g>`,
+    fox:() => SH + `<g filter="url(#pb)"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z" fill="#FF7A12"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z" fill="#FF7A12"/></g>${GL(36, 36, 14, 7)}
+      <g filter="url(#pm)"><path d="M23 33l-3-15 13 10zM77 33l3-15-13 10z" fill="#FFD2A6"/><path d="M25 64c8-7 18-6 25 1 7-7 17-8 25-1-4 14-14 21-25 21s-21-7-25-21z" fill="#FFF3E4"/></g>
+      ${EYE(37, 52)}${EYE(63, 52)}${CHEEK(27, 62, '#FF7E6B')}${CHEEK(73, 62, '#FF7E6B')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="4.2" ry="3.2" fill="#231A2E"/></g><path d="M50 68v2.5M46 71.5q4 3 8 0" fill="none" stroke="#5A3A2A" stroke-width="2" stroke-linecap="round"/>`,
+    panda:() => SH + `<g filter="url(#pb)"><circle cx="25" cy="30" r="12" fill="#2C2838"/><circle cx="75" cy="30" r="12" fill="#2C2838"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="57" rx="37" ry="32" fill="#F6F7FB"/></g>${GL(36, 38, 14, 7)}
+      <g filter="url(#pm)"><ellipse cx="36" cy="53" rx="9" ry="11" transform="rotate(-28 36 53)" fill="#2C2838"/><ellipse cx="64" cy="53" rx="9" ry="11" transform="rotate(28 64 53)" fill="#2C2838"/></g>
+      <circle cx="37" cy="52" r="3.4" fill="#fff"/><circle cx="63" cy="52" r="3.4" fill="#fff"/>${CHEEK(25, 67, '#FFB0C0')}${CHEEK(75, 67, '#FFB0C0')}<g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.2" ry="3.2" fill="#2C2838"/></g>`
+  };
+  
+  Object.assign(A, {
+    rabbit:() => SH + `<g filter="url(#pb)"><ellipse cx="36" cy="24" rx="9" ry="20" transform="rotate(-10 36 24)" fill="#FF9EC2"/><ellipse cx="64" cy="24" rx="9" ry="20" transform="rotate(10 64 24)" fill="#FF9EC2"/></g>
+      <g filter="url(#pm)"><ellipse cx="36" cy="24" rx="4" ry="13" transform="rotate(-10 36 24)" fill="#FFE0EC"/><ellipse cx="64" cy="24" rx="4" ry="13" transform="rotate(10 64 24)" fill="#FFE0EC"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="60" rx="34" ry="29" fill="#FF9EC2"/></g>${GL(38, 44, 13, 6)}
+      <g filter="url(#pm)"><ellipse cx="50" cy="69" rx="14" ry="10" fill="#FFF1F6"/></g>
+      ${EYE(38, 56)}${EYE(62, 56)}${CHEEK(27, 66, '#FF6FA0')}${CHEEK(73, 66, '#FF6FA0')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="3.6" ry="2.8" fill="#E0457F"/></g><path d="M50 67v3M46 71q4 3 8 0" fill="none" stroke="#8A2A4E" stroke-width="2.2" stroke-linecap="round"/>`,
+    bear:() => SH + `<g filter="url(#pb)"><circle cx="24" cy="30" r="12" fill="#B06A30"/><circle cx="76" cy="30" r="12" fill="#B06A30"/></g>
+      <g filter="url(#pm)"><circle cx="24" cy="30" r="6" fill="#E9B27A"/><circle cx="76" cy="30" r="6" fill="#E9B27A"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="36" ry="31" fill="#B06A30"/></g>${GL(36, 40, 14, 7)}
+      <g filter="url(#pm)"><ellipse cx="50" cy="68" rx="15" ry="11" fill="#F0C995"/></g>
+      ${EYE(36, 54)}${EYE(64, 54)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5" ry="3.8" fill="#2A1B14"/></g><path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>`,
+    cat:() => SH + `<g filter="url(#pb)"><path d="M18 46L20 12l24 18zM82 46L80 12 56 30z" fill="#8E98B5"/></g>
+      <g filter="url(#pm)"><path d="M24 34l1-14 11 9zM76 34l-1-14-11 9z" fill="#FFC6D6"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="37" ry="30" fill="#8E98B5"/></g>${GL(36, 40, 14, 7)}
+      <g filter="url(#pm)"><path d="M50 30v10M42 31l2 9M58 31l-2 9" stroke="#6C7593" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="50" cy="69" rx="13" ry="9" fill="#EEF1F8"/></g>
+      ${EYE(36, 55)}${EYE(64, 55)}${CHEEK(26, 65, '#FF9DB6')}${CHEEK(74, 65, '#FF9DB6')}<g filter="url(#ps)"><path d="M46.5 63h7L50 67z" fill="#FF7EA2"/></g><path d="M50 67q-3 4-6 1M50 67q3 4 6 1" fill="none" stroke="#3E4560" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14 64l12-1M15 70l11-3M86 64l-12-1M85 70l-11-3" stroke="#3E4560" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`,
+    dog:() => SH + `<g filter="url(#pb)"><ellipse cx="50" cy="56" rx="34" ry="31" fill="#E9B46E"/></g>${GL(38, 38, 13, 7)}
+      <g filter="url(#pb)"><path d="M20 30c-10 4-12 26-4 32 7-2 10-14 10-26z" fill="#8A5226"/><path d="M80 30c10 4 12 26 4 32-7-2-10-14-10-26z" fill="#8A5226"/></g>
+      <g filter="url(#pm)"><ellipse cx="50" cy="69" rx="16" ry="11" fill="#FFF3E2"/><ellipse cx="64" cy="48" rx="8" ry="7" fill="#C98A48"/></g>
+      ${EYE(38, 52)}${EYE(62, 52)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5.2" ry="3.8" fill="#2A1B14"/></g><path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/><g filter="url(#ps)"><path d="M47 73q3 7 6 0z" fill="#FF6E8A"/></g>`,
+    tiger:() => SH + `<g filter="url(#pb)"><circle cx="24" cy="30" r="11" fill="#FF9420"/><circle cx="76" cy="30" r="11" fill="#FF9420"/></g>
+      <g filter="url(#pm)"><circle cx="24" cy="30" r="5" fill="#FFE4C4"/><circle cx="76" cy="30" r="5" fill="#FFE4C4"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="37" ry="31" fill="#FF9420"/></g>
+      <g filter="url(#pm)"><path d="M50 28v9M42 30l2 7M58 30l-2 7M14 52l10 3M15 62l9 0M86 52l-10 3M85 62l-9 0" stroke="#3A2414" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="50" cy="69" rx="17" ry="11" fill="#FFF4E6"/></g>${GL(36, 40, 13, 6)}
+      ${EYE(36, 53)}${EYE(64, 53)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="4.6" ry="3.4" fill="#E0457F"/></g><path d="M50 66v3M45 70q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>`
+  });
+  
+  const src = {};
+  const toySrc = k => src[k] || (src[k] = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${DEFS}</defs>${(A[k] || A.fox)()}</svg>`).replace(/'/g, '%27'));
+  return { PUFF, DEFS, EYE, CHEEK, GL, SH, A, toySrc };
+})();
+const toySrc = k => TOY.toySrc(k);
+const toyImg = (k, cls = '') => `<img class="toy ${cls}" src="${toySrc(k)}" alt="" aria-hidden="true" draggable="false">`;
+const toyImage = (k, x, y, w, h) => `<image href="${toySrc(k)}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 /* 친구 얼굴(토끼·곰·고양이·강아지·판다·호랑이) */
 const FACE_KIND = ['rabbit','bear','cat','dog','panda','tiger'];
 const FACE_BG = ['#FFD6E6','#FFE7A8','#CFE9FF','#D8F5C8','#E6DAFF','#FFE0C4'];
-function animalFace(kind){
-  const eyes = `<circle cx="15.5" cy="25" r="2.1" fill="#2A1A10"/><circle cx="24.5" cy="25" r="2.1" fill="#2A1A10"/><circle cx="16.2" cy="24.2" r=".7" fill="#fff"/><circle cx="25.2" cy="24.2" r=".7" fill="#fff"/>`;
-  const blush = `<ellipse cx="12" cy="29" rx="2.4" ry="1.4" fill="#FF8FB0" opacity=".7"/><ellipse cx="28" cy="29" rx="2.4" ry="1.4" fill="#FF8FB0" opacity=".7"/>`;
-  const mouth = `<path d="M18 30.5q2 1.6 4 0" fill="none" stroke="#2A1A10" stroke-width="1.2" stroke-linecap="round"/>`;
-  let ears = '', head = '#FFFFFF', extra = '', nose = '<ellipse cx="20" cy="28.4" rx="1.8" ry="1.3" fill="#2A1A10"/>';
-  if(kind === 'rabbit'){ ears = '<ellipse cx="14" cy="9" rx="4" ry="10" fill="#FFF7F7" stroke="#E7C9CF" stroke-width="1"/><ellipse cx="26" cy="9" rx="4" ry="10" fill="#FFF7F7" stroke="#E7C9CF" stroke-width="1"/><ellipse cx="14" cy="10" rx="1.8" ry="7" fill="#FFB3C7"/><ellipse cx="26" cy="10" rx="1.8" ry="7" fill="#FFB3C7"/>'; head = '#FFF7F7'; nose = '<path d="M18.6 27.6h2.8l-1.4 1.6z" fill="#FF6F93"/>'; }
-  else if(kind === 'bear'){ ears = '<circle cx="9.5" cy="15" r="5" fill="#A8703F"/><circle cx="30.5" cy="15" r="5" fill="#A8703F"/><circle cx="9.5" cy="15" r="2.4" fill="#E2B184"/><circle cx="30.5" cy="15" r="2.4" fill="#E2B184"/>'; head = '#BF8550'; extra = '<ellipse cx="20" cy="29.5" rx="6" ry="4.3" fill="#F1D2B0"/>'; }
-  else if(kind === 'cat'){ ears = '<path d="M6.5 20L9 6.5l9 7.5z" fill="#F2A65A"/><path d="M33.5 20L31 6.5l-9 7.5z" fill="#F2A65A"/><path d="M9 16l1.4-6 4.4 3.8z" fill="#FFD7E0"/><path d="M31 16l-1.4-6-4.4 3.8z" fill="#FFD7E0"/>'; head = '#F7B36A'; extra = '<path d="M17 12.5l3 3 3-3" fill="none" stroke="#D9803A" stroke-width="1.6" stroke-linecap="round"/><path d="M6 27h6M6 30l6-1.2M34 27h-6M34 30l-6-1.2" stroke="#8A5530" stroke-width=".9" stroke-linecap="round"/>'; nose = '<path d="M18.7 27.6h2.6l-1.3 1.5z" fill="#E86A7E"/>'; }
-  else if(kind === 'dog'){ head = '#F2D1A0'; extra = '<ellipse cx="20" cy="29.8" rx="5.5" ry="4" fill="#FFF4E4"/><ellipse cx="25.5" cy="20" rx="4" ry="3.5" fill="#D9A566"/>'; ears = ''; }
-  else if(kind === 'panda'){ ears = '<circle cx="9.5" cy="14" r="5" fill="#2B2B33"/><circle cx="30.5" cy="14" r="5" fill="#2B2B33"/>'; head = '#FFFFFF'; extra = '<ellipse cx="15" cy="25" rx="3.8" ry="4.6" transform="rotate(20 15 25)" fill="#2B2B33"/><ellipse cx="25" cy="25" rx="3.8" ry="4.6" transform="rotate(-20 25 25)" fill="#2B2B33"/>'; }
-  else { ears = '<circle cx="9.5" cy="14.5" r="4.8" fill="#FF9A3C"/><circle cx="30.5" cy="14.5" r="4.8" fill="#FF9A3C"/><circle cx="9.5" cy="14.5" r="2.2" fill="#FFE1C4"/><circle cx="30.5" cy="14.5" r="2.2" fill="#FFE1C4"/>'; head = '#FFA24A'; extra = '<path d="M20 11.5v4M16.5 12.2l1.4 3.4M23.5 12.2l-1.4 3.4M7.5 23h4M7.8 27l3.8-1M32.5 23h-4M32.2 27l-3.8-1" stroke="#3A2210" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="20" cy="29.8" rx="5.6" ry="4" fill="#FFF4E4"/>'; }
-  const dogEars = kind === 'dog' ? '<path d="M8 13c-3 3-3.5 11-1 13 2.5-1 4-6 4.5-11z" fill="#8A5530"/><path d="M32 13c3 3 3.5 11 1 13-2.5-1-4-6-4.5-11z" fill="#8A5530"/>' : '';
-  return `<svg viewBox="0 0 40 40" aria-hidden="true">${ears}<circle cx="20" cy="24" r="13.5" fill="${head}"/>${dogEars}${extra}${kind === 'panda' ? eyes.replace(/#2A1A10/g, '#fff').replace(/r="\.7" fill="#fff"/g, 'r=".7" fill="#2B2B33"') : eyes}${blush}${nose}${mouth}</svg>`;
-}
+function animalFace(kind){ return toyImg(kind); }   /* 예전 평면 얼굴 → 공용 3D 캐릭터 */
 const avatar = x => {
-  if(x.me) return `<span class="av" style="--avbg:#FFE0C4">${FOX_FACE.replace('<svg ', '<svg style="width:84%;height:84%;margin-top:14%" ')}</span>`;
+  if(x.me) return `<span class="av" style="--avbg:#FFE0C4">${toyImg('fox')}</span>`;
   const i = Math.max(0, FRIENDS.findIndex(f => f.name === x.name));
   return `<span class="av" style="--avbg:${FACE_BG[i % 6]}">${animalFace(FACE_KIND[i % 6])}</span>`;
 };
@@ -2741,8 +2815,8 @@ function renderStage(){
 
 /* ---------- 여우 자리 찾기: 레퍼런스(Meowdoku) 화면 구성, 그림은 직접 그린 여우 ---------- */
 const FOX_COLORS = ['#E87BAD','#4E68A8','#A0603A','#3EAFA5','#8E6BD1','#9ED27F','#E0B43A','#FFA462','#5DB3E6','#9FB5CE','#D96464'];
-const FOX_FACE = '<svg viewBox="0 0 40 38" aria-hidden="true"><path d="M3 1.5l12 9.5-8.5 9z" fill="#E8742A"/><path d="M37 1.5L25 11l8.5 9z" fill="#E8742A"/><path d="M6.2 6l5.6 4.6-3.8 4z" fill="#5A2E1A"/><path d="M33.8 6l-5.6 4.6 3.8 4z" fill="#5A2E1A"/><path d="M5 12Q20 3 35 12l-1 10Q20 37 6 22z" fill="#F58A3A"/><path d="M6 20.5q7 .5 14 10 7-9.5 14-10-3 12-14 15.5Q9 32.5 6 20.5z" fill="#FFF6EC"/><ellipse cx="13.8" cy="18.5" rx="2.3" ry="2.9" fill="#2A1A10"/><ellipse cx="26.2" cy="18.5" rx="2.3" ry="2.9" fill="#2A1A10"/><circle cx="14.6" cy="17.4" r=".9" fill="#fff"/><circle cx="27" cy="17.4" r=".9" fill="#fff"/><ellipse cx="20" cy="27.2" rx="2.2" ry="1.5" fill="#2A1A10"/></svg>';
-const FOX_SIL = c => `<svg viewBox="0 0 40 38" aria-hidden="true" fill="${c}"><path d="M3 1.5l12 9.5-8.5 9z"/><path d="M37 1.5L25 11l8.5 9z"/><path d="M5 12Q20 3 35 12l-1 10Q20 37 6 22z"/><path d="M6 20.5q7 .5 14 10 7-9.5 14-10-3 12-14 15.5Q9 32.5 6 20.5z"/></svg>`;
+const FOX_FACE = `<svg viewBox="0 0 40 38" aria-hidden="true">${toyImage('fox', -3, -4, 46, 46)}</svg>`;   /* 공용 3D 여우(40×38 틀 안) */
+const FOX_SIL = c => `<svg viewBox="7 5 86 86" aria-hidden="true" fill="${c}"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z"/></svg>`;
 const FX_X = c => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/></svg>`;
 const FX_ICON = {
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="#7A4450" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
@@ -6400,49 +6474,7 @@ NG.match = (() => {
      0 문어(빨강) 1 고래(파랑) 2 병아리(노랑) 3 개구리(초록) 4 부엉이(보라) 5 여우(주황) 6 판다(흰색)
      처음엔 SVG를 그대로 쓰고, 판을 그린 뒤 칸 크기의 2배 PNG로 한 번 구워 바꾼다(폰 성능).
   ------------------------------------------------------------------ */
-  const PUFF = (id, blur, scale, spec) => `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-    <feGaussianBlur in="SourceAlpha" stdDeviation="${blur}" result="h"/>
-    <feDiffuseLighting in="h" surfaceScale="${scale}" diffuseConstant="1" lighting-color="#fff" result="d0"><feDistantLight azimuth="250" elevation="62"/></feDiffuseLighting>
-    <feGaussianBlur in="d0" stdDeviation=".9" result="d"/>
-    <feComposite in="SourceGraphic" in2="d" operator="arithmetic" k1=".88" k2=".17" result="sh"/>
-    <feSpecularLighting in="h" surfaceScale="${scale}" specularConstant="${spec}" specularExponent="10" lighting-color="#fff" result="s0"><feDistantLight azimuth="240" elevation="66"/></feSpecularLighting>
-    <feGaussianBlur in="s0" stdDeviation="1.4" result="s"/>
-    <feComposite in="s" in2="SourceAlpha" operator="in" result="sm"/>
-    <feComposite in="sh" in2="sm" operator="arithmetic" k2="1" k3=".42" result="o"/>
-    <feComposite in="o" in2="SourceAlpha" operator="in"/>
-  </filter>`;
-  const DEFS = PUFF('pb', 7, 4.2, .8) + PUFF('pm', 3.6, 3.2, .7) + PUFF('ps', 1.6, 3, 1)
-    + `<radialGradient id="gl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101845" stop-opacity=".35"/><stop offset="1" stop-color="#101845" stop-opacity="0"/></radialGradient>`;
-  const EYE = (x, y, r = 5.2) => `<g filter="url(#ps)"><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.2}" fill="#231A2E"/></g><ellipse cx="${x - r * .32}" cy="${y - r * .45}" rx="${r * .38}" ry="${r * .42}" fill="#fff"/><circle cx="${x + r * .35}" cy="${y + r * .4}" r="${r * .16}" fill="#fff" opacity=".85"/>`;
-  const CHEEK = (x, y, c) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="3.8" fill="${c}" opacity=".55"/>`;
-  const GL = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="url(#gl)"/>`;
-  const SH = `<ellipse cx="50" cy="92" rx="30" ry="6" fill="url(#gs)"/>`;
-  const A = {
-    octopus:() => SH + `<g filter="url(#pb)"><path d="M18 52C18 27 32 13 50 13S82 27 82 52c0 8 4 14 9 19-5 6-12 4-16-1-2 9-10 12-15 5-4 7-16 7-20 0-5 7-13 4-15-5-4 5-11 7-16 1 5-5 9-11 9-19z" fill="#F0364A"/></g>${GL(36, 28, 14, 8)}
-      <g filter="url(#ps)"><circle cx="35" cy="27" r="4" fill="#FF8C98"/><circle cx="64" cy="24" r="3" fill="#FF8C98"/></g>
-      ${EYE(40, 47)}${EYE(60, 47)}${CHEEK(30, 57, '#FF9AA8')}${CHEEK(70, 57, '#FF9AA8')}<path d="M45 58q5 5 10 0" fill="none" stroke="#7A0F1E" stroke-width="2.6" stroke-linecap="round"/>`,
-    whale:() => SH + `<g filter="url(#pm)"><path d="M50 30c0-8-1-13-1-16" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M49 18c-4-8-12-9-16-4M51 18c4-8 12-9 16-4" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/></g>
-      <g filter="url(#pb)"><path d="M12 60c0-21 16-32 38-32s38 11 38 30c0 18-15 28-38 28S12 79 12 60z" fill="#1F74E0"/></g>${GL(34, 40, 15, 7)}
-      <g filter="url(#pm)"><path d="M24 74c9 6 43 6 52 0-5 8-14 12-26 12s-21-4-26-12z" fill="#8FC8FF"/></g>
-      ${EYE(37, 54)}${EYE(63, 54)}${CHEEK(27, 63, '#7FB6FF')}${CHEEK(73, 63, '#7FB6FF')}<path d="M45 62q5 4.5 10 0" fill="none" stroke="#0B3F86" stroke-width="2.6" stroke-linecap="round"/>`,
-    chick:() => SH + `<g filter="url(#pm)"><path d="M45 26c-4-9 3-15 7-8 4-8 12-3 6 8z" fill="#FFB300"/><path d="M17 60c-9 1-10 13 1 13zM83 60c9 1 10 13-1 13z" fill="#FFB300"/></g>
-      <g filter="url(#pb)"><circle cx="50" cy="56" r="33" fill="#FFC40D"/></g>${GL(38, 36, 14, 8)}
-      ${EYE(39, 50)}${EYE(61, 50)}${CHEEK(29, 61, '#FF9C5A')}${CHEEK(71, 61, '#FF9C5A')}<g filter="url(#ps)"><path d="M42 58l8-6 8 6-8 7z" fill="#FF6A1A"/></g>`,
-    frog:() => SH + `<g filter="url(#pb)"><circle cx="30" cy="35" r="14" fill="#27AE3B"/><circle cx="70" cy="35" r="14" fill="#27AE3B"/><path d="M11 63c0-18 17-28 39-28s39 10 39 28c0 16-17 25-39 25S11 79 11 63z" fill="#27AE3B"/></g>${GL(26, 27, 7, 4)}${GL(66, 27, 7, 4)}${GL(40, 46, 14, 5, -10)}
-      <g filter="url(#pm)"><ellipse cx="50" cy="75" rx="22" ry="9" fill="#C6F09A"/></g>
-      ${EYE(30, 35, 5.6)}${EYE(70, 35, 5.6)}${CHEEK(24, 60, '#8BE06A')}${CHEEK(76, 60, '#8BE06A')}<path d="M36 59q14 10 28 0" fill="none" stroke="#0E5A17" stroke-width="2.8" stroke-linecap="round"/>`,
-    owl:() => SH + `<g filter="url(#pb)"><path d="M24 34L18 10l21 13zM76 34l6-24-21 13z" fill="#8A3FEA"/><path d="M50 17c22 0 35 16 35 38 0 21-15 33-35 33S15 76 15 55c0-22 13-38 35-38z" fill="#8A3FEA"/></g>${GL(36, 28, 13, 7)}
-      <g filter="url(#pm)"><circle cx="37" cy="48" r="12.5" fill="#EBDDFF"/><circle cx="63" cy="48" r="12.5" fill="#EBDDFF"/><ellipse cx="50" cy="75" rx="17" ry="10" fill="#B58CFF"/></g>
-      ${EYE(37, 48, 5.8)}${EYE(63, 48, 5.8)}<g filter="url(#ps)"><path d="M45 57h10l-5 7z" fill="#FFA000"/></g>`,
-    fox:() => SH + `<g filter="url(#pb)"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z" fill="#FF7A12"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z" fill="#FF7A12"/></g>${GL(36, 36, 14, 7)}
-      <g filter="url(#pm)"><path d="M23 33l-3-15 13 10zM77 33l3-15-13 10z" fill="#FFD2A6"/><path d="M25 64c8-7 18-6 25 1 7-7 17-8 25-1-4 14-14 21-25 21s-21-7-25-21z" fill="#FFF3E4"/></g>
-      ${EYE(37, 52)}${EYE(63, 52)}<g filter="url(#ps)"><ellipse cx="50" cy="66" rx="4.2" ry="3.2" fill="#231A2E"/></g>`,
-    panda:() => SH + `<g filter="url(#pb)"><circle cx="25" cy="30" r="12" fill="#2C2838"/><circle cx="75" cy="30" r="12" fill="#2C2838"/></g>
-      <g filter="url(#pb)"><ellipse cx="50" cy="57" rx="37" ry="32" fill="#F6F7FB"/></g>${GL(36, 38, 14, 7)}
-      <g filter="url(#pm)"><ellipse cx="36" cy="53" rx="9" ry="11" transform="rotate(-28 36 53)" fill="#2C2838"/><ellipse cx="64" cy="53" rx="9" ry="11" transform="rotate(28 64 53)" fill="#2C2838"/></g>
-      <circle cx="37" cy="52" r="3.4" fill="#fff"/><circle cx="63" cy="52" r="3.4" fill="#fff"/>${CHEEK(25, 67, '#FFB0C0')}${CHEEK(75, 67, '#FFB0C0')}<g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.2" ry="3.2" fill="#2C2838"/></g>`
-  };
-  
+  const { DEFS, EYE, GL, A } = TOY;
   const ANIM = ['octopus','whale','chick','frog','owl','fox','panda'].map(k => A[k]);
   const svgDoc = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${DEFS}</defs>${body}</svg>`;
   const toURL = src => "url('" + src + "')";
@@ -8392,7 +8424,7 @@ NG.memory = (() => {
   const symCol = k => SYM[k] ? SYM[k][1] : ANIMAL[k][1];
   const symSvg = k => {
     if(SYM[k]) return `<svg viewBox="0 0 64 64" aria-hidden="true">${SYM[k][2]}</svg>`;
-    const f = (typeof animalFace === 'function' ? animalFace(k) : '<svg viewBox="0 0 40 40"></svg>').replace('<svg ', '<svg x="7" y="4" width="50" height="50" ');
+    const f = typeof toyImage === 'function' ? toyImage(k, 5, 4, 54, 54) : '';
     return `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="25" fill="${ANIMAL[k][1]}" ${O}/>${f}</svg>`;
   };
   /* 카드 뒷면 문양: 분홍 사탕 마름모 + 금빛 반짝이 */
