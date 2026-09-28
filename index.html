@@ -4989,9 +4989,68 @@ function flMapOf(ships){ const m = new Array(100).fill(-1); ships.forEach((s, k)
 
 /* ----- 실시간 대전: room(지금 이 페이지를 연 사람들). 없으면 AI로 ----- */
 let ROOM = null, ROOM_STATE = 'pending';
+/* 대전 서버(Railway). Claude 링크에서는 Claude의 room을, 그 밖(GitHub Pages 등)에서는 이 서버를 쓴다. */
+const BATTLE_WS = 'wss://battle-production-c11b.up.railway.app/ws';
+function netRoomConnect(url){
+  return new Promise((resolve, reject) => {
+    let ws = null, you = null, closedByUs = false, first = true, retry = 0;
+    const rooms = new Map(); // name -> {peers, pres, subs:Set, errs:Set, waiters:[], joined}
+    const send = m => { try{ if(ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }catch(_){} };
+    const st = name => { let s = rooms.get(name); if(!s){ s = { peers:[], pres:{}, subs:new Set(), errs:new Set(), waiters:[], joined:false }; rooms.set(name, s); } return s; };
+    function api(name, isLobby){
+      const s = st(name);
+      return {
+        peers: () => s.peers.map(p => ({ peer:p.peer, presence:p.presence, sameTab:p.peer === you })),
+        presence: obj => { Object.assign(s.pres, obj); send({ t:'p', r:name, p:obj }); return Promise.resolve(); },
+        onPeers: (cb, err) => { s.subs.add(cb); if(err) s.errs.add(err); return () => { s.subs.delete(cb); if(err) s.errs.delete(err); }; },
+        join: sub => new Promise((res, rej) => {
+          const ss = st(sub); ss.pres = {};
+          const tm = setTimeout(() => { rej(new Error('join timeout')); }, 8000);
+          ss.waiters.push(() => { clearTimeout(tm); res(api(sub, false)); });
+          send({ t:'join', r:sub });
+        }),
+        leave: () => { if(isLobby) return; send({ t:'leave', r:name }); rooms.delete(name); },
+      };
+    }
+    function open(){
+      try{ ws = new WebSocket(url); }catch(e){ if(first) reject(e); return; }
+      const failT = setTimeout(() => { if(first){ first = false; try{ ws.close(); }catch(_){} reject(new Error('timeout')); } }, 7000);
+      ws.onmessage = ev => {
+        let m; try{ m = JSON.parse(ev.data); }catch(_){ return; }
+        if(m.t === 'hello'){
+          you = m.you; retry = 0;
+          const lob = st('lobby'); send({ t:'join', r:'lobby' });
+          if(Object.keys(lob.pres).length) send({ t:'p', r:'lobby', p:lob.pres });
+          if(first){ first = false; clearTimeout(failT); resolve(api('lobby', true)); }
+          return;
+        }
+        if(m.t === 'peers' && rooms.has(m.r)){
+          const s = rooms.get(m.r); s.peers = m.peers || []; s.joined = true;
+          const w = s.waiters.splice(0); w.forEach(f => f());
+          const ch = { joined:m.joined || [], left:m.left || [] };
+          s.subs.forEach(cb => { try{ cb(ch); }catch(_){} });
+        }
+      };
+      ws.onclose = () => {
+        clearTimeout(failT);
+        // 대전 방은 끊기면 끝(게임이 처리), 대기실은 다시 연결
+        for(const [name, s] of rooms){ if(name !== 'lobby'){ s.errs.forEach(f => { try{ f(); }catch(_){} }); rooms.delete(name); } }
+        const lob = rooms.get('lobby'); if(lob) lob.peers = [];
+        if(first){ first = false; reject(new Error('closed')); return; }
+        if(!closedByUs) setTimeout(open, Math.min(15000, 1500 * (++retry)));
+      };
+    }
+    open();
+    setInterval(() => send({ t:'ping' }), 25000);
+  });
+}
 try{
-  if(window.claude && typeof window.claude.use === 'function') window.claude.use('room').then(r => { ROOM = r || null; ROOM_STATE = r ? 'ok' : 'none'; }).catch(() => { ROOM_STATE = 'none'; });
-  else ROOM_STATE = 'none';
+  const useNet = () => {
+    if(BATTLE_WS.includes('__')){ ROOM_STATE = 'none'; return; }
+    netRoomConnect(BATTLE_WS).then(r => { ROOM = r; ROOM_STATE = 'ok'; }).catch(() => { ROOM_STATE = 'none'; });
+  };
+  if(window.claude && typeof window.claude.use === 'function') window.claude.use('room').then(r => { if(r){ ROOM = r; ROOM_STATE = 'ok'; } else useNet(); }).catch(useNet);
+  else useNet();
 }catch(_){ ROOM_STATE = 'none'; }
 function flWaitingCount(){ try{ return ROOM ? ROOM.peers().filter(p => !p.sameTab && p.presence && p.presence.fl === 'wait').length : 0; }catch(_){ return 0; } }
 const FL_NICK_A = ['푸른','용감한','날쌘','은빛','붉은','고요한','번개','새벽'], FL_NICK_B = ['고래','상어','돌고래','범고래','문어','거북','갈매기','해달'];
