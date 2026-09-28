@@ -6790,8 +6790,10 @@ NG.match = (() => {
     M.s = s;
     M.grid.style.width = M.grid.style.height = (s * N) + 'px';
     M.grid.style.setProperty('--s', s + 'px');
-    M.grid.style.backgroundImage = 'linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)';
-    M.grid.style.backgroundSize = s + 'px ' + s + 'px';
+    M.grid.style.backgroundImage = 'none';
+    let cl = M.grid.querySelector('.mt-cells');
+    if(!cl){ cl = document.createElement('div'); cl.className = 'mt-cells'; cl.setAttribute('aria-hidden', 'true'); cl.innerHTML = '<i></i>'.repeat(N * N); M.grid.prepend(cl); }
+    cl.style.gridTemplateColumns = `repeat(${N}, ${s}px)`; cl.style.gridAutoRows = s + 'px';
   }
 
   const CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8.6" fill="#fff" stroke="#1A0F45" stroke-width="2.4"/><rect x="9.6" y="1.8" width="4.8" height="3" rx="1.2" fill="#1A0F45"/><path d="M12 8.6V13l3 2" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>';
@@ -6936,8 +6938,10 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:14px; background:linear-gradient(180deg,#F3CF7A,#D9A441); border:2px solid #8A6424;
   box-shadow:0 3px 0 #8A6424, 0 10px 18px rgba(20,40,90,.16)}
 .ng-match .mt-grid{position:relative; overflow:hidden; border-radius:7px; touch-action:none; cursor:pointer;
-  background-color:#A7B5E4;
+  background-color:#8E9DD6;
   box-shadow:inset 0 2px 6px rgba(30,40,110,.18)}
+.ng-match .mt-cells{position:absolute; inset:0; display:grid; z-index:0; pointer-events:none}
+.ng-match .mt-cells i{margin:1.5px; border-radius:22%; background:linear-gradient(180deg,#B3C0EC,#A6B4E4); box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35), inset 0 -1.5px 0 rgba(40,50,120,.1)}
 .ng-match .mt-t{position:absolute; left:0; top:0; will-change:transform; z-index:1}
 .ng-match .mt-in{position:absolute; inset:0}
 .ng-match .mt-img{position:absolute; inset:-6% -6% -3%; background:center/contain no-repeat; z-index:1}
