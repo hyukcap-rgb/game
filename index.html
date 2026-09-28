@@ -6395,68 +6395,83 @@ NG.match = (() => {
      그림
   ------------------------------------------------------------------ */
   /* ------------------------------------------------------------------
-     그림 v2: 스티커 캐릭터(굵은 외곽선 + 파스텔 + 볼터치). 모두 직접 그린 오리지널.
-     0 문어(코랄) 1 고래(하늘) 2 병아리(노랑) 3 개구리(초록) 4 부엉이(보라) 5 여우(주황) 6 판다(흰색)
-     그림은 한 번 만든 data URI를 배경 이미지로 재사용(칸 49개가 같은 그림 7장을 공유)
+     그림 v3 (디자인팀): 3D 비닐 장난감 질감. 평면 도형을 SVG 조명 필터(확산광+반사광)로 부풀려
+     매끈한 광택·아래쪽 그늘을 만든다. 외곽선 없이 색 하나 + 실루엣으로 구분. 모두 직접 그린 오리지널.
+     0 문어(빨강) 1 고래(파랑) 2 병아리(노랑) 3 개구리(초록) 4 부엉이(보라) 5 여우(주황) 6 판다(흰색)
+     처음엔 SVG를 그대로 쓰고, 판을 그린 뒤 칸 크기의 2배 PNG로 한 번 구워 바꾼다(폰 성능).
   ------------------------------------------------------------------ */
-  const INK = '#3A3346';
-  const Ow = w => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
-  const O = Ow(2.8);
-  const eye = (x, y, s = 1) => `<ellipse cx="${x}" cy="${y}" rx="${3.3 * s}" ry="${4 * s}" fill="${INK}"/><circle cx="${x - 1.1 * s}" cy="${y - 1.5 * s}" r="${1.3 * s}" fill="#fff"/>`;
-  const blush = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="3.2" fill="#FF8FAA" opacity=".45"/>`;
-  const mouthW = (x, y) => `<path d="M${x - 4.2} ${y}q2.1 3.4 4.2 0q2.1 3.4 4.2 0" fill="none" ${Ow(2.2)}/>`;
-  const smile = (x, y, w = 5) => `<path d="M${x - w} ${y}q${w} ${w * .9} ${w * 2} 0" fill="none" ${Ow(2.3)}/>`;
-  const shine = (x, y, rx, ry, rot) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity=".7"/>`;
-  const ANIM = [
-    /* 0 문어 */ () => `<path d="M20 52C20 28 33 15 50 15S80 28 80 52c0 8 3 14 8 19-4 5-11 4-15-1-2 8-9 11-14 5-4 6-14 6-18 0-5 6-12 3-14-5-4 5-11 6-15 1 5-5 8-11 8-19z" fill="#F59A9A" ${O}/>
-      <circle cx="36" cy="28" r="4" fill="#EC8088"/><circle cx="64" cy="26" r="3" fill="#EC8088"/><circle cx="58" cy="35" r="2.2" fill="#FF6F78"/>
-      ${shine(35, 24, 7, 3.5, -30)}${eye(40, 47)}${eye(60, 47)}${blush(31, 56)}${blush(69, 56)}<ellipse cx="50" cy="57" rx="3.6" ry="3" fill="#E0456A" ${Ow(2)}/>`,
-    /* 1 고래 */ () => `<path d="M50 27V17" fill="none" stroke="#5DB8FF" stroke-width="3.2" stroke-linecap="round"/><path d="M50 19c-3-8-12-10-16-5M50 19c3-8 12-10 16-5" fill="none" stroke="#5DB8FF" stroke-width="3.2" stroke-linecap="round"/>
-      <circle cx="31" cy="12" r="3" fill="#8FD3FF" ${Ow(2)}/><circle cx="69" cy="12" r="3" fill="#8FD3FF" ${Ow(2)}/>
-      <path d="M13 60c0-21 16-32 37-32s37 11 37 30c0 18-15 27-37 27S13 78 13 60z" fill="#8CC6F0" ${O}/>
-      <path d="M20 68c8 9 52 9 60 0-4 10-15 16-30 16s-26-6-30-16z" fill="#DDF2FF"/><path d="M36 76h4M47 78h6M60 76h4" stroke="#9CCFF2" stroke-width="2" stroke-linecap="round"/>
-      ${shine(32, 38, 9, 4, -25)}${eye(38, 55)}${eye(62, 55)}${blush(29, 63)}${blush(71, 63)}${smile(50, 61, 4)}`,
-    /* 2 병아리 */ () => `<path d="M46 25c-3-8 3-13 6-7 3-7 10-3 5 7" fill="#FFD84D" ${O}/>
-      <path d="M18 64c-8 1-9 11 0 11" fill="#FFC23A" ${O}/><path d="M82 64c8 1 9 11 0 11" fill="#FFC23A" ${O}/>
-      <circle cx="50" cy="56" r="32" fill="#F7DA6A" ${O}/>
-      <path d="M40 86v5M36 91h8M60 86v5M56 91h8" stroke="#FF9A3C" stroke-width="3" stroke-linecap="round"/>
-      ${shine(37, 37, 8, 4, -30)}${eye(40, 51)}${eye(60, 51)}${blush(31, 61)}${blush(69, 61)}<path d="M43.5 58.5L50 54l6.5 4.5L50 64z" fill="#FF9A3C" ${Ow(2.4)}/>`,
-    /* 3 개구리 */ () => `<circle cx="31" cy="35" r="13" fill="#8FD273" ${O}/><circle cx="69" cy="35" r="13" fill="#8FD273" ${O}/>
-      <path d="M12 63c0-17 16-27 38-27s38 10 38 27c0 16-16 24-38 24S12 79 12 63z" fill="#8FD273" ${O}/>
-      <ellipse cx="50" cy="75" rx="21" ry="8.5" fill="#D6F5BC"/>
-      <path d="M22 40c4 3 14 3 18 0M60 40c4 3 14 3 18 0" fill="none" stroke="#8FD273" stroke-width="5"/>
-      ${shine(26, 29, 5, 2.6, -30)}${eye(31, 35, 1.15)}${eye(69, 35, 1.15)}${blush(25, 59)}${blush(75, 59)}<path d="M37 59q13 10 26 0" fill="none" ${Ow(2.4)}/>`,
-    /* 4 부엉이 */ () => `<path d="M25 33L19 11l19 12z" fill="#A98BF5" ${O}/><path d="M75 33l6-22-19 12z" fill="#A98BF5" ${O}/>
-      <path d="M50 18c21 0 34 16 34 38 0 20-14 32-34 32S16 76 16 56c0-22 13-38 34-38z" fill="#B7A3EE" ${O}/>
-      <path d="M34 74l4 4 4-4M46 78l4 4 4-4M58 74l4 4 4-4" fill="none" stroke="#8D6CE0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="38" cy="48" r="11.5" fill="#F1E9FF" ${Ow(2.4)}/><circle cx="62" cy="48" r="11.5" fill="#F1E9FF" ${Ow(2.4)}/>
-      ${shine(33, 27, 7, 3.2, -30)}${eye(38, 48, 1.15)}${eye(62, 48, 1.15)}${blush(27, 62)}${blush(73, 62)}<path d="M45.5 56h9L50 63z" fill="#FFB23C" ${Ow(2.4)}/>`,
-    /* 5 여우 */ () => `<path d="M23 44L17 11l26 18z" fill="#FF9F4A" ${O}/><path d="M77 44l6-33-26 18z" fill="#FF9F4A" ${O}/>
-      <path d="M24 34l-3-15 12 9zM76 34l3-15-12 9z" fill="#FFE1C2"/>
-      <path d="M13 53c0-18 16-27 37-27s37 9 37 27c0 18-16 32-37 33-21-1-37-15-37-33z" fill="#F4A263" ${O}/>
-      <path d="M26 64c8-7 17-5 24 2 7-7 16-9 24-2-4 13-13 20-24 20S30 77 26 64z" fill="#FFF5E8" ${Ow(2.6)}/>
-      ${shine(33, 36, 8, 3.6, -25)}${eye(37, 52)}${eye(63, 52)}${blush(26, 60)}${blush(74, 60)}<ellipse cx="50" cy="66" rx="3.8" ry="2.8" fill="${INK}"/>${mouthW(50, 71)}`,
-    /* 6 판다 */ () => `<circle cx="26" cy="30" r="11" fill="#3A3340" ${O}/><circle cx="74" cy="30" r="11" fill="#3A3340" ${O}/>
-      <ellipse cx="50" cy="57" rx="36" ry="31" fill="#FFFFFF" ${O}/>
-      <ellipse cx="36" cy="53" rx="8.5" ry="10.5" transform="rotate(-28 36 53)" fill="#3A3340"/><ellipse cx="64" cy="53" rx="8.5" ry="10.5" transform="rotate(28 64 53)" fill="#3A3340"/>
-      <circle cx="37" cy="52" r="3" fill="#fff"/><circle cx="63" cy="52" r="3" fill="#fff"/><circle cx="36.2" cy="51" r="1.1" fill="${INK}"/><circle cx="63.8" cy="51" r="1.1" fill="${INK}"/>
-      ${blush(25, 66)}${blush(75, 66)}<ellipse cx="50" cy="64" rx="3.8" ry="2.8" fill="${INK}"/>${mouthW(50, 69)}`
-  ];
-  /* 스티커: 흰 테두리 + 아래 그림자(필터는 이미지 안에서 한 번만 계산) */
-  const STK = '<filter id="k" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="d"/><feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="w"/><feGaussianBlur in="d" stdDeviation="1.6" result="b"/><feOffset in="b" dy="2" result="o"/><feFlood flood-color="#232058" flood-opacity=".16"/><feComposite in2="o" operator="in" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
-  const svgURI = body => "url('data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 108 108"><defs>${STK}</defs><g filter="url(#k)">${body}</g></svg>`).replace(/'/g, '%27') + "')";
-  const IMG = [];
-  const img = k => IMG[k] || (IMG[k] = svgURI(ANIM[k]()));
-  /* 무지개 별 사탕 */
-  const RB_SVG = `<defs><clipPath id="rc"><path d="M50 8l11.5 24 26 3.6-19 18.2 4.8 26L50 67.2 26.7 79.8l4.8-26-19-18.2 26-3.6z"/></clipPath></defs>
-    <g clip-path="url(#rc)"><rect x="0" y="0" width="100" height="16" fill="#FF7B8F"/><rect y="16" width="100" height="14" fill="#FFB24A"/><rect y="30" width="100" height="13" fill="#FFE45C"/><rect y="43" width="100" height="13" fill="#7EDB6A"/><rect y="56" width="100" height="13" fill="#6FC3FF"/><rect y="69" width="100" height="20" fill="#B79CFF"/></g>
-    <path d="M50 8l11.5 24 26 3.6-19 18.2 4.8 26L50 67.2 26.7 79.8l4.8-26-19-18.2 26-3.6z" fill="none" ${O}/>
-    ${shine(40, 26, 6, 3, -35)}${eye(42, 45, .9)}${eye(58, 45, .9)}${smile(50, 51, 3.5)}`;
-  const RB_IMG = svgURI(RB_SVG);
-  /* 줄 폭탄 화살표 */
-  const ARW_IMG = svgURI(`<path d="M6 50l15-13v8h58v-8l15 13-15 13v-8H21v8z" fill="#FFE45C" ${O}/><path d="M24 47h52" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>`);
-  /* 폭탄 뱃지 */
-  const BOMB_IMG = svgURI(`<circle cx="46" cy="58" r="26" fill="#5B5470" ${O}/><path d="M60 36l8-8" ${O} fill="none"/><path d="M66 22l3 5 6 1-5 3 1 6-4-4-6 2 3-5-3-5 6 1z" fill="#FFB23C" ${Ow(2)}/>${shine(38, 48, 7, 4, -30)}`);
+  const PUFF = (id, blur, scale, spec) => `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="${blur}" result="h"/>
+    <feDiffuseLighting in="h" surfaceScale="${scale}" diffuseConstant="1" lighting-color="#fff" result="d0"><feDistantLight azimuth="250" elevation="62"/></feDiffuseLighting>
+    <feGaussianBlur in="d0" stdDeviation=".9" result="d"/>
+    <feComposite in="SourceGraphic" in2="d" operator="arithmetic" k1=".88" k2=".17" result="sh"/>
+    <feSpecularLighting in="h" surfaceScale="${scale}" specularConstant="${spec}" specularExponent="10" lighting-color="#fff" result="s0"><feDistantLight azimuth="240" elevation="66"/></feSpecularLighting>
+    <feGaussianBlur in="s0" stdDeviation="1.4" result="s"/>
+    <feComposite in="s" in2="SourceAlpha" operator="in" result="sm"/>
+    <feComposite in="sh" in2="sm" operator="arithmetic" k2="1" k3=".42" result="o"/>
+    <feComposite in="o" in2="SourceAlpha" operator="in"/>
+  </filter>`;
+  const DEFS = PUFF('pb', 7, 4.2, .8) + PUFF('pm', 3.6, 3.2, .7) + PUFF('ps', 1.6, 3, 1)
+    + `<radialGradient id="gl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101845" stop-opacity=".35"/><stop offset="1" stop-color="#101845" stop-opacity="0"/></radialGradient>`;
+  const EYE = (x, y, r = 5.2) => `<g filter="url(#ps)"><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.2}" fill="#231A2E"/></g><ellipse cx="${x - r * .32}" cy="${y - r * .45}" rx="${r * .38}" ry="${r * .42}" fill="#fff"/><circle cx="${x + r * .35}" cy="${y + r * .4}" r="${r * .16}" fill="#fff" opacity=".85"/>`;
+  const CHEEK = (x, y, c) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="3.8" fill="${c}" opacity=".55"/>`;
+  const GL = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="url(#gl)"/>`;
+  const SH = `<ellipse cx="50" cy="92" rx="30" ry="6" fill="url(#gs)"/>`;
+  const A = {
+    octopus:() => SH + `<g filter="url(#pb)"><path d="M18 52C18 27 32 13 50 13S82 27 82 52c0 8 4 14 9 19-5 6-12 4-16-1-2 9-10 12-15 5-4 7-16 7-20 0-5 7-13 4-15-5-4 5-11 7-16 1 5-5 9-11 9-19z" fill="#F0364A"/></g>${GL(36, 28, 14, 8)}
+      <g filter="url(#ps)"><circle cx="35" cy="27" r="4" fill="#FF8C98"/><circle cx="64" cy="24" r="3" fill="#FF8C98"/></g>
+      ${EYE(40, 47)}${EYE(60, 47)}${CHEEK(30, 57, '#FF9AA8')}${CHEEK(70, 57, '#FF9AA8')}<path d="M45 58q5 5 10 0" fill="none" stroke="#7A0F1E" stroke-width="2.6" stroke-linecap="round"/>`,
+    whale:() => SH + `<g filter="url(#pm)"><path d="M50 30c0-8-1-13-1-16" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M49 18c-4-8-12-9-16-4M51 18c4-8 12-9 16-4" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/></g>
+      <g filter="url(#pb)"><path d="M12 60c0-21 16-32 38-32s38 11 38 30c0 18-15 28-38 28S12 79 12 60z" fill="#1F74E0"/></g>${GL(34, 40, 15, 7)}
+      <g filter="url(#pm)"><path d="M24 74c9 6 43 6 52 0-5 8-14 12-26 12s-21-4-26-12z" fill="#8FC8FF"/></g>
+      ${EYE(37, 54)}${EYE(63, 54)}${CHEEK(27, 63, '#7FB6FF')}${CHEEK(73, 63, '#7FB6FF')}<path d="M45 62q5 4.5 10 0" fill="none" stroke="#0B3F86" stroke-width="2.6" stroke-linecap="round"/>`,
+    chick:() => SH + `<g filter="url(#pm)"><path d="M45 26c-4-9 3-15 7-8 4-8 12-3 6 8z" fill="#FFB300"/><path d="M17 60c-9 1-10 13 1 13zM83 60c9 1 10 13-1 13z" fill="#FFB300"/></g>
+      <g filter="url(#pb)"><circle cx="50" cy="56" r="33" fill="#FFC40D"/></g>${GL(38, 36, 14, 8)}
+      ${EYE(39, 50)}${EYE(61, 50)}${CHEEK(29, 61, '#FF9C5A')}${CHEEK(71, 61, '#FF9C5A')}<g filter="url(#ps)"><path d="M42 58l8-6 8 6-8 7z" fill="#FF6A1A"/></g>`,
+    frog:() => SH + `<g filter="url(#pb)"><circle cx="30" cy="35" r="14" fill="#27AE3B"/><circle cx="70" cy="35" r="14" fill="#27AE3B"/><path d="M11 63c0-18 17-28 39-28s39 10 39 28c0 16-17 25-39 25S11 79 11 63z" fill="#27AE3B"/></g>${GL(26, 27, 7, 4)}${GL(66, 27, 7, 4)}${GL(40, 46, 14, 5, -10)}
+      <g filter="url(#pm)"><ellipse cx="50" cy="75" rx="22" ry="9" fill="#C6F09A"/></g>
+      ${EYE(30, 35, 5.6)}${EYE(70, 35, 5.6)}${CHEEK(24, 60, '#8BE06A')}${CHEEK(76, 60, '#8BE06A')}<path d="M36 59q14 10 28 0" fill="none" stroke="#0E5A17" stroke-width="2.8" stroke-linecap="round"/>`,
+    owl:() => SH + `<g filter="url(#pb)"><path d="M24 34L18 10l21 13zM76 34l6-24-21 13z" fill="#8A3FEA"/><path d="M50 17c22 0 35 16 35 38 0 21-15 33-35 33S15 76 15 55c0-22 13-38 35-38z" fill="#8A3FEA"/></g>${GL(36, 28, 13, 7)}
+      <g filter="url(#pm)"><circle cx="37" cy="48" r="12.5" fill="#EBDDFF"/><circle cx="63" cy="48" r="12.5" fill="#EBDDFF"/><ellipse cx="50" cy="75" rx="17" ry="10" fill="#B58CFF"/></g>
+      ${EYE(37, 48, 5.8)}${EYE(63, 48, 5.8)}<g filter="url(#ps)"><path d="M45 57h10l-5 7z" fill="#FFA000"/></g>`,
+    fox:() => SH + `<g filter="url(#pb)"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z" fill="#FF7A12"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z" fill="#FF7A12"/></g>${GL(36, 36, 14, 7)}
+      <g filter="url(#pm)"><path d="M23 33l-3-15 13 10zM77 33l3-15-13 10z" fill="#FFD2A6"/><path d="M25 64c8-7 18-6 25 1 7-7 17-8 25-1-4 14-14 21-25 21s-21-7-25-21z" fill="#FFF3E4"/></g>
+      ${EYE(37, 52)}${EYE(63, 52)}<g filter="url(#ps)"><ellipse cx="50" cy="66" rx="4.2" ry="3.2" fill="#231A2E"/></g>`,
+    panda:() => SH + `<g filter="url(#pb)"><circle cx="25" cy="30" r="12" fill="#2C2838"/><circle cx="75" cy="30" r="12" fill="#2C2838"/></g>
+      <g filter="url(#pb)"><ellipse cx="50" cy="57" rx="37" ry="32" fill="#F6F7FB"/></g>${GL(36, 38, 14, 7)}
+      <g filter="url(#pm)"><ellipse cx="36" cy="53" rx="9" ry="11" transform="rotate(-28 36 53)" fill="#2C2838"/><ellipse cx="64" cy="53" rx="9" ry="11" transform="rotate(28 64 53)" fill="#2C2838"/></g>
+      <circle cx="37" cy="52" r="3.4" fill="#fff"/><circle cx="63" cy="52" r="3.4" fill="#fff"/>${CHEEK(25, 67, '#FFB0C0')}${CHEEK(75, 67, '#FFB0C0')}<g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.2" ry="3.2" fill="#2C2838"/></g>`
+  };
+  
+  const ANIM = ['octopus','whale','chick','frog','owl','fox','panda'].map(k => A[k]);
+  const svgDoc = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${DEFS}</defs>${body}</svg>`;
+  const toURL = src => "url('" + src + "')";
+  const svgSrc = body => 'data:image/svg+xml,' + encodeURIComponent(svgDoc(body)).replace(/'/g, '%27');
+  const SRC = {}, IMG = {};
+  const RB_BODY = `<ellipse cx="50" cy="90" rx="26" ry="5.5" fill="url(#gs)"/><defs><clipPath id="rc"><path d="M50 8l11.5 24 26 3.6-19 18.2 4.8 26L50 67.2 26.7 79.8l4.8-26-19-18.2 26-3.6z"/></clipPath></defs>
+    <g filter="url(#pb)"><g clip-path="url(#rc)"><rect width="100" height="18" fill="#FF3B55"/><rect y="18" width="100" height="13" fill="#FF9A1F"/><rect y="31" width="100" height="12" fill="#FFD21A"/><rect y="43" width="100" height="12" fill="#2EC04A"/><rect y="55" width="100" height="12" fill="#2A8CFF"/><rect y="67" width="100" height="20" fill="#9447F0"/></g></g>
+    ${GL(40, 26, 10, 5, -35)}${EYE(42, 46, 4.6)}${EYE(58, 46, 4.6)}<path d="M46 54q4 4 8 0" fill="none" stroke="#3A1E00" stroke-width="2.4" stroke-linecap="round"/>`;
+  const ARW_BODY = `<g filter="url(#pm)"><path d="M4 50l17-15v9h58v-9l17 15-17 15v-9H21v9z" fill="#FFC400"/></g>`;
+  const BOMB_BODY = `<g filter="url(#pm)"><path d="M58 38l9-10" stroke="#8A6A3A" stroke-width="5" stroke-linecap="round"/></g><g filter="url(#pb)"><circle cx="45" cy="60" r="27" fill="#3B3F5C"/></g>${GL(36, 49, 9, 5)}<g filter="url(#ps)"><path d="M69 18l3 6 7 1-5 5 1 7-6-4-6 3 1-7-5-5 7-1z" fill="#FFB000"/></g>`;
+  ['rb', 'arw', 'bomb'].forEach((n, i) => SRC[n] = svgSrc([RB_BODY, ARW_BODY, BOMB_BODY][i]));
+  ANIM.forEach((f, k) => SRC[k] = svgSrc(f()));
+  const img = k => IMG[k] || toURL(SRC[k]);
+  let RB_IMG = toURL(SRC.rb), ARW_IMG = toURL(SRC.arw), BOMB_IMG = toURL(SRC.bomb);
+  /* 칸 크기에 맞춰 PNG로 한 번 굽기 */
+  let bakedAt = 0;
+  function bake(px, done){
+    if(bakedAt >= px) return; bakedAt = px;
+    const keys = Object.keys(SRC); let left = keys.length;
+    keys.forEach(key => {
+      const im = new Image();
+      im.onload = () => {
+        try{ const c = document.createElement('canvas'); c.width = c.height = px; c.getContext('2d').drawImage(im, 0, 0, px, px); IMG[key] = toURL(c.toDataURL('image/png')); }catch(_){}
+        if(--left === 0){ RB_IMG = IMG.rb || RB_IMG; ARW_IMG = IMG.arw || ARW_IMG; BOMB_IMG = IMG.bomb || BOMB_IMG; done && done(); }
+      };
+      im.onerror = () => { if(--left === 0) done && done(); };
+      im.src = SRC[key];
+    });
+  }
   function tileInner(t){
     if(t.s === S_RB) return `<div class="mt-in rb"><i class="mt-rbg"></i><i class="mt-img" style="background-image:${RB_IMG}"></i></div>`;
     const sp = t.s === S_H ? ' lh' : t.s === S_V ? ' lv' : t.s === S_BOMB ? ' bm' : '';
@@ -6792,7 +6807,7 @@ NG.match = (() => {
         const x = 22 + c * 24, y = 14 + r * 24, hot = r === 1 && c >= 1 && c <= 3;
         g += `<rect x="${x}" y="${y}" width="24" height="24" fill="${(r + c) % 2 ? '#9FB0E6' : '#A9B9EC'}"/>`;
         if(hot) g += `<rect x="${x + 1}" y="${y + 1}" width="22" height="22" rx="6" fill="#FFF6A8" opacity=".75"/>`;
-        g += `<image href='${img(k).slice(5, -2)}' x="${x - 1}" y="${y - 1}" width="26" height="26"/>`;
+        g += `<image href='${SRC[k]}' x="${x - 2}" y="${y - 3}" width="28" height="28"/>`;
       }));
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="matchA1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F8FE0"/><stop offset=".7" stop-color="#9FD6FF"/><stop offset="1" stop-color="#CDEBFF"/></linearGradient></defs>
         <rect width="160" height="100" fill="url(#matchA1)"/><ellipse cx="18" cy="10" rx="18" ry="7" fill="#fff" opacity=".85"/><ellipse cx="146" cy="8" rx="16" ry="6" fill="#fff" opacity=".75"/>
@@ -6854,6 +6869,7 @@ NG.match = (() => {
       st.querySelector('#mtHelp').onclick = () => { if(G && !G.over) openHelp(G.id); };
       M.root = st.querySelector('#mtRoot'); M.grid = st.querySelector('#mtGrid'); M.panel = st.querySelector('#mtPanel'); M.tf = st.querySelector('#mtTF');
       sizeBoard(); layoutAll(); bindInput(); hud();
+      bake(Math.min(256, Math.round(M.s * 1.25 * Math.min(3, window.devicePixelRatio || 1))), () => { if(M && !M.dead && !M.busy){ M.views.forEach(v => { const t = M.E.b.find(x => x && x.id === v.id); if(t) restyle(v, t); }); } });
       M.ready = true; M.last = 0;
       const bestEl = () => { const b = $m('#mtBest'); if(b) b.textContent = M.E.maxCombo >= 2 ? M.E.maxCombo : '–'; };
       M.bestEl = bestEl;
@@ -6917,14 +6933,14 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 /* 판: 연보라 칸 + 금테 */
 .ng-match .mt-stage{position:relative; margin-top:18px}
 .ng-match .mt-roof{display:none; position:absolute; left:50%; top:-12px; transform:translateX(-50%); width:62%; height:18px; border-radius:12px 12px 4px 4px; background:repeating-linear-gradient(90deg,#C8683A 0 16px,#A9502A 16px 18px); border:2.5px solid #5A2A12; box-shadow:inset 0 3px 0 rgba(255,255,255,.25); z-index:0}
-.ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:14px; background:#EBD9B4; border:2px solid #8C7552;
-  box-shadow:0 3px 0 #8C7552, 0 10px 18px rgba(20,40,90,.14)}
+.ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:14px; background:linear-gradient(180deg,#F3CF7A,#D9A441); border:2px solid #8A6424;
+  box-shadow:0 3px 0 #8A6424, 0 10px 18px rgba(20,40,90,.16)}
 .ng-match .mt-grid{position:relative; overflow:hidden; border-radius:7px; touch-action:none; cursor:pointer;
-  background-color:#C9D2EC;
-  box-shadow:inset 0 2px 6px rgba(30,40,110,.14)}
+  background-color:#A7B5E4;
+  box-shadow:inset 0 2px 6px rgba(30,40,110,.18)}
 .ng-match .mt-t{position:absolute; left:0; top:0; will-change:transform; z-index:1}
 .ng-match .mt-in{position:absolute; inset:0}
-.ng-match .mt-img{position:absolute; inset:-7%; background:center/contain no-repeat; z-index:1}
+.ng-match .mt-img{position:absolute; inset:-6% -6% -3%; background:center/contain no-repeat; z-index:1}
 .ng-match .mt-t.pop .mt-img{filter:brightness(1.35) saturate(1.1)}
 .ng-match .mt-t.sel{z-index:2}
 .ng-match .mt-t.sel .mt-in{animation:mtSel .9s ease-in-out infinite}
@@ -6951,9 +6967,9 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 /* 아래: 특수 동물 안내(초록 아이템 칸) */
 .ng-match .mt-dock{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px}
 .ng-match .mt-bst{position:relative; aspect-ratio:1/1.05; border-radius:16px; background:#EEF1F7; border:2px solid #B9BFD3; box-shadow:0 2px 0 #B9BFD3; overflow:hidden; display:flex; align-items:flex-end; justify-content:center}
-.ng-match .mt-bst i{position:absolute; left:14%; top:4%; width:72%; height:66%; background:center/contain no-repeat}
-.ng-match .mt-bst i.ar{top:18%; height:74%; left:-6%; width:112%}
-.ng-match .mt-bst i.bb{left:48%; top:30%; width:44%; height:40%}
+.ng-match .mt-bst i{position:absolute; left:18%; top:3%; width:64%; height:56%; background:center/contain no-repeat}
+.ng-match .mt-bst i.ar{top:14%; height:60%; left:2%; width:96%}
+.ng-match .mt-bst i.bb{left:50%; top:26%; width:38%; height:36%}
 .ng-match .mt-bst em{position:relative; z-index:1; font-style:normal; font-family:var(--disp); font-size:11.5px; line-height:1.05; text-align:center; color:#4B4775; padding-bottom:5px}
 .ng-match .mt-bst.best{background:#F6EEF4; border-color:#D3BFD0; box-shadow:0 2px 0 #D3BFD0; flex-direction:column; justify-content:center; align-items:center}
 .ng-match .mt-bst.best b{font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1; color:#8C4F7A}
