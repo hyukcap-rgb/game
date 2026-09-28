@@ -569,6 +569,8 @@ body.flmode #play > .pbar, body.flmode #play > .stats{display:none!important}
 .fl-ship.bob{animation:flbob 1.1s ease-in-out infinite}
 @keyframes flbob{50%{transform:translateY(-7%)}}
 .fl-ship.nudge{animation:shake .35s}
+.fl-turn.hurry{animation:flhurry .5s ease-in-out infinite alternate}
+@keyframes flhurry{to{transform:scale(1.08); filter:brightness(1.25)}}
 .fl-c{position:relative; z-index:4; display:grid; place-items:center; min-width:0; min-height:0; border-radius:3px; transition:background .15s}
 .fl-sea > .fl-c{aspect-ratio:1}   /* 일부 Chrome에서 빈 칸 높이가 0이 되어 눌리지 않던 문제 */
 button.fl-c{cursor:crosshair}
@@ -1524,7 +1526,7 @@ const HELP = {
   fox:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 발바닥 1개','틀린 자리는 주황 ✕가 되고 발바닥이 줄어요. 3번 틀리면 끝. 힌트·자동 ✕는 판당 3번.']],
   sudoku:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 3×3 칸마다 1부터 9까지 한 번씩 넣어요.'],['메모로 예비 숫자','메모를 켜면 작은 예비 숫자를 적어둘 수 있어요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요. 힌트는 3번 쓸 수 있어요.']],
   ball:[['조준하고 손 떼기','판을 누른 채 끌거나 아래 슬라이더를 끌어 조준하고, 손을 떼면 구슬이 날아가요.'],['숫자만큼 맞히기','숫자만큼 맞히면 블록이 깨져요. 점선 고리를 먹으면 다음 턴에 구슬이 1개 늘어요.'],['바닥에 닿으면 끝','번개(모든 숫자 20% 감소)와 멀티볼(구슬 약 2.6배)은 판당 1번. 주황 블록은 폭탄·레이저예요.']],
-  fleet:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 25초. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']],
+  fleet:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 5초, 안 쏘면 차례가 넘어가요. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']],
   tower:[['빈 터에 탑 짓기','표지판 있는 빈 터를 누르고, 탑을 한 번 눌러 설명을 본 뒤 한 번 더 누르면 지어요.'],['해골로 공격 시작','길 입구의 해골을 누르면 적이 와요. 일찍 부르면 보너스 골드. 지은 탑을 누르면 업그레이드·판매.'],['주문과 영웅','왼쪽 아래는 화염 폭격·지원군, 오른쪽 아래는 영웅 이동. 적이 성문을 지나면 생명이 줄어요.']]
 };
 function stageStars(id){ const p = stageProg(id); return Object.values(p.stars).reduce((a, b) => a + b, 0); }
@@ -1716,7 +1718,7 @@ function advStarCalc(){
   const id = G.id;
   if(id === 'ball') return ballStars(G.turn, G.R);
   if(id === 'tower') return tdStars(G.lives);
-  if(id === 'fleet'){ const n = G.sh.length; return n <= 45 ? 3 : n <= 60 ? 2 : 1; }
+  if(id === 'fleet'){ const n = flShotN(); return n <= 45 ? 3 : n <= 60 ? 2 : 1; }
   const miss = 3 - G.paws; return miss === 0 && !G.hintUsed ? 3 : miss <= 1 ? 2 : 1;
 }
 
@@ -2246,7 +2248,7 @@ function finish(win){
     let l2 = '시간 보너스 (' + mmss(sec) + ')';
     let l3 = id === 'sudoku' ? '실수 ' + (3 - G.paws) + '번' : '남은 발바닥 ' + G.paws + '개';
     if(id === 'ball'){ time = Math.max(0, 350 - Math.max(0, G.turn - G.R) * 35); paw = G.undoUsed ? 0 : 150; l1 = '스테이지 클리어'; l2 = '턴 보너스 (' + G.turn + '턴, 최소 ' + G.R + '턴)'; l3 = G.undoUsed ? '되돌리기 사용' : '되돌리기 안 씀'; }
-    if(id === 'fleet'){ const n = G.sh.length; base = 500; time = Math.round(350 * Math.max(0, Math.min(1, (100 - n) / 83))); paw = Math.round(150 * G.myLeft / FL_TOTAL);
+    if(id === 'fleet'){ const n = flShotN(); base = 500; time = Math.round(350 * Math.max(0, Math.min(1, (100 - n) / 83))); paw = Math.round(150 * G.myLeft / FL_TOTAL);
       l1 = G.forfeit ? '승리 (상대 기권)' : '승리'; l2 = '명중률 보너스 (' + n + '발 중 ' + G.hitsN + '명중)'; l3 = '남은 내 함선 ' + G.myLeft + '/' + FL_TOTAL + '칸'; }
     if(id === 'tower'){ const st = tdStars(G.lives); time = Math.round(350 * G.lives / 20); paw = st * 50; l1 = '스테이지 클리어'; l2 = '남은 생명 보너스 (' + G.lives + '/20)'; l3 = '별 ' + st + '개'; }
     score = Math.round((base + time + paw) * L.mult);
@@ -4905,7 +4907,10 @@ ART.tower = function(){
 
 /* ---------- 함대 결전 (해전 전략): 10×10 바다, 함선 5척(5·4·3·3·2칸), 번갈아 한 발씩 ---------- */
 const FL_SHIPS = [{ k:'carrier', n:'항공모함', len:5 }, { k:'battle', n:'전함', len:4 }, { k:'cruiser', n:'순양함', len:3 }, { k:'sub', n:'잠수함', len:3 }, { k:'destroyer', n:'구축함', len:2 }];
-const FL_TOTAL = 17, FL_TURN = 25, FL_COLS = 'ABCDEFGHIJ';
+const FL_TOTAL = 17, FL_TURN = 25, FL_TURN_PVP = 5, FL_COLS = 'ABCDEFGHIJ';
+/* 대전 시계: 서버 시각 기준(두 기기가 같은 남은 시간을 보도록) */
+const flNow = () => Date.now() + ((ROOM && ROOM.clockOffset) || 0);
+const flShotN = () => G.sh.filter(x => x >= 0).length;
 const FL_LV = {
   pvp:    { name:'실시간 대전', mult:1.6, fleet:{ limit:0 } },
   easy:   { name:'AI 쉬움',   mult:0.6, fleet:{ limit:0 } },
@@ -4994,13 +4999,14 @@ let ROOM = null, ROOM_STATE = 'pending';
 const BATTLE_WS = 'wss://battle-production-c11b.up.railway.app/ws';
 function netRoomConnect(url){
   return new Promise((resolve, reject) => {
-    let ws = null, you = null, closedByUs = false, first = true, retry = 0;
+    let ws = null, you = null, closedByUs = false, first = true, retry = 0, offset = 0, pingT = 0;
     const rooms = new Map(); // name -> {peers, pres, subs:Set, errs:Set, waiters:[], joined}
     const send = m => { try{ if(ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }catch(_){} };
     const st = name => { let s = rooms.get(name); if(!s){ s = { peers:[], pres:{}, subs:new Set(), errs:new Set(), waiters:[], joined:false }; rooms.set(name, s); } return s; };
     function api(name, isLobby){
       const s = st(name);
       return {
+        get clockOffset(){ return offset; },
         peers: () => s.peers.map(p => ({ peer:p.peer, presence:p.presence, sameTab:p.peer === you })),
         presence: obj => { Object.assign(s.pres, obj); send({ t:'p', r:name, p:obj }); return Promise.resolve(); },
         onPeers: (cb, err) => { s.subs.add(cb); if(err) s.errs.add(err); return () => { s.subs.delete(cb); if(err) s.errs.delete(err); }; },
@@ -5018,8 +5024,11 @@ function netRoomConnect(url){
       const failT = setTimeout(() => { if(first){ first = false; try{ ws.close(); }catch(_){} reject(new Error('timeout')); } }, 7000);
       ws.onmessage = ev => {
         let m; try{ m = JSON.parse(ev.data); }catch(_){ return; }
+        if(m.t === 'pong' && typeof m.now === 'number' && pingT){ offset = m.now - (pingT + Date.now()) / 2; pingT = 0; return; }
         if(m.t === 'hello'){
           you = m.you; retry = 0;
+          if(typeof m.now === 'number') offset = m.now - Date.now();
+          pingT = Date.now(); send({ t:'ping' });
           const lob = st('lobby'); send({ t:'join', r:'lobby' });
           if(Object.keys(lob.pres).length) send({ t:'p', r:'lobby', p:lob.pres });
           if(first){ first = false; clearTimeout(failT); resolve(api('lobby', true)); }
@@ -5042,7 +5051,7 @@ function netRoomConnect(url){
       };
     }
     open();
-    setInterval(() => send({ t:'ping' }), 25000);
+    setInterval(() => { pingT = Date.now(); send({ t:'ping' }); }, 20000);
   });
 }
 try{
@@ -5336,7 +5345,7 @@ function flFleetUI(){
   if(ml) ml.innerHTML = G.my.map(s => `<div class="fl-row${s.hits >= s.len ? ' dead' : ''}">${flShipSvg(s.k, s.len, false, 'fl-mini', 10)}<span>${s.n === '항공모함' ? '항모' : s.n}</span><span class="fl-pips">${[...Array(s.len)].map((_, k) => `<i class="${k < s.hits ? 'x' : ''}"></i>`).join('')}</span></div>`).join('');
 }
 function flStats(){
-  const n = G.sh.length, s = $('#flShots'), a = $('#flAcc');
+  const n = flShotN(), s = $('#flShots'), a = $('#flAcc');
   if(s) s.textContent = n; if(a) a.textContent = n ? Math.round(G.hitsN / n * 100) + '%' : '–';
 }
 function flLog(html){ G.log.unshift(html); G.log = G.log.slice(0, 3); flLogUI(); }
@@ -5369,13 +5378,16 @@ function flTurnUI(){
   const pill = $('#flTurn'); if(!pill || G.phase !== 'battle') return;
   const t = flTurn();
   if(t !== G.lastTurn){
-    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp') flSound('ping'); }
+    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp'){ flSound('ping'); G.myDl = flNow() + FL_TURN_PVP * 1000; if(G.nr) G.nr.presence({ td:G.myDl, tk:G.sh.length }).catch(() => {}); } }
     if(t === 'op') G.opSince = Date.now();
     G.lastTurn = t;
   }
   let txt = t === 'me' ? '내 차례' : t === 'wait' ? '포탄 비행 중' : t === 'end' ? '전투 종료' : G.mode === 'ai' ? 'AI 조준 중' : '상대 차례';
-  if(G.mode === 'pvp' && t === 'me') txt += ' · ' + Math.max(0, Math.ceil(FL_TURN - (Date.now() - G.turnAt) / 1000)) + '초';
-  pill.className = 'fl-turn' + (t === 'me' ? ' me' : t === 'op' || t === 'ai' ? ' op' : '');
+  let left = -1;
+  if(G.mode === 'pvp' && t === 'me' && G.myDl) left = Math.max(0, Math.ceil((G.myDl - flNow()) / 1000));
+  if(G.mode === 'pvp' && t === 'op' && !G.busyIn && G.oppDl && G.oppDl > flNow() - 1500) left = Math.max(0, Math.ceil((G.oppDl - flNow()) / 1000));
+  if(left >= 0) txt += ' · ' + left + '초';
+  pill.className = 'fl-turn' + (t === 'me' ? ' me' : t === 'op' || t === 'ai' ? ' op' : '') + (left >= 0 && left <= 2 ? ' hurry' : '');
   pill.innerHTML = '<i></i>' + txt;
   const en = $('#flEn'), p = $('#flEnP'), f = $('#flFire');
   if(en) en.classList.toggle('live', t === 'me');
@@ -5386,12 +5398,23 @@ function flTimerTick(){
   if(G.phase !== 'battle' || G.over || G.ending) return;
   flTurnUI();
   const t = flTurn();
-  if(t === 'me' && (Date.now() - G.turnAt) / 1000 >= FL_TURN){
+  if(G.mode === 'pvp' && t === 'me' && G.myDl && flNow() >= G.myDl){ flPass(); return; }
+  if(G.mode !== 'pvp' && t === 'me' && (Date.now() - G.turnAt) / 1000 >= FL_TURN){
     const open = [...Array(100).keys()].filter(i => !G.enShot[i]);
     const i = G.aimI >= 0 && !G.enShot[G.aimI] ? G.aimI : open[Math.floor(Math.random() * open.length)];
     toast('시간이 지나 자동으로 발사했어요'); flFire(i);
   }
-  if(t === 'op' && !G.busyIn && G.opSince && Date.now() - G.opSince > 70000){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
+  if(t === 'op' && !G.busyIn && G.opSince && Date.now() - G.opSince > 30000){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
+}
+
+/* 시간 초과로 차례 넘기기: 쏜 칸 목록에 -1을 올리고, 상대는 '빗나감(0)'으로 답해 차례가 넘어간다 */
+function flPass(){
+  if(G.over || G.ending || G.phase !== 'battle' || G.mode !== 'pvp' || flTurn() !== 'me') return;
+  G.pending = -1; G.sh.push(-1); G.aimI = -1; G.myDl = 0; flPaintAim();
+  if(G.nr) G.nr.presence({ sh:G.sh, td:0 }).catch(() => {});
+  toast('시간 초과! 차례가 상대에게 넘어갔어요'); flSound('bad'); fxBuzz([40, 40, 40]);
+  flLog('<span class="m">시간 초과</span> · 차례를 넘겼어요');
+  flTurnUI(); flSync();
 }
 
 /* 조준·발사 */
@@ -5408,8 +5431,8 @@ function flFromShip(){
 }
 function flFire(i){
   if(G.over || G.ending || G.phase !== 'battle' || i == null || i < 0 || G.enShot[i] || flTurn() !== 'me') return;
-  G.busy = true; G.pending = i; G.sh.push(i); G.aimI = -1; flPaintAim(); flStats();
-  if(G.mode === 'pvp' && G.nr) G.nr.presence({ sh:G.sh }).catch(() => {});
+  G.busy = true; G.pending = i; G.sh.push(i); G.aimI = -1; G.myDl = 0; flPaintAim(); flStats();
+  if(G.mode === 'pvp' && G.nr) G.nr.presence({ sh:G.sh, td:0 }).catch(() => {});
   const me = G;
   flShell(flFromShip(), flEnCell(i), false, () => {
     if(G !== me || G.over) return;
@@ -5457,6 +5480,7 @@ function flSunkInfo(cells, kIdx){
 /* 내가 쏜 결과: 0 빗나감, 1 명중, [칸들] 격침 */
 function flMyResult(i, r){
   G.pending = -1;
+  if(i < 0){ flTurnUI(); flSync(); return; }   /* 시간 초과 넘김 */
   const cell = flEnCell(i), p = cell ? fxCenter(cell) : null;
   if(!(r === 1 || Array.isArray(r))){
     G.enShot[i] = 1; flPaintEn(i); flSplash(cell);
@@ -5597,6 +5621,13 @@ function flSync(){
   }
   if(G.phase !== 'battle' || G.ending) return;
   G.opp = { sh:Array.isArray(o.sh) ? o.sh : [], an:Array.isArray(o.an) ? o.an : [] };
+  G.oppDl = typeof o.td === 'number' ? o.td : 0;
+  if(!G.busyIn && G.opp.sh.length > G.an.length && G.opp.sh[G.an.length] === -1){
+    G.an.push(0); G.nr.presence({ an:G.an }).catch(() => {});
+    G.opSince = Date.now(); G.oppDl = 0;
+    flLog('상대가 <span class="m">시간 초과</span> · 내 차례예요');
+    flTurnUI(); flSync(); return;
+  }
   if(!G.busyIn && G.opp.sh.length > G.an.length){
     const i = Math.max(0, Math.min(99, G.opp.sh[G.an.length] | 0)), r = flReceive(i);
     G.an.push(r); G.nr.presence({ an:G.an }).catch(() => {});

@@ -3,7 +3,7 @@
 // 게임 규칙은 브라우저가 처리하고, 서버는 "누가 어느 방에 있고 무엇을 올렸는지"만 전달한다.
 //
 // 브라우저 → 서버: {t:'join', r} / {t:'leave', r} / {t:'p', r, p:{...부분 갱신}} / {t:'ping'}
-// 서버 → 브라우저: {t:'hello', you} / {t:'peers', r, you, peers:[{peer, presence}], joined:[], left:[]} / {t:'pong'}
+// 서버 → 브라우저: {t:'hello', you, now} / {t:'peers', r, you, peers:[{peer, presence}], joined:[], left:[]} / {t:'pong', now}
 
 type Data = { id: string; rooms: Map<string, Record<string, unknown>> };
 type WS = import("bun").ServerWebSocket<Data>;
@@ -75,12 +75,12 @@ const server = Bun.serve<Data>({
   websocket: {
     idleTimeout: 60,
     maxPayloadLength: 16 * 1024,
-    open(ws) { ws.send(JSON.stringify({ t: "hello", you: ws.data.id })); },
+    open(ws) { ws.send(JSON.stringify({ t: "hello", you: ws.data.id, now: Date.now() })); },
     message(ws, raw) {
       let m: any;
       try { m = JSON.parse(String(raw)); } catch { return; }
       if (!m || typeof m !== "object") return;
-      if (m.t === "ping") { ws.send('{"t":"pong"}'); return; }
+      if (m.t === "ping") { ws.send(JSON.stringify({ t: "pong", now: Date.now() })); return; }
       const r = typeof m.r === "string" ? m.r.slice(0, MAX_ROOM_NAME) : "";
       if (!r) return;
       if (m.t === "join") {
