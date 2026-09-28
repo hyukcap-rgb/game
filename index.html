@@ -6399,41 +6399,41 @@ NG.match = (() => {
      0 문어(코랄) 1 고래(하늘) 2 병아리(노랑) 3 개구리(초록) 4 부엉이(보라) 5 여우(주황) 6 판다(흰색)
      그림은 한 번 만든 data URI를 배경 이미지로 재사용(칸 49개가 같은 그림 7장을 공유)
   ------------------------------------------------------------------ */
-  const INK = '#2B2233';
+  const INK = '#3A3346';
   const Ow = w => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
-  const O = Ow(3.2);
+  const O = Ow(2.8);
   const eye = (x, y, s = 1) => `<ellipse cx="${x}" cy="${y}" rx="${3.3 * s}" ry="${4 * s}" fill="${INK}"/><circle cx="${x - 1.1 * s}" cy="${y - 1.5 * s}" r="${1.3 * s}" fill="#fff"/>`;
-  const blush = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="5.6" ry="3.4" fill="#FF8FAA" opacity=".72"/><path d="M${x - 3.6} ${y + 1.4}l1.8-2.8M${x - .6} ${y + 1.4}l1.8-2.8M${x + 2.4} ${y + 1.4}l1.8-2.8" stroke="#E0567A" stroke-width="1.2" stroke-linecap="round"/>`;
+  const blush = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="3.2" fill="#FF8FAA" opacity=".45"/>`;
   const mouthW = (x, y) => `<path d="M${x - 4.2} ${y}q2.1 3.4 4.2 0q2.1 3.4 4.2 0" fill="none" ${Ow(2.2)}/>`;
   const smile = (x, y, w = 5) => `<path d="M${x - w} ${y}q${w} ${w * .9} ${w * 2} 0" fill="none" ${Ow(2.3)}/>`;
   const shine = (x, y, rx, ry, rot) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity=".7"/>`;
   const ANIM = [
-    /* 0 문어 */ () => `<path d="M20 52C20 28 33 15 50 15S80 28 80 52c0 8 3 14 8 19-4 5-11 4-15-1-2 8-9 11-14 5-4 6-14 6-18 0-5 6-12 3-14-5-4 5-11 6-15 1 5-5 8-11 8-19z" fill="#FF8C8C" ${O}/>
-      <circle cx="36" cy="28" r="4" fill="#FF6F78"/><circle cx="64" cy="26" r="3" fill="#FF6F78"/><circle cx="58" cy="35" r="2.2" fill="#FF6F78"/>
+    /* 0 문어 */ () => `<path d="M20 52C20 28 33 15 50 15S80 28 80 52c0 8 3 14 8 19-4 5-11 4-15-1-2 8-9 11-14 5-4 6-14 6-18 0-5 6-12 3-14-5-4 5-11 6-15 1 5-5 8-11 8-19z" fill="#F59A9A" ${O}/>
+      <circle cx="36" cy="28" r="4" fill="#EC8088"/><circle cx="64" cy="26" r="3" fill="#EC8088"/><circle cx="58" cy="35" r="2.2" fill="#FF6F78"/>
       ${shine(35, 24, 7, 3.5, -30)}${eye(40, 47)}${eye(60, 47)}${blush(31, 56)}${blush(69, 56)}<ellipse cx="50" cy="57" rx="3.6" ry="3" fill="#E0456A" ${Ow(2)}/>`,
     /* 1 고래 */ () => `<path d="M50 27V17" fill="none" stroke="#5DB8FF" stroke-width="3.2" stroke-linecap="round"/><path d="M50 19c-3-8-12-10-16-5M50 19c3-8 12-10 16-5" fill="none" stroke="#5DB8FF" stroke-width="3.2" stroke-linecap="round"/>
       <circle cx="31" cy="12" r="3" fill="#8FD3FF" ${Ow(2)}/><circle cx="69" cy="12" r="3" fill="#8FD3FF" ${Ow(2)}/>
-      <path d="M13 60c0-21 16-32 37-32s37 11 37 30c0 18-15 27-37 27S13 78 13 60z" fill="#7EC8FF" ${O}/>
+      <path d="M13 60c0-21 16-32 37-32s37 11 37 30c0 18-15 27-37 27S13 78 13 60z" fill="#8CC6F0" ${O}/>
       <path d="M20 68c8 9 52 9 60 0-4 10-15 16-30 16s-26-6-30-16z" fill="#DDF2FF"/><path d="M36 76h4M47 78h6M60 76h4" stroke="#9CCFF2" stroke-width="2" stroke-linecap="round"/>
       ${shine(32, 38, 9, 4, -25)}${eye(38, 55)}${eye(62, 55)}${blush(29, 63)}${blush(71, 63)}${smile(50, 61, 4)}`,
     /* 2 병아리 */ () => `<path d="M46 25c-3-8 3-13 6-7 3-7 10-3 5 7" fill="#FFD84D" ${O}/>
       <path d="M18 64c-8 1-9 11 0 11" fill="#FFC23A" ${O}/><path d="M82 64c8 1 9 11 0 11" fill="#FFC23A" ${O}/>
-      <circle cx="50" cy="56" r="32" fill="#FFDD55" ${O}/>
+      <circle cx="50" cy="56" r="32" fill="#F7DA6A" ${O}/>
       <path d="M40 86v5M36 91h8M60 86v5M56 91h8" stroke="#FF9A3C" stroke-width="3" stroke-linecap="round"/>
       ${shine(37, 37, 8, 4, -30)}${eye(40, 51)}${eye(60, 51)}${blush(31, 61)}${blush(69, 61)}<path d="M43.5 58.5L50 54l6.5 4.5L50 64z" fill="#FF9A3C" ${Ow(2.4)}/>`,
-    /* 3 개구리 */ () => `<circle cx="31" cy="35" r="13" fill="#86DD5C" ${O}/><circle cx="69" cy="35" r="13" fill="#86DD5C" ${O}/>
-      <path d="M12 63c0-17 16-27 38-27s38 10 38 27c0 16-16 24-38 24S12 79 12 63z" fill="#86DD5C" ${O}/>
+    /* 3 개구리 */ () => `<circle cx="31" cy="35" r="13" fill="#8FD273" ${O}/><circle cx="69" cy="35" r="13" fill="#8FD273" ${O}/>
+      <path d="M12 63c0-17 16-27 38-27s38 10 38 27c0 16-16 24-38 24S12 79 12 63z" fill="#8FD273" ${O}/>
       <ellipse cx="50" cy="75" rx="21" ry="8.5" fill="#D6F5BC"/>
-      <path d="M22 40c4 3 14 3 18 0M60 40c4 3 14 3 18 0" fill="none" stroke="#86DD5C" stroke-width="5"/>
+      <path d="M22 40c4 3 14 3 18 0M60 40c4 3 14 3 18 0" fill="none" stroke="#8FD273" stroke-width="5"/>
       ${shine(26, 29, 5, 2.6, -30)}${eye(31, 35, 1.15)}${eye(69, 35, 1.15)}${blush(25, 59)}${blush(75, 59)}<path d="M37 59q13 10 26 0" fill="none" ${Ow(2.4)}/>`,
     /* 4 부엉이 */ () => `<path d="M25 33L19 11l19 12z" fill="#A98BF5" ${O}/><path d="M75 33l6-22-19 12z" fill="#A98BF5" ${O}/>
-      <path d="M50 18c21 0 34 16 34 38 0 20-14 32-34 32S16 76 16 56c0-22 13-38 34-38z" fill="#B99EFF" ${O}/>
+      <path d="M50 18c21 0 34 16 34 38 0 20-14 32-34 32S16 76 16 56c0-22 13-38 34-38z" fill="#B7A3EE" ${O}/>
       <path d="M34 74l4 4 4-4M46 78l4 4 4-4M58 74l4 4 4-4" fill="none" stroke="#8D6CE0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="38" cy="48" r="11.5" fill="#F1E9FF" ${Ow(2.4)}/><circle cx="62" cy="48" r="11.5" fill="#F1E9FF" ${Ow(2.4)}/>
       ${shine(33, 27, 7, 3.2, -30)}${eye(38, 48, 1.15)}${eye(62, 48, 1.15)}${blush(27, 62)}${blush(73, 62)}<path d="M45.5 56h9L50 63z" fill="#FFB23C" ${Ow(2.4)}/>`,
     /* 5 여우 */ () => `<path d="M23 44L17 11l26 18z" fill="#FF9F4A" ${O}/><path d="M77 44l6-33-26 18z" fill="#FF9F4A" ${O}/>
       <path d="M24 34l-3-15 12 9zM76 34l3-15-12 9z" fill="#FFE1C2"/>
-      <path d="M13 53c0-18 16-27 37-27s37 9 37 27c0 18-16 32-37 33-21-1-37-15-37-33z" fill="#FFA04E" ${O}/>
+      <path d="M13 53c0-18 16-27 37-27s37 9 37 27c0 18-16 32-37 33-21-1-37-15-37-33z" fill="#F4A263" ${O}/>
       <path d="M26 64c8-7 17-5 24 2 7-7 16-9 24-2-4 13-13 20-24 20S30 77 26 64z" fill="#FFF5E8" ${Ow(2.6)}/>
       ${shine(33, 36, 8, 3.6, -25)}${eye(37, 52)}${eye(63, 52)}${blush(26, 60)}${blush(74, 60)}<ellipse cx="50" cy="66" rx="3.8" ry="2.8" fill="${INK}"/>${mouthW(50, 71)}`,
     /* 6 판다 */ () => `<circle cx="26" cy="30" r="11" fill="#3A3340" ${O}/><circle cx="74" cy="30" r="11" fill="#3A3340" ${O}/>
@@ -6443,7 +6443,7 @@ NG.match = (() => {
       ${blush(25, 66)}${blush(75, 66)}<ellipse cx="50" cy="64" rx="3.8" ry="2.8" fill="${INK}"/>${mouthW(50, 69)}`
   ];
   /* 스티커: 흰 테두리 + 아래 그림자(필터는 이미지 안에서 한 번만 계산) */
-  const STK = '<filter id="k" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="3.4" result="d"/><feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="w"/><feGaussianBlur in="d" stdDeviation="2.2" result="b"/><feOffset in="b" dy="3.4" result="o"/><feFlood flood-color="#232058" flood-opacity=".32"/><feComposite in2="o" operator="in" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  const STK = '<filter id="k" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="d"/><feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="w"/><feGaussianBlur in="d" stdDeviation="1.6" result="b"/><feOffset in="b" dy="2" result="o"/><feFlood flood-color="#232058" flood-opacity=".16"/><feComposite in2="o" operator="in" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
   const svgURI = body => "url('data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 108 108"><defs>${STK}</defs><g filter="url(#k)">${body}</g></svg>`).replace(/'/g, '%27') + "')";
   const IMG = [];
   const img = k => IMG[k] || (IMG[k] = svgURI(ANIM[k]()));
@@ -6775,8 +6775,8 @@ NG.match = (() => {
     M.s = s;
     M.grid.style.width = M.grid.style.height = (s * N) + 'px';
     M.grid.style.setProperty('--s', s + 'px');
-    M.grid.style.backgroundSize = (s * 2) + 'px ' + (s * 2) + 'px';
-    M.grid.style.backgroundPosition = '0 0, ' + s + 'px ' + s + 'px';
+    M.grid.style.backgroundImage = 'linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)';
+    M.grid.style.backgroundSize = s + 'px ' + s + 'px';
   }
 
   const CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8.6" fill="#fff" stroke="#1A0F45" stroke-width="2.4"/><rect x="9.6" y="1.8" width="4.8" height="3" rx="1.2" fill="#1A0F45"/><path d="M12 8.6V13l3 2" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>';
@@ -6872,34 +6872,29 @@ NG.match = (() => {
     },
     stars(){ const m = G.mt, p = m.E.pts, t = G.cfg.target; return p >= 1.6 * t ? 3 : p >= 1.3 * t ? 2 : 1; },
     css:`
-body[data-mode="match"]{background:#8CCBFA}
+body[data-mode="match"]{background:#C7DCEF}
 body[data-mode="match"] #play > .pbar{display:none!important}
 body[data-mode="match"]::before{content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   background:
-    radial-gradient(34% 7% at 14% 10%, #fff 0 42%, rgba(255,255,255,0) 72%),
-    radial-gradient(26% 6% at 26% 13%, #fff 0 40%, rgba(255,255,255,0) 72%),
-    radial-gradient(30% 6% at 88% 7%, rgba(255,255,255,.95) 0 40%, rgba(255,255,255,0) 72%),
-    radial-gradient(22% 5% at 76% 10%, rgba(255,255,255,.9) 0 40%, rgba(255,255,255,0) 72%),
-    radial-gradient(120% 40% at 20% 108%, #6FC957 0 50%, rgba(111,201,87,0) 51%),
-    radial-gradient(120% 44% at 85% 112%, #5DB847 0 50%, rgba(93,184,71,0) 51%),
-    linear-gradient(180deg,#2F7FD8 0%,#5AA8EE 30%,#9ED6FF 62%,#D7F0FF 82%,#BFE6A8 100%)}
+    radial-gradient(120% 40% at 30% 110%, #CFE3C4 0 50%, rgba(207,227,196,0) 51%),
+    linear-gradient(180deg,#A9C8E6 0%,#C7DCEF 45%,#E6EFF6 100%)}
 body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match{position:relative; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; color:var(--ink)}
 .ng-match .num{font-variant-numeric:tabular-nums}
 /* 맨 위 줄 */
 .ng-match .mt-top{display:grid; grid-template-columns:42px 1fr 42px; align-items:center; gap:6px; margin:0 0 6px}
-.ng-match .mt-rbt{width:42px; height:42px; border-radius:50%; display:grid; place-items:center; color:#5A1426; background:linear-gradient(#FFFFFF,#FFE9D2); border:2.5px solid #5A1426; box-shadow:inset 0 -3px 0 rgba(90,20,38,.15), 0 3px 0 #5A1426}
+.ng-match .mt-rbt{width:42px; height:42px; border-radius:50%; display:grid; place-items:center; color:#4B4775; background:#FAF8F3; border:2px solid #4B4775; box-shadow:0 2px 0 #4B4775}
 .ng-match .mt-rbt .ico{width:22px; height:22px}
-.ng-match .mt-rbt:active{transform:translateY(2px); box-shadow:0 1px 0 #5A1426}
-.ng-match .mt-ttl{text-align:center; font-family:var(--disp); font-size:19px; line-height:1.15; color:#fff; -webkit-text-stroke:4px #1F4E91; paint-order:stroke fill; text-shadow:0 2px 0 #1F4E91; min-width:0}
-.ng-match .mt-ttl small{display:block; font-family:var(--font); font-size:11px; font-weight:800; color:#E6F4FF; -webkit-text-stroke:0; text-shadow:0 1px 2px rgba(20,60,120,.6); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ng-match .mt-rbt:active{transform:translateY(2px); box-shadow:0 0 0 #4B4775}
+.ng-match .mt-ttl{text-align:center; font-family:var(--disp); font-size:19px; line-height:1.15; color:#3F4470; min-width:0}
+.ng-match .mt-ttl small{display:block; font-family:var(--font); font-size:11px; font-weight:800; color:#6B7197; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 /* HUD: 버건디 틀 + 크림 칸 */
 .ng-match .mt-hud{position:relative; display:grid; grid-template-columns:74px 1fr 88px; gap:8px; align-items:stretch; padding:8px 9px 9px 8px; border-radius:22px;
-  background:linear-gradient(180deg,#B9304F 0%,#8E1C39 60%,#74122C 100%); border:3px solid #4A0B1D; box-shadow:inset 0 2px 0 rgba(255,255,255,.35), inset 0 -4px 0 rgba(0,0,0,.2), 0 5px 0 #4A0B1D, 0 12px 20px rgba(20,40,90,.28)}
-.ng-match .mt-por{position:relative; border-radius:20px; background:radial-gradient(90% 80% at 50% 30%, #7DD0FF 0%, #2E7FD8 80%); border:3px solid #FFD35C; box-shadow:0 0 0 2.5px #4A0B1D, inset 0 -4px 0 rgba(0,0,0,.18); overflow:hidden; min-height:70px}
+  background:#6E6A9E; border:2px solid #4B4775; box-shadow:0 3px 0 #4B4775, 0 8px 14px rgba(20,40,90,.14)}
+.ng-match .mt-por{position:relative; border-radius:20px; background:#BFD6EE; border:2px solid #4B4775; overflow:hidden; min-height:70px}
 .ng-match .mt-por i{position:absolute; inset:2px -2px -6px; background:center/contain no-repeat}
-.ng-match .mt-box{position:relative; border-radius:16px; padding:17px 8px 7px; background:linear-gradient(180deg,#FFFBEF,#FBE9C6); border:2.5px solid #4A0B1D; box-shadow:inset 0 -3px 0 rgba(150,90,20,.16), inset 0 2px 0 #fff; text-align:center}
-.ng-match .mt-tag{position:absolute; left:50%; top:-9px; transform:translateX(-50%); white-space:nowrap; padding:1px 10px 2px; border-radius:9px; font-family:var(--disp); font-size:12.5px; color:#fff; background:linear-gradient(#C53A5A,#8E1C39); border:2px solid #4A0B1D; text-shadow:0 1px 0 #4A0B1D}
+.ng-match .mt-box{position:relative; border-radius:16px; padding:17px 8px 7px; background:#FAF8F3; border:2px solid #4B4775; text-align:center}
+.ng-match .mt-tag{position:absolute; left:50%; top:-9px; transform:translateX(-50%); white-space:nowrap; padding:1px 10px 2px; border-radius:9px; font-family:var(--disp); font-size:12.5px; color:#fff; background:#4B4775; border:2px solid #4B4775; font-size:12px}
 .ng-match .mt-gl{display:flex; align-items:baseline; justify-content:center; gap:4px; line-height:1}
 .ng-match .mt-gl b{font-family:var(--heavy); font-weight:400; font-size:26px; color:#3A2261; letter-spacing:.3px}
 .ng-match .mt-gl b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
@@ -6907,13 +6902,13 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 @keyframes mtBump{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
 .ng-match .mt-goal.done{background:linear-gradient(180deg,#FFF8C8,#FFDE6A)}
 .ng-match .mt-prog{position:relative; height:20px; margin:6px 10px 0 2px}
-.ng-match .mt-pbar{position:absolute; left:0; right:0; top:4px; height:12px; border-radius:99px; background:#EBDCC0; border:2px solid #6B3A1E; overflow:hidden; box-shadow:inset 0 2px 0 rgba(0,0,0,.1)}
+.ng-match .mt-pbar{position:absolute; left:0; right:0; top:4px; height:12px; border-radius:99px; background:#E9E6F0; border:1.5px solid #B9B4CE; overflow:hidden}
 .ng-match .mt-pbar i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(180deg,#9BF07A,#2EBD55); box-shadow:inset 0 -3px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.6); transition:width .35s cubic-bezier(.2,.9,.3,1)}
-.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:2px solid #6B3A1E; color:#D8C8A8; font-size:12px; line-height:1}
+.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:1.5px solid #B9B4CE; color:#D5D0E2; font-size:12px; line-height:1}
 .ng-match .mt-mk.last{transform:translateX(-70%)}
 .ng-match .mt-mk.on{background:linear-gradient(#FFE98E,#FFB020); color:#8A4B00; animation:mtBump .35s}
 .ng-match .mt-time b{display:block; font-family:var(--heavy); font-weight:400; font-size:34px; line-height:1.05; color:#3A2261}
-.ng-match .mt-tbar{height:8px; margin-top:5px; border-radius:99px; background:#EBDCC0; border:1.5px solid #6B3A1E; overflow:hidden}
+.ng-match .mt-tbar{height:8px; margin-top:5px; border-radius:99px; background:#E9E6F0; border:1.5px solid #B9B4CE; overflow:hidden}
 .ng-match .mt-tbar i{display:block; height:100%; width:100%; transform-origin:left center; background:linear-gradient(180deg,#86D6FF,#2E8FE8)}
 .ng-match.warn .mt-time{animation:mtWarn .5s ease-in-out infinite alternate}
 .ng-match.warn .mt-time b{color:#E5484D}
@@ -6921,20 +6916,19 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 @keyframes mtWarn{from{background:linear-gradient(180deg,#FFFBEF,#FBE9C6)}to{background:linear-gradient(180deg,#FFE3E3,#FFB9B9)}}
 /* 판: 연보라 칸 + 금테 */
 .ng-match .mt-stage{position:relative; margin-top:18px}
-.ng-match .mt-roof{position:absolute; left:50%; top:-12px; transform:translateX(-50%); width:62%; height:18px; border-radius:12px 12px 4px 4px; background:repeating-linear-gradient(90deg,#C8683A 0 16px,#A9502A 16px 18px); border:2.5px solid #5A2A12; box-shadow:inset 0 3px 0 rgba(255,255,255,.25); z-index:0}
-.ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:12px; background:linear-gradient(180deg,#FFE08A,#E3A93A); border:2.5px solid #5A3A12;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.6), 0 5px 0 #5A3A12, 0 16px 26px rgba(20,40,90,.3)}
+.ng-match .mt-roof{display:none; position:absolute; left:50%; top:-12px; transform:translateX(-50%); width:62%; height:18px; border-radius:12px 12px 4px 4px; background:repeating-linear-gradient(90deg,#C8683A 0 16px,#A9502A 16px 18px); border:2.5px solid #5A2A12; box-shadow:inset 0 3px 0 rgba(255,255,255,.25); z-index:0}
+.ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:14px; background:#EBD9B4; border:2px solid #8C7552;
+  box-shadow:0 3px 0 #8C7552, 0 10px 18px rgba(20,40,90,.14)}
 .ng-match .mt-grid{position:relative; overflow:hidden; border-radius:7px; touch-action:none; cursor:pointer;
-  background-color:#96A8E0;
-  background-image:linear-gradient(45deg,#A3B4E9 25%,transparent 25%,transparent 75%,#A3B4E9 75%),linear-gradient(45deg,#A3B4E9 25%,transparent 25%,transparent 75%,#A3B4E9 75%);
-  box-shadow:inset 0 3px 8px rgba(30,40,110,.3)}
+  background-color:#C9D2EC;
+  box-shadow:inset 0 2px 6px rgba(30,40,110,.14)}
 .ng-match .mt-t{position:absolute; left:0; top:0; will-change:transform; z-index:1}
 .ng-match .mt-in{position:absolute; inset:0}
 .ng-match .mt-img{position:absolute; inset:-7%; background:center/contain no-repeat; z-index:1}
 .ng-match .mt-t.pop .mt-img{filter:brightness(1.35) saturate(1.1)}
 .ng-match .mt-t.sel{z-index:2}
 .ng-match .mt-t.sel .mt-in{animation:mtSel .9s ease-in-out infinite}
-.ng-match .mt-t.sel .mt-in::before{content:""; position:absolute; inset:3px; border-radius:24%; background:radial-gradient(circle, rgba(255,255,255,.85), rgba(255,255,255,0) 72%); box-shadow:0 0 0 3px #fff, 0 0 12px 4px rgba(255,255,255,.9)}
+.ng-match .mt-t.sel .mt-in::before{content:""; position:absolute; inset:3px; border-radius:24%; background:rgba(255,255,255,.45); box-shadow:0 0 0 2.5px #fff}
 @keyframes mtSel{0%,100%{transform:scale(1.06)}50%{transform:scale(.95)}}
 .ng-match .mt-t.kc .mt-in{outline:3px dashed #fff; outline-offset:-3px; border-radius:20%}
 .ng-match .mt-t.hint .mt-in{animation:mtHint 1.1s ease-in-out infinite}
@@ -6942,28 +6936,28 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .mt-t.no .mt-in{animation:mtNo .3s}
 @keyframes mtNo{25%{transform:translateX(-3px) rotate(-4deg)}50%{transform:translateX(3px) rotate(4deg)}75%{transform:translateX(-2px)}}
 /* 특수 동물 */
-.ng-match .mt-arw{position:absolute; left:-14%; right:-14%; top:22%; height:100%; z-index:2; background:center/contain no-repeat; animation:mtArw .7s ease-in-out infinite alternate; filter:drop-shadow(0 0 4px #FFF6A8)}
-.ng-match .lv .mt-arw{top:0; transform:translateX(24%) rotate(90deg); animation-name:mtArwV}
+.ng-match .mt-arw{position:absolute; left:-14%; right:-14%; top:22%; height:100%; z-index:2; background:center/contain no-repeat; filter:none}
+.ng-match .lv .mt-arw{top:0; transform:translateX(24%) rotate(90deg)}
 @keyframes mtArw{from{transform:scaleX(.9)}to{transform:scaleX(1.05)}}
 @keyframes mtArwV{from{transform:translateX(24%) rotate(90deg) scaleX(.9)}to{transform:translateX(24%) rotate(90deg) scaleX(1.05)}}
-.ng-match .lh .mt-img, .ng-match .lv .mt-img, .ng-match .bm .mt-img{animation:mtWob 1.2s ease-in-out infinite}
+.ng-match .lh .mt-img, .ng-match .lv .mt-img, .ng-match .bm .mt-img{animation:none}
 @keyframes mtWob{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg) scale(1.04)}}
-.ng-match .mt-ray{position:absolute; inset:-18%; z-index:0; border-radius:50%; background:repeating-conic-gradient(rgba(255,240,150,.95) 0 12deg, rgba(255,240,150,0) 12deg 30deg); -webkit-mask:radial-gradient(circle, #000 30%, transparent 70%); mask:radial-gradient(circle, #000 30%, transparent 70%); animation:spin 4s linear infinite}
-.ng-match .mt-bmb{position:absolute; right:-10%; bottom:-8%; width:60%; height:60%; z-index:3; background:center/contain no-repeat; animation:mtFuse .45s ease-in-out infinite alternate}
+.ng-match .mt-ray{position:absolute; inset:-18%; z-index:0; border-radius:50%; background:repeating-conic-gradient(rgba(255,236,160,.55) 0 12deg, rgba(255,236,160,0) 12deg 30deg); -webkit-mask:radial-gradient(circle, #000 30%, transparent 70%); mask:radial-gradient(circle, #000 30%, transparent 70%); animation:spin 12s linear infinite}
+.ng-match .mt-bmb{position:absolute; right:-10%; bottom:-8%; width:60%; height:60%; z-index:3; background:center/contain no-repeat; animation:none}
 @keyframes mtFuse{from{transform:scale(.9) rotate(-6deg)}to{transform:scale(1.08) rotate(6deg)}}
-.ng-match .mt-rbg{position:absolute; inset:4%; border-radius:50%; background:conic-gradient(#FF7B8F,#FFB24A,#FFE45C,#7EDB6A,#6FC3FF,#B79CFF,#FF7B8F); opacity:.55; filter:blur(4px); animation:spin 2.4s linear infinite}
-.ng-match .rb .mt-img{animation:mtRb 1.2s ease-in-out infinite alternate}
+.ng-match .mt-rbg{position:absolute; inset:4%; border-radius:50%; background:conic-gradient(#FF7B8F,#FFB24A,#FFE45C,#7EDB6A,#6FC3FF,#B79CFF,#FF7B8F); opacity:.3; filter:blur(4px); animation:spin 8s linear infinite}
+.ng-match .rb .mt-img{animation:none}
 @keyframes mtRb{from{transform:scale(.92) rotate(-8deg)}to{transform:scale(1.06) rotate(8deg)}}
 /* 아래: 특수 동물 안내(초록 아이템 칸) */
 .ng-match .mt-dock{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px}
-.ng-match .mt-bst{position:relative; aspect-ratio:1/1.05; border-radius:18px; background:linear-gradient(180deg,#8BE15F,#3FAE32); border:2.5px solid #1F5A12; box-shadow:inset 0 3px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(0,0,0,.15), 0 3px 0 #1F5A12; overflow:hidden; display:flex; align-items:flex-end; justify-content:center}
+.ng-match .mt-bst{position:relative; aspect-ratio:1/1.05; border-radius:16px; background:#EEF1F7; border:2px solid #B9BFD3; box-shadow:0 2px 0 #B9BFD3; overflow:hidden; display:flex; align-items:flex-end; justify-content:center}
 .ng-match .mt-bst i{position:absolute; left:14%; top:4%; width:72%; height:66%; background:center/contain no-repeat}
 .ng-match .mt-bst i.ar{top:18%; height:74%; left:-6%; width:112%}
 .ng-match .mt-bst i.bb{left:48%; top:30%; width:44%; height:40%}
-.ng-match .mt-bst em{position:relative; z-index:1; font-style:normal; font-family:var(--disp); font-size:11.5px; line-height:1.05; text-align:center; color:#fff; -webkit-text-stroke:3px #1F5A12; paint-order:stroke fill; padding-bottom:5px}
-.ng-match .mt-bst.best{background:linear-gradient(180deg,#FF8CC2,#E0457F); border-color:#6E0B3C; box-shadow:inset 0 3px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(0,0,0,.15), 0 3px 0 #6E0B3C; flex-direction:column; justify-content:center; align-items:center}
-.ng-match .mt-bst.best b{font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1; color:#fff; -webkit-text-stroke:4px #6E0B3C; paint-order:stroke fill}
-.ng-match .mt-bst.best em{-webkit-text-stroke:3px #6E0B3C; padding:2px 0 0}
+.ng-match .mt-bst em{position:relative; z-index:1; font-style:normal; font-family:var(--disp); font-size:11.5px; line-height:1.05; text-align:center; color:#4B4775; padding-bottom:5px}
+.ng-match .mt-bst.best{background:#F6EEF4; border-color:#D3BFD0; box-shadow:0 2px 0 #D3BFD0; flex-direction:column; justify-content:center; align-items:center}
+.ng-match .mt-bst.best b{font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1; color:#8C4F7A}
+.ng-match .mt-bst.best em{color:#8C4F7A; padding:2px 0 0}
 /* 발동 효과 */
 .ng-match .mt-beam{position:absolute; z-index:5; pointer-events:none; background:linear-gradient(var(--bd,180deg), rgba(255,255,255,0), #fff 35%, #FFF6A8 50%, #fff 65%, rgba(255,255,255,0)); box-shadow:0 0 18px 6px rgba(255,246,168,.8); border-radius:99px}
 .ng-match .mt-beam.h{left:0; width:100%; --bd:180deg; animation:mtBeamH .5s ease-out forwards}
