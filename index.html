@@ -1116,28 +1116,171 @@ body[data-mode] .dock{display:none}
 .duelrow .drec{color:var(--gc, var(--ink))!important; font-family:var(--disp); font-weight:400!important; font-size:12.5px!important}
 .gr-go.duel{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
 
-/* 게임 중 대전 막대 */
-.duelbar{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; margin:0 0 8px; padding:5px 8px; border-radius:16px; color:#fff;
-  background:linear-gradient(180deg,#2D2380,#1A1150); border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 3px 0 #0E0730; position:relative; z-index:3}
+/* ===== 대전 v2 (UI팀 설계): 준비·카운트다운 · 두 줄 진행 막대 · 말풍선 알림 · 멈춤 없음 · 대기 창 ===== */
+/* ---------- (1) 준비·카운트다운 화면 ---------- */
+body.duel-ready #stage{visibility:hidden}                 /* 시작 전에는 문제를 보여 주지 않음(공정) */
+body.duel-ready .duelbar{visibility:hidden}
+.duelgo{position:fixed; inset:0; z-index:35; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px)); overflow:hidden;
+  background:radial-gradient(90% 45% at 50% 0%, #8D6BFF 0%, rgba(141,107,255,0) 70%), linear-gradient(180deg,#3A23A0 0%, #24166E 45%, #170D47 100%);
+  transition:opacity .3s ease, transform .3s ease}
+.duelgo::before{content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+  background-image:radial-gradient(rgba(255,255,255,.55) 1px, transparent 1.4px), radial-gradient(rgba(255,255,255,.25) 1px, transparent 1.4px); background-size:120px 140px, 57px 61px}
+.duelgo.out{opacity:0; transform:scale(1.04); pointer-events:none}
+.dg-card{position:relative; width:100%; max-width:400px; padding:12px 14px 12px; text-align:center}
+.dg-kick{margin:0; font-family:var(--disp); font-size:13px; color:var(--sub)}
+.dg-title{margin:0 0 2px; font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1.15; color:var(--gc,var(--ink))}
+.dg-vs{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; margin:6px 0 8px}
+.dg-side{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0}
+.dg-side .av{width:60px; height:60px}
+.dg-side b{font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dg-side small{font-size:12px; font-weight:700; color:var(--sub); white-space:nowrap}
+.dg-side small.ok{color:var(--success)}
+.dg-side.me{animation:dgInL .45s cubic-bezier(.2,1.4,.4,1) both}
+.dg-side.op{animation:dgInR .45s cubic-bezier(.2,1.4,.4,1) .08s both}
+@keyframes dgInL{from{transform:translateX(-40px); opacity:0}}
+@keyframes dgInR{from{transform:translateX(40px); opacity:0}}
+.dg-x{font-family:var(--heavy); font-size:30px; color:#FFC93C; -webkit-text-stroke:6px var(--outline); paint-order:stroke fill; text-shadow:0 3px 0 var(--outline)}
+.dg-rules{list-style:none; margin:0; padding:8px 10px; display:grid; gap:6px; text-align:left; border-radius:14px; background:#fff; border:2px solid var(--paper-line)}
+.dg-rules li{display:grid; grid-template-columns:24px 1fr; gap:8px; align-items:center; font-family:var(--disp); font-size:15.5px; line-height:1.25; color:var(--ink)}
+.dg-rules .hn{width:24px; height:24px; display:grid; place-items:center; border-radius:8px; font-family:var(--heavy); font-size:13px; line-height:1; color:#fff; border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2)}
+.dg-win{margin:8px 0 0; font-size:13px; font-weight:800; color:#8A5A00}
+.dg-count{position:relative; height:190px; width:100%; display:grid; place-items:center}
+.dg-n{font-family:var(--heavy); font-weight:400; font-size:120px; line-height:1; color:#FFD35C; -webkit-text-stroke:10px var(--outline2); paint-order:stroke fill; text-shadow:0 7px 0 var(--outline2)}
+.dg-n.go{font-size:76px; color:#FF6FAE}
+.dg-n.wait{font-family:var(--disp); font-size:40px; color:#fff; -webkit-text-stroke:6px var(--outline2)}
+.dg-n.pop{animation:dgPop .9s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes dgPop{0%{transform:scale(1.9); opacity:0} 22%{transform:scale(1); opacity:1} 80%{transform:scale(1); opacity:1} 100%{transform:scale(.7); opacity:0}}
+.dg-n.go.pop{animation:dgGo .6s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes dgGo{0%{transform:scale(.4) rotate(-8deg); opacity:0} 45%{transform:scale(1.12) rotate(2deg); opacity:1} 100%{transform:scale(1)}}
+.dg-ring{position:absolute; width:176px; height:176px; left:50%; top:50%; margin:-88px 0 0 -88px; transform:rotate(-90deg)}
+.dg-ring circle{fill:none; stroke-width:8}
+.dg-ring .bg{stroke:rgba(255,255,255,.14)}
+.dg-ring .fg{stroke:#FFD35C; stroke-linecap:round; stroke-dasharray:515; stroke-dashoffset:0; transition:stroke-dashoffset 1s linear}
+.dg-status{position:relative; margin:0; min-height:20px; font-size:13.5px; font-weight:700; color:#CFE3FF; text-align:center}
+.dg-status i{display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:50%; background:#3DDC84; box-shadow:0 0 0 3px rgba(61,220,132,.3); vertical-align:1px}
+@media (max-height:700px){ .duelgo{gap:8px} .dg-count{height:150px} .dg-side .av{width:48px; height:48px} .dg-title{font-size:22px} .dg-n{font-size:96px} .dg-ring{width:140px; height:140px; margin:-70px 0 0 -70px} .dg-rules li{font-size:14.5px} }
+
+/* ---------- (2) 게임 중 대전 막대 v2: 같은 방향 두 줄 막대 ---------- */
+.duelbar{position:relative; z-index:3; display:grid; grid-template-columns:minmax(0,1fr); gap:3px; margin:2px 0 8px; padding:5px 10px 5px 7px; border-radius:16px; color:#fff;
+  background:linear-gradient(180deg,#2D2380,#1A1150); border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 3px 0 #0E0730}
 .duelbar[hidden]{display:none}
-.db-side{display:grid; grid-template-columns:30px 1fr auto; gap:6px; align-items:center; min-width:0}
-.db-side.op{grid-template-columns:auto 1fr 30px}
-.db-side .av{width:30px; height:30px; border-width:2px}
-.db-info{min-width:0; display:flex; flex-direction:column; gap:2px}
-.db-info b{font-family:var(--disp); font-weight:400; font-size:12.5px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.db-side.op .db-info b{text-align:right}
-.db-info em{font-style:normal; font-size:10px; padding:0 4px; border-radius:6px; background:#8F86C2; vertical-align:1px}
-.db-bar{display:block; height:8px; border-radius:99px; background:rgba(255,255,255,.14); overflow:hidden}
-.db-bar i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#8BF06A,#23A548); transition:width .35s ease}
-.db-side.op .db-bar i{background:linear-gradient(90deg,#FF9CC4,#F0368A); margin-left:auto}
-.db-v{font-family:var(--heavy); font-size:13px; min-width:34px; text-align:center}
-.db-vs{font-family:var(--heavy); font-size:15px; color:#FFD35C; -webkit-text-stroke:3px var(--outline2); paint-order:stroke fill}
-.duelbar.lead .db-side.me .db-v{color:#8BF06A} .duelbar.behind .db-side.op .db-v{color:#FF9CC4}
-body[data-mode="tower"] .duelbar{position:fixed; z-index:8; top:calc(64px + env(safe-area-inset-top,0px)); right:max(8px, calc(50% - 312px)); width:172px; grid-template-columns:1fr auto 1fr; gap:4px; padding:4px 7px; opacity:.95; pointer-events:none}
-body[data-mode="tower"] .db-v{min-width:0; font-size:11.5px}
-body[data-mode="tower"] .db-info b{font-size:11px}
-body[data-mode="tower"] .duelbar .db-av{display:none} body[data-mode="tower"] .db-side, body[data-mode="tower"] .db-side.op{grid-template-columns:1fr auto}
-body[data-mode="tower"] .db-side.op{grid-template-columns:auto 1fr}
+.db-row{display:grid; grid-template-columns:22px 28px minmax(0,1fr) auto auto; gap:6px; align-items:center; min-height:22px}
+.db-row .av{width:22px; height:22px; border-width:2px}
+.db-who{font-family:var(--disp); font-size:13px; line-height:1; color:#fff; white-space:nowrap}
+.db-row.op .db-who{color:#FFC2DB}
+.db-track{position:relative; height:10px; border-radius:99px; background:rgba(255,255,255,.14); overflow:hidden}
+.db-track i{position:absolute; left:0; top:0; bottom:0; width:0; border-radius:99px; transition:width .45s ease}
+.db-row.me .db-track i{background:linear-gradient(90deg,#8BF06A,#23A548)}
+.db-row.op .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
+.db-track b{position:absolute; top:-1px; bottom:-1px; width:2px; margin-left:-1px; background:rgba(255,255,255,.35)} /* 상대 위치 눈금(내 줄에만) */
+.db-val{min-width:58px; text-align:right; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums}
+.db-val small{font-family:var(--font); font-size:10.5px; font-weight:700; color:#B9AEE8; margin-left:1px}
+.db-val .tile{display:inline-block; min-width:30px; padding:2px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:12.5px}
+.db-sub{display:flex; gap:3px; align-items:center; min-width:0; font-size:11px; font-weight:800; color:#FFD9E6}
+.db-sub:empty{display:none}
+.db-sub .ico{width:11px; height:11px; color:#FF7A9A; vertical-align:0}
+.db-sub .pip{width:8px; height:8px; border-radius:50%; background:#FFD35C; box-shadow:0 0 0 1.5px var(--outline2)}
+.db-sub .pip.off{background:rgba(255,255,255,.2)}
+.db-sub .pip.lost{animation:pipLost .6s ease}
+@keyframes pipLost{0%,60%{background:#E5484D; transform:scale(1.6)} }
+/* 앞섬/뒤짐 */
+.db-row.lead .db-val{color:#B6FF8F}
+.db-row.op.lead .db-val{color:#FFB3D1}
+.db-row.lead .db-track{box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
+.db-tag{position:absolute; top:-11px; right:10px; height:20px; padding:0 8px; display:flex; align-items:center; gap:3px; border-radius:99px;
+  font-family:var(--disp); font-size:12px; line-height:1; white-space:nowrap; border:2px solid var(--outline2); color:#fff; transition:background .3s}
+.db-tag[hidden]{display:none}
+.db-tag.me{background:linear-gradient(#5FD36B,#23A548)}
+.db-tag.op{background:linear-gradient(#FF8AC0,#F0368A)}
+.db-tag.tie{background:linear-gradient(#FFE27A,#FF9F1C); color:#5A3300}
+.db-tag.flip{animation:tagFlip .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tagFlip{0%{transform:scale(.5)} 60%{transform:scale(1.18)}}
+/* 끝남·나감 */
+.db-row.done .db-track i{width:100%!important; background:linear-gradient(90deg,#FFE27A,#FF9F1C)}
+.db-row.fail .db-track i{background:#8F86C2}
+.db-row.left{opacity:.5}
+.db-row .ck{display:inline-block; margin-right:3px; color:#FFD35C}
+
+/* 상단 바가 있는 7게임: 제목(#ptitle) 자리에 막대를 넣는다. 게임 이름은 준비 화면에서 보여 줌 */
+.pbar.has-duel{position:relative}
+.pbar.has-duel > .ptitle{display:none}
+.pbar.has-duel > .duelbar{position:static; margin:0; padding:0 2px; background:none; border:0; box-shadow:none; gap:4px; min-width:0}
+.pbar.has-duel .db-row{grid-template-columns:22px minmax(0,1fr) auto auto; gap:5px}
+.pbar.has-duel .db-who{display:none}                  /* 얼굴로 구분(내 얼굴 / 상대 동물) */
+.pbar.has-duel .db-tag{top:-11px; right:auto; left:50%; transform:translateX(-50%)}
+#play > .duelbar{margin-top:12px}
+body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 44px)}
+.pbar.has-duel .db-tag.flip{animation:tagFlipC .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tagFlipC{0%{transform:translateX(-50%) scale(.5)} 60%{transform:translateX(-50%) scale(1.18)}}
+.pbar.has-duel .dping{top:calc(100% + 8px)}
+@media (max-width:370px){ .pbar.has-duel .db-val{min-width:50px; font-size:13px} .pbar.has-duel .db-val small{font-size:10px} }
+
+/* 숲길 디펜스: 상단 바가 숨겨져 있으므로 캔버스 위 작은 칩. #tdwrap 안으로 옮겨 붙인다(캔버스 폭 기준 %) */
+body[data-mode="tower"] .duelbar{position:absolute; z-index:8; top:calc(8px + env(safe-area-inset-top,0px)); left:45%; right:14.5%; width:auto; grid-template-columns:minmax(0,1fr); margin:0; padding:5px 7px 5px 6px; gap:3px; border-radius:12px; opacity:.94; pointer-events:none}
+body[data-mode="tower"] .db-row{grid-template-columns:18px minmax(0,1fr) auto auto; gap:4px; min-height:16px}
+body[data-mode="tower"] .duelbar .db-av{display:block; line-height:0}
+body[data-mode="tower"] .db-row .av{width:18px; height:18px; border-width:1.5px}
+body[data-mode="tower"] .db-who{display:none}
+body[data-mode="tower"] .db-track{height:7px}
+body[data-mode="tower"] .db-val{min-width:0; font-size:12px}
+body[data-mode="tower"] .db-val small{font-size:10px}
+body[data-mode="tower"] .db-sub{display:none}             /* 칩에는 생명 대신 알림으로 */
+body[data-mode="tower"] .db-tag{top:auto; bottom:-12px; right:6px; height:17px; font-size:10.5px; padding:0 6px}
+
+/* ---------- (3) 순간 알림(대전 말풍선): 막대 바로 아래, 판을 가리지 않게 ---------- */
+.dping{position:absolute; left:50%; top:calc(100% + 6px); z-index:9; transform:translate(-50%,-6px); opacity:0; pointer-events:none;
+  display:flex; align-items:center; gap:6px; max-width:min(240px, calc(100% - 100px)); height:32px; padding:0 12px 0 5px; border-radius:99px;
+  font-family:var(--disp); font-size:14px; line-height:1; white-space:nowrap; color:#fff; background:linear-gradient(#3D2A8F,#24186A);
+  border:2px solid var(--outline2); box-shadow:0 0 0 2px rgba(255,255,255,.25), 0 6px 14px rgba(0,0,0,.35); transition:opacity .2s, transform .25s cubic-bezier(.2,1.5,.4,1)}
+.dping.on{opacity:1; transform:translate(-50%,0)}
+.dping::before{content:""; position:absolute; top:-7px; left:50%; margin-left:-6px; border:6px solid transparent; border-top:0; border-bottom:7px solid var(--outline2)}
+.dping .av{width:22px; height:22px; border-width:1.5px; flex:none}
+.dping span{overflow:hidden; text-overflow:ellipsis}
+.dping.good{background:linear-gradient(#5FD36B,#1E8F3E)}      /* 내가 역전 */
+.dping.bad{background:linear-gradient(#FF8AC0,#D1145A)}       /* 상대가 역전 */
+.dping.hot{background:linear-gradient(#FFB347,#E0590B)}       /* 상대 마무리 중 */
+.dping.end{background:linear-gradient(#FFE27A,#FF9F1C); color:#5A3300}  /* 상대 끝냄 */
+.dping.gray{background:linear-gradient(#A59DCC,#6E6699)}      /* 상대 나감 */
+body[data-mode="tower"] .dping{top:-2.5px; left:-2.5px; right:-2.5px; bottom:-2.5px; height:auto; max-width:none; border-radius:12px; font-size:12.5px; padding:0 8px 0 4px; transform:scale(.9)}  /* 디펜스: 칩 위에 겹쳐 떠서 지도(해골 버튼 등)를 가리지 않음 */
+body[data-mode="tower"] .dping.on{transform:scale(1)}
+body[data-mode="tower"] .dping::before{display:none}
+
+/* ---------- (4) 대전 중 멈춤 불가: 일시정지 버튼 · 게임 방법 카드 ---------- */
+.nopause{position:fixed; left:50%; top:calc(88px + env(safe-area-inset-top,0px)); z-index:41; transform:translate(-50%,-8px); opacity:0; pointer-events:none;
+  display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:16px; font-family:var(--disp); font-size:15px; color:#fff; white-space:nowrap;
+  background:linear-gradient(#3D2A8F,#24186A); border:2.5px solid #FFD35C; box-shadow:0 0 0 2.5px var(--outline2), 0 10px 24px rgba(0,0,0,.4); transition:.2s}
+.nopause.on{opacity:1; transform:translate(-50%,0)}
+.nopause .ico{width:18px; height:18px}
+/* ? 버튼: 모달 대신 판을 덜 가리는 규칙 카드(시간은 계속 감) */
+.drules{position:fixed; z-index:30; left:50%; top:calc(118px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(360px, calc(100% - 24px)); padding:10px 12px 10px;
+  border-radius:18px; background:linear-gradient(180deg,var(--paper),var(--paper2)); border:3px solid var(--outline); box-shadow:0 5px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.4)}
+.drules[hidden]{display:none}
+.drules h4{margin:0 0 6px; display:flex; justify-content:space-between; align-items:center; font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink)}
+.drules h4 em{font-style:normal; font-size:12px; color:#C0392B; font-family:var(--font); font-weight:800}
+.drules .dg-rules{border:0; padding:0; background:none}
+.drules .x{position:absolute; top:6px; right:8px; width:36px; height:36px; border-radius:50%; font-size:18px; color:var(--sub)}
+/* 대전 메뉴(구슬·디펜스 일시정지 버튼 대신) */
+.modal .dmenu-live{display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; padding:4px 10px; border-radius:99px; font-size:12.5px; font-weight:800; color:#C0392B; background:#FFE3E3; border:1.5px solid #F5B5B5}
+.modal .dmenu-live i{width:8px; height:8px; border-radius:50%; background:#E5484D; animation:pulse 1.4s ease-in-out infinite}
+
+/* ---------- (5) 먼저 끝냈을 때 대기 창 ---------- */
+.dwait .dw-me{display:flex; align-items:center; justify-content:center; gap:8px; margin:4px 0 10px; padding:8px 10px; border-radius:14px; background:linear-gradient(180deg,#FFF6C8,#FFE08A); border:2px solid #E0A21C}
+.dwait .dw-me b{font-family:var(--heavy); font-weight:400; font-size:24px; color:#5A3300}
+.dwait .dw-me small{font-size:12px; font-weight:800; color:#8A5A00}
+.dwait .dw-op{display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; padding:10px; border-radius:14px; background:#fff; border:2px solid var(--paper-line); text-align:left}
+.dwait .dw-op .av{width:48px; height:48px}
+.dwait .dw-op b{display:block; font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink)}
+.dwait .dw-op .dw-stat{display:block; font-size:13px; font-weight:800; color:#D1145A}
+.dwait .aitag{font-style:normal; font-family:var(--font); font-size:10px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:2px}
+.dwait .db-track{display:block; height:12px; margin-top:5px; background:#E9E0F7; border:2px solid var(--outline)}
+.dwait .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
+.dwait .dw-need{margin:10px 0 2px; font-size:13.5px; font-weight:700; color:var(--ink)}
+.dwait .dw-need b{color:#D1145A}
+.dwait .dw-eta{display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:4px 12px; border-radius:99px; background:#EFE8FF; font-size:12.5px; font-weight:800; color:var(--primary)}
+.dwait .dw-quiet{margin:8px 0 0; font-size:12px; color:var(--sub)}
+
+@media (prefers-reduced-motion: reduce){ .dg-n.pop, .dg-n.go.pop, .dg-side.me, .dg-side.op, .db-tag.flip, .db-sub .pip.lost{animation:none!important} .dg-ring .fg{transition:none} }
 
 /* 상대 찾기·기다리기·결과 창 */
 .modal.duelm{text-align:center}
@@ -2361,9 +2504,11 @@ function openStageMap(id = 'ball'){
 }
 
 /* 게임 방법(? 버튼, 첫 판 자동) — 여는 동안 시간 멈춤 */
-function gPause(){ if(!G || G.over || G.paused) return false; G.paused = true; G.pauseAt = Date.now(); return true; }
+const duelNoStop = () => !!(G && G.duel && !G.duel.fleet);
+function gPause(){ if(!G || G.over || G.paused || duelNoStop()) return false; G.paused = true; G.pauseAt = Date.now(); return true; }
 function gResume(){ if(!G || !G.paused) return; G.pausedMs += Date.now() - G.pauseAt; G.paused = false; G.lt = 0; }
 function openHelp(id, first){
+  if(duelNoStop() && !G.over){ duelRulesToggle(); return; }
   const paused = gPause();
   openModal(`<h3>${GAMES[id].name} 방법</h3><div class="help">${HELP[id].map((s, i) => `<div class="hstep"><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span><div><b>${s[0]}</b><span>${s[1]}</span></div></div>`).join('')}</div>
     <div class="mbtns one"><button class="b1" id="mOk">${first ? '시작하기' : '계속하기'}</button></div>`);
@@ -2372,7 +2517,7 @@ function openHelp(id, first){
 function confirmQuit(){
   if(!G || G.over){ goHome(); return; }
   const paused = gPause();
-  openModal(`<h3>그만할까요?</h3><p class="note">${G.adv ? '지금 나가면 이번 도전은 기록되지 않아요. 솔로는 언제든 무료로 다시 할 수 있어요.' : G.duel ? '지금 나가면 이번 대전은 기권패예요. 대전 점수는 받지 못하고 쓴 하트도 돌아오지 않아요.' : '지금 나가면 이번 판은 0점이에요. 쓴 하트는 돌아오지 않아요.'}</p>
+  openModal(`<h3>그만할까요?</h3><p class="note">${G.adv ? '지금 나가면 이번 도전은 기록되지 않아요. 솔로는 언제든 무료로 다시 할 수 있어요.' : G.duel ? '지금 나가면 이번 대전은 기권패예요. 대전 점수는 받지 못하고 쓴 하트도 돌아오지 않아요.' + (duelNoStop() ? ' 시간은 계속 가요.' : '') : '지금 나가면 이번 판은 0점이에요. 쓴 하트는 돌아오지 않아요.'}</p>
     <div class="mbtns two"><button class="b2" id="mQuit">${G.adv ? '그만하기' : G.duel ? '기권하고 나가기' : '그만하고 0점 받기'}</button><button class="b1" id="mStay">계속하기</button></div>`);
   $('#mStay').onclick = () => { closeModal(); if(paused) gResume(); };
   $('#mQuit').onclick = () => { G.over = true; closeModal(); goHome(); };
@@ -2486,7 +2631,7 @@ let G = null, tick = null;
 function startGame(id, lv = 'normal', o = {}){
   const adv = o.adv || 0, duel = o.duel || null;
   if(!adv && !spendHeart()){ openHeartSheet('empty'); return; }
-  if(!adv) sfx('heartUse'); sfx('start');
+  if(!adv) sfx('heartUse'); if(!duel || duel.fleet) sfx('start');
   if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; }
   if(G && G.raf) cancelAnimationFrame(G.raf);
   let attempt = 0;
@@ -2517,14 +2662,18 @@ function startGame(id, lv = 'normal', o = {}){
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; document.body.classList.toggle('fxmode', id === 'fox'); document.body.classList.toggle('flmode', id === 'fleet');
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();
   duelBarInit();
-  if(!store.get('hp:help:' + id, false)){ store.set('hp:help:' + id, 1); setTimeout(() => { if(G && !G.over) openHelp(id, true); }, 50); }
+  if((!duel || duel.fleet) && !store.get('hp:help:' + id, false)){ store.set('hp:help:' + id, 1); setTimeout(() => { if(G && !G.over) openHelp(id, true); }, 50); }
   clearInterval(tick);
   tick = setInterval(updateClock, 250); updateClock();
   ambStart(ambFor(id));
   window.scrollTo(0,0);
 }
 
-function elapsed(){ return ((G.paused ? G.pauseAt : Date.now()) - G.start - G.pausedMs) / 1000; }
+function elapsed(){
+  /* 대전: 시작 후엔 멈추지 않는 시계(다 풀어 멈춘 순간만 고정). 시작 전(카운트다운)은 0 */
+  if(G.duel && !G.duel.fleet) return G.duel.go ? Math.max(0, ((G.paused && G.done && G.pauseAt ? G.pauseAt : Date.now()) - G.start) / 1000) : 0;
+  return ((G.paused ? G.pauseAt : Date.now()) - G.start - G.pausedMs) / 1000;
+}
 function clock2(sec){ sec = Math.floor(sec); return String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0'); }
 function updateClock(){
   if(!G || G.over) return;
@@ -3118,7 +3267,7 @@ function foxStage(st){
       if(G !== me || me.over) return;
       const p = genFox(me.rng, me.N);
       Object.assign(me, p, { cells:new Array(me.N*me.N).fill(0), placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, colors:shuffle(FOX_COLORS.slice(), me.rng).slice(0, me.N) });
-      me.start = Date.now(); me.pausedMs = 0;
+      if(!me.duel){ me.start = Date.now(); me.pausedMs = 0; }
       foxBuild(true);
     }, 30);
   } else foxBuild(false);
@@ -3439,11 +3588,12 @@ function ballKnob(){
 }
 function ballPause(){
   if(G.over) return;
-  G.paused = true;
+  if(duelNoStop()){ duelMenu(); return; }
+  G.paused = true; G.pauseAt = Date.now();
   openModal(`<h3>일시정지</h3><p class="note">그만하면 이번 판은 0점이에요.</p>
     <div class="mbtns"><button class="b2" id="mQuit2">그만하기</button><button class="b1" id="mResume">이어하기</button></div>${sndBtnHtml()}`);
   sndBtnBind(); ambDuck(true);
-  $('#mResume').onclick = () => { closeModal(); G.paused = false; G.lt = 0; ambDuck(false); };
+  $('#mResume').onclick = () => { closeModal(); gResume(); ambDuck(false); };
   $('#mQuit2').onclick = () => { G.over = true; closeModal(); goHome(); };
 }
 function ballFire(a){
@@ -3512,12 +3662,12 @@ function ballEndTurn(){
 /* 원본처럼 실패 직전 '아래 3줄 제거'로 이어하기. 원본은 보석·광고, 여기서는 판당 1번 무료 */
 function ballContinue(){
   if(G.contUsed){ finish(false); return; }
-  G.paused = true;
+  G.paused = true; G.pauseAt = Date.now();
   openModal(`<h3>아래 3줄을 제거합니다</h3><div class="big"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="28" cy="38" r="20" fill="#3A3550" stroke="#1A0F45" stroke-width="3"/><ellipse cx="21" cy="30" rx="6" ry="4" transform="rotate(-35 21 30)" fill="#fff" opacity=".35"/><rect x="36" y="14" width="12" height="10" rx="3" transform="rotate(40 42 19)" fill="#6B6680" stroke="#1A0F45" stroke-width="3"/><path d="M46 13q4-7 10-4" fill="none" stroke="#8A5530" stroke-width="3" stroke-linecap="round"/><path d="M57 4l1.6 3.8L62 9l-3.4 1.4L57 14l-1.6-3.6L52 9l3.4-1.2z" fill="#FFD23F"/></svg></div><p class="note">판당 1번, 바닥 쪽 3줄의 블록을 없애고 이어서 할 수 있어요.</p>
     <div class="mbtns"><button class="b2" id="mGive">포기</button><button class="b1" id="mCont">이어하기</button></div>`);
   $('#mGive').onclick = () => { closeModal(); G.paused = false; finish(false); };
   $('#mCont').onclick = () => {
-    closeModal(); G.paused = false; G.lt = 0; G.contUsed = true; G.shake = 24; sfx('bClear3'); fxBuzz([50, 30, 80]);
+    closeModal(); gResume(); G.contUsed = true; G.shake = 24; sfx('bClear3'); fxBuzz([50, 30, 80]);
     for(let r=BR-3;r<BR;r++) for(let c=0;c<BC;c++){
       const cell = G.gridB[r][c];
       if(cell && cell.hp){ ballBurst(c*BS + BS/2, r*BS + BS/2, ballColor(cell.hp).css, 8); G.rings.push({ x:c*BS + BS/2, y:r*BS + BS/2, t:-(r - BR + 3) * .06, dur:.45, r:90, c:'255,120,90' }); G.broken++; }
@@ -4155,14 +4305,15 @@ function tdStage(st){
 }
 function tdPause(){
   if(G.over) return;
-  G.paused = true; G.sel = null;
+  if(duelNoStop()){ duelMenu(); return; }
+  G.paused = true; G.pauseAt = Date.now(); G.sel = null;
   openModal(`<h3>일시정지</h3><p class="note">${G.adv ? '솔로 스테이지 ' + G.adv + ' · ' + G.mapName : G.L.name + ' · ' + G.mapName} · 공격 ${G.wave}/${G.waves.length}<br>나가면 이번 판은 ${G.adv ? '기록되지 않아요' : '0점이에요'}.</p>
     <div class="mbtns one"><button class="b1" id="mResume">계속하기</button></div>
     <div class="mbtns"><button class="b2" id="mHelp2">게임 방법</button><button class="b2" id="mRestart">재시작 ${G.adv ? '' : costTag()}</button></div>
     <div class="mbtns one"><button class="b2 quiet" id="mQuit2">나가기</button></div>${sndBtnHtml()}`);
   $('#modal').classList.add('wood'); sndBtnBind(); ambDuck(true);
-  $('#mResume').onclick = () => { closeModal(); G.paused = false; G.lt = 0; ambDuck(false); };
-  $('#mHelp2').onclick = () => { closeModal(); G.paused = false; G.lt = 0; ambDuck(false); openHelp('tower'); };
+  $('#mResume').onclick = () => { closeModal(); gResume(); ambDuck(false); };
+  $('#mHelp2').onclick = () => { closeModal(); gResume(); ambDuck(false); openHelp('tower'); };
   $('#mQuit2').onclick = () => { G.over = true; closeModal(); goHome(); };
   $('#mRestart').onclick = () => { if(!G.adv && heartState().n < 1){ toast('하트가 없어요', 'err'); return; } G.over = true; closeModal(); startGame('tower', G.lv, { adv:G.adv }); };
 }
@@ -5988,6 +6139,7 @@ function sudHint(){
   if(sudCheckWin()) sudWin();
 }
 function togglePause(on){
+  if(on && duelNoStop()){ duelNoPause(); return; }
   if(G.over || G.paused === on) return;
   if(on){ G.paused = true; G.pauseAt = Date.now(); }
   else { G.pausedMs += Date.now() - G.pauseAt; G.paused = false; }
@@ -9189,18 +9341,25 @@ async function duelMatch(S, opp){
   let nr;
   try{ nr = await ROOM.join(name); }catch(_){ if(DS === S){ S.phase = 'search'; toast('상대와 연결하지 못했어요. 다시 찾을게요'); duelSearch(S.id); } return; }
   if(DS !== S){ try{ nr.leave(); }catch(_){} return; }
-  S.nr = nr; nr.presence({ nk:S.nick, pg:0, dn:0, sc:0 }).catch(() => {});
+  S.nr = nr; nr.presence({ nk:S.nick, nw:store.get('hp:help:' + S.id, false) ? 0 : 1, pg:0, dn:0, sc:0 }).catch(() => {});
   /* 두 사람이 모두 방에 들어오면 시작(최대 6초) */
   const t0 = Date.now();
   S.iv = setInterval(() => {
     if(DS !== S) return;
     let ps = []; try{ ps = nr.peers(); }catch(_){}
-    const o = ps.find(p => !p.sameTab);
-    if(o || Date.now() - t0 > 6000){
+    const o = ps.find(p => !p.sameTab), meP = ps.find(p => p.sameTab);
+    /* 상대 정보(nk)까지 받으면 시작. 방장(peer가 작은 쪽)이 서버 시각으로 시작 시각을 정해 알림 → 두 사람이 같은 순간에 시작 */
+    if((o && o.presence && o.presence.nk) || Date.now() - t0 > 6000){
       clearInterval(S.iv);
       if(!o){ try{ nr.leave(); }catch(_){} S.nr = null; toast('상대가 떠났어요. 다시 찾을게요'); duelSearch(S.id); return; }
       S.keep = true;
-      const duel = { mode:'pvp', seed:name + ':' + dayKey(), nr, oppPeer:o.peer, opp:{ nick, pg:0, dn:0, sc:0 }, me:null };
+      const duel = { mode:'pvp', seed:name + ':' + dayKey(), nr, oppPeer:o.peer, myNick:S.nick, opp:{ nick, pg:0, dn:0, sc:0 }, me:null };
+      const myId = String((meP && meP.peer) || S.myPeer || '');
+      if(myId && myId < String(o.peer)){
+        const fresh = !store.get('hp:help:' + S.id, false) || !!(o.presence && o.presence.nw);
+        const srv = flNow() + (fresh ? 6000 : 4000);
+        duel.startAt = duelLocalStart(srv); nr.presence({ go:srv }).catch(() => {});
+      }
       duelSearchStop(); closeModal(); startGame(S.id, 'normal', { duel });
     }
   }, 250);
@@ -9208,7 +9367,7 @@ async function duelMatch(S, opp){
 function duelGoAI(S){
   if(DS !== S || S.phase === 'join') return;
   const id = S.id, nick = duelNick(), seed = 'ai:' + id + ':' + Date.now() + ':' + Math.random();
-  const duel = { mode:'ai', seed, opp:{ nick, pg:0, dn:0, sc:0 }, ai:duelAiPlan(id, mulberry(seedFrom(seed + 'p'))), me:null };
+  const duel = { mode:'ai', seed, myNick:S.nick, startAt:Date.now() + (store.get('hp:help:' + id, false) ? 3000 : 5000), opp:{ nick, pg:0, dn:0, sc:0 }, ai:duelAiPlan(id, mulberry(seedFrom(seed + 'p'))), me:null };
   duelSearchStop(); closeModal(); startGame(id, 'normal', { duel });
 }
 /* AI 상대: 게임별 평균 시간·성공률로 결과를 미리 정하고, 경과 시간에 맞춰 진행도를 보여 준다 */
@@ -9230,71 +9389,365 @@ function gameProg(){
   return Math.max(0, Math.min(1, v || 0));
 }
 
-/* ---- 게임 중 대전 막대 ---- */
-function duelBarInit(){
-  const bar = $('#duelBar'); if(!bar) return;
-  const D = G && G.duel;
-  if(!D || D.fleet){ bar.hidden = true; bar.innerHTML = ''; return; }
-  bar.hidden = false;
-  bar.innerHTML = `<div class="db-side me"><span class="db-av">${avatar({ me:true })}</span><span class="db-info"><b>나</b><span class="db-bar"><i id="dbMe"></i></span></span><span class="db-v num" id="dbMeV">0%</span></div>
-    <span class="db-vs">VS</span>
-    <div class="db-side op"><span class="db-v num" id="dbOpV">0%</span><span class="db-info"><b>${flEsc(D.opp.nick)}${D.mode === 'ai' ? ' <em>AI</em>' : ''}</b><span class="db-bar"><i id="dbOp"></i></span></span><span class="db-av">${oppAv(D.opp.nick)}</span></div>`;
-  D.lastPub = 0;
-  if(D.mode === 'pvp'){
-    const me = G;
-    try{ D.un = D.nr.onPeers(ch => { if(G !== me || !G.duel) return; if(ch.left && ch.left.some(p => p.peer === D.oppPeer)) duelOppLeft(); }, () => { if(G === me && G.duel && !G.duel.oppLeft) duelOppLeft(); }); }catch(_){}
-  }
+/* ---- 대전 v2 (UI팀 설계): 동시 시작 · 게임별 진행 표시 · 순간 알림 · 멈춤 없음 ---- */
+/* 게임별로 상대에게 보내는 값(presence). pg 진행도 0~1 · v 현재 수 · t 목표 수 · lf 남은 기회/생명 · dn 끝남 · sc 끝났을 때 점수 */
+const DUEL_STAT = {
+  fox:    { unit:'마리', lfMax:3,  get:() => ({ v:G.placed || 0, t:G.N, lf:G.paws }) },
+  sudoku: { unit:'칸',   lfMax:3,  get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), lf:G.paws }) },
+  ball:   { unit:'개',             get:() => ({ v:G.broken, t:G.total }) },
+  tower:  { unit:'',     lfMax:20, get:() => ({ v:Math.max(0, G.wave - 1), t:G.waves.length, lf:G.lives }) },
+  nono:   { unit:'칸',   lfMax:3,  get:() => ({ v:G.found, t:G.total, lf:Math.max(0, 3 - (G.miss || 0)) }) },
+  block:  { unit:'줄',             get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target }) },
+  memory: { unit:'쌍',             get:() => ({ v:G.m.found, t:G.m.pairs }) },
+  merge:  { unit:'', tile:true,    get:() => ({ v:G.M.best, t:G.M.target }) },
+  match:  { unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) }
+};
+function duelStatNow(){
+  const S = DUEL_STAT[G.id]; let s = {};
+  try{ if(S) s = S.get(); }catch(_){}
+  for(const k in s) if(typeof s[k] !== 'number' || !isFinite(s[k])) delete s[k];
+  return Object.assign({ pg:Math.round(gameProg() * 1000) / 1000 }, s);
+}
+/* 값 칸 문구: 32/51칸 · 1,240점 · [128]/256 */
+function duelValHtml(id, s){
+  const S = DUEL_STAT[id] || {};
+  if(s.dn) return s.ok ? `<span class="ck">✔</span>${fmt(s.sc || 0)}<small>점</small>` : '실패';
+  if(s.left) return '나감';
+  if(S.score) return `${fmt(s.v || 0)}<small>점</small>`;
+  if(S.tile) return `<span class="tile">${s.v || 2}</span><small>/${s.t || ''}</small>`;
+  if(s.t == null) return `${Math.round((s.pg || 0) * 100)}<small>%</small>`;
+  return `${s.v || 0}<small>/${s.t}${S.unit}</small>`;
+}
+function duelSubHtml(id, s, lostFlash){
+  const S = DUEL_STAT[id] || {}; if(!S.lfMax || s.lf == null || s.dn || s.left) return '';
+  if(S.lfMax === 3) return [0, 1, 2].map(i => `<i class="pip${i >= s.lf ? ' off' : ''}${lostFlash && i === s.lf ? ' lost' : ''}"></i>`).join('');
+  return `${ic('heart')}${s.lf}`;
+}
+const duelLocalStart = srv => srv - ((ROOM && ROOM.clockOffset) || 0);   /* 서버 시각 → 내 시계 */
+const duelStarted = () => !!(G && G.duel && G.duel.go);
+
+/* ---- (1) 준비·카운트다운: 문제는 미리 만들되 가려 두고, 정해진 시각에 두 사람이 같이 시작 ---- */
+function duelGoOpen(){
+  const D = G.duel, id = G.id, rules = (HELP[id] || []).slice(0, 3), me = G;
+  const old = $('#duelGo'); if(old) old.remove();
+  document.body.classList.add('duel-ready');
+  const el = document.createElement('div'); el.className = 'duelgo'; el.id = 'duelGo';
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', GAMES[id].name + ' 대전 준비');
+  el.style.setProperty('--gc', (GCOL[id] || [])[2] || 'var(--ink)');
+  el.innerHTML = `<div class="dg-card panel">
+      <p class="dg-kick">1:1 대전 · ${G.L.name}</p>
+      <h2 class="dg-title">${GAMES[id].name}</h2>
+      <div class="dg-vs">
+        <div class="dg-side me">${avatar({ me:true })}<b>나</b><small>${flEsc(D.myNick || '')}</small></div>
+        <div class="dg-x">VS</div>
+        <div class="dg-side op">${oppAv(D.opp.nick)}<b>${flEsc(D.opp.nick)}</b><small class="ok">${D.mode === 'ai' ? 'AI 상대' : '실시간 상대 · 준비 완료'}</small></div>
+      </div>
+      <ol class="dg-rules">${rules.map((r, i) => `<li><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span>${r[0]}</li>`).join('')}</ol>
+      <p class="dg-win">같은 문제예요 · 끝났을 때 점수가 높은 쪽이 이겨요</p>
+    </div>
+    <div class="dg-count" aria-live="assertive"><svg class="dg-ring" viewBox="0 0 176 176"><circle class="bg" cx="88" cy="88" r="82"/><circle class="fg" cx="88" cy="88" r="82"/></svg><span class="dg-n wait">준비</span></div>
+    <p class="dg-status" id="dgStatus"><i></i>${D.mode === 'ai' ? '곧 시작해요' : '두 사람 모두 들어왔어요 · 같은 순간에 시작해요'}</p>`;
+  document.body.appendChild(el);
+  const n = el.querySelector('.dg-n'), ring = el.querySelector('.dg-ring .fg'), opened = Date.now();
+  let shown = null;
+  const loop = () => {
+    if(!el.isConnected || G !== me || me.over) return;
+    /* 실시간: 시작 시각은 방장이 서버 시각으로 정해 presence(go)로 알림. 못 받으면 6초 뒤 내 시계로 시작 */
+    if(D.startAt == null && D.mode === 'pvp'){
+      duelReadOpp();
+      if(D.startAt == null && Date.now() - opened > 6000) D.startAt = Date.now() + 2500;
+    }
+    const left = D.startAt == null ? 99999 : D.startAt - Date.now();
+    const k = left > 3000 ? 'wait' : left > 0 ? String(Math.ceil(left / 1000)) : 'go';
+    if(k !== shown){
+      shown = k;
+      if(k === 'wait'){ n.className = 'dg-n wait'; n.textContent = '준비'; }
+      else if(k === 'go'){
+        n.className = 'dg-n go'; void n.offsetWidth; n.classList.add('pop'); n.textContent = '시작!';
+        sfx('start'); fxBuzz(30);
+        duelBegin();
+        setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 450);
+        return;
+      } else {
+        n.className = 'dg-n'; void n.offsetWidth; n.classList.add('pop'); n.textContent = k;
+        ring.style.transition = 'none'; ring.style.strokeDashoffset = '0'; void ring.getBBox();
+        ring.style.transition = ''; ring.style.strokeDashoffset = '515';
+        sfx('tReady'); fxBuzz(12);
+      }
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+/* 시작 순간: 시계를 정해진 시각에 맞추고 판을 보여 줌(늦게 도착했으면 그만큼 이미 지난 것으로) */
+function duelBegin(){
+  const D = G.duel; if(D.go) return;
+  D.go = true;
+  const at = Math.min(Date.now(), D.startAt || Date.now());
+  G.start = at; G.pausedMs = 0; G.pauseAt = 0; G.paused = false; G.lt = 0;
+  document.body.classList.remove('duel-ready');
+  if(D.mode === 'pvp') duelPub(true);
   duelTick();
 }
+
+/* ---- (2) 게임 중 대전 막대: 상단 바 7게임은 제목 자리, 여우는 맨 위, 디펜스는 캔버스 위 칩 ---- */
+function duelBarPlace(bar){
+  const play = $('#play'), pbar = play.querySelector(':scope > .pbar');
+  pbar.classList.remove('has-duel');
+  if(G.id === 'tower'){ const w = $('#tdwrap'); if(w){ w.appendChild(bar); return; } }
+  /* 상단 바가 보이는 게임만 제목 자리에. 자체 머리를 쓰는 게임(여우·동물 팡 등)은 맨 위 단독 막대 */
+  if(G.id !== 'tower' && getComputedStyle(pbar).display !== 'none'){ pbar.insertBefore(bar, $('#helpBtn')); pbar.classList.add('has-duel'); return; }
+  play.insertBefore(bar, play.firstChild);
+}
+/* 디펜스 판(#tdwrap)이 지워질 때 막대도 같이 지워지지 않게 제자리로 */
+function duelBarRestore(){
+  const bar = $('#duelBar'), play = $('#play'); if(!bar) return;
+  play.insertBefore(bar, play.firstChild); play.querySelector(':scope > .pbar').classList.remove('has-duel');
+}
+function duelBarInit(){
+  let bar = $('#duelBar'); const D = G && G.duel;
+  if(!bar){ bar = document.createElement('div'); bar.className = 'duelbar'; bar.id = 'duelBar'; bar.hidden = true; $('#play').insertBefore(bar, $('#play').firstChild); }
+  const oldGo = $('#duelGo'); if(oldGo) oldGo.remove();
+  const rc = $('#dRules'); if(rc) rc.hidden = true;
+  document.body.classList.remove('duel-ready', 'is-duel');
+  if(!D || D.fleet){ duelBarRestore(); bar.hidden = true; bar.innerHTML = ''; return; }
+  document.body.classList.add('is-duel');
+  duelBarPlace(bar);
+  bar.hidden = false;
+  bar.innerHTML = `<span class="db-tag" id="dbTag" hidden></span>
+    <div class="db-row me" id="dbRowMe"><span class="db-av">${avatar({ me:true })}</span><span class="db-who">나</span><span class="db-track"><i id="dbMe"></i><b id="dbMark"></b></span><span class="db-val num" id="dbMeV"></span><span class="db-sub" id="dbMeS"></span></div>
+    <div class="db-row op" id="dbRowOp"><span class="db-av">${oppAv(D.opp.nick)}</span><span class="db-who">상대</span><span class="db-track"><i id="dbOp"></i></span><span class="db-val num" id="dbOpV"></span><span class="db-sub" id="dbOpS"></span></div>
+    <div class="dping" id="dPing" role="status" aria-live="polite"></div>`;
+  bar.setAttribute('aria-label', '대전 진행: 나와 ' + D.opp.nick);
+  Object.assign(D, { lastPub:0, pubSig:'', lead:null, pingAt:{}, pingOnce:{}, pingLast:0, pingPri:0, oppLf:null, oppLfPing:null, meLf:null });
+  if(D.mode === 'pvp'){
+    const me = G;
+    try{ D.un = D.nr.onPeers(ch => { if(G !== me || !G.duel) return; duelReadOpp(); if(ch.left && ch.left.some(p => p.peer === D.oppPeer)) duelOppLeft(); }, () => { if(G === me && G.duel && !G.duel.oppLeft) duelOppLeft(); }); }catch(_){}
+  }
+  /* 시작 전: 판은 만들어 두되 멈춰 두고 가림 → 준비·카운트다운 */
+  G.paused = true; G.pauseAt = G.start = Date.now(); G.pausedMs = 0;
+  duelGoOpen();
+  duelRender();
+}
+/* 앞섬 판정: 5%p 넘으면 앞섬, 2%p 안으로 좁혀지면 풀림. 동물 팡은 점수 차 */
+function duelLeadOf(me, op, prev){
+  const S = DUEL_STAT[G.id] || {};
+  const d = S.score ? ((me.v || 0) - (op.v || 0)) / Math.max(1, me.t || 1) : (me.pg || 0) - (op.pg || 0);
+  if(prev === 'me' && d > .02) return 'me';
+  if(prev === 'op' && d < -.02) return 'op';
+  return d >= .05 ? 'me' : d <= -.05 ? 'op' : 'tie';
+}
+function duelMeStat(){
+  const D = G.duel;
+  if(G.over && D.me) return Object.assign({}, D.meStat || {}, { pg:D.me.pg, dn:1, ok:!!D.me.sc, sc:D.me.sc });
+  return duelStatNow();
+}
+function duelOppStat(){
+  const D = G.duel, o = D.opp, st = D.oppStat || {}, S = DUEL_STAT[G.id] || {};
+  /* AI는 칸 수(v/t)와 막대가 어긋나지 않게 칸 수 기준으로 */
+  let pg = o.pg;
+  if(D.mode === 'ai' && st.t && !S.score && !(o.dn && !o.sc)) pg = S.tile ? Math.max(0, Math.min(1, (Math.log2(Math.max(2, st.v || 2)) - 1) / (Math.log2(st.t) - 1))) : st.v / st.t;
+  return Object.assign({}, st, { pg, dn:o.dn ? 1 : 0, ok:!!o.sc, sc:o.sc, left:!!D.oppLeft && !o.dn });
+}
+function duelRender(){
+  const D = G && G.duel; if(!D || D.fleet || !$('#dbMe')) return;
+  const id = G.id, me = duelMeStat(), op = duelOppStat();
+  const w = x => (Math.max(0, Math.min(1, x || 0)) * 100).toFixed(1) + '%';
+  $('#dbMe').style.width = w(me.pg); $('#dbOp').style.width = w(op.pg); $('#dbMark').style.left = w(op.pg);
+  $('#dbMeV').innerHTML = duelValHtml(id, me); $('#dbOpV').innerHTML = duelValHtml(id, op);
+  const meLost = D.meLf != null && me.lf != null && me.lf < D.meLf, opLost = D.oppLfShow != null && op.lf != null && op.lf < D.oppLfShow;
+  $('#dbMeS').innerHTML = duelSubHtml(id, me, meLost); $('#dbOpS').innerHTML = duelSubHtml(id, op, opLost);
+  D.meLf = me.lf; D.oppLfShow = op.lf;
+  const rm = $('#dbRowMe'), ro = $('#dbRowOp');
+  rm.classList.toggle('done', !!(me.dn && me.ok)); rm.classList.toggle('fail', !!(me.dn && !me.ok));
+  ro.classList.toggle('done', !!(op.dn && op.ok)); ro.classList.toggle('fail', !!(op.dn && !op.ok)); ro.classList.toggle('left', !!op.left);
+  const lead = !D.go || elapsed() < 3 ? null : duelLeadOf(me, op, D.lead);
+  rm.classList.toggle('lead', lead === 'me'); ro.classList.toggle('lead', lead === 'op');
+  const tag = $('#dbTag');
+  if(!lead || op.left || me.dn || op.dn || Math.max(me.pg || 0, op.pg || 0) < .05) tag.hidden = true;
+  else {
+    tag.hidden = false;
+    const cls = 'db-tag ' + lead;
+    if(tag.dataset.k !== lead){ tag.className = cls; if(tag.dataset.k){ void tag.offsetWidth; tag.classList.add('flip'); } tag.dataset.k = lead; }
+    tag.textContent = lead === 'me' ? '▲ 내가 앞서요' : lead === 'op' ? '▼ 상대가 앞서요' : '막상막하';
+  }
+  /* 역전 알림: me↔op로 바뀔 때만(막상막하를 거쳐도 마지막 앞선 쪽 기준) */
+  if(lead === 'me' || lead === 'op'){
+    if(D.leadSide && D.leadSide !== lead && !me.dn && !op.dn) duelPing(lead === 'me' ? 'meLead' : 'oppLead', lead === 'me' ? '내가 앞섰어요!' : `${flEsc(D.opp.nick)}님이 앞질렀어요`);
+    D.leadSide = lead;
+  }
+  if(lead) D.lead = lead;
+}
+
+/* ---- (3) 순간 알림(말풍선): 우선순위 높은 것이 끼어들고, 최소 4초 간격 ---- */
+const DPING = {
+  oppDone: { pri:5, cls:'end',  sfx:'flHorn', buzz:[30, 40, 30], ms:3200 },
+  oppFail: { pri:5, cls:'gray', sfx:'toggle', ms:2800 },
+  oppLeft: { pri:5, cls:'gray', sfx:'toggle', ms:3200 },
+  meLead:  { pri:4, cls:'good', sfx:'star',   ms:2200, same:12000 },
+  oppLead: { pri:4, cls:'bad',  sfx:'starOff', buzz:20, ms:2400, same:12000 },
+  oppHot:  { pri:3, cls:'hot',  sfx:'flPing', ms:2600, once:true },
+  last10:  { pri:3, cls:'hot',  sfx:'flPing', ms:2600, once:true },
+  oppMiss: { pri:2, cls:'',     sfx:'toast',  ms:2000, same:15000 },
+  oppHit:  { pri:2, cls:'',     sfx:'toast',  ms:2200, same:15000 }
+};
+function duelPing(kind, text){
+  const D = G && G.duel, P = DPING[kind], el = $('#dPing'); if(!D || !P || !el) return;
+  const now = Date.now();
+  if(P.once && D.pingOnce[kind]) return;
+  if(P.same && now - (D.pingAt[kind] || 0) < P.same) return;
+  if(P.pri < 5 && (!D.go || elapsed() < 5)) return;
+  if(P.pri < 5 && now - (D.pingLast || 0) < 4000 && (D.pingPri || 0) >= P.pri) return;
+  D.pingAt[kind] = D.pingLast = now; D.pingPri = P.pri; D.pingOnce[kind] = 1;
+  el.className = 'dping ' + P.cls;
+  el.innerHTML = `${kind === 'meLead' ? avatar({ me:true }) : oppAv(D.opp.nick)}<span>${text}</span>`;
+  void el.offsetWidth; el.classList.add('on');
+  sfx(P.sfx, P.sfx === 'star' ? { i:1 } : P.sfx === 'toggle' ? { on:false } : {}); if(P.buzz) fxBuzz(P.buzz);
+  clearTimeout(D.pingT); D.pingT = setTimeout(() => el.classList.remove('on'), P.ms);
+}
+
+/* ---- 상대 소식 읽기 ---- */
 function duelReadOpp(){
-  const D = G.duel; if(D.mode !== 'pvp' || !D.nr) return;
+  const D = G && G.duel; if(!D || D.mode !== 'pvp' || !D.nr) return;
   let ps = []; try{ ps = D.nr.peers(); }catch(_){ return; }
   const o = ps.find(p => !p.sameTab && p.peer === D.oppPeer) || ps.find(p => !p.sameTab);
   if(!o || !o.presence) return;
-  const q = o.presence;
+  const q = o.presence, qs = JSON.stringify(q);
+  if(qs !== D.oppSig){ D.oppSig = qs; D.lastOppMsg = Date.now(); }
+  if(D.startAt == null && typeof q.go === 'number') D.startAt = duelLocalStart(q.go);
+  if(!D.go) return;
   if(typeof q.pg === 'number') D.opp.pg = Math.max(D.opp.pg, Math.min(1, q.pg));
+  const st = D.oppStat || (D.oppStat = {});
+  for(const k of ['v', 't', 'lf']) if(typeof q[k] === 'number') st[k] = q[k];
+  duelOppEvents();
   if(q.dn && !D.opp.dn){ D.opp.dn = 1; D.opp.sc = +q.sc || 0; D.opp.pg = typeof q.pg === 'number' ? q.pg : D.opp.pg; duelOppDone(); }
+}
+/* 상대 기회 잃음 · 디펜스 생명 크게 줄어듦 · 마무리 중 */
+function duelOppEvents(){
+  const D = G.duel, st = D.oppStat || {}, S = DUEL_STAT[G.id] || {};
+  if(D.opp.dn || G.over) return;
+  if(S.lfMax && typeof st.lf === 'number'){
+    if(S.lfMax === 3){ if(D.oppLf != null && st.lf < D.oppLf && st.lf > 0) duelPing('oppMiss', '상대가 한 번 틀렸어요'); }
+    else { if(D.oppLfPing == null) D.oppLfPing = st.lf; else if(D.oppLfPing - st.lf >= 3){ D.oppLfPing = st.lf; duelPing('oppHit', `상대 성이 공격당했어요 · ♥${st.lf}`); } }
+    D.oppLf = st.lf;
+  }
+  if(!S.score && D.opp.pg >= .8) duelPing('oppHot', '상대가 마무리 중이에요!');
+  if(S.score && G.limit && G.limit - elapsed() <= 10) duelPing('last10', `마지막 10초 · 상대 ${fmt(st.v || 0)}점`);
 }
 function duelOppDone(){
   const D = G.duel;
-  if(!G.over) toast(`${D.opp.nick}님이 끝냈어요 · ${D.opp.sc ? fmt(D.opp.sc) + '점' : '실패'}`);
-  sfx(D.opp.sc ? 'flPing' : 'toggle');
+  if(!G.over) duelPing(D.opp.sc ? 'oppDone' : 'oppFail', D.opp.sc ? `상대가 끝냈어요 · ${fmt(D.opp.sc)}점` : '상대가 실패했어요');
+  else sfx(D.opp.sc ? 'flPing' : 'toggle');
+  duelRender();
 }
 function duelOppLeft(){
   const D = G && G.duel; if(!D || D.oppLeft || D.opp.dn) return;
   D.oppLeft = true;
-  if(!G.over) toast('상대가 나갔어요 · 끝까지 하면 승리예요');
+  if(!G.over) duelPing('oppLeft', '상대가 나갔어요 · 끝까지 하면 승리');
   duelRender();
   if(G.over && D.me) duelResolve();
 }
+/* 내 진행 보내기: 0.8초마다, 기회를 잃거나 끝나면 바로(최소 0.3초 간격) */
+function duelPub(force){
+  const D = G.duel; if(!D || D.mode !== 'pvp' || !D.nr || !D.go) return;
+  const s = G.over && D.me ? { pg:D.me.pg } : duelStatNow(), now = Date.now();
+  const sig = JSON.stringify(s), urgent = D.meStatLf != null && s.lf != null && s.lf < D.meStatLf;
+  if(!force && sig === D.pubSig && now - D.lastPub < 5000) return;
+  if(!force && !(urgent && now - D.lastPub > 300) && now - D.lastPub < 800) return;
+  D.lastPub = now; D.pubSig = sig; D.meStatLf = s.lf;
+  try{ D.nr.presence(Object.assign({ hb:(D.hb = (D.hb || 0) + 1) }, s)).catch(() => {}); }catch(_){}
+}
+/* AI 상대: 미리 정한 결과대로 진행도·수치·실수를 흉내 */
+function duelAiStat(){
+  const D = G.duel, a = D.ai, S = DUEL_STAT[G.id] || {}, me = duelStatNow(), t = me.t, pg = D.opp.pg;
+  const st = D.oppStat || (D.oppStat = {});
+  if(t != null){
+    st.t = t;
+    if(S.tile){ const top = Math.log2(Math.max(4, t)); st.v = Math.pow(2, Math.max(1, Math.round(1 + pg * (top - 1)))); }
+    else if(S.score) st.v = Math.round(pg * (a.sc || t * .5) / 10) * 10;
+    else st.v = Math.min(t, Math.floor(pg * t));
+  }
+  if(S.lfMax === 3){
+    if(!a.miss){ const r = mulberry(seedFrom(D.seed + 'm')); a.miss = a.ok ? [r() < .45 ? .25 + r() * .5 : 2, r() < .2 ? .6 + r() * .3 : 2] : [.2 + r() * .2, .45 + r() * .2]; }
+    const k = a.ok ? pg : pg / Math.max(.01, a.fail);
+    st.lf = 3 - a.miss.filter(x => k >= x).length - (!a.ok && D.opp.dn ? 1 : 0);
+    st.lf = Math.max(0, st.lf);
+  }
+  if(S.lfMax === 20) st.lf = Math.max(1, 20 - Math.floor(pg * (a.ok ? 6 : 14)));
+}
 function duelTick(){
   const D = G && G.duel; if(!D || D.fleet) return;
+  if(!D.go){ duelRender(); return; }
   const t = elapsed();
   if(D.mode === 'ai' && !D.opp.dn){
     const a = D.ai;
-    D.opp.pg = a.ok ? Math.min(1, Math.pow(t / a.T, .9)) : Math.min(a.fail, a.fail * t / a.T);
+    D.opp.pg = a.ok ? Math.min(1, Math.pow(Math.max(0, t) / a.T, .9)) : Math.min(a.fail, a.fail * t / a.T);
+    duelAiStat(); duelOppEvents();
     if(t >= a.T){ D.opp.dn = 1; D.opp.sc = a.ok ? a.sc : 0; D.opp.pg = a.ok ? 1 : a.fail; duelOppDone(); }
   }
-  if(D.mode === 'pvp'){
-    duelReadOpp();
-    if(!G.over && Date.now() - D.lastPub > 900){ D.lastPub = Date.now(); try{ D.nr.presence({ pg:Math.round(gameProg() * 1000) / 1000 }).catch(() => {}); }catch(_){} }
-  }
+  if(D.mode === 'pvp'){ duelReadOpp(); if(!G.over) duelPub(false); }
   duelRender();
 }
-function duelRender(){
-  const D = G && G.duel; if(!D) return;
-  const mp = G.over && D.me ? D.me.pg : gameProg(), op = D.opp.pg;
-  const a = $('#dbMe'), b = $('#dbOp'); if(!a) return;
-  a.style.width = (mp * 100).toFixed(1) + '%'; b.style.width = (op * 100).toFixed(1) + '%';
-  $('#dbMeV').textContent = Math.round(mp * 100) + '%';
-  $('#dbOpV').textContent = D.opp.dn ? (D.opp.sc ? fmt(D.opp.sc) + '점' : '실패') : D.oppLeft ? '나감' : Math.round(op * 100) + '%';
-  $('#duelBar').classList.toggle('lead', mp > op + .03); $('#duelBar').classList.toggle('behind', op > mp + .03);
+
+/* ---- (4) 대전 중 멈춤 없음 ---- */
+function duelNoPause(){
+  let t = $('#noPause');
+  if(!t){ t = document.createElement('div'); t.id = 'noPause'; t.className = 'nopause'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.innerHTML = `${ic('clock')}대전 중에는 멈출 수 없어요`;
+  t.classList.add('on'); sfx('toggle', { on:false });
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 1800);
+}
+function duelRulesToggle(){
+  let c = $('#dRules');
+  if(c && !c.hidden){ c.hidden = true; return; }
+  if(!c){ c = document.createElement('div'); c.id = 'dRules'; c.className = 'drules'; document.body.appendChild(c); }
+  const id = G.id;
+  c.innerHTML = `<h4>${GAMES[id].name} 방법</h4><button class="x" aria-label="닫기">✕</button>
+    <ol class="dg-rules">${HELP[id].map((r, i) => `<li><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span><span><b style="font-weight:400">${r[0]}</b><br><small style="font-family:var(--font);font-size:12.5px;color:var(--sub)">${r[1]}</small></span></li>`).join('')}</ol>
+    <p class="dg-win" style="margin-top:6px">⏱ 대전 중이라 시간은 계속 가요</p>`;
+  c.querySelector('.x').onclick = () => { c.hidden = true; };
+  c.hidden = false;
+}
+/* 구슬·디펜스 일시정지 버튼 → 멈추지 않는 대전 메뉴 */
+function duelMenu(){
+  openModal(`<h3>대전 메뉴</h3><p class="dmenu-live"><i></i>대전 중에는 멈출 수 없어요 · 시간이 계속 가요</p>
+    <div class="mbtns one"><button class="b1" id="mResume">게임으로 돌아가기</button></div>
+    <div class="mbtns"><button class="b2" id="mHelp2">게임 방법</button><button class="b2" id="mQuit2">기권하고 나가기</button></div>${sndBtnHtml()}`);
+  if(G.id === 'tower') $('#modal').classList.add('wood');
+  sndBtnBind();
+  $('#mResume').onclick = closeModal;
+  $('#mHelp2').onclick = () => { closeModal(); duelRulesToggle(); };
+  $('#mQuit2').onclick = () => { closeModal(); confirmQuit(); };
+}
+
+/* ---- (5) 먼저 끝냈을 때 대기 창 ---- */
+function duelWaitModal(){
+  const D = G.duel, me = D.me, op = duelOppStat();
+  const eta = G.limit && D.mode === 'pvp' ? `<span class="dw-eta">${ic('clock')}늦어도 <b class="num" id="dwEta">${mmss(Math.max(0, G.limit - elapsed()))}</b> 뒤엔 결과가 나와요</span>` : `<span class="dw-eta">${ic('clock')}상대가 끝내면 바로 결과가 나와요</span>`;
+  openModal(`<div class="dsearch dwait"><p class="kick">대전</p><h3>${me.sc ? '다 풀었어요!' : '이번 판은 여기까지'}</h3>
+    <div class="dw-me">${avatar({ me:true })}<div><small>내 점수 · 확정</small><br><b class="num">${me.sc ? fmt(me.sc) + '점' : '실패 · 진행 ' + Math.round(me.pg * 100) + '%'}</b></div></div>
+    <div class="dw-op">${oppAv(D.opp.nick)}<div><b>${flEsc(D.opp.nick)} ${D.mode === 'ai' ? '<em class="aitag">AI</em>' : ''}</b>
+      <span class="dw-stat" id="dwOp">아직 푸는 중 · ${duelValHtml(G.id, op).replace(/<[^>]+>/g, '')}</span>
+      <span class="db-track"><i id="dwBar" style="width:${(op.pg || 0) * 100}%"></i></span></div></div>
+    <p class="dw-need">${me.sc ? `상대가 <b>${fmt(me.sc)}점</b>보다 높아야 역전돼요` : '상대도 실패하면 진행도로 판정해요'}</p>
+    ${eta}
+    <p class="dw-quiet" id="dwTxt">${D.mode === 'ai' ? 'AI 상대가 마무리하는 중이에요…' : '창을 닫지 말고 기다려 주세요'}</p></div>`);
+  $('#modal').classList.add('duelm');
+}
+function duelWaitText(){
+  const D = G.duel, op = duelOppStat(), o = $('#dwOp'), b = $('#dwBar'), e = $('#dwEta');
+  if(o) o.textContent = (op.dn ? '끝냈어요 · ' : '아직 푸는 중 · ') + duelValHtml(G.id, op).replace(/<[^>]+>/g, '');
+  if(b) b.style.width = ((op.pg || 0) * 100) + '%';
+  if(e) e.textContent = mmss(Math.max(0, G.limit - elapsed()));
+  const tx = $('#dwTxt');
+  if(tx && D.mode === 'pvp' && D.lastOppMsg && Date.now() - D.lastOppMsg > 15000) tx.textContent = '상대 연결을 확인하는 중…';
 }
 
 /* ---- 대전 끝 ---- */
 function duelFinish(win){
   const D = G.duel, id = G.id;
   if(D.fleet){ duelResult(win ? 'w' : 'l', null, null); return; }
+  D.meStat = duelStatNow();
   D.me = { sc: win ? calcScore().score : 0, pg: win ? 1 : gameProg() };
   duelRender();
   if(D.mode === 'pvp'){
@@ -9318,21 +9771,11 @@ function duelFinish(win){
   const step = () => {
     if(G !== me) return;
     const k = Math.min(1, (performance.now() - t0) / 1400);
-    D.opp.pg = p0 + (pEnd - p0) * k; duelWaitText(); duelRender();
+    D.opp.pg = p0 + (pEnd - p0) * k; duelAiStat(); duelWaitText(); duelRender();
     if(k < 1) requestAnimationFrame(step); else { D.opp.dn = 1; D.opp.sc = a.ok ? a.sc : 0; D.opp.pg = pEnd; setTimeout(duelResolve, 350); }
   };
   setTimeout(() => requestAnimationFrame(step), 450);
 }
-function duelWaitModal(){
-  const D = G.duel;
-  openModal(`<div class="dsearch"><p class="kick">대전</p><h3>상대를 기다려요</h3>
-    <div class="vsrow"><div class="vs-side">${avatar({ me:true })}<b>나</b><small>${D.me.sc ? fmt(D.me.sc) + '점' : '진행 ' + Math.round(D.me.pg * 100) + '%'}</small></div><div class="vs-x">VS</div>
-    <div class="vs-side op">${oppAv(D.opp.nick)}<b>${flEsc(D.opp.nick)}</b><small id="dwOp">진행 ${Math.round(D.opp.pg * 100)}%</small></div></div>
-    <div class="db-bar big"><i id="dwBar" style="width:${D.opp.pg * 100}%"></i></div>
-    <p class="note" id="dwTxt">${D.mode === 'ai' ? 'AI 상대가 마무리하는 중이에요…' : '상대가 아직 풀고 있어요. 끝나면 바로 결과가 나와요.'}</p></div>`);
-  $('#modal').classList.add('duelm');
-}
-function duelWaitText(){ const D = G.duel, o = $('#dwOp'), b = $('#dwBar'); if(o) o.textContent = '진행 ' + Math.round(D.opp.pg * 100) + '%'; if(b) b.style.width = (D.opp.pg * 100) + '%'; }
 function duelResolve(){
   const D = G.duel; if(!D || D.resolved) return;
   const a = D.me, b = D.opp; let r;
@@ -9380,7 +9823,11 @@ function duelNetClose(){
 function duelClose(){
   duelSearchStop();
   if(G && G.duel) duelNetClose();
+  duelBarRestore();
   const bar = $('#duelBar'); if(bar){ bar.hidden = true; bar.innerHTML = ''; }
+  const go = $('#duelGo'); if(go) go.remove();
+  const rc = $('#dRules'); if(rc) rc.hidden = true;
+  document.body.classList.remove('duel-ready', 'is-duel');
 }
 
 let lastSig = '', ABOVE = null;
