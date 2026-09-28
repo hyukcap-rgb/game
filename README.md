@@ -32,6 +32,10 @@
 
 GitHub Pages를 켜면(Settings → Pages → Branch: `main` / root) 링크로 공유할 수 있습니다.
 
+## 공유·초대 링크
+- 결과 카드·도전장·초대 링크는 `https://hyukcap-rgb.github.io/game/?n=보낸사람` 형식입니다. 도전장은 `&c=게임&d=날짜&s=점수&lv=난이도`가 붙어 같은 문제로 바로 시작합니다.
+- 링크 미리보기 이미지는 `og.png`, 아이콘은 `icon.png`입니다.
+
 ## 실시간 대전 서버
 함대 결전의 사람 대 사람 대전은 Railway에 올린 중계 서버(`server/index.ts`, Bun)를 거칩니다.
 - 주소: `wss://battle-production-c11b.up.railway.app/ws` (상태 확인: `/stats`)
@@ -47,3 +51,4 @@ GitHub Pages를 켜면(Settings → Pages → Branch: `main` / root) 링크로 �
 - [원본 분석: 벽돌깨기](docs/04_원본분석_벽돌깨기.md)
 - [테마 회의: 두뇌 지수](docs/05_테마회의_두뇌지수.md)
 - [모험 모드 설계](docs/06_모험모드_설계.md)
+- [바이럴 기능 점검·개발](docs/10_바이럴_기능점검.md)

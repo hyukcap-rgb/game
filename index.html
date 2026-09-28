@@ -4,6 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>하루퍼즐 리그</title>
+<meta name="description" content="매일 전 세계가 같은 문제를 푸는 퍼즐 리그. 똑똑한 사람보다 꾸준한 사람이 이긴다. 한 판이면 출석, 다섯 판이면 리그. 강제 광고 없는 퍼즐.">
+<meta name="theme-color" content="#1C1250">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="하루퍼즐 리그">
+<meta property="og:title" content="하루퍼즐 리그 · 오늘의 문제, 나랑 붙어 볼래?">
+<meta property="og:description" content="매일 전 세계가 같은 문제. 똑똑한 사람보다 꾸준한 사람이 이긴다. 설치 없이 바로 한 판!">
+<meta property="og:url" content="https://hyukcap-rgb.github.io/game/">
+<meta property="og:image" content="https://hyukcap-rgb.github.io/game/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://hyukcap-rgb.github.io/game/og.png">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
@@ -984,6 +998,29 @@ body[data-mode] .dock{display:none}
 .ttls span.g{background:linear-gradient(#FFE98E,#FFB020); color:#5A3300; border-color:#9A5A00}
 .ttls span.o{background:linear-gradient(#FFA34F,#E0480E); border-color:#8A2A00}
 .sharebtn{margin-top:10px}
+/* 바이럴 v1 */
+.shrow{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px}
+.shrow .btn{margin:0}
+.shimg{margin:8px auto 4px; width:min(72%, 250px); aspect-ratio:4/5; border-radius:16px; overflow:hidden; border:3px solid var(--outline); box-shadow:0 5px 0 var(--outline2); background:var(--night2)}
+.shimg img{width:100%; height:100%; display:block; object-fit:cover}
+.nickrow{display:flex; align-items:center; gap:8px; justify-content:center; margin:10px 0 2px; font-size:14px; color:var(--sub)}
+.nickrow input{font:inherit; font-size:15px; color:var(--ink); border:2px solid var(--paper-line); border-radius:12px; padding:8px 12px; width:11em; background:#fff; text-align:center}
+.nickrow input:focus{outline:none; border-color:var(--primary)}
+.shgift{font-size:13px; color:#18804A; margin-top:8px}
+.chal{border:3px solid var(--outline); border-radius:18px; background:linear-gradient(180deg,#FFF8EA,#FBEBCB); padding:12px; margin:8px 0 2px; box-shadow:0 4px 0 var(--outline2)}
+.chal .vs{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; font-family:var(--disp)}
+.chal .vs div{display:flex; flex-direction:column; align-items:center; gap:2px; font-size:14px; color:var(--sub)}
+.chal .vs b{font-family:var(--heavy); font-size:26px; color:var(--ink)}
+.chal .vs .w b{color:#18804A}
+.chal .vs em{font-style:normal; font-family:var(--heavy); color:var(--pink); font-size:18px}
+.chal-art{display:block; width:150px; height:94px; margin:6px auto 4px; border-radius:14px; overflow:hidden; border:3px solid var(--outline)}
+.chal-art svg, .chal-art img{width:100%; height:100%; display:block}
+.invrow{display:flex; align-items:center; gap:10px; width:100%; margin-top:10px; padding:12px 14px; border-radius:16px; border:2.5px dashed #B9A6E8; background:#F6F0FF; color:var(--ink); font:inherit; text-align:left; cursor:pointer}
+.invrow .ii{flex:none; width:40px; height:40px; border-radius:50%; background:var(--primary); color:#fff; display:grid; place-items:center}
+.invrow .ii svg{width:22px; height:22px}
+.invrow b{display:block; font-family:var(--disp); font-size:16px}
+.invrow small{display:block; font-size:13px; color:var(--sub)}
+.pill.fire{background:linear-gradient(#FFD7A8,#FF9A4D); color:#6A2800; border-color:#B4540F}
 .me-links button{height:46px; border-radius:14px; font-family:var(--disp); font-size:15px; color:#fff; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.2)}
 
 /* ===== 사운드·효과팀 ===== */
@@ -1977,6 +2014,10 @@ function renderLeague(d, P){
     }
     r.appendChild(row);
   });
+  const inv = document.createElement('button'); inv.className = 'invrow'; inv.id = 'invBtn';
+  inv.innerHTML = `<span class="ii">${ic('share')}</span><span><b>친구 초대하기</b><small>링크로 들어온 친구는 친구 리그에 바로 들어와요 · 친구에게 하트 2개 선물</small></span>`;
+  inv.onclick = () => viralShare(cardInvite(), closeModal);
+  r.appendChild(inv);
 }
 const rivalAv = x => { const i = seedFrom(x.name) % 6; return `<span class="av" style="--avbg:${FACE_BG[i]}">${animalFace(FACE_KIND[i])}</span>`; };
 function renderWeek(d, r){
@@ -2001,10 +2042,11 @@ function showLeagueResult(res){
   const up = res.to > res.from, down = res.to < res.from;
   openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">WEEKLY RESULT</p><div class="ttl">${up ? '승급!' : down ? '강등…' : '리그 유지'}</div>
     <div class="emb">${tierBadge(res.to)}</div><div class="newtitle">${TIERS[res.to][0]} 리그</div>
-    <p class="note">지난주 ${TIERS[res.from][0]} 리그 <b>${res.score ? res.pos + '위' : '기록 없음'}</b> · 주간 점수 <b>${fmt(res.score)}</b>${res.prize ? `<br>모두의 상금 <b>${fmt(res.prize)}원</b> 당첨! (시뮬레이션)` : ''}${down ? '<br>이번 주 5위 안에 들면 다시 올라가요' : ''}</p>
-    <div class="mbtns one"><button class="b1" id="cOk">${up ? '좋아요!' : '이번 주 다시 도전'}</button></div>`);
+    <p class="note">지난주 ${TIERS[res.from][0]} 리그 <b>${res.score ? res.pos + '위' : '기록 없음'}</b> · 주간 점수 <b>${fmt(res.score)}</b>${down ? '<br>이번 주 5위 안에 들면 다시 올라가요' : ''}</p>
+    ${up || (res.score && res.pos <= 3) ? `<div class="mbtns"><button class="b2" id="cBrag">${ic('share')} 자랑하기</button><button class="b1" id="cOk">좋아요!</button></div>` : `<div class="mbtns one"><button class="b1" id="cOk">${up ? '좋아요!' : '이번 주 다시 도전'}</button></div>`}`);
+  { const bb = $('#cBrag'); if(bb) bb.onclick = () => viralShare(cardBrag('league', res), () => showLeagueResult(res)); }
   $('#modal').classList.add('celebrate');
-  if(up || res.prize){ fxConfetti(); sfx('fanfare'); setTimeout(() => fxPop($('#modal .emb'), 'gold'), 420); if(res.prize) setTimeout(() => sfx('coin'), 900); }
+  if(up){ fxConfetti(); sfx('fanfare'); setTimeout(() => fxPop($('#modal .emb'), 'gold'), 420); }
   else if(down) sfx('demote'); else sfx('result');
   const s = leagueState(); s.seen = true; store.set('hp:league', s);
   $('#cOk').onclick = () => { closeModal(); TAB = 'league'; RANK_MODE = 'week'; renderHome(); };
@@ -2155,8 +2197,9 @@ function showCelebrations(list, done){
       <p class="note">다음 무대 <b>${chName(e.id, nx)}</b> · 챕터 ${nx} 오픈!</p>
       <div class="rewards"><div class="reward"><span class="ri">${HEART_G}</span><b>+2</b>하트</div><div class="reward"><span class="ri">${badgeSVG(e.id, e.c)}</span><b>배지</b>획득</div></div>`;
   }
-  html += `<div class="mbtns one"><button class="b1" id="cOk">좋아요!</button></div>`;
+  html += e.kind === 'level' ? `<div class="mbtns"><button class="b2" id="cBrag">${ic('share')} 자랑하기</button><button class="b1" id="cOk">좋아요!</button></div>` : `<div class="mbtns one"><button class="b1" id="cOk">좋아요!</button></div>`;
   openModal(html); $('#modal').classList.add('celebrate');
+  if(e.kind === 'level') $('#cBrag').onclick = () => viralShare(cardBrag('level', e), () => showCelebrations([e].concat(list), done));
   fxConfetti(); sfx('fanfare'); fxBuzz([30, 50, 30, 50, 60]);
   setTimeout(() => fxPop($('#modal .emb'), 'gold'), 450);
   setTimeout(() => { document.querySelectorAll('#modal .reward').forEach((r, k) => setTimeout(() => { if(!r.isConnected) return; sfx(k ? 'coin' : 'heartGet'); fxPop(r, k ? 'coin' : 'heart'); }, k * 180)); }, 900);
@@ -2246,19 +2289,7 @@ function shareText(){
   const sq = d.set.map(g => { const v = d.best[g]; return !v ? '⬜' : v >= 800 ? '🟩' : v >= 400 ? '🟨' : '🟧'; }).join('');
   return `하루퍼즐 리그 ${dt.getMonth() + 1}/${dt.getDate()}\n오늘 ${fmt(tl.score)}점${tl.streak ? ` 🔥${tl.streak}일 +${tl.today.pct}%` : ''}\n${sq}${d.solo || d.duel ? ` 솔로 +${fmt(d.solo)} · 대전 ${d.dw}승` : ''}\n🏆 ${TIERS[ls.tier][0]} 리그 ${lb[lpos - 1].score ? lpos + '위' : ''}${ws.top != null && ws.top <= 50 ? ` · 🌏 상위 ${ws.top}%` : ''}${top ? `\n나는 '${BTYPE[top][0]}'` : ''}\n똑똑한 사람보다 꾸준한 사람이 이긴다`;
 }
-function openShare(back){
-  const t = shareText();
-  openModal(`<h3>결과 공유</h3><p class="note">아래 카드를 복사해 친구에게 보내 보세요. 칸 색은 게임별 오늘 점수예요(초록 800+, 노랑 400+, 주황 그 아래).</p>
-    <div class="sharebox" id="shareTxt">${t.replace(/</g, '&lt;')}</div>
-    <div class="mbtns"><button class="b2" id="mBack">뒤로</button><button class="b1" id="mCopy">복사하기</button></div>`);
-  $('#mBack').onclick = typeof back === 'function' ? back : openReport;
-  $('#mCopy').onclick = async () => {
-    let ok = false;
-    try{ await navigator.clipboard.writeText(t); ok = true; }catch(_){}
-    if(!ok){ try{ const r = document.createRange(); r.selectNodeContents($('#shareTxt')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); ok = document.execCommand('copy'); }catch(_){} }
-    toast(ok ? '결과를 복사했어요' : '카드를 길게 눌러 복사해 주세요');
-  };
-}
+function openShare(back, opt){ viralShare(opt || cardToday(), back); }
 
 function closingText(){ const now = new Date(), mid = new Date(now); mid.setHours(24,0,0,0); const s = Math.floor((mid - now) / 1000); return Math.floor(s/3600) + ':' + String(Math.floor(s%3600/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
 
@@ -2351,7 +2382,7 @@ function welcome(){
     <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>오늘의 문제 5게임</b><span>10게임 중 매일 5개가 뽑혀요. 게임마다 오늘 최고점을 더하고, 전 세계가 같은 문제를 풀어요. 자정에 바뀌어요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--g-sudoku)">${ic('duel')}</span><div><b>솔로·대전도 점수</b><span>솔로는 새 스테이지를 처음 깨면 +100~250점(하트 없음). 대전은 같은 문제로 1:1, 승리 +${DUEL_PTS.w} · 패배도 +${DUEL_PTS.l}점.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--grit)">${ic('flame')}</span><div><b>끈기 보너스 · 최대 +10%</b><span>연속 출석 하루마다 오늘 점수 +1%. 한 판만 끝까지 해도 출석이에요. 빠진 날은 휴식권(월 2장)이 지켜줘요.</span></div></div>
-    <div class="hstep"><span class="hn" style="background:var(--g-tower)">${ic('trophy')}</span><div><b>주간 리그와 모두의 상금</b><span>실력 비슷한 30명과 일주일 점수를 겨뤄요. 일요일 21시 마감, 상위 5명 승급! 광고 수익은 모두의 상금으로 쌓여요.</span></div></div></div>
+    <div class="hstep"><span class="hn" style="background:var(--g-tower)">${ic('trophy')}</span><div><b>주간 리그 · 친구와 도전장</b><span>실력 비슷한 30명과 일주일 점수를 겨뤄요. 일요일 21시 마감, 상위 5명 승급! 결과 창에서 친구에게 같은 문제 도전장을 보낼 수 있어요.</span></div></div></div>
     <div class="mbtns"><button class="b2" id="wLater">둘러볼게요</button><button class="b1" id="wGo">첫 판 시작</button></div>`);
   const done = () => store.set('hp:welcome', 3);
   $('#wLater').onclick = () => { done(); closeModal(); };
@@ -2406,12 +2437,13 @@ function finish(win){
       ${isBest ? '<span class="pill new">NEW 오늘 최고 기록!</span>' : `<p class="note">오늘 최고 ${fmt(prev)}점은 그대로예요</p>`}
       <div>${gritPill()}${rank}${passed.length ? `<span class="pill good">${passed.join(', ')}님을 제쳤어요 · 알림을 보냈어요</span>` : ''}</div>
       <details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${stg ? L.name + ' 배율' : '난이도 ' + L.name}</span><b>×${L.mult}</b></div><div><span>오늘의 문제 합산</span><b>${fmt(dailySum(d2))}점</b></div><div><span>+ 솔로 · 대전</span><b>${fmt((d2.solo || 0) + (d2.duel || 0))}점</b></div><div><span>끈기 보너스 +${tl2.today.pct}% 적용 → 오늘 점수</span><b>${fmt(tl2.score)}</b></div></details>
-      <div><span class="pill info">${ic('globe')} 전 세계 ${topTxt(worldStat(tl2.score).top)}</span></div><button class="btn small gold sharebtn" id="mShareR">${ic('share')} 결과 카드 공유</button>`;
+      <div><span class="pill info">${ic('globe')} 전 세계 ${topTxt(worldStat(tl2.score).top)}</span>${firstToday && STREAK_MS.includes(tl2.streak) ? `<span class="pill fire">${ic('flame')} 연속 ${tl2.streak}일 달성!</span>` : ''}</div>${chalBox(score)}
+      <div class="shrow">${canChal() ? `<button class="btn small primary" id="mChal">${ic('duel')} ${G.chal && G.chal.n ? '되갚기 도전장' : '친구에게 도전장'}</button>` : ''}<button class="btn small gold" id="mShareR">${ic('share')} ${firstToday && STREAK_MS.includes(tl2.streak) ? '연속 ' + tl2.streak + '일 자랑하기' : '결과 카드 공유'}</button></div>`;
   } else {
     const best = d.best[id];
     html = `<h3 class="bad">${id === 'fleet' ? '패배 · 우리 함대가 침몰했어요' : '이번 판은 실패'}</h3><p class="lose">${best ? '오늘 최고 ' + fmt(best) + '점은 그대로예요' : '아직 오늘 기록이 없어요'}</p>
       <p class="note">${lossProgress()} ${stg ? '같은 스테이지에 다시 도전할 수 있어요.' : id === 'fleet' ? '배치를 바꿔서 다시 도전해 보세요.' : '다음 판은 새 문제로 나와요.'}</p>
-      ${firstToday ? `<div>${gritPill()}</div><p class="note">실패해도 끝까지 한 판은 출석으로 인정돼요.</p>` : ''}`;
+      ${firstToday ? `<div>${gritPill()}</div><p class="note">실패해도 끝까지 한 판은 출석으로 인정돼요.</p>` : ''}${chalBox(0)}`;
   }
   const other = nextUnplayed(id), againLbl = stg ? (win ? '다음 스테이지' : '다시 도전') : (win ? '한 판 더' : id === 'fleet' ? '다시 도전' : '새 문제로 다시');
   const nextLv = stg && win ? +G.lv + 1 : G.lv;
@@ -2424,7 +2456,9 @@ function finish(win){
       $('#mPri').onclick = () => { closeModal(); pri[1](); };
       $('#mSec').onclick = () => { closeModal(); sec2[1](); };
       if(gh) $('#mGh').onclick = () => { closeModal(); gh[1](); };
-      const shr = $('#mShareR'); if(shr) shr.onclick = () => openShare(() => { openModal(html); const b2 = $('#bigScore'); if(b2) b2.textContent = fmt(score); bindRes(); });
+      const reopen = () => { openModal(html); const b2 = $('#bigScore'); if(b2) b2.textContent = fmt(score); bindRes(); };
+      const shr = $('#mShareR'); if(shr) shr.onclick = () => openShare(reopen);
+      const chb = $('#mChal'); if(chb) chb.onclick = () => viralShare(cardChal(id, score, G.lv), reopen);
     };
     openModal(html);
     if(win && id !== 'fox' && id !== 'fleet') fxConfetti();
@@ -2459,8 +2493,8 @@ function startGame(id, lv = 'normal', o = {}){
   if(!adv && !duel){ const d = dayState(); d.tries[id]++; saveDay(d); attempt = d.tries[id]; }
   const L = levelOf(id, lv, adv);
   if(adv) lv = id === 'fleet' ? L.ai : 'adv';
-  const rng = adv ? mulberry(seedFrom('adv:' + id + ':' + adv)) : duel ? mulberry(seedFrom(duel.seed || ('duel:' + id + ':' + Date.now()))) : mulberry(seedFrom(dayKey() + ':' + id + ':' + lv + ':' + attempt));
-  G = { id, lv, adv, duel, L, attempt, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
+  const rng = adv ? mulberry(seedFrom('adv:' + id + ':' + adv)) : duel ? mulberry(seedFrom(duel.seed || ('duel:' + id + ':' + Date.now()))) : mulberry(seedFrom(dayKey() + ':' + id + ':' + lv + ':' + (o.chal && o.chal.same ? 1 : attempt)));
+  G = { id, lv, adv, duel, L, attempt, chal:o.chal || null, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
   if(id === 'fox'){
     Object.assign(G, { N:L.fox.N, rng, reg:null, cells:[], placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, combo:0 });
   } else if(id === 'ball'){
@@ -9325,9 +9359,188 @@ $('#devHist').onclick = () => {
   renderHome(); toast('지난 2주 기록을 만들었어요(2일은 휴식권)');
 };
 $('#devHistClr').onclick = () => { const today = dayKey(); for(let i = 0; i <= 120; i++) store.set('hp:day:' + addDays(today, -i), null); renderHome(); toast('출석 기록을 모두 지웠어요'); };
+
+/* ===== 바이럴 v1 (마케팅팀 점검 → 기획팀 개발, 2026-09-28) =====
+   ① 링크 미리보기(OG)  ② 이미지 공유 카드 + 기기 공유 시트(카카오톡 등)  ③ 같은 문제 도전장 링크
+   ④ 초대 링크(들어온 친구 = 친구 리그 추가 + 하트 2 선물)  ⑤ 자랑 순간(연속 기념일·레벨 업·승급)  ⑥ 공유 보상 하루 1번 하트 +1
+   서버가 붙기 전까지 초대한 사람 쪽 보상·친구 점수는 기기 안에서만 처리(친구 점수는 가상). */
+const SITE_URL = 'https://hyukcap-rgb.github.io/game/';
+const STREAK_MS = [3, 7, 14, 30, 50, 100, 200, 365];
+function siteUrl(){ return /github\.io$|^localhost$|^127\./.test(location.hostname) ? location.origin + location.pathname : SITE_URL; }
+const NICK_A = ['꾸준한','성실한','느긋한','번뜩이는','차분한','용감한','부지런한','슬기로운'], NICK_B = ['여우','고래','부엉이','수달','판다','토끼','거북이','다람쥐'];
+const cleanNick = v => String(v || '').replace(/[<>&"'`\\\n\r\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
+function myNick(){ let n = cleanNick(store.get('hp:nick', '')); if(!n){ n = NICK_A[Math.random() * 8 | 0] + ' ' + NICK_B[Math.random() * 8 | 0]; store.set('hp:nick', n); } return n; }
+const escH = v => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+function linkOf(q){ const u = new URL(siteUrl()); u.searchParams.set('n', myNick()); for(const k in q) u.searchParams.set(k, q[k]); return u.toString(); }
+const mdTxt = k => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
+function canChal(){ return !!G && !G.adv && !G.duel && G.over && (G.attempt === 1 || (G.chal && G.chal.same)); }
+
+/* 공유 카드 내용 */
+function sqOf(d){ return d.set.map(g => ({ g, v:d.best[g] || 0 })); }
+function cardToday(){
+  const d = dayState(), tl = myTL();
+  return { kind:'today', title:'결과 공유', head:'오늘의 점수', big:tl.score, unit:'점', sub: tl.streak ? `연속 ${tl.streak}일 · 끈기 +${tl.today.pct}%` : '오늘부터 연속 기록 시작', sq:sqOf(d), text:shareText(), q:{} };
+}
+function cardChal(g, score, lv){
+  const vs = G && G.chal && G.chal.n ? G.chal : null;
+  const text = vs && vs.s ? (score > vs.s ? `${vs.n}님, 도전장 받았어요! ${GAMES[g].name} ${fmt(score)}점으로 제가 이겼어요 😎\n억울하면 다시 붙어요!` : `${vs.n}님께 졌지만… ${GAMES[g].name} ${fmt(score)}점! 이번엔 제 도전장이에요.`)
+    : `🦊 하루퍼즐 도전장!\n오늘 ${GAMES[g].name} ${fmt(score)}점 받았어요.\n같은 문제로 나를 이길 수 있을까요?`;
+  return { kind:'chal', title:'도전장 보내기', head:GAMES[g].name + ' 도전장', big:score, unit:'점', sub:'같은 문제로 나를 이겨 봐!', g, text, q:{ c:g, d:dayKey(), s:score, lv } };
+}
+function cardInvite(){
+  const tl = myTL();
+  return { kind:'invite', title:'친구 초대', head:'같이 퍼즐 리그 해요', big:tl.streak || DAILY_N, unit:tl.streak ? '일째' : '게임', sub:tl.streak ? '나는 연속 출석 중 · 너도 한 판!' : '매일 전 세계가 같은 문제', text:`하루퍼즐 리그 같이 해요!\n매일 전 세계가 같은 문제를 풀고 친구랑 점수로 겨뤄요. 한 판이면 출석, 다섯 판이면 리그.\n이 링크로 들어오면 하트 2개 선물 🎁`, q:{ i:1 } };
+}
+function cardBrag(k, e){
+  if(k === 'level') return { kind:'level', title:'레벨 업 자랑', head:'레벨 업!', big:e.L, unit:'레벨', pre:'Lv.', sub:`칭호 '${titleOf(e.L)}'`, text:`하루퍼즐 솔로 Lv.${e.L} 달성! 칭호 '${titleOf(e.L)}' 🏅\n너도 할 수 있어?`, q:{} };
+  const t = TIERS[e.to][0], up = e.to > e.from;
+  return { kind:'league', title:'리그 결과 자랑', head: up ? t + ' 리그 승급!' : t + ' 리그 ' + e.pos + '위', big:e.score, unit:'점', sub:`지난주 ${TIERS[e.from][0]} 리그 ${e.pos}위`, text: up ? `하루퍼즐 주간 리그 ${t}(으)로 승급했어요! 🏆 지난주 ${e.pos}위 · ${fmt(e.score)}점` : `하루퍼즐 주간 리그 ${TIERS[e.from][0]} ${e.pos}위! 🏆 ${fmt(e.score)}점`, q:{} };
+}
+
+/* 이미지 카드(1080×1350, 인스타·카톡에 그대로) */
+async function cardCanvas(o){
+  try{ await Promise.all(['900 80px "Black Han Sans"', '60px Jua', '700 40px "Noto Sans KR"'].map(f => document.fonts.load(f))); }catch(_){}
+  const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), HV = '"Black Han Sans", Jua, sans-serif', JU = 'Jua, "Noto Sans KR", sans-serif', NO = '"Noto Sans KR", sans-serif';
+  const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3A2590'); g.addColorStop(.55, '#22166A'); g.addColorStop(1, '#140C40'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.save(); c.translate(W / 2, 330); for(let i = 0; i < 16; i++){ c.rotate(Math.PI / 8); c.fillStyle = i % 2 ? 'rgba(255,255,255,.045)' : 'rgba(255,210,90,.05)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(-90, -1100); c.lineTo(90, -1100); c.closePath(); c.fill(); } c.restore();
+  const rs = mulberry(seedFrom('card')); for(let i = 0; i < 70; i++){ c.fillStyle = `rgba(255,255,255,${.25 + rs() * .5})`; c.beginPath(); c.arc(rs() * W, rs() * H, 1 + rs() * 3, 0, 7); c.fill(); }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
+  const outl = (t, x, y, font, fill, st, lw) => { c.font = font; c.lineWidth = lw; c.strokeStyle = st; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); };
+  const lg = c.createLinearGradient(0, 70, 0, 170); lg.addColorStop(0, '#FFF0A0'); lg.addColorStop(1, '#FFB020');
+  outl('하루퍼즐', W / 2 - 80, 165, `100px ${HV}`, lg, '#1A0F45', 16);
+  c.save(); c.translate(W / 2 + 205, 128); c.rotate(-.06); c.fillStyle = '#F0368A'; rr(-72, -44, 144, 80, 18); c.fill(); c.lineWidth = 7; c.strokeStyle = '#1A0F45'; c.stroke(); c.fillStyle = '#fff'; c.font = `58px ${JU}`; c.fillText('리그', 0, 16); c.restore();
+  const dt = new Date(); c.fillStyle = 'rgba(255,255,255,.75)'; c.font = `500 36px ${NO}`; c.fillText(`${dt.getFullYear()}.${dt.getMonth() + 1}.${dt.getDate()} · ${escNick(myNick())}`, W / 2, 238);
+  /* 패널 */
+  const px = 80, py = 290, pw = W - 160, ph = 800;
+  c.fillStyle = '#0E0830'; rr(px, py + 14, pw, ph, 48); c.fill();
+  const pg = c.createLinearGradient(0, py, 0, py + ph); pg.addColorStop(0, '#FFF8EA'); pg.addColorStop(1, '#FBE7C0'); c.fillStyle = pg; rr(px, py, pw, ph, 48); c.fill(); c.lineWidth = 9; c.strokeStyle = '#1A0F45'; c.stroke();
+  c.fillStyle = '#6C3CE0'; rr(W / 2 - 300, py - 40, 600, 92, 46); c.fill(); c.lineWidth = 7; c.strokeStyle = '#1A0F45'; c.stroke();
+  c.fillStyle = '#fff'; c.font = `50px ${JU}`; c.fillText(o.head, W / 2, py + 22);
+  const ng = c.createLinearGradient(0, py + 140, 0, py + 360); ng.addColorStop(0, '#FFE066'); ng.addColorStop(1, '#FF9A1F');
+  const bigT = (o.pre || '') + fmt(o.big); let fs = 230; c.font = `${fs}px ${HV}`; while(c.measureText(bigT).width > pw - 260 && fs > 120){ fs -= 10; c.font = `${fs}px ${HV}`; }
+  const bw = c.measureText(bigT).width; c.font = `60px ${JU}`; const uw = c.measureText(o.unit).width;
+  const bx = W / 2 - (bw + 16 + uw) / 2 + bw / 2;
+  outl(bigT, bx, py + 350, `${fs}px ${HV}`, ng, '#1A0F45', 18);
+  c.fillStyle = '#3A2261'; c.font = `60px ${JU}`; c.textAlign = 'left'; c.fillText(o.unit, bx + bw / 2 + 16, py + 345); c.textAlign = 'center';
+  c.fillStyle = '#FF7A1F'; rr(W / 2 - 330, py + 400, 660, 84, 42); c.fill(); c.fillStyle = '#fff'; c.font = `700 40px ${NO}`; c.fillText('🔥 ' + o.sub, W / 2, py + 456);
+  if(o.sq && o.sq.length){
+    const n = o.sq.length, sz = 132, gap = 26, sx = W / 2 - (n * sz + (n - 1) * gap) / 2;
+    o.sq.forEach((q, k) => { const x = sx + k * (sz + gap), y = py + 540, col = !q.v ? '#DDD3C0' : q.v >= 800 ? '#27B86A' : q.v >= 400 ? '#FFC93C' : '#FF8A3D';
+      c.fillStyle = 'rgba(26,15,69,.25)'; rr(x, y + 8, sz, sz, 28); c.fill(); c.fillStyle = col; rr(x, y, sz, sz, 28); c.fill(); c.lineWidth = 6; c.strokeStyle = '#1A0F45'; c.stroke();
+      c.fillStyle = q.v ? '#fff' : '#9C8F78'; c.font = `46px ${HV}`; c.fillText(q.v ? String(Math.round(q.v / 100)) : '–', x + sz / 2, y + 88);
+      c.fillStyle = '#5E4B7E'; c.font = `500 26px ${NO}`; const nm = GAMES[q.g].name.split(' ')[0]; c.fillText(nm.length > 5 ? nm.slice(0, 5) : nm, x + sz / 2, y + sz + 42); });
+    c.fillStyle = '#7B6A93'; c.font = `500 28px ${NO}`; c.fillText('칸 = 게임별 오늘 점수(백 단위) · 초록 800+ 노랑 400+', W / 2, py + 770);
+  } else {
+    c.fillStyle = '#3A2261'; c.font = `56px ${JU}`; c.fillText(o.kind === 'chal' ? '같은 문제, 누가 더 잘할까?' : o.kind === 'invite' ? '매일 전 세계가 같은 문제' : '꾸준함이 실력이 된다', W / 2, py + 620);
+    c.fillStyle = '#7B6A93'; c.font = `500 34px ${NO}`; c.fillText(o.kind === 'chal' ? '링크를 누르면 바로 같은 문제로 시작해요' : '설치 없이 링크로 바로 한 판', W / 2, py + 690);
+  }
+  c.fillStyle = '#FFE8A8'; c.font = `50px ${JU}`; c.fillText('똑똑한 사람보다 꾸준한 사람이 이긴다', W / 2, 1180);
+  c.fillStyle = 'rgba(255,255,255,.6)'; c.font = `500 32px ${NO}`; c.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), W / 2, 1250);
+  return cv;
+}
+const escNick = v => cleanNick(v) || '나';
+
+/* 공유 시트: 카드 미리보기 + 기기 공유(카카오톡·메시지 등) / 이미지 저장 / 글·링크 복사 */
+function viralShare(o, back){
+  const build = () => { const url = linkOf(o.q || {}); return { url, text:o.text + '\n' + url }; };
+  let cur = build(), cv = null, gen = 0;
+  const giftOk = !dayState().shareGift;
+  openModal(`<h3>${o.title}</h3><div class="shimg"><img id="shImg" alt="공유 카드 미리보기"></div>
+    <label class="nickrow"><span>보이는 이름</span><input id="shNick" maxlength="12" value="${escH(myNick())}" autocomplete="nickname"></label>
+    <div class="shrow"><button class="btn gold" id="shSend">${ic('share')} 공유하기</button></div>
+    <div class="shrow"><button class="btn small secondary" id="shSave">이미지 저장</button><button class="btn small secondary" id="shCopy">글·링크 복사</button></div>
+    ${giftOk ? '<p class="shgift">오늘 첫 공유 선물: 하트 +1</p>' : ''}
+    <details class="brk"><summary>보내질 글 보기</summary><div class="sharebox" id="shareTxt"></div></details>
+    <div class="mbtns one"><button class="b2" id="mBack">뒤로</button></div>`);
+  const paint = async () => { const my = ++gen; $('#shareTxt').textContent = cur.text; const c2 = await cardCanvas(o); if(my !== gen || !$('#shImg')) return; cv = c2; $('#shImg').src = cv.toDataURL('image/png'); };
+  paint();
+  let nt = 0;
+  $('#shNick').oninput = e => { clearTimeout(nt); nt = setTimeout(() => { const v = cleanNick(e.target.value); if(v){ store.set('hp:nick', v); cur = build(); paint(); } }, 350); };
+  $('#mBack').onclick = typeof back === 'function' ? back : closeModal;
+  const blobOf = () => new Promise(res => { if(!cv) return res(null); cv.toBlob(b => res(b), 'image/png'); });
+  const fname = 'harupuzzle-' + dayKey() + '.png';
+  const done = how => {
+    const d = dayState(); d.shares = (d.shares || 0) + 1;
+    if(!d.shareGift){ d.shareGift = true; saveDay(d); addHearts(1); sfx('heartGet'); toast(how + ' · 오늘 첫 공유 선물 하트 +1'); const g2 = $('.shgift'); if(g2) g2.remove(); }
+    else { saveDay(d); toast(how); }
+    store.set('hp:shareN', store.get('hp:shareN', 0) + 1);
+  };
+  const copy = async () => {
+    let ok = false; try{ await navigator.clipboard.writeText(cur.text); ok = true; }catch(_){}
+    if(!ok){ try{ const ta = document.createElement('textarea'); ta.value = cur.text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); }catch(_){} }
+    return ok;
+  };
+  $('#shCopy').onclick = async () => { if(await copy()) done('글과 링크를 복사했어요'); else toast('아래 \'보내질 글 보기\'를 길게 눌러 복사해 주세요'); };
+  $('#shSave').onclick = async () => { const b = await blobOf(); if(!b){ toast('카드를 만드는 중이에요'); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fname; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); done('이미지를 저장했어요'); };
+  $('#shSend').onclick = async () => {
+    try{
+      const b = await blobOf(), f = b && typeof File === 'function' ? new File([b], fname, { type:'image/png' }) : null;
+      if(f && navigator.canShare && navigator.canShare({ files:[f] })){ await navigator.share({ files:[f], text:cur.text }); done('공유했어요'); return; }
+      if(navigator.share){ await navigator.share({ title:'하루퍼즐 리그', text:o.text, url:cur.url }); done('공유했어요'); return; }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+    if(await copy()) done('글과 링크를 복사했어요 · 카톡에 붙여 넣어 보내 주세요'); else toast('아래 글을 길게 눌러 복사해 주세요');
+  };
+}
+
+/* 링크로 들어온 사람: 초대한 친구를 친구 리그에 추가 + 하트 선물, 도전장이면 도전 창 */
+function linkFriendsLoad(){ for(const n of store.get('hp:linkFriends', [])) if(!FRIENDS.some(f => f.name === n)) FRIENDS.push({ name:n, av:'', link:true }); }
+function linkFriendAdd(n){
+  if(!n || n === myNick() || FRIENDS.some(f => f.name === n)) return false;
+  const L = store.get('hp:linkFriends', []); L.push(n); store.set('hp:linkFriends', L.slice(-20));
+  FRIENDS.push({ name:n, av:'', link:true }); return true;
+}
+function readLink(){
+  let p; try{ p = new URLSearchParams(location.search); }catch(_){ return null; }
+  const n = cleanNick(p.get('n')), c = p.get('c');
+  if(!n && !c) return null;
+  const o = { n, g: GAME_IDS.includes(c) ? c : null, d: /^\d{4}-\d{2}-\d{2}$/.test(p.get('d') || '') ? p.get('d') : '', s: Math.max(0, Math.min(99999, parseInt(p.get('s'), 10) || 0)), lv: ['easy','normal','hard'].includes(p.get('lv')) ? p.get('lv') : 'normal', inv: p.get('i') === '1' };
+  try{ history.replaceState(null, '', location.pathname + location.hash); }catch(_){}
+  return o;
+}
+function chalBox(score){
+  const ch = G && G.chal; if(!ch || !ch.n) return '';
+  if(!ch.same || !ch.s) return `<div class="chal"><b>${escH(ch.n)}님</b>에게 ${score ? fmt(score) + '점' : '이번 판'} 결과로 도전장을 보내 보세요</div>`;
+  const win = score > ch.s, tie = score === ch.s;
+  return `<div class="chal"><div class="vs"><div class="${win ? 'w' : ''}">나<b>${score ? fmt(score) : '실패'}</b></div><em>VS</em><div class="${!win && !tie ? 'w' : ''}">${escH(ch.n)}<b>${fmt(ch.s)}</b></div></div>
+    <p class="note" style="margin:8px 0 0">${win ? `도전 성공! ${fmt(score - ch.s)}점 차로 이겼어요 🎉` : tie ? '완벽한 무승부!' : score ? `${fmt(ch.s - score)}점 차 · 아깝다!` : `이번엔 ${escH(ch.n)}님 승리`}</p></div>`;
+}
+function showChallenge(o){
+  const g = o.g, same = o.d === dayKey(), d = dayState(), n = escH(o.n || '친구');
+  const tried = d.tries[g] > 0;
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">CHALLENGE</p><div class="ttl">${n}님의 도전장</div>
+    <span class="chal-art">${ART[g] ? ART[g]() : ''}</span>
+    <p class="note">${same ? `오늘 <b>${GAMES[g].name}</b>에서 <b>${fmt(o.s)}점</b>을 받았어요.<br>같은 문제로 이길 수 있을까요?` : `${o.d ? mdTxt(o.d) + ' ' : ''}도전장이에요. 문제는 매일 바뀌니까<br>오늘의 <b>${GAMES[g].name}</b>로 새로 붙어 봐요!`}</p>
+    ${same && tried ? '<p class="note" style="font-size:13px">이미 오늘 이 게임을 했어도 도전장은 친구와 같은 첫 문제로 나와요.</p>' : ''}
+    <div class="mbtns"><button class="b2" id="chLater">나중에</button><button class="b1" id="chGo">도전하기 ${costTag()}</button></div>`);
+  $('#modal').classList.add('celebrate'); sfx('fanfare');
+  $('#chLater').onclick = () => { closeModal(); renderHome(); };
+  $('#chGo').onclick = () => { closeModal(); startGame(g, o.lv, { chal:{ n:o.n, s: same ? o.s : 0, same } }); };
+}
+function onArrive(o){
+  if(!o) return false;
+  const added = linkFriendAdd(o.n);
+  let gift = false;
+  if(o.n && !store.get('hp:invGift', 0)){ store.set('hp:invGift', 1); addHearts(2); gift = true; }
+  store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0)));
+  renderHome();
+  if(o.g){ showChallenge(o); if(gift) setTimeout(() => toast(`${o.n}님의 초대 선물 · 하트 +2`), 600); return true; }
+  const n = escH(o.n);
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">WELCOME</p><div class="ttl">${n}님이 초대했어요</div>
+    <p class="note">매일 전 세계가 같은 문제를 풀고, 친구와 점수로 겨루는 퍼즐 리그예요.<br><b>똑똑한 사람보다 꾸준한 사람이 이긴다!</b></p>
+    <div class="rewards">${gift ? `<div class="reward"><span class="ri">${HEART_G}</span><b>+2</b>하트 선물</div>` : ''}${added ? `<div class="reward"><span class="ri">${avatar({ name:o.n })}</span><b>친구</b>리그 추가</div>` : ''}</div>
+    <div class="mbtns one"><button class="b1" id="wGo">${n}님 점수 넘으러 가기</button></div>`);
+  $('#modal').classList.add('celebrate'); fxConfetti(); sfx('fanfare');
+  $('#wGo').onclick = () => { closeModal(); quickStart(pickNext()); };
+  return true;
+}
+linkFriendsLoad();
 renderHome(); lastSig = homeSig(); checkOvertake();
 const LG_RES = leagueRollover();
-if(store.get('hp:welcome', 0) < 3) welcome();
+const ARRIVE = readLink();
+if(onArrive(ARRIVE)){}
+else if(store.get('hp:welcome', 0) < 3) welcome();
 else if(LG_RES) showLeagueResult(LG_RES);
 else { const ls0 = leagueState(); if(ls0.last && ls0.seen === false) showLeagueResult(ls0.last); }
 
