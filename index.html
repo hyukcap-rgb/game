@@ -5259,6 +5259,17 @@ function flOppLeft(){
   if(G.over || G.ending) return;
   if(G.phase === 'joining'){ flMatchFail(); return; }
   if(G.phase !== 'battle') return;
+  /* 상대가 전투를 정상으로 끝내고(rv 공개) 나간 경우: 기권승이 아니라 마지막 포격 결과로 판정 */
+  if(Array.isArray(G.oppRv)){
+    const me = G;
+    setTimeout(() => {
+      if(G !== me || G.over || G.ending) return;
+      if(G.myLeft <= 0) flEnd(false);
+      else if(G.enSunk.length >= FL_SHIPS.length) flEnd(true);
+      else { G.forfeit = true; flBanner('#flEnP', '상대가 떠났어요', 'good', '기권승이에요'); flEnd(true); }
+    }, 3500);
+    return;
+  }
   G.forfeit = true; flBanner('#flEnP', '상대가 떠났어요', 'good', '기권승이에요');
   flEnd(true);
 }
@@ -5380,7 +5391,7 @@ function flTimerTick(){
     const i = G.aimI >= 0 && !G.enShot[G.aimI] ? G.aimI : open[Math.floor(Math.random() * open.length)];
     toast('시간이 지나 자동으로 발사했어요'); flFire(i);
   }
-  if(t === 'op' && G.opSince && Date.now() - G.opSince > 70000){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
+  if(t === 'op' && !G.busyIn && G.opSince && Date.now() - G.opSince > 70000){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
 }
 
 /* 조준·발사 */
@@ -5589,6 +5600,7 @@ function flSync(){
   if(!G.busyIn && G.opp.sh.length > G.an.length){
     const i = Math.max(0, Math.min(99, G.opp.sh[G.an.length] | 0)), r = flReceive(i);
     G.an.push(r); G.nr.presence({ an:G.an }).catch(() => {});
+    G.opSince = Date.now();   /* 상대가 쏘고 있으면 응답 없음이 아님(연속 명중 중 기권승 오판 방지) */
     G.busyIn = true; flTurnUI(); const me = G;
     flEnemyAim(i, () => { if(G !== me) return; G.busyIn = false; flIncoming(i, r); if(G.myLeft <= 0){ flEnd(false); return; } flSync(); }, true);
     return;
