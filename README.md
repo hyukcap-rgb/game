@@ -53,3 +53,4 @@ GitHub Pages를 켜면(Settings → Pages → Branch: `main` / root) 링크로 �
 - [테마 회의: 두뇌 지수](docs/05_테마회의_두뇌지수.md)
 - [모험 모드 설계](docs/06_모험모드_설계.md)
 - [바이럴 기능 점검·개발](docs/10_바이럴_기능점검.md)
+- [난이도 벤치마크·동물 팡 솔로 개편](docs/14_난이도_벤치마크.md)

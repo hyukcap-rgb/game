@@ -2322,7 +2322,7 @@ function openAdvMap(id, want){
   const draw = () => {
     const cs = (c - 1) * 10;
     const cells = [1,2,3,4,5,10,9,8,7,6].map(k => { const n = cs + k, lock = n > p.max, s = p.stars[n] || 0;
-      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + ' 잠김"' : 'aria-label="스테이지 ' + n + (k === 10 ? ' 보스' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}</button>`; }).join('');
+      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id] && NG[id].stageTag ? ' ' + NG[id].stageTag(n) : ''}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + ' 잠김"' : 'aria-label="스테이지 ' + n + (k === 10 ? ' 보스' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}</button>`; }).join('');
     const canNext = p.max > c * 10;
     openModal(`<h3>${GAMES[id].name} 솔로</h3>
       <div class="chhead"><button id="chPrev" aria-label="이전 챕터" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>챕터 ${c} · 별 ${chStars(id, c)}/30${chCleared(id, c) ? ' · 클리어' : ''}</small></div><button id="chNext" aria-label="다음 챕터" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
@@ -6241,13 +6241,15 @@ function miss(el){
 NG.match = (() => {
   const N = 7;
   const KINDS = ['octopus','whale','chick','frog','owl','fox','panda'];
+  const KNAME = ['문어','고래','병아리','개구리','부엉이','여우','판다'];
   const TCOL = ['#FF7B84','#5DB8FF','#FFD23F','#6ED147','#A98BF5','#FF9A3F','#F4F4FA'];
   const TDRK = ['#C9404F','#2A7BC4','#D39A00','#2F8F22','#6C4CC4','#C75E12','#3A3340'];
   const TLIT = ['#FFD2D6','#D3EEFF','#FFF3B5','#D8F7C4','#E9E0FF','#FFE3C8','#FFFFFF'];
-  const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4;
-  const ACT_BONUS = { 1:40, 2:40, 3:60, 4:100 };
+  const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4, S_SP = 5, S_BOX = 6;   /* 5 팽이(2×2), 6 나무 상자(장애물) */
+  const ACT_BONUS = { 1:40, 2:40, 3:60, 4:100, 5:50 };
   /* 그리디 자동 플레이어(1수≈생각 0.6초+연출 시간, 60초)의 평균 점수. levels·stage 목표의 기준 */
   const BOT = { 5:12020, 6:6560, 7:3930 };   /* 2026-09-29 네모·덩어리 규칙 추가 후 다시 잰 값(각 12판 평균) */
+  const MT_D = [0,2.97,2.91,3.73,1.28,1.09,4.99,4.99,1.55,1.93,1.57,[0.5,19],4.99,1.01,1.05,0.77,1.86,1.37,1.41,1,0.83,[0.5,23],1.39,0.66,1.39,0.88,4.99,0.65,1.41,0.59,[0.5,32],0.52,0.98,0.86,0.96,[0.5,25],0.85,0.81,1.22,0.54,[0.5,27],[0.5,36],[0.5,40],0.51,0.57,0.76,4.99,1.32,0.75,0.88,0.77,0.83,[0.5,36],0.69,1.6,[0.5,34],1.03,0.89,1.06,0.67,[0.5,33],0.64,[0.5,40],0.54,1,0.57,0.52,0.9,0.7,0.88,0.51,[0.5,30],0.7,[0.5,40],[0.5,34],[0.5,40],1.15,0.58,0.6,0.67,[0.5,37],0.72,0.74,0.74,0.68,[0.5,36],0.73,0.8,0.54,0.61,[0.5,40],[0.5,40],0.66,0.52,0.81,0.72,0.84,0.68,0.62,0.81,[0.5,40]];   /* 솔로 스테이지별 난이도 배율(자동 플레이어로 맞춘 값, 14_난이도_벤치마크.md). 비어 있으면 1 */
   const mult = k => 1 + 0.25 * (k - 1);
   const mb = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const idx = (r, c) => r * N + c;
@@ -6257,7 +6259,9 @@ NG.match = (() => {
      새로 떨어지는 동물은 열마다 따로 쌓아 둔 수열(E.cols)에서 순서대로 꺼낸다.
      → 같은 씨앗 + 같은 수 = 같은 결과. 시뮬레이션용 복제도 같은 수열을 공유한다.
   ------------------------------------------------------------------ */
-  const kindAt = (b, i) => { const t = b[i]; return t && t.s !== S_RB ? t.k : -1; };
+  const kindAt = (b, i) => { const t = b[i]; return t && t.s !== S_RB && t.s !== S_SP && t.s !== S_BOX ? t.k : -1; };
+  const movable = t => !!t && t.s !== S_BOX && !t.lk;
+  const nb4 = i => { const r = Math.floor(i / N), c = i % N, o = []; if(r) o.push(i - N); if(r < N - 1) o.push(i + N); if(c) o.push(i - 1); if(c < N - 1) o.push(i + 1); return o; };
   function newTile(E, k, s){ return { id:++E.uid, k, s:s || 0 }; }
   function nextKind(E, c){ const col = E.cols[c]; if(col.i >= col.arr.length) col.arr.push(col.gen()); return Math.floor(col.arr[col.i++] * E.K); }
   function makeEngine(rng, K){
@@ -6275,7 +6279,8 @@ NG.match = (() => {
     return E;
   }
   function clone(E){
-    return { K:E.K, rng:null, uid:E.uid, b:E.b.map(t => t && { ...t }), cols:E.cols.map(c => ({ arr:c.arr, gen:c.gen, i:c.i })), pts:E.pts, maxCombo:E.maxCombo, moves:E.moves, shuffles:0 };
+    return { K:E.K, rng:null, uid:E.uid, b:E.b.map(t => t && { ...t }), cols:E.cols.map(c => ({ arr:c.arr, gen:c.gen, i:c.i })), pts:E.pts, maxCombo:E.maxCombo, moves:E.moves, shuffles:0,
+      ice:E.ice ? E.ice.slice() : null, goals:E.goals, got:E.got ? { k:{ ...E.got.k }, box:E.got.box, ice:E.got.ice, lock:E.got.lock } : null, movesLeft:E.movesLeft };
   }
   /* 터지는 규칙(2026-09-29): ① 가로·세로 3개 이상 한 줄 ② 2×2 네모 ③ 이어진 같은 동물 5개 이상(모양 무관).
      셋 중 하나라도 걸리면 그 동물과 이어진(상하좌우) 같은 동물 덩어리 전체가 함께 터진다. */
@@ -6314,7 +6319,8 @@ NG.match = (() => {
       const set = new Set(cells), rs = runs.filter(r => set.has(r.cells[0]));
       const k = kindAt(b, i);
       const longest = rs.length ? rs.reduce((m, r) => r.cells.length > m.cells.length ? r : m, rs[0]) : { h:true, k, cells:[cells[0]] };
-      out.push({ runs:rs, k, cells:cells.sort((a, b2) => a - b2), hasH:rs.some(r => r.h), hasV:rs.some(r => !r.h), longest });
+      let sq = false; for(const x of cells){ const r = Math.floor(x / N), c = x % N; if(isSquare(b, r, c)){ sq = true; break; } }
+      out.push({ runs:rs, k, cells:cells.sort((a, b2) => a - b2), hasH:rs.some(r => r.h), hasV:rs.some(r => !r.h), longest, sq });
     }
     return out;
   }
@@ -6326,10 +6332,11 @@ NG.match = (() => {
     if(isSquare(b, r - 1, c - 1) || isSquare(b, r - 1, c) || isSquare(b, r, c - 1) || isSquare(b, r, c)) return true;
     return blob(b, i, new Set()).length >= 5;
   }
-  const isBlast = t => t && (t.s === S_H || t.s === S_V || t.s === S_BOMB);
+  const isBlast = t => t && (t.s === S_H || t.s === S_V || t.s === S_BOMB || t.s === S_SP);
   function swapValid(E, a, b){
     const ta = E.b[a], tb = E.b[b];
-    if(ta.s === S_RB || tb.s === S_RB) return true;
+    if(!movable(ta) || !movable(tb)) return false;
+    if(ta.s === S_RB || tb.s === S_RB || ta.s === S_SP || tb.s === S_SP) return true;
     if(isBlast(ta) && isBlast(tb)) return true;
     E.b[a] = tb; E.b[b] = ta;
     const ok = matchThrough(E.b, a) || matchThrough(E.b, b);
@@ -6354,7 +6361,21 @@ NG.match = (() => {
     if(type === S_H) for(let x = 0; x < N; x++) out.push(idx(r, x));
     else if(type === S_V) for(let y = 0; y < N; y++) out.push(idx(y, c));
     else if(type === S_BOMB) for(let y = r - 1; y <= r + 1; y++) for(let x = c - 1; x <= c + 1; x++) if(y >= 0 && y < N && x >= 0 && x < N) out.push(idx(y, x));
+    else if(type === S_SP){ out.push(i); nb4(i).forEach(j => out.push(j)); }
     return out;
+  }
+  /* 팽이가 날아갈 칸: 상자 > 얼음 > 사슬 > 아직 모자란 목표 동물 > 아무 동물. 같은 판·같은 수면 같은 칸(결정적) */
+  function spinTarget(E, i, skip){
+    const b = E.b, need = k => E.goals ? E.goals.some(g => g.t === 'k' && g.k === k && (E.got.k[k] || 0) < g.n) : false;
+    let best = -1, bv = -1;
+    for(let j = 0; j < N * N; j++){
+      if(j === i || skip.has(j) || !b[j]) continue;
+      const t = b[j];
+      const v = t.s === S_BOX ? 5 : (E.ice && E.ice[j] > 0) ? 4 : t.lk ? 3 : (t.k >= 0 && need(t.k)) ? 2 : t.k >= 0 && !t.s ? 1 : 0;
+      const tie = ((j * 37 + E.moves * 11) % 97) / 100;
+      if(v + tie > bv){ bv = v + tie; best = j; }
+    }
+    return best;
   }
   function commonKind(E, skip){
     const n = new Array(E.K).fill(0);
@@ -6368,17 +6389,17 @@ NG.match = (() => {
     let raw = seed ? seed.bonus : 0;
     for(const g of groups){
       const n = g.cells.length, lg = g.longest.cells.length;
-      let type = lg >= 5 ? S_RB : (g.hasH && g.hasV) || n >= 6 ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : 0, pos = -1;
+      let type = lg >= 5 ? S_RB : (g.hasH && g.hasV) || n >= 6 ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : g.sq ? S_SP : 0, pos = -1;
       if(type){
         const cand = [];
         (prefer || []).forEach(p => { if(g.cells.includes(p)) cand.push(p); });
         if(type === S_BOMB){ const hc = new Set(), vc = new Set(); g.runs.forEach(r => r.cells.forEach(x => (r.h ? hc : vc).add(x))); g.cells.forEach(x => { if(hc.has(x) && vc.has(x)) cand.push(x); }); }
         cand.push(g.longest.cells[Math.floor((lg - 1) / 2)]); g.cells.forEach(x => cand.push(x));
-        pos = cand.find(x => b[x] && !b[x].s && !keep.has(x));
+        pos = cand.find(x => b[x] && !b[x].s && !b[x].lk && !keep.has(x));
         if(pos == null){ pos = -1; type = 0; }
       }
       g.cells.forEach(x => { if(x !== pos) clear.add(x); });
-      if(type){ keep.add(pos); created.push({ i:pos, id:b[pos].id, s:type, k:type === S_RB ? -1 : g.k }); }
+      if(type){ keep.add(pos); created.push({ i:pos, id:b[pos].id, s:type, k:type === S_RB || type === S_SP ? -1 : g.k }); }
       const gp = 10 * n + 20 * Math.max(0, n - 3);
       raw += gp; ginfo.push({ cells:g.cells, pts:gp, k:g.k });
     }
@@ -6388,10 +6409,22 @@ NG.match = (() => {
       const i = queue.shift(); if(activated.has(i)) continue; activated.add(i);
       const t = b[i]; let cells;
       if(t.s === S_RB){ const kk = commonKind(E, clear); cells = []; b.forEach((u, j) => { if(u && u.k === kk) cells.push(j); }); acts.push({ type:S_RB, i, cells, kind:kk }); }
+      else if(t.s === S_SP){ cells = area(S_SP, i); const tg = spinTarget(E, i, new Set([...clear, ...cells])); if(tg >= 0) cells.push(tg); acts.push({ type:S_SP, i, cells, tg }); }
       else { cells = area(t.s, i); acts.push({ type:t.s, i, cells }); }
       raw += ACT_BONUS[t.s];
       for(const j of cells){ if(keep.has(j) || !b[j]) continue; if(!clear.has(j)){ clear.add(j); if(b[j].s && !activated.has(j)) queue.push(j); } }
     }
+    /* 장애물: 상자는 옆에서 맞추거나 폭발에 닿으면 한 겹씩, 사슬은 풀리기만(동물은 남음), 얼음은 그 칸이 터지거나 풀리면 한 겹 */
+    const boxHits = [], unlocks = [], iceHits = [];
+    if(E.goals || b.some(t => t && (t.s === S_BOX || t.lk))){
+      const dmg = new Map();
+      groups.forEach(g => { const near = new Set(); g.cells.forEach(x => nb4(x).forEach(j => { if(b[j] && b[j].s === S_BOX) near.add(j); })); near.forEach(j => dmg.set(j, (dmg.get(j) || 0) + 1)); });
+      [...clear].forEach(j => { if(b[j] && b[j].s === S_BOX){ clear.delete(j); dmg.set(j, (dmg.get(j) || 0) + 1); } });
+      dmg.forEach((d, j) => { const t = b[j]; t.hp = Math.max(0, t.hp - d); raw += 20; if(t.hp <= 0){ clear.add(j); if(E.got) E.got.box++; } else boxHits.push({ i:j, id:t.id, hp:t.hp }); });
+      [...clear].forEach(j => { const t = b[j]; if(t && t.lk && !keep.has(j)){ clear.delete(j); t.lk = 0; unlocks.push({ i:j, id:t.id }); raw += 20; if(E.got) E.got.lock++; } });
+    }
+    if(E.ice){ const hitc = new Set([...clear, ...unlocks.map(u => u.i)]); hitc.forEach(j => { if(E.ice[j] > 0 && !(b[j] && b[j].s === S_BOX && b[j].hp > 0)){ E.ice[j]--; raw += 20; iceHits.push({ i:j, left:E.ice[j] }); if(E.ice[j] === 0 && E.got) E.got.ice++; } }); }
+    if(E.got) clear.forEach(j => { const t = b[j]; if(t && t.k >= 0 && t.s !== S_BOX && !keep.has(j)) E.got.k[t.k] = (E.got.k[t.k] || 0) + 1; });
     clear.forEach(i => { if(!inGroup.has(i) && !(seed && seed.clear.includes(i))) raw += 10; });
     if(seed) raw += 10 * seed.clear.length;
     const m = mult(k), pts = Math.round(raw * m);
@@ -6399,14 +6432,19 @@ NG.match = (() => {
     clear.forEach(i => { b[i] = null; });
     created.forEach(cr => { b[cr.i].s = cr.s; b[cr.i].k = cr.k; });
     const falls = [], spawns = [];
+    b.forEach((t, i) => { if(t) t._r = Math.floor(i / N); });
     for(let c = 0; c < N; c++){
-      let w = N - 1;
-      for(let r = N - 1; r >= 0; r--){ const t = b[idx(r, c)]; if(t){ if(r !== w){ b[idx(w, c)] = t; b[idx(r, c)] = null; falls.push({ id:t.id, from:r, to:w, c }); } w--; } }
-      const miss = w + 1;
-      for(let r = w; r >= 0; r--){ const t = newTile(E, nextKind(E, c)); b[idx(r, c)] = t; spawns.push({ id:t.id, k:t.k, r, c, from:r - miss }); }
+      /* 상자는 제자리에 고정. 동물은 상자 칸을 건너뛰어(상자 뒤로 지나) 아래 빈칸으로 떨어진다 */
+      const rows = []; for(let r = N - 1; r >= 0; r--){ const t = b[idx(r, c)]; if(!(t && t.s === S_BOX)) rows.push(r); }
+      const tiles = rows.map(r => b[idx(r, c)]).filter(Boolean);
+      rows.forEach(r => { b[idx(r, c)] = null; });
+      tiles.forEach((t, j) => { const to = rows[j]; b[idx(to, c)] = t; if(t._r != null && t._r !== to) falls.push({ id:t.id, from:t._r, to, c }); });
+      const miss = rows.length - tiles.length;
+      for(let j = tiles.length; j < rows.length; j++){ const r = rows[j], t = newTile(E, nextKind(E, c)); b[idx(r, c)] = t; spawns.push({ id:t.id, k:t.k, r, c, from:r - miss }); }
     }
+    b.forEach(t => { if(t) delete t._r; });
     E.pts += pts;
-    return { k, mult:m, pts, raw, groups:ginfo, acts, clears, created, falls, spawns, converted:seed ? seed.converted : [] };
+    return { k, mult:m, pts, raw, groups:ginfo, acts, clears, created, falls, spawns, converted:seed ? seed.converted : [], boxHits, unlocks, iceHits };
   }
   /* 한 수: 성공하면 E를 바꾸고 단계 목록을 돌려준다. maxSteps로 시뮬레이션 길이 제한 */
   function move(E, a, b2, maxSteps){
@@ -6436,6 +6474,9 @@ NG.match = (() => {
         seed.clear = [...set]; seed.activated = [a, b2]; seed.bonus = 120;
       }
       steps.push(step(E, [], seed, 1, null));
+    } else if(ta.s === S_SP || tb.s === S_SP){
+      const sp = ta.s === S_SP ? b2 : a;   /* 바꾼 뒤 팽이가 있는 칸 */
+      steps.push(step(E, findGroups(E.b), { clear:[sp], acts:[], activated:[], converted:[], bonus:0 }, 1, [b2, a]));
     } else {
       steps.push(step(E, findGroups(E.b), null, 1, [b2, a]));
     }
@@ -6444,17 +6485,38 @@ NG.match = (() => {
       steps.push(step(E, g, null, steps.length + 1, null));
     }
     E.moves++; E.maxCombo = Math.max(E.maxCombo, steps.length);
+    if(E.movesLeft != null) E.movesLeft--;
     return { ok:true, steps };
   }
+  /* 아이템: 이동을 쓰지 않고 칸들을 터뜨린다(망치 1칸 · 가로 한 줄 · 세로 한 줄) */
+  function blastCells(E, cells, type, at){
+    const steps = [];
+    steps.push(step(E, [], { clear:cells.slice(), acts:[{ type, i:at, cells:cells.slice(), item:true }], activated:[], converted:[], bonus:0 }, 1, null));
+    for(;;){ const g = findGroups(E.b); if(!g.length) break; steps.push(step(E, g, null, steps.length + 1, null)); }
+    E.maxCombo = Math.max(E.maxCombo, steps.length);
+    return { ok:true, steps };
+  }
+  /* 요술 모자: 보통 동물 3마리를 특수 동물로(줄 폭탄 2 + 폭탄 1) */
+  function hatConvert(E){
+    const cand = []; E.b.forEach((t, i) => { if(t && !t.s && !t.lk && t.k >= 0) cand.push(i); });
+    const out = [], types = [S_H, S_V, S_BOMB];
+    for(let n = 0; n < 3 && cand.length; n++){ const j = cand.splice((E.moves * 13 + n * 29 + E.uid) % cand.length, 1)[0]; E.b[j].s = types[n]; out.push({ i:j, id:E.b[j].id, s:types[n], k:E.b[j].k }); }
+    return out;
+  }
+  /* 목표 */
+  const goalLeft = E => E.goals ? E.goals.reduce((s, g) => s + Math.max(0, g.n - (g.t === 'k' ? (E.got.k[g.k] || 0) : E.got[g.t])), 0) : 0;
+  const goalDone = E => !!E.goals && goalLeft(E) === 0;
+  const goalVal = E => E.goals ? E.goals.reduce((s, g) => s + Math.min(g.n, g.t === 'k' ? (E.got.k[g.k] || 0) : E.got[g.t]) * (g.t === 'k' ? 1 : 3), 0) : 0;
   function shuffleBoard(E){
-    const tiles = E.b.slice();
+    const pos = []; E.b.forEach((t, i) => { if(movable(t)) pos.push(i); });
+    const tiles = pos.map(i => E.b[i]), rnd = E.rng || mb(E.moves * 7919 + E.uid);
     for(let t = 0; t < 200; t++){
       const arr = tiles.slice();
-      for(let i = arr.length - 1; i > 0; i--){ const j = Math.floor(E.rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
-      E.b = arr;
+      for(let i = arr.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+      pos.forEach((p, n) => { E.b[p] = arr[n]; });
       if(!findGroups(E.b).length && hasMove(E)){ E.shuffles++; return true; }
     }
-    E.b.forEach((t, i) => { if(!t.s) t.k = (i + Math.floor(i / N)) % E.K; });   /* 극히 드문 경우: 계단 무늬로 다시 칠함 */
+    E.b.forEach((t, i) => { if(t && !t.s) t.k = (i + Math.floor(i / N)) % E.K; });   /* 극히 드문 경우: 계단 무늬로 다시 칠함 */
     E.shuffles++; return true;
   }
   /* 한 수의 연출 시간(ms) 추정 — 화면 연출과 같은 공식 */
@@ -6467,7 +6529,8 @@ NG.match = (() => {
   /* 그리디: 바로 얻는 점수(첫 단계)가 가장 큰 수 */
   function bestMove(E){
     const ms = listMoves(E); let best = null, bv = -1;
-    for(const m of ms){ const C = clone(E), r = move(C, m[0], m[1], 1); const v = r.ok ? r.steps[0].pts : -1; if(v > bv){ bv = v; best = m; } }
+    const g0 = goalVal(E);
+    for(const m of ms){ const C = clone(E), r = move(C, m[0], m[1], 1); const v = r.ok ? r.steps[0].pts + (E.goals ? (goalVal(C) - g0) * 60 : 0) : -1; if(v > bv){ bv = v; best = m; } }
     return best;
   }
   function botRun(rng, K, secs, think){
@@ -6487,12 +6550,102 @@ NG.match = (() => {
   const r10 = v => Math.round(v / 10) * 10;
   const LV = { easy:{ kinds:5, f:.6 }, normal:{ kinds:6, f:.85 }, hard:{ kinds:6, f:1 } };
   function levelCfg(lv){ const L = LV[lv] || LV.normal; return { limit:60, kinds:L.kinds, target:r10(BOT[L.kinds] * L.f) }; }
-  function stageCfg(n){
-    const kinds = n >= 30 ? 7 : n >= 8 ? 6 : 5;
-    let f = 0.42 + 0.6 * (1 - Math.exp(-(n - 1) / 25)) - (kinds === 6 && n < 12 ? 0.06 : 0) - (kinds === 7 && n < 36 ? 0.08 : 0);
-    if(n % 10 === 0) f += 0.08;
-    return { limit:60, kinds, target:r10(BOT[kinds] * f), boss:n % 10 === 0 };
+  /* ------------------------------------------------------------------
+     솔로 스테이지(2026-09-29): 이동 횟수 + 목표 모으기(3매치 게임 벤치마크, 14_난이도_벤치마크.md)
+     - 10스테이지 한 사이클: 1~4 오르막, 5 어려움, 6 쉬어가기, 7~9 오르막, 10 보스(아주 어려움)
+     - 새 장애물은 약 5~10스테이지마다 하나씩(처음 두 판은 그 장애물만)
+     - 이동 횟수 = 흔들리는 자동 플레이어가 그 판을 깨는 데 쓴 이동의 분위수(목표 승률) → MT_MOVES 표
+  ------------------------------------------------------------------ */
+  const MT_UNLOCK = { box:6, ice:11, lock:21, box2:26, ice2:31, box3:46 };
+  const MT_Q = [0, .9, .85, .8, .75, .55, .88, .8, .75, .7, .45];   /* 사이클 자리별 목표 승률 */
+  function stagePlan(n, D0){
+    const far = n > 100 ? Math.floor((n - 51) / 50) : 0, T = far ? MT_D[51 + (n - 51) % 50] : MT_D[n];   /* 101 이후는 51~100 표를 돌려 쓰고 50판마다 3%씩 더 어렵게 */
+    const D = D0 || ((Array.isArray(T) ? T[0] : T) || 1) * (1 + far * .03);   /* 난이도 배율: 목표 양 전체에 곱함(자동 플레이어로 맞춘 값). [배율, 이동] 이면 이동도 따로 */
+    const cyc = (n - 1) % 10 + 1, hard = cyc === 5, boss = cyc === 10, R = mb(seedFrom('mtplan:' + n));
+    const kinds = n < 4 ? 5 : 6;
+    const has = k => n >= MT_UNLOCK[k];
+    const intro = n === 6 || n === 7 ? 'box' : n === 11 || n === 12 ? 'ice' : n === 21 || n === 22 ? 'lock' : n === 26 ? 'box2' : n === 31 ? 'ice2' : n === 46 ? 'box3' : null;
+    let types = [];
+    if(intro) types = [intro.replace(/\d/, '')];
+    else {
+      const pool = ['k']; if(has('box')) pool.push('box', 'box'); if(has('ice')) pool.push('ice', 'ice'); if(has('lock')) pool.push('lock');
+      const want = n < 6 ? 1 : (hard || boss) ? 2 : (R() < .45 ? 2 : 1);
+      while(types.length < want && types.length < new Set(pool).size){ const t = pool[Math.floor(R() * pool.length)]; if(!types.includes(t)) types.push(t); }
+    }
+    const lay = { box:[], ice:[], lock:[] }, goals = [], used = new Set();
+    const boost = (hard ? 1.25 : boss ? 1.45 : cyc === 6 ? .8 : 1);
+    if(types.includes('box')){
+      const hp = has('box3') && boss ? 3 : has('box2') && (hard || boss || R() < .45) ? 2 : 1;
+      const cnt = Math.max(3, Math.min(14, Math.round((5 + n / 7) * boost * D)));
+      const shapes = [
+        () => { const r = 3 + Math.floor(R() * 2); for(const c of [3, 2, 4, 1, 5, 0, 6]) lay.box.push([idx(r, c), hp]); },
+        () => { for(const r of [4, 5]) for(let c = 0; c < N; c++) if((r + c) % 2 === 0) lay.box.push([idx(r, c), hp]); },
+        () => { for(const [r0, c0] of [[3, 0], [3, N - 2], [5, 0], [5, N - 2]]) for(let y = r0; y < r0 + 2; y++) for(let x = c0; x < c0 + 2; x++) lay.box.push([idx(y, x), hp]); },
+        () => { for(let r = 2; r < N - 1; r++) lay.box.push([idx(r, 3), hp]); for(const c of [2, 4, 1, 5]) lay.box.push([idx(4, c), hp]); }
+      ];
+      shapes[Math.floor(R() * shapes.length)]();
+      lay.box = lay.box.slice(0, cnt); lay.box.forEach(([i]) => used.add(i));
+      goals.push({ t:'box', n:lay.box.length, hp });
+    }
+    if(types.includes('ice')){
+      const lv = has('ice2') && (hard || boss || R() < .45) ? 2 : 1;
+      const cnt = Math.max(4, Math.min(40, Math.round((8 + n / 3) * boost * D)));
+      const cells = [], add = i => { if(!used.has(i) && !cells.includes(i)) cells.push(i); };
+      const sh = Math.floor(R() * 4);
+      /* 가운데·아래에서 두 번째 줄부터 채운다(맨 아래 구석은 늦게) */
+      for(const r of [5, 4, 3, 6, 2, 1, 0]) for(const c of [3, 2, 4, 1, 5, 0, 6]){
+        const ok = sh === 0 ? true : sh === 1 ? Math.abs(r - 3) + Math.abs(c - 3) <= 3 : sh === 2 ? (r + c) % 2 === 0 : (c <= 1 || c >= N - 2);
+        if(ok) add(idx(r, c));
+      }
+      cells.slice(0, cnt).forEach(i => lay.ice.push([i, lv]));
+      goals.push({ t:'ice', n:lay.ice.length, lv });
+    }
+    if(types.includes('lock')){
+      const cnt = Math.max(3, Math.min(14, Math.round((5 + n / 12) * boost * D))), cand = [];
+      for(let i = 0; i < N * N; i++){ const r = Math.floor(i / N), c = i % N; if(!used.has(i) && r >= 2 && r <= 5 && c >= 1 && c <= 5) cand.push(i); }
+      while(lay.lock.length < cnt && cand.length) lay.lock.push(cand.splice(Math.floor(R() * cand.length), 1)[0]);
+      goals.push({ t:'lock', n:lay.lock.length });
+    }
+    /* 동물 모으기는 인트로 판을 빼고 늘 들어가며, 난이도를 맞추는 조절 손잡이다(양 A = 자동 플레이어로 맞춘 값) */
+    if(!intro){
+      const nk = n >= 8 && R() < .5 ? 2 : 1, ks = [];
+      while(ks.length < nk){ const k = Math.floor(R() * kinds); if(!ks.includes(k)) ks.push(k); }
+      const per = Math.max(5, Math.round((12 + n * .6) * boost * D / (nk === 2 ? 1.5 : 1)));
+      ks.forEach(k => goals.unshift({ t:'k', k, n:per }));
+    }
+    const moves = !D0 && Array.isArray(T) ? T[1] : Math.min(30, 16 + Math.floor(n / 4));   /* 설계 이동 수: 16 → 30 */
+    return { n, cyc, hard, boss, intro:!!intro, kinds, goals, lay, moves, q:Math.max(boss ? .35 : .45, MT_Q[cyc] - Math.floor((n - 1) / 10) * .01) };
   }
+  /* 판을 만들고 장애물을 놓는다 */
+  function makeStage(rng, cfg){
+    const E = makeEngine(rng, cfg.kinds);
+    E.goals = cfg.goals; E.got = { k:{}, box:0, ice:0, lock:0 }; E.movesLeft = cfg.moves; E.ice = new Array(N * N).fill(0);
+    const L = cfg.lay;
+    L.box.forEach(([i, hp]) => { E.b[i] = { id:++E.uid, k:-2, s:S_BOX, hp }; });
+    L.ice.forEach(([i, lv]) => { E.ice[i] = lv; });
+    L.lock.forEach(i => { if(E.b[i] && !E.b[i].s) E.b[i].lk = 1; });
+    for(let t = 0; t < 40 && (!hasMove(E) || findGroups(E.b).length); t++) shuffleBoard(E);
+    return E;
+  }
+  /* 흔들리는 자동 플레이어: 좋은 수 1~3위 중 하나(60/25/15%). 목표를 다 모을 때까지 쓴 이동 수 */
+  function botMoves(rng, cfg, noise, cap){
+    const E = makeStage(rng, Object.assign({}, cfg, { moves:999 })); let n = 0;
+    while(!goalDone(E) && n < (cap || 120)){
+      if(!hasMove(E)) shuffleBoard(E);
+      const ms = listMoves(E); if(!ms.length) break;
+      const g0 = goalVal(E);
+      const sc = ms.map(m => { const C = clone(E), r = move(C, m[0], m[1], 1); return [r.ok ? r.steps[0].pts + (goalVal(C) - g0) * 60 : -1, m]; }).sort((a, b) => b[0] - a[0]);
+      const x = noise(), pick = x < .6 ? 0 : x < .85 ? 1 : 2;
+      const m = sc[Math.min(pick, sc.length - 1)][1];
+      move(E, m[0], m[1]); n++;
+    }
+    return n;
+  }
+  function stageCfg(n){
+    const p = stagePlan(n);
+    return Object.assign(p, { mode:'moves', limit:0, target:0 });
+  }
+
 
   /* ------------------------------------------------------------------
      그림
@@ -6515,6 +6668,27 @@ NG.match = (() => {
   const ARW_BODY = `<g filter="url(#pm)"><path d="M4 50l17-15v9h58v-9l17 15-17 15v-9H21v9z" fill="#FFC400"/></g>`;
   const BOMB_BODY = `<g filter="url(#pm)"><path d="M58 38l9-10" stroke="#8A6A3A" stroke-width="5" stroke-linecap="round"/></g><g filter="url(#pb)"><circle cx="45" cy="60" r="27" fill="#3B3F5C"/></g>${GL(36, 49, 9, 5)}<g filter="url(#ps)"><path d="M69 18l3 6 7 1-5 5 1 7-6-4-6 3 1-7-5-5 7-1z" fill="#FFB000"/></g>`;
   ['rb', 'arw', 'bomb'].forEach((n, i) => SRC[n] = svgSrc([RB_BODY, ARW_BODY, BOMB_BODY][i]));
+  /* 팽이(2×2) · 나무 상자(1~3겹) · 사슬 · 아이템 — 같은 비닐 장난감 질감, 직접 그린 오리지널 */
+  SRC.sp = svgSrc(`<ellipse cx="50" cy="90" rx="24" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pm)"><rect x="45" y="10" width="10" height="26" rx="5" fill="#3B6BE0"/></g>
+    <g filter="url(#pb)"><path d="M18 50c0-9 14-16 32-16s32 7 32 16c0 6-4 9-10 12L50 88 28 62c-6-3-10-6-10-12z" fill="#FF4F6E"/></g>
+    <g filter="url(#pm)"><path d="M22 49c3-7 14-11 28-11v24zM78 49c-3-7-14-11-28-11v24z" fill="#FFC928"/><path d="M50 38c-9 0-17 2-22 6l22 18zM50 38c9 0 17 2 22 6L50 62z" fill="#FF8A1F" opacity=".9"/></g>
+    ${GL(36, 44, 11, 5, -12)}<g filter="url(#ps)"><circle cx="50" cy="50" r="6" fill="#fff"/></g>`);
+  const BOXB = hp => `<ellipse cx="50" cy="92" rx="36" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pb)"><rect x="8" y="10" width="84" height="80" rx="14" fill="${['#D9894A', '#C46F33', '#9E5424'][hp - 1]}"/></g>
+    <g filter="url(#pm)"><rect x="18" y="20" width="64" height="60" rx="8" fill="${['#E9A565', '#D98A4A', '#B86A34'][hp - 1]}"/></g>
+    <g filter="url(#ps)"><path d="M22 76L78 24" stroke="${['#B8672E', '#A25522', '#7E3F17'][hp - 1]}" stroke-width="9" stroke-linecap="round"/>${hp >= 2 ? '<path d="M22 24L78 76" stroke="#8F4A1D" stroke-width="9" stroke-linecap="round"/>' : ''}</g>
+    ${hp >= 2 ? '<g filter="url(#ps)"><rect x="10" y="12" width="16" height="16" rx="4" fill="#9AA6B8"/><rect x="74" y="12" width="16" height="16" rx="4" fill="#9AA6B8"/><rect x="10" y="72" width="16" height="16" rx="4" fill="#9AA6B8"/><rect x="74" y="72" width="16" height="16" rx="4" fill="#9AA6B8"/></g>' : ''}
+    ${hp >= 3 ? '<g filter="url(#pm)"><rect x="8" y="44" width="84" height="12" rx="5" fill="#6E7A8E"/></g>' : ''}${GL(30, 22, 16, 5, -8)}`;
+  [1, 2, 3].forEach(h => SRC['box' + h] = svgSrc(BOXB(h)));
+  SRC.lock = svgSrc(`<g filter="url(#pm)"><path d="M6 20L94 80M6 80L94 20" stroke="#8E97AC" stroke-width="11" stroke-linecap="round" stroke-dasharray="14 7"/></g>
+    <g filter="url(#pm)"><path d="M38 50v-9a12 12 0 0 1 24 0v9" fill="none" stroke="#6E7A8E" stroke-width="7"/></g><g filter="url(#pb)"><rect x="30" y="47" width="40" height="32" rx="8" fill="#FFB020"/></g><g filter="url(#ps)"><circle cx="50" cy="60" r="4.5" fill="#6A3B00"/><rect x="48" y="62" width="4" height="9" rx="2" fill="#6A3B00"/></g>`);
+  SRC.ham = svgSrc(`<ellipse cx="50" cy="90" rx="26" ry="5" fill="url(#gs)"/><g filter="url(#pm)"><rect x="44" y="40" width="12" height="48" rx="6" fill="#C98A4A" transform="rotate(35 50 64)"/></g><g filter="url(#pb)"><rect x="18" y="14" width="50" height="30" rx="10" fill="#FF5C7A" transform="rotate(35 43 29)"/></g>${GL(34, 20, 10, 5, 35)}`);
+  SRC.row = svgSrc(`<g filter="url(#pb)"><path d="M6 50l20-18v10h48V32l20 18-20 18V58H26v10z" fill="#43A6FF"/></g>${GL(40, 42, 18, 4, 0)}`);
+  SRC.col = svgSrc(`<g filter="url(#pb)"><path d="M50 6l18 20H58v48h10L50 94 32 74h10V26H32z" fill="#2FBF6A"/></g>${GL(46, 30, 4, 12, 0)}`);
+  SRC.hat = svgSrc(`<ellipse cx="50" cy="90" rx="30" ry="5" fill="url(#gs)"/><g filter="url(#pb)"><path d="M50 8l22 62H28z" fill="#7B4BE0"/><ellipse cx="50" cy="74" rx="38" ry="12" fill="#5B34C4"/></g>
+    <g filter="url(#ps)"><path d="M44 36l3-7 3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5z" fill="#FFE45C"/><circle cx="58" cy="56" r="3.5" fill="#FFE45C"/></g>${GL(42, 30, 5, 12, 20)}`);
+  const IK = k => IMG[k] || toURL(SRC[k]);
   ANIM.forEach((f, k) => SRC[k] = svgSrc(f()));
   const img = k => IMG[k] || toURL(SRC[k]);
   let RB_IMG = toURL(SRC.rb), ARW_IMG = toURL(SRC.arw), BOMB_IMG = toURL(SRC.bomb);
@@ -6534,6 +6708,12 @@ NG.match = (() => {
     });
   }
   function tileInner(t){
+    if(t.s === S_BOX) return `<div class="mt-in bx"><i class="mt-img" style="background-image:${IK('box' + Math.max(1, Math.min(3, t.hp)))}"></i></div>`;
+    if(t.s === S_SP) return `<div class="mt-in sp"><i class="mt-img" style="background-image:${IK('sp')}"></i></div>`;
+    if(t.lk) return tileInner0(t) .replace(/<\/div>$/, `<i class="mt-lock" style="background-image:${IK('lock')}"></i></div>`);
+    return tileInner0(t);
+  }
+  function tileInner0(t){
     if(t.s === S_RB) return `<div class="mt-in rb"><i class="mt-rbg"></i><i class="mt-img" style="background-image:${RB_IMG}"></i></div>`;
     const sp = t.s === S_H ? ' lh' : t.s === S_V ? ' lv' : t.s === S_BOMB ? ' bm' : '';
     return `<div class="mt-in k${t.k}${sp}">${t.s === S_BOMB ? '<i class="mt-ray"></i>' : ''}<i class="mt-img" style="background-image:${img(t.k)}"></i>${t.s === S_H || t.s === S_V ? `<i class="mt-arw" style="background-image:${ARW_IMG}"></i>` : ''}${t.s === S_BOMB ? `<i class="mt-bmb" style="background-image:${BOMB_IMG}"></i>` : ''}</div>`;
@@ -6560,7 +6740,7 @@ NG.match = (() => {
     v.el.style.opacity = v.o >= 1 ? '' : v.o.toFixed(3);
   }
   function mkView(t, r, c){
-    const el = document.createElement('div'); el.className = 'mt-t'; el.innerHTML = tileInner(t);
+    const el = document.createElement('div'); el.className = 'mt-t'; el.innerHTML = tileInner(t); if(t.s === S_BOX) el.style.zIndex = 2;
     el.style.width = el.style.height = M.s + 'px';
     const v = { id:t.id, el, x:c * M.s, y:r * M.s, sx:1, sy:1, rot:0, o:1 };
     M.grid.appendChild(el); M.views.set(t.id, v); applyView(v); return v;
@@ -6592,8 +6772,8 @@ NG.match = (() => {
       M.views.forEach(v => { if(v.dirty){ v.dirty = false; applyView(v); } });
     }
     if(M.waits.length){ const due = M.waits.filter(w => w.at <= now); if(due.length){ M.waits = M.waits.filter(w => w.at > now); due.forEach(w => w.res()); } }
-    tickTime();
-    if(!M.busy && !M.timeUp && !G.over && !G.paused && !M.hint && now - M.last > 5000) showHint();
+    if(!isMoves()) tickTime();
+    if(!M.busy && !M.timeUp && !M.item && !G.over && !G.paused && !M.hint && now - M.last > 5000) showHint();
   }
   function tickTime(){
     if(G.over) return;
@@ -6610,7 +6790,26 @@ NG.match = (() => {
   }
   const cellXY = i => { const g = M.grid.getBoundingClientRect(), r = Math.floor(i / N), c = i % N; return { x:g.left + (c + .5) * M.s, y:g.top + (r + .5) * M.s }; };
 
+  const isMoves = () => !!(G && G.cfg && G.cfg.mode === 'moves');
+  const gGot = (E, g) => g.t === 'k' ? (E.got.k[g.k] || 0) : E.got[g.t];
+  const goalIcon = g => g.t === 'k' ? img(g.k) : g.t === 'box' ? IK('box' + (g.hp || 1)) : g.t === 'lock' ? IK('lock') : 'none';
+  function hudMoves(){
+    const E = M.E;
+    E.goals.forEach((g, n) => {
+      const el = $m('#mtG' + n); if(!el) return;
+      const left = Math.max(0, g.n - gGot(E, g)), b = el.querySelector('b');
+      if(b.textContent !== String(left)){ b.textContent = left; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      if(left === 0 && !el.classList.contains('done')){ el.classList.add('done'); if(M.ready){ sfx('star', { i:2 }); fxPop(el, 'gold'); } }
+    });
+    const mv = $m('#mtMv'); if(mv && mv.textContent !== String(E.movesLeft)){ mv.textContent = E.movesLeft; mv.classList.remove('bump'); void mv.offsetWidth; mv.classList.add('bump'); }
+    M.root.classList.toggle('warn', E.movesLeft <= 3 && !goalDone(E));
+  }
+  function paintIce(){
+    const cl = M.grid && M.grid.querySelector('.mt-cells'); if(!cl || !M.E.ice) return;
+    [...cl.children].forEach((c, i) => { const v = M.E.ice[i]; c.className = v >= 2 ? 'ice2' : v === 1 ? 'ice1' : ''; });
+  }
   function hud(){
+    if(isMoves()){ hudMoves(); return; }
     const cfg = G.cfg, p = M.E.pts, el = $m('#mtPts');
     if(el && el.textContent !== fmt(p)){ el.textContent = fmt(p); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
     const fill = $m('#mtProgF'); if(fill) fill.style.width = (Math.min(1, p / (1.6 * cfg.target)) * 100).toFixed(2) + '%';
@@ -6653,6 +6852,22 @@ NG.match = (() => {
 
   function fxAct(act){
     const bd = M.panel, o = cellXY(act.i), r = Math.floor(act.i / N), c = act.i % N;
+    if(act.type === S_SP){
+      sfx('matchMake'); fxRing(o.x, o.y, '#FFE27A', M.s * 1.7, .4, 8);
+      if(act.tg >= 0){
+        const f = document.createElement('div'); f.className = 'mt-fly'; f.style.width = f.style.height = M.s + 'px'; f.style.backgroundImage = IK('sp');
+        const x0 = c * M.s, y0 = r * M.s, x1 = (act.tg % N) * M.s, y1 = Math.floor(act.tg / N) * M.s;
+        f.style.transform = `translate(${x0}px,${y0}px)`; M.grid.appendChild(f);
+        f.animate([{ transform:`translate(${x0}px,${y0}px) rotate(0) scale(1)` }, { transform:`translate(${(x0 + x1) / 2}px,${Math.min(y0, y1) - M.s * 1.2}px) rotate(540deg) scale(1.3)`, offset:.5 }, { transform:`translate(${x1}px,${y1}px) rotate(1080deg) scale(.9)` }], { duration:420, easing:'cubic-bezier(.4,0,.3,1)', fill:'forwards' });
+        setTimeout(() => { f.remove(); const q = cellXY(act.tg); fxRing(q.x, q.y, '#FFFFFF', M.s * 1.5, .35, 8); fxBurst(q.x, q.y, ['#FFE27A', '#FF4F6E', '#fff'], 12, { speed:220, size:4.5, kinds:['star','spark'], up:40, dur:.6 }); }, 430);
+      }
+      return;
+    }
+    if(act.type === 7){
+      sfx('matchBomb', { pan:panX(o.x), big:1 }); fxBuzz(30);
+      fxRing(o.x, o.y, '#FFFFFF', M.s * 1.6, .35, 10); fxBurst(o.x, o.y, ['#FF5C7A', '#FFE27A', '#fff'], 14, { speed:240, size:5, kinds:['star','dot'], up:60, dur:.6 }); fxShake(bd, 5);
+      return;
+    }
     if(act.type === S_H || act.type === S_V){
       const rows = act.wide ? [-1, 0, 1] : [0];
       rows.forEach(d => {
@@ -6726,6 +6941,10 @@ NG.match = (() => {
       fxBurst(p.x, p.y, ['#FFFFFF', '#FFE27A'], 10, { speed:200, size:4, kinds:['spark'], up:40, glow:true, dur:.6 });
       sfx('matchMake');
     });
+    (st.boxHits || []).forEach(h => { const v = M.views.get(h.id); if(!v) return; restyle(v, { s:S_BOX, hp:h.hp, k:-2 }); tw(v, { sx:1.15, sy:.85, rot:(Math.random() - .5) * 14 }, 80, 'out').then(() => tw(v, { sx:1, sy:1, rot:0 }, 200, 'back'));
+      const p = cellXY(h.i); fxBurst(p.x, p.y, ['#C46F33', '#E9A565', '#7E3F17'], 10, { speed:220, size:5, kinds:['dot','spark'], up:90, dur:.6 }); sfx('matchBad'); });
+    (st.unlocks || []).forEach(u => { const v = M.views.get(u.id); const t = M.E.b.find(x => x && x.id === u.id); if(v && t) restyle(v, t); const p = cellXY(u.i); fxRing(p.x, p.y, '#B8C2D6', M.s * 1.3, .35, 6); fxBurst(p.x, p.y, ['#8E97AC', '#D9DEE8', '#FFB020'], 10, { speed:200, size:4, kinds:['spark','dot'], up:60, dur:.5 }); });
+    if((st.iceHits || []).length){ paintIce(); st.iceHits.forEach(h => { const p = cellXY(h.i); fxBurst(p.x, p.y, ['#BFEFFF', '#FFFFFF', '#7FD6FF'], 6, { speed:160, size:3.5, kinds:['spark'], up:40, dur:.5 }); }); sfx('matchLine', { pan:0 }); }
     hud();
     let longest = 0;
     st.falls.forEach(f => { const v = M.views.get(f.id); if(!v) return; const d = f.to - f.from, ms = FALL_MS(d); longest = Math.max(longest, ms);
@@ -6763,9 +6982,90 @@ NG.match = (() => {
     va.el.style.zIndex = '';
     for(const st of res.steps) await playStep(st);
     if(res.steps.length >= 2) M.best = Math.max(M.best, res.steps.length);
+    hud();
+    if(isMoves() && await movesCheck()) return;
     if(!hasMove(E) && !M.timeUp){ await doShuffle(); }
     M.busy = false; M.last = M.clock;
     if(M.timeUp) endRound();
+  }
+  /* 솔로(이동 횟수): 목표를 다 모으면 성공 + 남은 이동 보너스, 이동이 끝나면 실패 */
+  async function movesCheck(){
+    const E = M.E;
+    if(goalDone(E)){
+      M.timeUp = true; M.leftAtWin = E.movesLeft; clearHint();
+      banner('목표 완료!', 'goal'); sfx('win', { g:'match' }); fxBuzz([30, 50, 30]);
+      await wait(900);
+      const left = Math.min(6, E.movesLeft);
+      if(left > 0){
+        banner('남은 이동 ' + E.movesLeft + ' 보너스!', 'goal');
+        const cand = []; E.b.forEach((t, i) => { if(t && !t.s && !t.lk && t.k >= 0) cand.push(i); });
+        const pick = []; for(let n = 0; n < left && cand.length; n++) pick.push(cand.splice((n * 17 + E.uid) % cand.length, 1)[0]);
+        pick.forEach((i, n) => { E.b[i].s = n % 2 ? S_V : S_H; const v = M.views.get(E.b[i].id); if(v){ restyle(v, E.b[i]); tw(v, { sx:1.3, sy:1.3 }, 120, 'out').then(() => tw(v, { sx:1, sy:1 }, 160, 'back')); } });
+        sfx('matchMake'); await wait(420);
+        E.pts += E.movesLeft * 100;
+        const r = blastCells(E, pick, S_H, pick[0]);
+        for(const st of r.steps) await playStep(st);
+      }
+      endMoves(true); return true;
+    }
+    if(E.movesLeft <= 0){ M.timeUp = true; clearHint(); endMoves(false); return true; }
+    return false;
+  }
+  function endMoves(win){
+    if(M.ended || G.over) return;
+    M.ended = true; M.busy = true;
+    banner(win ? '성공!' : '이동 끝!', win ? 'goal end' : 'end');
+    sfx('matchEnd'); fxBuzz([30, 50, 30]);
+    setTimeout(() => { if(G && !G.over && G.mt === M) finish(win); }, win ? 900 : 1300);
+  }
+  /* 아이템(솔로 전용, 이동을 쓰지 않음) */
+  const ITEMS = [
+    { key:'ham', name:'뿅망치', desc:'한 칸(상자는 한 겹)', at:8 },
+    { key:'row', name:'가로 화살', desc:'가로 한 줄', at:13 },
+    { key:'col', name:'세로 화살', desc:'세로 한 줄', at:18 },
+    { key:'hat', name:'요술 모자', desc:'특수 동물 3개', at:23 }
+  ];
+  const INV_KEY = 'hp:mtItems';
+  function inv(){
+    const v = store.get(INV_KEY, null) || { n:{}, got:{} };
+    const top = Math.max(G.adv || 0, (typeof advProg === 'function' ? advProg('match').max : 1));
+    let ch = false;
+    ITEMS.forEach(it => { if(top >= it.at && !v.got[it.key]){ v.got[it.key] = 1; v.n[it.key] = (v.n[it.key] || 0) + 3; ch = true; } });
+    if(ch) store.set(INV_KEY, v);
+    return v;
+  }
+  function paintDock(){
+    const d = $m('#mtItems'); if(!d) return;
+    const v = inv();
+    d.innerHTML = ITEMS.map(it => { const open = !!v.got[it.key], n = v.n[it.key] || 0;
+      return `<button class="mt-bst it${open ? '' : ' lk'}${M.item === it.key ? ' on' : ''}" data-it="${it.key}" ${open && n > 0 ? '' : 'disabled'} aria-label="${it.name}: ${it.desc}${open ? ', ' + n + '개' : ', 스테이지 ' + it.at + '에서 열려요'}">
+        <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span><em>${it.name}</em>${open ? `<b class="mt-cnt num">${n}</b>` : `<b class="mt-cnt lk">${it.at}</b>`}</button>`; }).join('');
+    d.querySelectorAll('button[data-it]').forEach(b => b.onclick = () => {
+      if(M.busy || M.timeUp || G.over) return;
+      const k = b.dataset.it;
+      if(k === 'hat'){ useItem('hat', -1); return; }
+      M.item = M.item === k ? null : k; clearHint(); paintDock();
+      if(M.item) banner(ITEMS.find(x => x.key === k).name + ' · 칸을 고르세요', 'mix');
+    });
+  }
+  async function useItem(key, i){
+    const v = inv(); if(!(v.n[key] > 0)) return;
+    v.n[key]--; store.set(INV_KEY, v); M.item = null; paintDock();
+    M.busy = true; clearHint(); M.sel = -1; paintSel();
+    const E = M.E;
+    if(key === 'hat'){
+      const cv = hatConvert(E); sfx('matchMake');
+      cv.forEach(c => { const vw = M.views.get(c.id); if(vw){ restyle(vw, E.b[c.i]); tw(vw, { sx:1.35, sy:1.35, rot:20 }, 160, 'out').then(() => tw(vw, { sx:1, sy:1, rot:0 }, 220, 'back')); const p = cellXY(c.i); fxBurst(p.x, p.y, ['#B58CFF', '#FFE45C', '#fff'], 12, { speed:220, size:4.5, kinds:['star','spark'], up:50, dur:.6 }); } });
+      await wait(420);
+    } else {
+      const r = Math.floor(i / N), c = i % N, cells = key === 'ham' ? [i] : key === 'row' ? [...Array(N)].map((_, x) => idx(r, x)) : [...Array(N)].map((_, y) => idx(y, c));
+      const res = blastCells(E, cells, key === 'ham' ? 7 : key === 'row' ? S_H : S_V, i);
+      for(const st of res.steps) await playStep(st);
+    }
+    hud();
+    if(await movesCheck()) return;
+    if(!hasMove(E)) await doShuffle();
+    M.busy = false; M.last = M.clock;
   }
   async function doShuffle(){
     banner('섞을게요!', 'mix'); sfx('matchShuffle');
@@ -6797,6 +7097,7 @@ NG.match = (() => {
     gr.onpointerdown = e => {
       if(G.over || G.paused || M.timeUp) return;
       const i = cellAt(e); if(i < 0) return;
+      if(M.item){ e.preventDefault(); if(!M.busy) useItem(M.item, i); st = null; return; }
       try{ gr.setPointerCapture(e.pointerId); }catch(_){}
       st = { i, x:e.clientX, y:e.clientY, done:false }; M.kbd = false; e.preventDefault();
       if(M.hint){ clearHint(); } M.last = M.clock;
@@ -6855,6 +7156,7 @@ NG.match = (() => {
     let cl = M.grid.querySelector('.mt-cells');
     if(!cl){ cl = document.createElement('div'); cl.className = 'mt-cells'; cl.setAttribute('aria-hidden', 'true'); cl.innerHTML = '<i></i>'.repeat(N * N); M.grid.prepend(cl); }
     cl.style.gridTemplateColumns = `repeat(${N}, ${s}px)`; cl.style.gridAutoRows = s + 'px';
+    paintIce();
   }
 
   const CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8.6" fill="#fff" stroke="#1A0F45" stroke-width="2.4"/><rect x="9.6" y="1.8" width="4.8" height="3" rx="1.2" fill="#1A0F45"/><path d="M12 8.6V13l3 2" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>';
@@ -6881,18 +7183,20 @@ NG.match = (() => {
     },
     help:[
       ['같은 동물 3개를 맞춰요', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로·세로 3개 한 줄, 2×2 네모, 이어진 5개 이상 덩어리가 되면 펑! 붙어 있는 같은 동물은 모두 함께 터져요. 맞춰지지 않는 자리는 바뀌지 않아요.'],
-      ['특수 동물을 만들어요', '4개를 한 줄로 맞추면 한 줄을 지우는 줄 폭탄, ㄱ·ㅗ 모양으로 맞추면 주변 3×3을 지우는 폭탄, 5개를 한 줄로 맞추면 무지개 별이 생겨요. 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라져요.'],
-      ['60초 안에 목표 점수', '연달아 터지면 콤보! 점수가 점점 커져요. 시간이 끝났을 때 목표 점수를 넘기면 성공이에요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.']
+      ['특수 동물을 만들어요', '4개 한 줄 = 줄 폭탄, ㄱ·ㅗ 모양 = 3×3 폭탄, 5개 한 줄 = 무지개 별, 2×2 네모 = 팽이(주변 + 목표 한 칸). 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라지고, 팽이는 옆 칸과 바꾸기만 해도 날아가요.'],
+      ['오늘의 문제·대전: 60초 목표 점수', '연달아 터지면 콤보! 시간이 끝났을 때 목표 점수를 넘기면 성공이에요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.'],
+      ['솔로: 이동 횟수 안에 목표 모으기', '위쪽 목표(동물·상자·얼음·사슬)를 이동 횟수 안에 다 모으면 성공! 상자는 옆에서 맞추거나 폭탄으로 깨고, 얼음은 그 칸에서 터뜨리고, 사슬은 맞춰서 풀어요. 2×2로 맞추면 생기는 팽이는 목표로 날아가요. 아래 아이템은 이동을 쓰지 않아요.']
     ],
     chapters:['문어 바닷가','병아리 농장','개구리 연못','부엉이 숲','판다 대나무숲'],
-    starRule:'★ 목표 달성 · ★★ 목표의 1.3배 · ★★★ 목표의 1.6배',
+    starRule:'★ 목표 완료 · ★★ 이동 10% 남기기 · ★★★ 이동 20% 남기기',
     levels:{ easy:levelCfg('easy'), normal:levelCfg('normal'), hard:levelCfg('hard') },
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return (c.boss ? '보스 · ' : '') + '동물 ' + c.kinds + '종 · 목표 ' + fmt(c.target) + '점'; },
+    stageDesc(n){ const c = stageCfg(n); return (c.boss ? '보스(아주 어려움) · ' : c.hard ? '어려움 · ' : '') + '이동 ' + c.moves + ' · ' + c.goals.map(g => (g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? (g.hp > 1 ? g.hp + '겹 ' : '') + '상자' : g.t === 'ice' ? (g.lv > 1 ? '두꺼운 ' : '') + '얼음' : '사슬') + ' ' + g.n).join(' · '); },
+    stageTag(n){ const c = stagePlan(n); return c.boss ? 'xhard' : c.hard ? 'hard' : ''; },
     levelDesc(lv){ const c = levelCfg(lv); return '동물 ' + c.kinds + '종 · 목표 ' + fmt(c.target) + '점'; },
     init(cfg, rng){
-      const E = makeEngine(rng, cfg.kinds || 6);
-      M = { E, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, timeUp:false, ended:false, sel:-1, kc:-1, kbd:false, hint:null, best:0, lastSec:-1, ready:false, dead:false };
+      const E = cfg.mode === 'moves' ? makeStage(rng, cfg) : makeEngine(rng, cfg.kinds || 6);
+      M = { E, item:null, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, timeUp:false, ended:false, sel:-1, kc:-1, kbd:false, hint:null, best:0, lastSec:-1, ready:false, dead:false };
       G.mt = M;
       G.cleanup = () => {
         const m = G.mt; if(!m) return; m.dead = true;
@@ -6905,10 +7209,12 @@ NG.match = (() => {
     },
     render(st){
       M = G.mt;
-      const cfg = G.cfg;
-      st.innerHTML = `<div class="ng-match" id="mtRoot">
-        <div class="mt-top"><button class="mt-rbt" id="mtBack" aria-label="그만하기">${ic('back')}</button><div class="mt-ttl" id="mtTtl"></div><button class="mt-rbt" id="mtHelp" aria-label="게임 방법">${ic('help')}</button></div>
-        <div class="mt-hud">
+      const cfg = G.cfg, mv = cfg.mode === 'moves';
+      const hudHtml = mv ? `<div class="mt-hud mv">
+          <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
+          <div class="mt-box mt-goal"><span class="mt-tag">목표</span><div class="mt-gs">${cfg.goals.map((g, n) => `<span class="mt-gc" id="mtG${n}" aria-label="${g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? '상자' : g.t === 'ice' ? '얼음' : '사슬'} ${g.n}개"><i class="${g.t === 'ice' ? 'ice' : ''}" style="background-image:${goalIcon(g)}"></i><b class="num">${g.n}</b><s>${ic('check')}</s></span>`).join('')}</div></div>
+          <div class="mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="mt-tag">이동 횟수</span><b class="num" id="mtMv">${cfg.moves}</b>${cfg.hard || cfg.boss ? `<span class="mt-diff ${cfg.boss ? 'x' : ''}">${cfg.boss ? '아주 어려움' : '어려움'}</span>` : ''}</div>
+        </div>` : `<div class="mt-hud">
           <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
           <div class="mt-box mt-goal" id="mtGoal"><span class="mt-tag">목표</span>
             <div class="mt-gl"><b class="num" id="mtPts">0</b><small class="num">/ ${fmt(cfg.target)}</small></div>
@@ -6916,22 +7222,28 @@ NG.match = (() => {
               <span class="mt-mk" id="mtMk0" style="left:62.5%" aria-label="목표">★</span><span class="mt-mk" id="mtMk1" style="left:81.25%" aria-label="목표의 1.3배">★</span><span class="mt-mk last" id="mtMk2" style="left:100%" aria-label="목표의 1.6배">★</span></div>
           </div>
           <div class="mt-box mt-time" aria-label="남은 시간"><span class="mt-tag">남은 시간</span><b class="num" id="mtSec">${G.limit}</b><div class="mt-tbar"><i id="mtTF"></i></div></div>
-        </div>
-        <div class="mt-stage"><div class="mt-roof" aria-hidden="true"></div>
-          <div class="mt-panel" id="mtPanel"><div class="mt-grid" id="mtGrid" role="application" aria-label="동물 팡 판. 이웃한 동물을 밀어서 바꿔요"></div><div class="mt-combo" id="mtCombo" aria-live="polite"></div></div>
-        </div>
-        <div class="mt-dock" aria-hidden="true">
+        </div>`;
+      const dockHtml = mv ? `<div class="mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
           <span class="mt-bst"><span class="mt-bi"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i></span><em>4개<br>줄 폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i></span><em>ㄱ·ㅗ<br>폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${RB_IMG}"></i></span><em>5개<br>무지개</em></span>
+          <span class="mt-bst"><span class="mt-bi"><i style="background-image:${IK('sp')}"></i></span><em>2×2<br>팽이</em></span>
           <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>최고<br>콤보</em></span>
+        </div>`;
+      st.innerHTML = `<div class="ng-match" id="mtRoot">
+        <div class="mt-top"><button class="mt-rbt" id="mtBack" aria-label="그만하기">${ic('back')}</button><div class="mt-ttl" id="mtTtl"></div><button class="mt-rbt" id="mtHelp" aria-label="게임 방법">${ic('help')}</button></div>
+        ${hudHtml}
+        <div class="mt-stage"><div class="mt-roof" aria-hidden="true"></div>
+          <div class="mt-panel" id="mtPanel"><div class="mt-grid" id="mtGrid" role="application" aria-label="동물 팡 판. 이웃한 동물을 밀어서 바꿔요"></div><div class="mt-combo" id="mtCombo" aria-live="polite"></div></div>
         </div>
+        ${dockHtml}
       </div>`;
       st.querySelector('#mtTtl').innerHTML = $('#ptitle').innerHTML;
       st.querySelector('#mtBack').onclick = () => confirmQuit();
       st.querySelector('#mtHelp').onclick = () => { if(G && !G.over) openHelp(G.id); };
       M.root = st.querySelector('#mtRoot'); M.grid = st.querySelector('#mtGrid'); M.panel = st.querySelector('#mtPanel'); M.tf = st.querySelector('#mtTF');
       sizeBoard(); layoutAll(); bindInput(); hud();
+      if(mv){ paintDock(); paintIce(); setTimeout(() => { if(M && !M.dead) banner('이동 ' + cfg.moves + '번 안에 목표를 모아요', 'mix'); }, 350); }
       bake(Math.min(256, Math.round(M.s * 1.25 * Math.min(3, window.devicePixelRatio || 1))), () => { if(M && !M.dead && !M.busy){ M.views.forEach(v => { const t = M.E.b.find(x => x && x.id === v.id); if(t) restyle(v, t); }); } });
       M.ready = true; M.last = 0;
       const bestEl = () => { const b = $m('#mtBest'); if(b) b.textContent = M.E.maxCombo >= 2 ? M.E.maxCombo : '–'; };
@@ -6941,15 +7253,16 @@ NG.match = (() => {
       const obs = setInterval(() => { if(!M || M.dead || G.over){ clearInterval(obs); return; } bestEl(); }, 300);
       const oc = G.cleanup; G.cleanup = () => { clearInterval(obs); oc && oc(); };
     },
-    progress(){ const m = G && G.mt; return m && G.cfg ? Math.min(1, m.E.pts / G.cfg.target) : 0; },
-    lossText(){ const m = G.mt; return `목표 ${fmt(G.cfg.target)}점 중 ${fmt(m ? m.E.pts : 0)}점을 모았어요.`; },
+    progress(){ const m = G && G.mt; if(!m || !G.cfg) return 0; if(isMoves()){ const tot = G.cfg.goals.reduce((s, g) => s + g.n, 0); return Math.min(1, (tot - goalLeft(m.E)) / tot); } return Math.min(1, m.E.pts / G.cfg.target); },
+    lossText(){ const m = G.mt; if(isMoves()) return `목표까지 ${m ? goalLeft(m.E) : 0}개 남았어요. 이동 ${G.cfg.moves}번을 다 썼어요.`; return `목표 ${fmt(G.cfg.target)}점 중 ${fmt(m ? m.E.pts : 0)}점을 모았어요.`; },
     score(){
       const m = G.mt, pts = m.E.pts, t = G.cfg.target, mc = m.E.maxCombo;
+      if(isMoves()){ const left = m.leftAtWin || 0; return { base:500, time:Math.min(350, left * 35), extra:Math.max(0, Math.min(150, 25 * (mc - 1))), rows:['목표 완료', `남은 이동 보너스 (${left}번)`, `최고 콤보 ${Math.max(1, mc)}연속`] }; }
       const time = Math.max(0, Math.min(350, Math.round(350 * (pts - t) / (0.8 * t))));
       const extra = Math.max(0, Math.min(150, 25 * (mc - 1)));
       return { base:500, time, extra, rows:['목표 달성', `초과 점수 보너스 (${fmt(pts)}점)`, `최고 콤보 ${Math.max(1, mc)}연속`] };
     },
-    stars(){ const m = G.mt, p = m.E.pts, t = G.cfg.target; return p >= 1.6 * t ? 3 : p >= 1.3 * t ? 2 : 1; },
+    stars(){ const m = G.mt; if(isMoves()){ const l = m.leftAtWin || 0, mv = G.cfg.moves; return l >= Math.max(2, Math.ceil(mv * .2)) ? 3 : l >= Math.max(1, Math.ceil(mv * .1)) ? 2 : 1; } const p = m.E.pts, t = G.cfg.target; return p >= 1.6 * t ? 3 : p >= 1.3 * t ? 2 : 1; },
     css:`
 body[data-mode="match"]{background:#C7DCEF}
 body[data-mode="match"] #play > .pbar{display:none!important}
@@ -7069,6 +7382,40 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 body[data-mode="match"] .fxfloat.mtf{font-family:var(--heavy); font-size:20px; color:#fff; -webkit-text-stroke:4px #1A0F45; letter-spacing:.5px}
 body[data-mode="match"] .fxfloat.mtf.hot{color:#FFE45C; font-size:24px}
 body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-text-stroke:5px #5A2A00}
+/* ===== 솔로(이동 횟수) HUD · 목표 · 장애물 · 아이템 (2026-09-29) ===== */
+.ng-match .mt-hud.mv{grid-template-columns:64px 1fr 84px}
+.ng-match .mt-gs{display:flex; justify-content:center; gap:6px; flex-wrap:wrap; padding-top:2px}
+.ng-match .mt-gc{position:relative; display:flex; flex-direction:column; align-items:center; min-width:40px}
+.ng-match .mt-gc i{display:block; width:36px; height:36px; background:center/contain no-repeat}
+.ng-match .mt-gc i.ice{border-radius:9px; background:linear-gradient(180deg,#E6FAFF,#9FE1FA); border:2px solid #6CC6EA; box-shadow:inset 0 2px 0 #fff; width:30px; height:30px; margin:3px}
+.ng-match .mt-gc b{font-family:var(--heavy); font-weight:400; font-size:17px; line-height:1; color:#3A2261; margin-top:1px}
+.ng-match .mt-gc.bump b{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
+.ng-match .mt-gc s{display:none; position:absolute; right:-2px; top:18px; width:20px; height:20px; border-radius:50%; background:linear-gradient(#8BF06A,#2BB24C); border:2px solid #fff; color:#fff; place-items:center; text-decoration:none}
+.ng-match .mt-gc s .ico{width:12px; height:12px}
+.ng-match .mt-gc.done b{visibility:hidden}
+.ng-match .mt-gc.done s{display:grid}
+.ng-match .mt-mvb b{font-size:36px}
+.ng-match .mt-mvb b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
+.ng-match .mt-diff{display:inline-block; margin-top:3px; padding:1px 7px 2px; border-radius:8px; font-family:var(--disp); font-size:11px; color:#fff; background:#E5484D; white-space:nowrap}
+.ng-match .mt-diff.x{background:#7B3FE0}
+.ng-match.warn .mt-mvb{animation:mtWarn .5s ease-in-out infinite alternate}
+.ng-match.warn .mt-mvb b{color:#E5484D}
+.ng-match .mt-cells i.ice1{background:linear-gradient(180deg,#CFF3FF,#7FD6F7); box-shadow:inset 0 0 0 3px #3FB8E8, inset 0 3px 0 rgba(255,255,255,.9), 0 0 6px rgba(80,200,250,.6)}
+.ng-match .mt-cells i.ice2{background:linear-gradient(135deg,rgba(255,255,255,.85) 0 9%,transparent 9% 44%,rgba(255,255,255,.7) 44% 50%,transparent 50%),linear-gradient(180deg,#9EE6FF,#35AEE6); box-shadow:inset 0 0 0 4px #1C8FC8, inset 0 3px 0 #fff, 0 0 8px rgba(40,170,240,.7)}
+.ng-match .mt-lock{position:absolute; inset:-4%; z-index:3; background:center/contain no-repeat; pointer-events:none}
+.ng-match .bx .mt-img{inset:-2%}
+.ng-match .mt-fly{position:absolute; left:0; top:0; z-index:6; pointer-events:none; background:center/contain no-repeat}
+.ng-match .mt-dock.items{grid-template-columns:repeat(4,1fr)}
+.ng-match .mt-bst.it{cursor:pointer; min-height:88px}
+.ng-match .mt-bst.it:disabled{cursor:default; opacity:.55}
+.ng-match .mt-bst.it.lk .mt-bi{filter:grayscale(1) opacity(.5)}
+.ng-match .mt-bst.it.on{background:#FFF6C8; border-color:#E0A700; box-shadow:0 0 0 3px rgba(255,200,40,.45), 0 2px 0 #E0A700}
+.ng-match .mt-cnt{position:absolute; right:5px; top:5px; min-width:20px; height:20px; padding:0 5px; border-radius:10px; font-family:var(--heavy); font-weight:400; font-size:12px; line-height:20px; color:#fff; background:#FF5C7A}
+.ng-match .mt-cnt.lk{background:#8E97AC; font-size:10px}
+.ng-match .mt-cnt.lk::before{content:"St."}
+.ng-match .mt-dock:not(.items){grid-template-columns:repeat(5,1fr)}
+.modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
+.modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}
 @media (prefers-reduced-motion: reduce){ .ng-match .mt-ray, .ng-match .mt-rbg, .ng-match .mt-arw, .ng-match .mt-bmb, .ng-match .mt-img, .ng-match .mt-t.hint .mt-in, .ng-match.warn .mt-time{animation:none} }
 `,
     sounds:{
@@ -7086,7 +7433,7 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
     },
     gate:{ matchPop:40, matchWarn:250, matchLine:60, matchBomb:80, matchMake:60, matchSwap:40 },
     jingle(){ [0, 2, 4, 5, 7, 9].forEach((d, i) => aMarimba(penta(d, 72), { t:i * .065, v:.16 })); [72, 76, 79, 84].forEach(m => aMarimba(m2f(m), { t:.48, d:1, v:.11 })); aSparkle({ t:.52, n:6 }); },
-    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, stageCfg },
+    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, hatConvert, MT_D },
     _test:{
       auto(n){ const m = G.mt; if(!m) return; let k = 0; const go = async () => { while(k++ < n && !G.over && !m.timeUp){ const mv = bestMove(m.E); if(!mv) break; await tryMove(mv[0], mv[1]); } }; return go(); },
       boost(p){ G.mt.E.pts += p; hud(); },
