@@ -6247,7 +6247,7 @@ NG.match = (() => {
   const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4;
   const ACT_BONUS = { 1:40, 2:40, 3:60, 4:100 };
   /* 그리디 자동 플레이어(1수≈생각 0.6초+연출 시간, 60초)의 평균 점수. levels·stage 목표의 기준 */
-  const BOT = { 5:5440, 6:3410, 7:2580 };
+  const BOT = { 5:12020, 6:6560, 7:3930 };   /* 2026-09-29 네모·덩어리 규칙 추가 후 다시 잰 값(각 12판 평균) */
   const mult = k => 1 + 0.25 * (k - 1);
   const mb = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const idx = (r, c) => r * N + c;
@@ -6267,35 +6267,64 @@ NG.match = (() => {
       for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){
         let k;
         do k = Math.floor(rng() * K);
-        while((c >= 2 && E.b[idx(r, c - 1)].k === k && E.b[idx(r, c - 2)].k === k) || (r >= 2 && E.b[idx(r - 1, c)].k === k && E.b[idx(r - 2, c)].k === k));
+        while((c >= 2 && E.b[idx(r, c - 1)].k === k && E.b[idx(r, c - 2)].k === k) || (r >= 2 && E.b[idx(r - 1, c)].k === k && E.b[idx(r - 2, c)].k === k) || (r >= 1 && c >= 1 && E.b[idx(r - 1, c)].k === k && E.b[idx(r, c - 1)].k === k && E.b[idx(r - 1, c - 1)].k === k));
         E.b[idx(r, c)] = newTile(E, k);
       }
-      if(hasMove(E)) break;
+      if(!findGroups(E.b).length && hasMove(E)) break;
     }
     return E;
   }
   function clone(E){
     return { K:E.K, rng:null, uid:E.uid, b:E.b.map(t => t && { ...t }), cols:E.cols.map(c => ({ arr:c.arr, gen:c.gen, i:c.i })), pts:E.pts, maxCombo:E.maxCombo, moves:E.moves, shuffles:0 };
   }
-  function findGroups(b){
+  /* 터지는 규칙(2026-09-29): ① 가로·세로 3개 이상 한 줄 ② 2×2 네모 ③ 이어진 같은 동물 5개 이상(모양 무관).
+     셋 중 하나라도 걸리면 그 동물과 이어진(상하좌우) 같은 동물 덩어리 전체가 함께 터진다. */
+  function lineRuns(b){
     const runs = [];
     for(let r = 0; r < N; r++){ let c = 0; while(c < N){ const k = kindAt(b, idx(r, c)); let e = c + 1; if(k >= 0){ while(e < N && kindAt(b, idx(r, e)) === k) e++; if(e - c >= 3){ const cells = []; for(let x = c; x < e; x++) cells.push(idx(r, x)); runs.push({ h:true, k, cells }); } } c = e; } }
     for(let c = 0; c < N; c++){ let r = 0; while(r < N){ const k = kindAt(b, idx(r, c)); let e = r + 1; if(k >= 0){ while(e < N && kindAt(b, idx(e, c)) === k) e++; if(e - r >= 3){ const cells = []; for(let y = r; y < e; y++) cells.push(idx(y, c)); runs.push({ h:false, k, cells }); } } r = e; } }
-    const par = runs.map((_, i) => i), find = i => par[i] === i ? i : (par[i] = find(par[i]));
-    for(let i = 0; i < runs.length; i++) for(let j = i + 1; j < runs.length; j++) if(runs[i].cells.some(x => runs[j].cells.includes(x))) par[find(j)] = find(i);
-    const gm = new Map();
-    runs.forEach((r, i) => { const g = find(i); if(!gm.has(g)) gm.set(g, []); gm.get(g).push(r); });
-    return [...gm.values()].map(rs => {
-      const set = new Set(); rs.forEach(r => r.cells.forEach(x => set.add(x)));
-      return { runs:rs, k:rs[0].k, cells:[...set].sort((a, b) => a - b), hasH:rs.some(r => r.h), hasV:rs.some(r => !r.h), longest:rs.reduce((m, r) => r.cells.length > m.cells.length ? r : m, rs[0]) };
-    });
+    return runs;
+  }
+  function isSquare(b, r, c){   /* (r,c)가 왼쪽 위인 2×2 */
+    if(r < 0 || c < 0 || r >= N - 1 || c >= N - 1) return false;
+    const k = kindAt(b, idx(r, c));
+    return k >= 0 && kindAt(b, idx(r, c + 1)) === k && kindAt(b, idx(r + 1, c)) === k && kindAt(b, idx(r + 1, c + 1)) === k;
+  }
+  function blob(b, i, seen){   /* i와 이어진 같은 동물 칸들 */
+    const k = kindAt(b, i), out = [i], st = [i]; seen.add(i);
+    while(st.length){
+      const j = st.pop(), r = Math.floor(j / N), c = j % N;
+      for(const [y, x] of [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]){
+        if(y < 0 || y >= N || x < 0 || x >= N) continue;
+        const n = idx(y, x); if(seen.has(n) || kindAt(b, n) !== k) continue;
+        seen.add(n); out.push(n); st.push(n);
+      }
+    }
+    return out;
+  }
+  function findGroups(b){
+    const runs = lineRuns(b), hot = new Set();
+    runs.forEach(r => r.cells.forEach(x => hot.add(x)));
+    for(let r = 0; r < N - 1; r++) for(let c = 0; c < N - 1; c++) if(isSquare(b, r, c)) [idx(r, c), idx(r, c + 1), idx(r + 1, c), idx(r + 1, c + 1)].forEach(x => hot.add(x));
+    const seen = new Set(), out = [];
+    for(let i = 0; i < N * N; i++){
+      if(seen.has(i) || kindAt(b, i) < 0) continue;
+      const cells = blob(b, i, seen);
+      if(cells.length < 5 && !cells.some(x => hot.has(x))) continue;
+      const set = new Set(cells), rs = runs.filter(r => set.has(r.cells[0]));
+      const k = kindAt(b, i);
+      const longest = rs.length ? rs.reduce((m, r) => r.cells.length > m.cells.length ? r : m, rs[0]) : { h:true, k, cells:[cells[0]] };
+      out.push({ runs:rs, k, cells:cells.sort((a, b2) => a - b2), hasH:rs.some(r => r.h), hasV:rs.some(r => !r.h), longest });
+    }
+    return out;
   }
   function matchThrough(b, i){
     const k = kindAt(b, i); if(k < 0) return false;
     const r = Math.floor(i / N), c = i % N;
     let n = 1; for(let x = c - 1; x >= 0 && kindAt(b, idx(r, x)) === k; x--) n++; for(let x = c + 1; x < N && kindAt(b, idx(r, x)) === k; x++) n++; if(n >= 3) return true;
-    n = 1; for(let y = r - 1; y >= 0 && kindAt(b, idx(y, c)) === k; y--) n++; for(let y = r + 1; y < N && kindAt(b, idx(y, c)) === k; y++) n++;
-    return n >= 3;
+    n = 1; for(let y = r - 1; y >= 0 && kindAt(b, idx(y, c)) === k; y--) n++; for(let y = r + 1; y < N && kindAt(b, idx(y, c)) === k; y++) n++; if(n >= 3) return true;
+    if(isSquare(b, r - 1, c - 1) || isSquare(b, r - 1, c) || isSquare(b, r, c - 1) || isSquare(b, r, c)) return true;
+    return blob(b, i, new Set()).length >= 5;
   }
   const isBlast = t => t && (t.s === S_H || t.s === S_V || t.s === S_BOMB);
   function swapValid(E, a, b){
@@ -6339,7 +6368,7 @@ NG.match = (() => {
     let raw = seed ? seed.bonus : 0;
     for(const g of groups){
       const n = g.cells.length, lg = g.longest.cells.length;
-      let type = lg >= 5 ? S_RB : g.hasH && g.hasV ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : 0, pos = -1;
+      let type = lg >= 5 ? S_RB : (g.hasH && g.hasV) || n >= 6 ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : 0, pos = -1;
       if(type){
         const cand = [];
         (prefer || []).forEach(p => { if(g.cells.includes(p)) cand.push(p); });
@@ -6851,7 +6880,7 @@ NG.match = (() => {
         </svg>`;
     },
     help:[
-      ['같은 동물 3개를 맞춰요', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로나 세로로 같은 동물이 3개 이상 이어지면 펑! 맞춰지지 않는 자리는 바뀌지 않아요.'],
+      ['같은 동물 3개를 맞춰요', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로·세로 3개 한 줄, 2×2 네모, 이어진 5개 이상 덩어리가 되면 펑! 붙어 있는 같은 동물은 모두 함께 터져요. 맞춰지지 않는 자리는 바뀌지 않아요.'],
       ['특수 동물을 만들어요', '4개를 한 줄로 맞추면 한 줄을 지우는 줄 폭탄, ㄱ·ㅗ 모양으로 맞추면 주변 3×3을 지우는 폭탄, 5개를 한 줄로 맞추면 무지개 별이 생겨요. 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라져요.'],
       ['60초 안에 목표 점수', '연달아 터지면 콤보! 점수가 점점 커져요. 시간이 끝났을 때 목표 점수를 넘기면 성공이에요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.']
     ],
