@@ -1008,7 +1008,7 @@ body[data-mode] .dock{display:none}
 .bdg.off span{opacity:.6}
 .me-links{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px}
 
-/* ===== v5: 오늘 점수 × 끈기 보너스 + 주간 리그 + 모두의 상금 + 글로벌(마케팅팀) ===== */
+/* ===== v5: 오늘 점수 × 끈기 보너스 + 주간 리그 + 모두의 기부 + 글로벌(마케팅팀) ===== */
 .pool{width:100%; margin-top:10px; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:14px; text-align:left; color:#5A3300;
   background:linear-gradient(180deg,#FFE98E,#FFB020); border:2.5px solid #9A5A00; box-shadow:inset 0 2px 0 rgba(255,255,255,.6), 0 3px 0 #7A4A00}
 .pool .ico{width:22px; height:22px; flex:none}
@@ -1354,7 +1354,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 
   <div class="pane" id="paneToday">
     <button class="strip" id="strip" aria-label="오늘 점수와 순위 자세히 보기"></button>
-    <button class="pool" id="pool" aria-label="이번 주 모두의 상금, 리그 보기"></button>
+    <button class="pool" id="pool" aria-label="이번 주 모두의 기부, 리그 보기"></button>
     <button class="cta" id="nextBtn"></button>
     <div class="sec"><h2>오늘의 문제</h2></div>
     <p class="daynote" id="dayNote"></p>
@@ -1660,7 +1660,7 @@ function myTotal(d){ return dailySum(d) + (d.solo || 0) + (d.duel || 0); }
    (v6) 오늘 점수 = (10게임 중 날짜별 5게임 오늘 최고점 합 + 솔로 점수 + 대전 점수) × (1 + 끈기 보너스). 끈기 보너스 = 연속 출석 하루당 +1%, 최대 +10%
    출석 = 한 판을 끝까지(성공·실패 무관, 그만하기 제외). 휴식권 월 2장: 빠진 날 자동 사용, 연속 유지(그날 점수 0)
    주간 리그 = 월~일 매일 '오늘 점수'의 합. 실력 비슷한 30명, 일요일 21:00(현지) 마감, 상위 5명 승급·하위 5명 강등
-   글로벌: 모든 날짜·마감은 현지 시간 기준, 문제는 날짜별로 전 세계 동일, 상금 리그는 같은 시간대 권역끼리 */
+   글로벌: 모든 날짜·마감은 현지 시간 기준, 문제는 날짜별로 전 세계 동일, 주간 리그는 같은 시간대 권역끼리 */
 const REST_PER_MONTH = 2, BONUS_MAX = 10;
 const ABIL = { fox:'논리력', sudoku:'집중력', ball:'공간지각', tower:'전략력', fleet:'추리력' };
 const BTYPE = {
@@ -1747,11 +1747,11 @@ function leagueRollover(){
   const tl = myTL(), b = leagueBoard(s.week, s.tier, tl), pos = b.findIndex(x => x.me) + 1, my = b[pos - 1].score;
   let move = 0;
   if(my > 0 && pos <= 5 && s.tier < 3) move = 1; else if(pos > 25 && s.tier > 0) move = -1;
-  const res = { week:s.week, pos, score:my, from:s.tier, to:s.tier + move, prize: my > 0 && pos <= 3 ? [30000, 20000, 10000][pos - 1] * (s.tier + 1) : 0 };
+  const res = { week:s.week, pos, score:my, from:s.tier, to:s.tier + move };
   s.tier += move; s.week = cur; s.last = res; s.seen = false; store.set('hp:league', s);
   return res;
 }
-/* 모두의 상금(시뮬레이션): 이번 주 모두가 본 광고 수익이 쌓임 + 내가 본 광고 1번 = 12원 */
+/* 모두의 기부(시뮬레이션, 결정 96): 이번 주 모두가 본 광고 수익 일부가 쌓여 매달 기부된다. 순위·성적과 무관 */
 function prizePool(){
   const wk = weekStartKey(), [y, m, d] = wk.split('-').map(Number), st = new Date(y, m - 1, d).getTime();
   const el = Math.max(0, Math.min(Date.now(), weekDeadline(wk).getTime()) - st) / 1000;
@@ -2185,7 +2185,7 @@ function renderToday(d, tl, P, lv){
   const tt = tl.today, ls = leagueState(), lb = leagueBoard(undefined, ls.tier, tl), lpos = lb.findIndex(x => x.me) + 1;
   const pctNow = tt.st === 'att' ? tt.pct : bonusPct(tl.streak + 1);
   $('#strip').innerHTML = `<span class="md">${medal(tl.score ? pos : 0, false)}</span><span><b class="num">오늘 ${fmt(tl.score)}점 <small>${tt.st === 'att' ? '끈기 +' + tt.pct + '% 포함' : '첫 판을 끝내면 +' + pctNow + '%'}</small></b><span class="s2"><span>${tl.score ? '친구 중 ' + pos + '위' : '오늘 첫 판 전'}</span>${tl.streak ? `<span class="hot">${ic('flame')}연속 ${tl.streak}일</span>` : ''}<span>${ic('trophy')}${TIERS[ls.tier][0]} ${lb[lpos - 1].score ? lpos + '위' : ''}</span><span>${ic('clock')}<span class="num" id="closing">${closingText()}</span></span></span></span><span class="go">${ic('chev')}</span>`;
-  $('#pool').innerHTML = `${ic('coin')}<span class="pt"><small>이번 주 모두의 상금</small><b class="num" id="poolAmt">${fmt(prizePool())}원</b></span><span class="pr">광고 1번 = +12원<br>주간 리그로 나눠요</span>`;
+  $('#pool').innerHTML = `${ic('coin')}<span class="pt"><small>이번 주 모두의 기부</small><b class="num" id="poolAmt">${fmt(prizePool())}원</b></span><span class="pr">광고 1번 = +12원<br>매달 좋은 곳에 기부해요</span>`;
   const now = new Date();
   $('#dayNote').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 · 10게임 중 오늘의 5게임 · 자정에 바뀌어요`;
   const nx = pickNext(), lx = lastLv(nx), nb = $('#nextBtn');
@@ -2263,7 +2263,7 @@ function renderWeek(d, r){
   const closed = Date.now() >= weekDeadline(wk).getTime(), up = s.tier < 3, down = s.tier > 0;
   $('#lgHead').innerHTML = `<div class="lgcard"><span class="tbd">${tierBadge(s.tier)}</span><div><span class="t">${REGION} · 현지 시간 기준</span><b class="big">${TIERS[s.tier][0]} 리그${me.score ? ' ' + pos + '위' : ''}</b>
       <span class="s2"><span>이번 주 <b class="num">${fmt(me.score)}</b>점</span><span>${ic('clock')}${closed ? '마감 · 월요일에 결과 발표' : `일요일 21시 마감까지 <span class="num" id="lgClose">${weekLeft()}</span>`}</span></span></div>
-      <div class="lgpool"><span>${ic('coin')} 모두의 상금 · 1~3위·승급자</span><b class="num" id="poolAmt2">${fmt(prizePool())}원</b></div></div>`;
+      <div class="lgpool"><span>${ic('coin')} 모두의 기부 · 성적과 상관없이 매달 기부</span><b class="num" id="poolAmt2">${fmt(prizePool())}원</b></div></div>`;
   b.forEach((x, i) => {
     if(i === 0 && up) r.insertAdjacentHTML('beforeend', `<div class="zone up">▲ 승급 구역 · 1~5위는 다음 주 ${TIERS[s.tier + 1][0]} 리그</div>`);
     if(i === 25 && down) r.insertAdjacentHTML('beforeend', `<div class="zone down">▼ 강등 구역 · 26~30위는 다음 주 ${TIERS[s.tier - 1][0]} 리그</div>`);
@@ -2273,7 +2273,7 @@ function renderWeek(d, r){
     row.innerHTML = `<div class="pos">${posHtml}</div>${x.me ? avatar(x) : rivalAv(x)}<div class="who"><b>${x.me ? '나' : x.name}</b><small>${sub}</small></div><div class="sc num">${fmt(x.score)}</div><div></div>`;
     r.appendChild(row);
   });
-  $('#rankNote').textContent = '월~일 매일의 오늘 점수를 더해요. 빠진 날은 0점이라 꾸준할수록 유리해요 · 실력 비슷한 30명 · 상금 배분은 시뮬레이션이에요';
+  $('#rankNote').textContent = '월~일 매일의 오늘 점수를 더해요. 빠진 날은 0점이라 꾸준할수록 유리해요 · 실력 비슷한 30명 · 리그 보상은 티어·트로피·칭호예요';
 }
 function showLeagueResult(res){
   if(!res) return;
@@ -2554,10 +2554,10 @@ function openHeartSheet(reason){
 }
 function runAd(){
   let s = 3;
-  openModal(`<h3>광고 재생 중</h3><div class="big num" id="adc">3</div><p class="note">보상형 광고 자리예요(시뮬레이션). 끝까지 보면 하트 1개를 받고, 광고 수익 12원이 이번 주 모두의 상금에 쌓여요.</p>`);
+  openModal(`<h3>광고 재생 중</h3><div class="big num" id="adc">3</div><p class="note">보상형 광고 자리예요(시뮬레이션). 끝까지 보면 하트 1개를 받고, 광고 수익 12원이 모두의 기부에 쌓여요.</p>`);
   const t = setInterval(() => {
     s--; const el = $('#adc'); if(el) el.textContent = s;
-    if(s <= 0){ clearInterval(t); const d = dayState(); d.ads++; saveDay(d); addHearts(1); const aw = store.get('hp:adsWeek', {}), wk = weekStartKey(); aw[wk] = (aw[wk] || 0) + 1; store.set('hp:adsWeek', aw); closeModal(); sfx('heartGet'); setTimeout(() => sfx('coin'), 250); fxPop($('#heartChip'), 'heart'); toast('하트 +1 · 모두의 상금 +12원, 고마워요!'); renderHome(); }
+    if(s <= 0){ clearInterval(t); const d = dayState(); d.ads++; saveDay(d); addHearts(1); const aw = store.get('hp:adsWeek', {}), wk = weekStartKey(); aw[wk] = (aw[wk] || 0) + 1; store.set('hp:adsWeek', aw); closeModal(); sfx('heartGet'); setTimeout(() => sfx('coin'), 250); fxPop($('#heartChip'), 'heart'); toast('하트 +1 · 모두의 기부 +12원, 고마워요!'); renderHome(); }
   }, 1000);
 }
 function openInbox(){
