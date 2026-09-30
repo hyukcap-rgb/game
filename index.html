@@ -8676,27 +8676,125 @@ NG.memory = (() => {
     flip:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="2.6" fill="#6C3CE0" stroke="#1A0F45" stroke-width="1.8"/><path d="M12 7.5l3.2 4.5-3.2 4.5-3.2-4.5z" fill="#FF8AB8"/><path d="M2.6 10a9.5 9.5 0 0 1 3-4.6M21.4 14a9.5 9.5 0 0 1-3 4.6" fill="none" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round"/></svg>'
   };
 
-  /* ----- 난이도 ----- */
-  const gridFor = n => n <= 3 ? [2, 3] : n <= 10 ? [3, 4] : n <= 25 ? [4, 4] : n <= 45 ? [4, 5] : n <= 70 ? [5, 6] : [6, 6];
+  /* ----- 특수 카드 그림: 폭탄, 조커, 닮은꼴 리본(모두 직접 그린 오리지널) ----- */
+  const BOMB = '@bomb', JOKER = '@joker', ALT = '~b';   /* 닮은꼴 카드 키 = 원래 키 + '~b' (색이 다르고 리본을 달았다) */
+  const BOMB_SVG = `<svg viewBox="0 0 64 64" aria-hidden="true">
+    <path d="M44 15c4-6 10-7 14-4" fill="none" stroke="#8A5A2B" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="${starPath(57, 9, 7, 3)}" fill="#FFB020" ${O2}/><path d="${starPath(57, 9, 3.6, 1.6)}" fill="#FFF3A8"/>
+    <rect x="35" y="14" width="12" height="10" rx="2.5" transform="rotate(38 41 19)" fill="#7B7497" ${O2}/>
+    <circle cx="29" cy="38" r="20" fill="#3A3553" ${O}/>
+    <ellipse cx="21" cy="30" rx="5" ry="7.5" transform="rotate(35 21 30)" fill="#fff" opacity=".35"/>
+    <path d="M20 37l6 3M38 37l-6 3" stroke="#FF6A6A" stroke-width="3" stroke-linecap="round"/>
+    <path d="M23 47q6-4 12 0" fill="none" stroke="#FF6A6A" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+  const JOKER_SVG = `<svg viewBox="0 0 64 64" aria-hidden="true">
+    ${['#FF5C5C', '#FFA23A', '#FFE34D', '#5BC236', '#3A8DFF', '#9B5DE5'].map((cc, i) => `<path d="M32 32L${(32 + 28 * Math.cos((i * 60 - 90) * Math.PI / 180)).toFixed(1)} ${(32 + 28 * Math.sin((i * 60 - 90) * Math.PI / 180)).toFixed(1)}A28 28 0 0 1 ${(32 + 28 * Math.cos(((i + 1) * 60 - 90) * Math.PI / 180)).toFixed(1)} ${(32 + 28 * Math.sin(((i + 1) * 60 - 90) * Math.PI / 180)).toFixed(1)}z" fill="${cc}"/>`).join('')}
+    <circle cx="32" cy="32" r="28" fill="none" ${O}/>
+    <path d="${starPath(32, 33, 20, 9.5)}" fill="#FFF8EA" ${O}/>${FACE(32, 34, .9)}
+    <path d="${starPath(10, 10, 5, 2)}" fill="#fff" ${O2} stroke-width="1.6"/><path d="${starPath(55, 54, 4.5, 2)}" fill="#fff" ${O2} stroke-width="1.6"/></svg>`;
+  const BOW_SVG = `<svg class="mm-bow" viewBox="0 0 32 24" aria-hidden="true"><path d="M16 12L3 3c-2 5-2 13 0 18z" fill="#FF3D7F" ${O2}/><path d="M16 12L29 3c2 5 2 13 0 18z" fill="#FF3D7F" ${O2}/>
+    <path d="M6 7c-.6 2-.6 4 0 5" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/><rect x="12" y="8" width="8" height="8" rx="3" fill="#FFC93C" ${O2}/></svg>`;
+  const isSpecial = k => k === BOMB || k === JOKER;
+  const baseOf = k => k && k.endsWith(ALT) ? k.slice(0, -ALT.length) : k;
+  const cardName = k => k === BOMB ? '폭탄' : k === JOKER ? '조커' : k.endsWith(ALT) ? '리본 단 ' + symName(baseOf(k)) : symName(k);
+  const faceHtml = k => k === BOMB ? BOMB_SVG : k === JOKER ? JOKER_SVG : k.endsWith(ALT) ? symSvg(baseOf(k)).replace('<svg ', '<svg class="mm-alt" ') + BOW_SVG : symSvg(k);
+  const frontCls = k => k === BOMB ? ' mm-fb' : k === JOKER ? ' mm-fj' : '';
+
+  /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
+  const CONC = {
+    order:['triple', 'bomb', 'joker', 'twins'],
+    info:{
+      triple:{ name:'세 장 짝', desc:'같은 그림이 세 장씩 있어요. 한 번에 세 장까지 뒤집고, 세 장이 모두 같아야 짝이 돼요. 두 장이 다르면 바로 덮여요.' },
+      bomb:{ name:'폭탄 카드', desc:'폭탄을 뒤집으면 펑! 시간이 8초 줄고, 덮인 카드 두 장이 자리를 바꿔요. 터진 폭탄은 사라져요. 미리 보기 때 폭탄 자리를 기억해 두세요.' },
+      joker:{ name:'조커', desc:'무지개 조커는 어떤 카드와도 짝이 돼요. 조커와 같이 뒤집은 카드는 나머지 짝까지 한꺼번에 찾아 줘요. 짝을 모르는 카드에 아껴 쓰세요.' },
+      twins:{ name:'닮은꼴', desc:'색이 다르고 리본을 단 닮은 카드가 섞여 있어요. 색과 리본까지 똑같아야 짝이에요.' }
+    },
+    twists:['flash', 'tight', 'shuffle', 'bare', 'tick'],
+    twInfo:{
+      flash:{ name:'번개', desc:'카드는 조금 적지만 제한 시간이 아주 짧아요. 빠르고 정확하게!' },
+      tight:{ name:'외줄 타기', desc:'틀릴 수 있는 횟수가 정해져 있어요. 위쪽 실수 칸을 다 쓰고 또 틀리면 끝나요.' },
+      shuffle:{ name:'카드 섞기', desc:'짝을 3번 찾을 때마다 덮인 카드 몇 장이 자리를 바꿔요. 움직이는 카드를 눈으로 따라가요.' },
+      bare:{ name:'맨손', desc:'미리 보기 없이 시작해요. 처음부터 한 장씩 뒤집으며 기억해요.' },
+      tick:{ name:'째깍 벌칙', desc:'틀릴 때마다 남은 시간이 3초씩 줄어요. 찍기보다 기억!' }
+    }
+  };
+  const RULE_TIP = { triple:'세 장이 같아야 짝', bomb:'폭탄은 피해요', joker:'조커는 아무 카드와 짝', twins:'색·리본까지 똑같이', shuffle:'짝 3번마다 섞여요', tick:'틀리면 −3초', bare:'미리 보기 없음', tight:'실수 횟수 제한', flash:'시간이 짧아요' };
+
+  /* ----- 난이도 표 (기억 용량이 제한된 봇 시뮬레이션으로 맞춤: tools/memory-bot.js) -----
+     카드 수 = 챕터 기본 + 자리(k) 톱니(규칙·변주에 따라 줄임).
+     제한 시간 = A × 카드^(alpha [+ alpha3: 세 장 짝]) × 자리 배수 × 규칙 배수 × 변주 배수 (시뮬레이션 필요 시간의 로그 회귀)
+     목표 첫 도전 클리어율: k=1·6·9 ≈90%, 보통 75~85%, k=5 ≈60%, 보스 ≈40% (챕터마다 조금씩 내려감) */
+  const MT = {
+    ch1:[6, 8, 12, 12, 16, 10, 12, 16, 12, 14],                 /* 챕터 1(기본 규칙) 판별 카드 수 */
+    base:[0, 0, 16, 18, 20, 20, 22, 24, 24],                    /* 챕터 c(≥2) 기본 카드 수 */
+    kOff:[0, -4, -2, 0, 0, 4, -2, 0, 2, -4, 4],
+    mjCards:{ triple:0.8 }, twCards:{ flash:0.75, bare:0.8 },
+    A:0.742, alpha:1.4, alpha3:0.474,
+    kTime:[0, 1.14, 1.02, 1.01, 0.98, 0.88, 1.13, 1.03, 1.01, 1.08, 0.77],
+    mjTime:{ triple:0.47, bomb:1.23, joker:0.94, twins:1.13 },
+    bossTw:{ flash:0.92, shuffle:0.92, bare:1.07, tick:1.04 },
+    tjTime:0.84,
+    twTime:{ flash:0.93, shuffle:1.02, bare:1.06, tick:1.55, tight:1.6 },
+    /* 외줄 타기: 허용 실수 = cap0 × 짝 수^capE × 자리 배수 × (세 장 짝 capG3) × (닮은꼴 capTw) */
+    cap0:0.4, capE:1.4, capK:{ 6:0.85, 7:1.0, 8:1.15, 10:0.7 }, capG3:2.6, capTw:1.15
+  };
+  const gridOf = total => {
+    let best = null;
+    for(let c = 2; c <= 6; c++){
+      const r = Math.ceil(total / c); if(r > (total > 36 ? 7 : 6) || r > 2 * c || (c === 2 && total > 8) || r < c - 1) continue;
+      const s = (c * r - total) * 2 + Math.abs(r / c - 1.05) * 6;   /* 휴대폰 세로 화면: 카드(3:4)를 거의 정사각 배열로 놓을 때 가장 크다 */
+      if(!best || s < best.s) best = { c, r, s };
+    }
+    return best ? [best.c, best.r] : [6, Math.ceil(total / 6)];
+  };
+  function stageCfg(n){
+    const p = planOf('memory', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x);
+    const g = has('triple') ? 3 : 2;
+    let L = c === 1 ? MT.ch1[k - 1] : MT.base[Math.min(c, MT.base.length - 1)] + MT.kOff[k];
+    mj.forEach(x => { L *= MT.mjCards[x] || 1; });
+    if(tw) L *= MT.twCards[tw] || 1;
+    const bombs = has('bomb') ? (k === 5 || k === 10 || p.remix && k === 8 ? 2 : 1) : 0, jokers = has('joker') ? 1 : 0;
+    let sets = Math.max(3, Math.round(L / g));
+    while(sets * g + bombs + jokers > 42) sets--;
+    const twins = has('twins') ? Math.max(1, Math.min(Math.floor(sets / 2), k === 1 ? 1 : Math.round(sets / 3))) : 0;
+    const total = sets * g + bombs + jokers, [cols, rows] = gridOf(total), cards = sets * g;
+    let limit = MT.A * Math.pow(cards, MT.alpha + (g === 3 ? MT.alpha3 : 0)) * MT.kTime[k];
+    mj.forEach(x => { limit *= x === 'bomb' ? Math.pow(MT.mjTime.bomb, bombs) : MT.mjTime[x] || 1; });   /* 폭탄은 한 개마다 */
+    if(tw) limit *= MT.twTime[tw] || 1;
+    if(has('triple') && has('joker')) limit *= MT.tjTime;
+    if(p.boss && tw) limit *= MT.bossTw[tw] || 1;   /* 보스에서 변주가 겹칠 때 보정 */   /* 조커가 세 장 짝 한 세트를 통째로 풀어 줘서 훨씬 쉬워진다 */
+    limit = Math.max(10, Math.round(1.5 * cards), Math.round(limit));   /* 카드 한 장에 적어도 1.5초 */
+    let preview = tw === 'bare' ? 0 : Math.max(1.5, (cards <= 12 ? 3 : cards <= 20 ? 2.5 : 2) - (p.boss ? .5 : 0) + (bombs ? .5 : 0));
+    const missCap = tw === 'tight' ? Math.max(2, Math.round(MT.cap0 * Math.pow(sets, MT.capE) * (MT.capK[k] || 1) * (g === 3 ? MT.capG3 : 1) * (twins ? MT.capTw : 1))) : 0;
+    return { cols, rows, g, sets, bombs, jokers, twins, limit, preview, missCap, shuffle:tw === 'shuffle', tick:tw === 'tick' ? 3 : 0,
+      boss:p.boss, hard:p.hard, fruit:c === 1 && !twins, mj:mj.slice(), tw, n };
+  }
+
   const S = () => G.m;   /* 이 게임의 상태 묶음 */
   const T = (fn, ms) => { const m = G.m, id = setTimeout(() => { m.timers.delete(id); if(G && G.m === m && !G.over) fn(); }, ms); m.timers.add(id); return id; };
 
   function cardEl(i){ return document.querySelector(`.ng-memory .mm-card[data-i="${i}"]`); }
-  function setUp(i, up){ const el = cardEl(i); if(!el) return; el.classList.toggle('up', up); el.setAttribute('aria-label', up || S().st[i] === 2 ? symName(S().cards[i]) + (S().st[i] === 2 ? ' (짝 찾음)' : '') : '덮인 카드 ' + (Math.floor(i / S().cols) + 1) + '행 ' + (i % S().cols + 1) + '열'); }
+  function setUp(i, up){ const el = cardEl(i), m = S(); if(!el || !m.cards[i]) return; el.classList.toggle('up', up); el.setAttribute('aria-label', up || m.st[i] === 2 ? cardName(m.cards[i]) + (m.st[i] === 2 ? (m.cards[i] === BOMB ? ' (터짐)' : ' (짝 찾음)') : '') : '덮인 카드 ' + (Math.floor(i / m.cols) + 1) + '행 ' + (i % m.cols + 1) + '열'); }
 
   function hud(){
     const m = S(); if(!m) return;
     const f = $('#mmFound'); if(f) f.textContent = m.found;
     const fl = $('#mmFlips'); if(fl) fl.textContent = m.flips;
+    const mc = $('#mmMiss'); if(mc && m.missCap){ const left = Math.max(0, m.missCap - m.misses); mc.innerHTML = `실수 <b>${left}</b>번 남음`; mc.classList.toggle('low', left <= 1); }
   }
   function msg(html, cls){ const e = $('#mmMsg'); if(!e) return; e.className = 'mm-msg ' + (cls || ''); e.innerHTML = html; }
+  function playMsg(){
+    const m = S();
+    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
+    return '<span>같은 그림 두 장을 찾아요</span>';
+  }
 
   function layout(){
     const m = S(), bd = $('#bd'), root = document.querySelector('.ng-memory'); if(!bd || !root) return;
     const W = Math.min(root.clientWidth || 360, 430);
     const top = bd.getBoundingClientRect().top + (window.scrollY || 0);
     const H = Math.max(260, (innerHeight || 740) - top - 14);
-    const gap = m.cols >= 6 ? 5 : m.cols >= 5 ? 6 : 8, pad = m.cols >= 5 ? 8 : 10;
+    const gap = m.cols >= 6 || m.rows >= 7 ? 5 : m.cols >= 5 ? 6 : 8, pad = m.cols >= 5 ? 8 : 10;
     let cw = Math.min((W - pad * 2 - gap * (m.cols - 1)) / m.cols, (H - pad * 2 - gap * (m.rows - 1)) / m.rows * 0.75, 104);
     cw = Math.max(34, Math.floor(cw)); const ch = Math.floor(cw / 0.75);
     bd.style.setProperty('--cw', cw + 'px'); bd.style.setProperty('--ch', ch + 'px'); bd.style.setProperty('--gap', gap + 'px'); bd.style.setProperty('--pad', pad + 'px');
@@ -8705,12 +8803,22 @@ NG.memory = (() => {
 
   /* ----- 루프: 카드 나눠주기 → 미리 보기 → 카운트다운 ----- */
   const DEAL = 0.55;
+  const remTime = t => Math.max(0, G.limit - S().pen - t);
+  function startPlay(){
+    const m = S();
+    m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0;
+    m.cards.forEach((_, i) => { const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 18 + 'ms'); el.classList.add('wave'); } setUp(i, false); });
+    T(() => document.querySelectorAll('.ng-memory .mm-card.wave').forEach(e => e.classList.remove('wave')), 700);
+    sfx('memoryGo'); msg(m.preview > 0 ? playMsg() : '<b class="boss">미리 보기 없음</b><span>뒤집으며 기억해요</span>');
+    const b = $('#mmBarWrap'); if(b) b.classList.remove('pv');
+  }
   function loop(){
     if(!G || !G.m || G.over) return;
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#mmBar');
     if(m.phase === 'deal' && t >= DEAL){
+      if(m.preview <= 0){ startPlay(); return; }
       m.phase = 'preview'; m.cards.forEach((_, i) => { const el = cardEl(i); if(el) el.style.transitionDelay = ''; setUp(i, true); });
       sfx('memoryFlip', { n:3 }); msg('<b>기억하세요!</b><span>' + m.preview + '초 뒤에 카드가 덮여요</span>', 'mm-remember');
       const b = $('#mmBarWrap'); if(b) b.classList.add('pv');
@@ -8718,17 +8826,11 @@ NG.memory = (() => {
     if(m.phase === 'preview'){
       const k = Math.max(0, Math.min(1, (t - DEAL - .3) / m.preview));
       if(bar) bar.style.transform = `scaleX(${1 - k})`;
-      if(k >= 1){
-        m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0;
-        m.cards.forEach((_, i) => { const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 18 + 'ms'); el.classList.add('wave'); } setUp(i, false); });
-        T(() => document.querySelectorAll('.ng-memory .mm-card.wave').forEach(e => e.classList.remove('wave')), 700);
-        sfx('memoryGo'); msg(m.boss ? '<b class="boss">보스 판</b><span>짝 3쌍마다 덮인 카드가 섞여요!</span>' : '<span>같은 그림 두 장을 찾아요</span>');
-        const b = $('#mmBarWrap'); if(b) b.classList.remove('pv');
-      }
+      if(k >= 1) startPlay();
       return;
     }
     if(m.phase !== 'play') return;
-    const rem = Math.max(0, G.limit - t), sec = Math.ceil(rem);
+    const rem = remTime(t), sec = Math.ceil(rem);
     if(bar) bar.style.transform = `scaleX(${rem / G.limit})`;
     if(sec !== m.lastSec){
       m.lastSec = sec;
@@ -8740,55 +8842,93 @@ NG.memory = (() => {
     if(rem <= 0) timeUp();
   }
 
+  /* 뒤집기: 보통은 g장(2 또는 3)이 모두 같으면 짝. 조커 + 아무 카드 = 그 카드의 짝 전부. 폭탄은 뒤집자마자 터진다 */
   function tap(i){
     const m = S();
     if(!m || G.over || G.paused || m.phase !== 'play' || m.lock || m.st[i] !== 0 || m.open.includes(i)) return;
-    m.open.push(i); m.flips++; setUp(i, true); hud();
-    sfx('memoryFlip', { n:m.open.length });
-    if(m.open.length < 2) return;
-    const [a, b] = m.open; m.lock = true;
-    T(() => {
-      if(m.cards[a] === m.cards[b]) match(a, b);
-      else miss(a, b);
-    }, 290);
+    m.flips++; m.seen.add(i);
+    if(m.cards[i] === BOMB){ hud(); boom(i); return; }
+    m.open.push(i); setUp(i, true); hud();
+    sfx('memoryFlip', { n:Math.min(2, m.open.length) });
+    const jk = m.open.filter(j => m.cards[j] === JOKER), nm = m.open.filter(j => m.cards[j] !== JOKER);
+    if(jk.length && nm.length){ m.lock = true; T(() => jokerMatch(jk[0], nm[0]), 290); return; }
+    if(!nm.length) return;
+    if(!nm.every(j => m.cards[j] === m.cards[nm[0]])){ m.lock = true; const o = m.open.slice(); T(() => miss(o), 290); return; }
+    if(nm.length >= m.g){ m.lock = true; const o = nm.slice(); T(() => match(o), 290); }
   }
 
-  function match(a, b){
-    const m = S(); m.open = []; m.st[a] = m.st[b] = 2; m.found++; m.combo++; m.best = Math.max(m.best, m.combo); m.sinceSwap++;
-    const col = symCol(m.cards[a]);
-    [a, b].forEach((i, k) => {
+  function celebrate(list, col){
+    list.forEach((i, k) => {
       const el = cardEl(i); if(!el) return; el.classList.add('ok'); setUp(i, true);
       const p = fxCenter(el);
       fxRing(p.x, p.y, '#FFE27A', p.w * .9, .45, 7);
-      fxBurst(p.x, p.y, [col, '#FFE27A', '#FFFFFF'], 10, { speed:230, size:4.5, kinds:['star','dot','spark'], up:110, g:460, glow:k === 1, dur:.7 });
+      fxBurst(p.x, p.y, [col, '#FFE27A', '#FFFFFF'], 10, { speed:230, size:4.5, kinds:['star','dot','spark'], up:110, g:460, glow:k === list.length - 1, dur:.7 });
     });
+  }
+  function afterMatch(){
+    const m = S();
     sfx('memoryMatch', { n:m.combo - 1 }); fxBuzz(15);
     if(m.combo >= 2) fxCombo(m.combo);
     hud();
     if(m.found >= m.pairs){ win(); return; }
-    if(m.boss && m.sinceSwap >= 3){ m.sinceSwap = 0; T(swapTwist, 420); return; }
+    if(m.shuf && m.sinceSwap >= 3){ m.sinceSwap = 0; T(swapTwist, 420); return; }
     m.lock = false;
   }
+  function match(list){
+    const m = S(); m.open = []; list.forEach(i => { m.st[i] = 2; }); m.found++; m.combo++; m.best = Math.max(m.best, m.combo); m.sinceSwap++;
+    celebrate(list, symCol(baseOf(m.cards[list[0]])));
+    afterMatch();
+  }
+  /* 조커: 같이 뒤집은 카드와 같은 그림을 모두(덮인 것까지) 찾아 준다 */
+  function jokerMatch(j, a){
+    const m = S(), key = m.cards[a];
+    const all = m.cards.map((c, i) => c === key && m.st[i] === 0 ? i : -1).filter(i => i >= 0);
+    m.open.forEach(i => { if(i !== j && m.cards[i] !== key) setUp(i, false); });
+    m.open = []; m.st[j] = 2; all.forEach(i => { m.st[i] = 2; });
+    m.found++; m.combo++; m.best = Math.max(m.best, m.combo); m.sinceSwap++; m.jokerUsed = 1;
+    const ej = cardEl(j); if(ej){ ej.classList.add('ok', 'jk'); const p = fxCenter(ej); fxRing(p.x, p.y, '#B08BFF', p.w * 1.3, .6, 9); fxBurst(p.x, p.y, ['#FF5C5C', '#FFE34D', '#5BC236', '#3A8DFF', '#9B5DE5'], 16, { speed:280, size:5, kinds:['star','spark'], up:120, g:420, glow:true, dur:.8 }); }
+    celebrate(all, symCol(baseOf(key)));
+    afterMatch();
+  }
 
-  function miss(a, b){
+  function miss(list){
     const m = S(); m.misses++; m.combo = 0;
-    [a, b].forEach(i => { const el = cardEl(i); if(el){ el.classList.add('bad'); fxShake(el, 5); } });
+    list.forEach(i => { const el = cardEl(i); if(el){ el.classList.add('bad'); fxShake(el, 5); } });
     sfx('memoryMiss'); fxBuzz(25);
+    if(m.tick){ m.pen += m.tick; const tp = $('#mmTimeP'); if(tp){ const p = fxCenter(tp); fxFloat(p.x, p.y + 30, '−' + m.tick + '초', 'bad'); } }
+    hud();
+    const out = m.missCap && m.misses > m.missCap;
     T(() => {
-      [a, b].forEach(i => { const el = cardEl(i); if(el) el.classList.remove('bad'); setUp(i, false); });
-      m.open = []; m.lock = false;
+      list.forEach(i => { const el = cardEl(i); if(el) el.classList.remove('bad'); setUp(i, false); });
+      m.open = [];
+      if(out){ failMiss(); return; }
+      m.lock = false;
     }, 460);
   }
 
-  /* 보스: 짝 3쌍을 찾을 때마다 덮인 카드 몇 장이 서로 자리를 바꾼다(rng로 결정) */
-  function swapTwist(){
-    const m = S(), down = m.st.map((s, i) => s === 0 ? i : -1).filter(i => i >= 0);
-    if(down.length < 4){ m.lock = false; return; }
-    const pick = shuffle(down.slice(), m.rng), nSwap = Math.min(3, Math.floor(pick.length / 2)), pairs = [];
-    for(let k = 0; k < nSwap; k++) pairs.push([pick[2 * k], pick[2 * k + 1]]);
-    msg('<b class="boss">카드가 섞여요!</b><span>움직이는 카드를 잘 보세요</span>', 'mm-shuffle');
+  /* 폭탄: 시간 −8초, 열린 카드는 다시 덮이고, 덮인 카드 두 장(가능하면 이미 본 카드)이 자리를 바꾼다. 폭탄은 사라진다 */
+  const BOMB_SEC = 8;
+  function boom(i){
+    const m = S(); m.lock = true; m.st[i] = 2; m.booms++;
+    const el = cardEl(i); if(el){ el.classList.add('fuse'); } setUp(i, true);
+    sfx('memoryFuse');
+    T(() => {
+      m.pen += BOMB_SEC; m.combo = 0;
+      if(el){ el.classList.remove('fuse'); el.classList.add('boomed'); const p = fxCenter(el); fxRing(p.x, p.y, '#FF8A3D', p.w * 1.6, .5, 12); fxBurst(p.x, p.y, ['#FF5C2B', '#FFB020', '#3A3553', '#FFF3A8'], 22, { speed:360, size:6, kinds:['dot','spark','star'], up:60, g:520, glow:true, dur:.8 }); fxFloat(p.x, p.y - 10, '−' + BOMB_SEC + '초', 'bad'); }
+      sfx('memoryBoom'); fxBuzz([50, 30, 60]); fxShake($('#bd'), 8);
+      m.open.forEach(j => setUp(j, false)); m.open = [];
+      const down = m.st.map((s, j) => s === 0 ? j : -1).filter(j => j >= 0);
+      if(down.length < 2){ m.lock = false; return; }
+      const seen = shuffle(down.filter(j => m.seen.has(j)), m.rng), rest = shuffle(down.filter(j => !m.seen.has(j)), m.rng), pool = seen.concat(rest);
+      msg('<b class="bad">펑!</b><span>시간 −' + BOMB_SEC + '초 · 카드 두 장이 자리를 바꿔요</span>', 'mm-shuffle');
+      T(() => swapCards([[pool[0], pool[1]]], () => { msg(playMsg()); m.lock = false; }), 380);
+    }, 330);
+  }
+
+  /* 덮인 카드 자리 바꾸기(애니메이션) */
+  function swapCards(pairs, done){
+    const m = S(), dur = FXR.reduce ? 10 : 620;
     sfx('memoryShuffle');
-    const dur = FXR.reduce ? 10 : 620;
     pairs.forEach(([x, y]) => {
       const ex = cardEl(x), ey = cardEl(y); if(!ex || !ey) return;
       const px = ex.getBoundingClientRect(), py = ey.getBoundingClientRect(), dx = py.left - px.left, dy = py.top - px.top;
@@ -8802,13 +8942,23 @@ NG.memory = (() => {
       pairs.forEach(([x, y]) => {
         [m.cards[x], m.cards[y]] = [m.cards[y], m.cards[x]];
         const ex = cardEl(x), ey = cardEl(y); if(!ex || !ey) return;
-        const fx = ex.querySelector('.mm-front'), fy = ey.querySelector('.mm-front'), h = fx.innerHTML; fx.innerHTML = fy.innerHTML; fy.innerHTML = h;
+        const fx = ex.querySelector('.mm-front'), fy = ey.querySelector('.mm-front');
+        fx.className = 'mm-face mm-front' + frontCls(m.cards[x]); fy.className = 'mm-face mm-front' + frontCls(m.cards[y]);
+        fx.innerHTML = faceHtml(m.cards[x]); fy.innerHTML = faceHtml(m.cards[y]);
         ex.classList.remove('moving'); ey.classList.remove('moving');
       });
       sfx('memoryFlip', { n:1 });
-      msg('<b class="boss">보스 판</b><span>짝 3쌍마다 덮인 카드가 섞여요!</span>');
-      m.swaps++; m.lock = false;
+      m.swaps++; done();
     }, dur + 20);
+  }
+  /* 변주 '카드 섞기': 짝을 3번 찾을 때마다 덮인 카드 몇 장이 서로 자리를 바꾼다(rng로 결정) */
+  function swapTwist(){
+    const m = S(), down = m.st.map((s, i) => s === 0 ? i : -1).filter(i => i >= 0);
+    if(down.length < 4){ m.lock = false; return; }
+    const pick = shuffle(down.slice(), m.rng), nSwap = Math.min(3, Math.floor(pick.length / 2)), pairs = [];
+    for(let k = 0; k < nSwap; k++) pairs.push([pick[2 * k], pick[2 * k + 1]]);
+    msg('<b class="boss">카드가 섞여요!</b><span>움직이는 카드를 잘 보세요</span>', 'mm-shuffle');
+    swapCards(pairs, () => { msg(playMsg()); m.lock = false; });
   }
 
   function win(){
@@ -8816,24 +8966,34 @@ NG.memory = (() => {
     msg('<b>모두 찾았어요!</b>', 'mm-win');
     sfx('win', { g:'memory' }); fxBuzz([30, 50, 30]);
     const bd = $('#bd');
-    m.cards.forEach((_, i) => { const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 35 + 'ms'); el.classList.add('cheer'); } });
+    m.cards.forEach((c, i) => { if(!c) return; if(m.st[i] === 0){ m.st[i] = 2; setUp(i, true); } const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 35 + 'ms'); el.classList.add('cheer'); } });
     if(bd){ const p = fxCenter(bd); fxRing(p.x, p.y, '#FFE27A', p.w * .7, .7, 12); }
     T(() => finish(true), 1000);
   }
 
+  function showLeft(){ const m = S(); m.st.forEach((s, i) => { if(s === 0 && m.cards[i]){ const el = cardEl(i); if(el){ el.classList.add('left'); } setUp(i, true); } }); }
   function timeUp(){
     const m = S(); if(m.phase !== 'play') return;
-    m.phase = 'done'; m.lock = true; m.open = [];
+    m.phase = 'done'; m.lock = true; m.open = []; m.fail = 'time';
     const e = $('#mmTime'); if(e) e.textContent = '0:00';
     msg('<b class="bad">시간이 다 됐어요</b><span>남은 짝을 보여 드릴게요</span>', 'mm-fail');
     sfx('memoryTimeUp'); fxBuzz([40, 40, 60]); fxShake($('#bd'), 6);
-    m.st.forEach((s, i) => { if(s === 0){ const el = cardEl(i); if(el){ el.classList.add('left'); } setUp(i, true); } });
+    showLeft();
+    T(() => finish(false), 1500);
+  }
+  function failMiss(){
+    const m = S(); if(m.phase !== 'play') return;
+    m.phase = 'done'; m.lock = true; m.open = []; m.fail = 'miss';
+    msg('<b class="bad">실수를 다 썼어요</b><span>남은 짝을 보여 드릴게요</span>', 'mm-fail');
+    sfx('memoryTimeUp'); fxBuzz([40, 40, 60]); fxShake($('#bd'), 6);
+    showLeft();
     T(() => finish(false), 1500);
   }
 
   function build(){
     const m = S(), bd = $('#bd'); if(!bd) return;
-    bd.innerHTML = m.cards.map((k, i) => `<button class="mm-card${m.st[i] ? ' up' : ''}${m.st[i] === 2 ? ' ok' : ''} in" data-i="${i}" style="--d:${(i % m.cols + Math.floor(i / m.cols)) * 30}ms" aria-label="덮인 카드 ${Math.floor(i / m.cols) + 1}행 ${i % m.cols + 1}열"><span class="mm-pop"><span class="mm-in"><span class="mm-face mm-back">${BACK}</span><span class="mm-face mm-front">${symSvg(k)}</span></span></span></button>`).join('');
+    bd.innerHTML = m.cards.map((k, i) => k ? `<button class="mm-card${m.st[i] ? ' up' : ''}${m.st[i] === 2 ? ' ok' : ''} in" data-i="${i}" style="--d:${(i % m.cols + Math.floor(i / m.cols)) * 30}ms" aria-label="덮인 카드 ${Math.floor(i / m.cols) + 1}행 ${i % m.cols + 1}열"><span class="mm-pop"><span class="mm-in"><span class="mm-face mm-back">${BACK}</span><span class="mm-face mm-front${frontCls(k)}">${faceHtml(k)}</span></span></span></button>`
+      : `<span class="mm-gap" aria-hidden="true"></span>`).join('');
     layout();
     T(() => document.querySelectorAll('.ng-memory .mm-card.in').forEach(e => e.classList.remove('in')), 900);
     bd.onpointerdown = e => {
@@ -8844,8 +9004,8 @@ NG.memory = (() => {
       const el = e.target.closest && e.target.closest('.mm-card'); if(!el) return;
       const i = +el.dataset.i, c = m.cols, n = m.cards.length;
       if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); tap(i); return; }
-      const j = { ArrowLeft:i - 1, ArrowRight:i + 1, ArrowUp:i - c, ArrowDown:i + c }[e.key];
-      if(j != null){ e.preventDefault(); if(j >= 0 && j < n){ const t = cardEl(j); if(t) t.focus(); } }
+      const d = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-c, ArrowDown:c }[e.key];
+      if(d != null){ e.preventDefault(); let j = i + d; while(j >= 0 && j < n && !m.cards[j]) j += d; if(j >= 0 && j < n){ const t = cardEl(j); if(t) t.focus(); } }
     };
   }
 
@@ -8871,7 +9031,8 @@ NG.memory = (() => {
     help:[
       ['그림을 기억해요', '처음 몇 초 동안 모든 카드가 앞면으로 보여요. 어디에 무슨 그림이 있는지 잘 기억해 두세요.'],
       ['두 장씩 뒤집어요', '카드를 눌러 두 장을 뒤집어요. 같은 그림이면 짝을 찾은 거예요. 다르면 다시 덮여요.'],
-      ['시간 안에 모두 찾기', '제한 시간 안에 짝을 모두 찾으면 성공이에요. 덜 틀리고 빨리 찾을수록 점수가 높아요.']
+      ['시간 안에 모두 찾기', '제한 시간 안에 짝을 모두 찾으면 성공이에요. 덜 틀리고 빨리 찾을수록 점수가 높아요.'],
+      ['솔로: 5판마다 새 규칙', '솔로에서는 세 장 짝·폭탄·조커·닮은꼴 같은 새 규칙과 번개·외줄 타기 같은 변주가 5판마다 하나씩 나와요. 지금 켜진 규칙은 판 위쪽 이름표에 보여요.']
     ],
     chapters:['과일 바구니','장난감 상자','별빛 하늘','바닷속 친구들','마법 서랍'],
     starRule:'★ 클리어 · ★★ 조금만 틀리기 · ★★★ 거의 안 틀리기',
@@ -8880,22 +9041,36 @@ NG.memory = (() => {
       normal:{ cols:4, rows:5, limit:120, preview:2.5 },
       hard:{ cols:5, rows:6, limit:180, preview:2 }
     },
-    stage(n){
-      const [cols, rows] = gridFor(n), pairs = cols * rows / 2, boss = n % 10 === 0;
-      const per = 9 - 2 * Math.min(1, (n - 1) / 80);
-      const limit = Math.round(10 + pairs * per);
-      const preview = Math.max(1.2, (n <= 10 ? 3 : n <= 45 ? 2.5 : 2) - (boss ? .5 : 0));
-      return { cols, rows, limit, preview, boss, fruit:n <= 10 };
-    },
-    stageDesc(n){ const c = this.stage(n); return `${c.cols}×${c.rows} · ${c.cols * c.rows / 2}쌍${c.boss ? ' · 섞기' : ''}`; },
+    concepts:CONC,
+    stage(n){ return stageCfg(n); },
+    stageDesc(n){ const c = stageCfg(n); return `카드 ${c.sets * c.g + c.bombs + c.jokers}장 · ${c.sets}${c.g === 3 ? '세트' : '쌍'} · ${mmss(c.limit)}${c.missCap ? ' · 실수 ' + c.missCap + '번까지' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.cols}×${c.rows} · ${c.cols * c.rows / 2}쌍`; },
     init(cfg, rng){
-      const cols = cfg.cols, rows = cfg.rows, pairs = cols * rows / 2;
-      const src = cfg.fruit && pairs <= FRUITS.length ? FRUITS.slice() : POOL.slice();
-      const syms = shuffle(src, rng).slice(0, pairs);
-      const cards = shuffle(syms.concat(syms), rng);
-      G.m = { cols, rows, pairs, cards, st:new Array(cards.length).fill(0), open:[], lock:false, found:0, flips:0, misses:0, combo:0, best:0,
-        phase:'deal', preview:cfg.preview || 2.5, boss:!!cfg.boss, sinceSwap:0, swaps:0, rng, lastSec:-1, sec:0, timers:new Set() };
+      const cols = cfg.cols, rows = cfg.rows, g = cfg.g || 2, bombs = cfg.bombs || 0, jokers = cfg.jokers || 0, twins = cfg.twins || 0;
+      const pairs = cfg.sets || cols * rows / 2;
+      let cards;
+      if(g === 2 && !bombs && !jokers && !twins && pairs * 2 === cols * rows){
+        /* 기본(오늘의 문제·대전과 같은 순서로 rng를 쓴다 → 예전 판과 똑같다) */
+        const src = cfg.fruit && pairs <= FRUITS.length ? FRUITS.slice() : POOL.slice();
+        const syms = shuffle(src, rng).slice(0, pairs);
+        cards = shuffle(syms.concat(syms), rng);
+      } else {
+        /* 닮은꼴: 원래 그림 + 색이 다르고 리본 단 그림을 각각 한 세트로. 조커·폭탄을 더해 섞고, 남는 칸은 마지막 줄 양 끝의 빈자리 */
+        const tb = shuffle(Object.keys(SYM).filter(k => k !== 'rainbow'), rng).slice(0, twins);
+        const src = (cfg.fruit && pairs <= FRUITS.length ? FRUITS.slice() : POOL.slice()).filter(k => !tb.includes(k));
+        const syms = tb.flatMap(k => [k, k + ALT]).concat(shuffle(src, rng).slice(0, pairs - 2 * twins));
+        const deck = [];
+        syms.forEach(k => { for(let r = 0; r < g; r++) deck.push(k); });
+        for(let r = 0; r < bombs; r++) deck.push(BOMB);
+        for(let r = 0; r < jokers; r++) deck.push(JOKER);
+        const dealt = shuffle(deck, rng), total = cols * rows, gaps = total - dealt.length, lastN = cols - gaps, lo = (rows - 1) * cols + Math.floor(gaps / 2);
+        cards = []; let q = 0;
+        for(let i = 0; i < total; i++){ const inLast = i >= (rows - 1) * cols; cards.push(gaps > 0 && inLast && (i < lo || i >= lo + lastN) ? null : dealt[q++]); }
+      }
+      const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
+      G.m = { cols, rows, g, pairs, cards, st:cards.map(c => c ? 0 : 3), open:[], lock:false, found:0, flips:0, misses:0, combo:0, best:0, pen:0, booms:0, jokerUsed:0, fail:null,
+        phase:'deal', preview:cfg.preview == null ? 2.5 : cfg.preview, boss:!!cfg.boss, shuf:!!cfg.shuffle, tick:cfg.tick || 0, missCap:cfg.missCap || 0,
+        mj:cfg.mj || [], tw:cfg.tw || null, tips, seen:new Set(), sinceSwap:0, swaps:0, rng, lastSec:-1, sec:0, timers:new Set() };
       G.limit = cfg.limit;
       const m = G.m;
       G.cleanup = () => {
@@ -8909,9 +9084,10 @@ NG.memory = (() => {
         const step = () => {
           if(G.over || G.m !== m || m.phase !== 'play'){ res(m.found); return; }
           if(m.lock){ setTimeout(step, 60); return; }
-          const down = m.st.map((s, i) => s === 0 ? i : -1).filter(i => i >= 0);
+          const down = m.st.map((s, i) => s === 0 && !isSpecial(m.cards[i]) ? i : -1).filter(i => i >= 0);
+          if(!down.length){ res(m.found); return; }
           if(missFirst > 0){ const b = down.find(j => m.cards[j] !== m.cards[down[0]]); missFirst--; tap(down[0]); tap(b); }
-          else { const a = down[0], b = down.find(j => j !== a && m.cards[j] === m.cards[a]); tap(a); tap(b); }
+          else { const a = down[0]; down.filter(j => m.cards[j] === m.cards[a]).slice(0, m.g).forEach(j => tap(j)); }
           setTimeout(step, 80);
         };
         step();
@@ -8922,10 +9098,11 @@ NG.memory = (() => {
       const m = S();
       st.innerHTML = `<div class="ng-memory">
         <div class="mm-hud">
-          <div class="mm-pill" aria-label="찾은 짝"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}쌍</small></div>
+          <div class="mm-pill" aria-label="찾은 짝"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></div>
           <div class="mm-pill mm-time" id="mmTimeP" aria-label="남은 시간"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></div>
           <div class="mm-pill" aria-label="뒤집은 횟수"><span class="mm-ic">${ICO.flip}</span><b id="mmFlips">0</b><small>번</small></div>
         </div>
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}</div>` : ''}
         <div class="mm-barw" id="mmBarWrap"><i id="mmBar"></i></div>
         <div class="mm-msg" id="mmMsg"><span>카드를 나눠 주는 중…</span></div>
         <div class="mm-board" id="bd" role="grid" aria-label="카드 판"></div>
@@ -8937,14 +9114,14 @@ NG.memory = (() => {
       G.raf = requestAnimationFrame(loop);
     },
     progress(){ const m = G && G.m; return m ? m.found / m.pairs : 0; },
-    lossText(){ const m = G.m; return `짝 ${m.found}/${m.pairs}쌍을 찾았어요.`; },
+    lossText(){ const m = G.m; return (m.fail === 'miss' ? '허용 실수를 넘었어요. ' : '') + `짝 ${m.found}/${m.pairs}${m.g === 3 ? '세트' : '쌍'}을 찾았어요.`; },
     score(){
-      const m = G.m, sec = m.sec || elapsed();
+      const m = G.m, sec = Math.min(G.limit, (m.sec || elapsed()) + (m.pen || 0));
       const time = Math.max(0, 350 - Math.floor(sec * 350 / G.limit));
-      const extra = Math.max(0, Math.round(150 * (1 - m.misses / (1.5 * m.pairs))));
+      const extra = Math.max(0, Math.round(150 * (1 - m.misses / (1.5 * m.pairs * (m.g === 3 ? 1.6 : 1)))));
       return { base:500, time, extra, rows:['짝 모두 찾기', '시간 보너스 (' + mmss(sec) + ')', '틀린 뒤집기 ' + m.misses + '번'] };
     },
-    stars(){ const m = G.m; return m.misses <= m.pairs * .5 ? 3 : m.misses <= m.pairs * 1.2 ? 2 : 1; },
+    stars(){ const m = G.m, f = m.g === 3 ? 1.6 : 1; return m.misses <= m.pairs * .5 * f ? 3 : m.misses <= m.pairs * 1.2 * f ? 2 : 1; },
     css:`
 body[data-mode="memory"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%),
@@ -9003,8 +9180,27 @@ body[data-mode="memory"]{background:
 .ng-memory .mm-card.moving{z-index:3}
 .ng-memory .mm-card.moving .mm-back{box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 0 0 3px #FFE27A, 0 8px 14px rgba(26,15,69,.35)}
 .ng-memory .mm-card.cheer .mm-pop{animation:memory-cheer .6s cubic-bezier(.2,1.6,.4,1) var(--d) both}
+.ng-memory .mm-gap{width:var(--cw); height:var(--ch)}
+.ng-memory .mm-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
+.ng-memory .mm-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#3A2261; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
+.ng-memory .mm-chip.mj{background:#FFE7F0; color:#B0214F}
+.ng-memory .mm-chip.tw{background:#EFE7FF; color:#5B3FB5}
+.ng-memory .mm-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
+.ng-memory .mm-chip.miss{background:#E6FFF0; color:#15703F}
+.ng-memory .mm-chip.miss b{font-family:var(--heavy); font-weight:400; font-size:15px}
+.ng-memory .mm-chip.miss.low{background:#FFE3E3; color:#B3122E}
+.ng-memory .mm-front.mm-fb{background:radial-gradient(circle at 50% 60%, #FFE1C7 0%, #FFB28A 100%)}
+.ng-memory .mm-front.mm-fj{background:linear-gradient(160deg,#FFF6D8 0%,#FFE3F4 50%,#E3ECFF 100%)}
+.ng-memory .mm-front .mm-alt{filter:hue-rotate(155deg) saturate(1.35)}
+.ng-memory .mm-front .mm-bow{position:absolute; top:5%; right:4%; width:38%; height:auto; max-height:none; filter:drop-shadow(0 1px 0 rgba(26,15,69,.4)); z-index:1}
+.ng-memory .mm-card.fuse .mm-pop{animation:memory-fuse .33s ease-in-out}
+@keyframes memory-fuse{0%,100%{transform:none} 25%{transform:scale(1.1) rotate(-6deg)} 75%{transform:scale(1.1) rotate(6deg)}}
+.ng-memory .mm-card.boomed .mm-front{background:radial-gradient(circle,#6B5A5A 0%,#3A2F3F 100%)}
+.ng-memory .mm-card.boomed .mm-front svg{opacity:.35; filter:grayscale(1)}
+.ng-memory .mm-card.boomed{opacity:.55}
+.ng-memory .mm-card.ok.jk .mm-front{background:linear-gradient(160deg,#FFF1A8,#FFC6EA 50%,#C9DAFF)}
 @keyframes memory-cheer{0%{transform:none} 40%{transform:translateY(-10px) scale(1.1)} 100%{transform:none}}
-@media (max-width:370px){ .ng-memory .mm-pill b{font-size:18px} .ng-memory .mm-time b{font-size:21px} .ng-memory .mm-pill small{font-size:12.5px} .ng-memory .mm-hud{gap:6px} .ng-memory .mm-msg b{font-size:19px} }
+@media (max-width:370px){ .ng-memory .mm-chip{font-size:12px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-pill b{font-size:18px} .ng-memory .mm-time b{font-size:21px} .ng-memory .mm-pill small{font-size:12.5px} .ng-memory .mm-hud{gap:6px} .ng-memory .mm-msg b{font-size:19px} }
 @media (prefers-reduced-motion: reduce){ .ng-memory .mm-in{transition-duration:.01s} .ng-memory .mm-card.in, .ng-memory .mm-card.ok .mm-pop, .ng-memory .mm-card.cheer .mm-pop, .ng-memory .mm-msg b{animation:none} }
 `,
     sounds:{
@@ -9014,6 +9210,8 @@ body[data-mode="memory"]{background:
       memoryGo(){ aWhoosh({ f:2600, f2:600, a:.03, d:.25, v:.05 }); for(let k = 0; k < 5; k++) aNoise({ ft:'bandpass', f:2600, q:2, t:.03 + k * .04, d:.03, v:.035 }); aBell({ f:m2f(84), t:.2, d:.5, v:.06, rev:.3 }); },
       memoryTick(o){ aTone({ f:o.hi ? 1320 : 990, type:'square', lp:3000, d:.05, v:.05, bus:'ui' }); aTone({ f:o.hi ? 1760 : 1320, t:.06, d:.03, v:.02, bus:'ui' }); },
       memoryShuffle(){ aWhoosh({ f:500, f2:3200, q:1.2, a:.05, d:.35, v:.06 }); for(let k = 0; k < 7; k++) aNoise({ ft:'bandpass', f:rnd(1800, 3200), q:2, t:.05 + k * .07, d:.035, v:.04 }); aTone({ f:520, f2:780, t:.5, d:.12, v:.05, type:'triangle' }); },
+      memoryFuse(){ aNoise({ ft:'highpass', f:3500, d:.3, v:.05 }); aTone({ f:1200, f2:1800, type:'square', lp:2500, d:.25, v:.03 }); },
+      memoryBoom(){ aThump({ f:110, f2:35, d:.5, v:.35 }); aNoise({ ft:'lowpass', f:1400, f2:200, d:.6, v:.16 }); aTone({ f:220, f2:90, type:'sawtooth', lp:900, d:.35, v:.06 }); },
       memoryTimeUp(){ aTone({ f:392, f2:196, type:'sawtooth', lp:1400, d:.6, v:.07 }); aThump({ f:120, f2:45, d:.4, v:.25 }); aBell({ f:m2f(67), t:.1, d:.9, v:.05, rev:.4 }); }
     },
     gate:{ memoryFlip:35, memoryTick:250, memoryMatch:60 },
