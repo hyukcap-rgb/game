@@ -66,7 +66,8 @@ button:focus-visible, summary:focus-visible{outline:3px solid #FFE27A; outline-o
   animation:spin 80s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 body[data-mode] .scene{display:none}
-body[data-mode="sudoku"]{background:#EEF2F8}
+body[data-mode="sudoku"]{background:var(--night)}
+body[data-mode="sudoku"] .scene{display:block}
 body[data-mode="ball"]{background:#0B0718}
 body[data-mode="tower"]{background:#0E150A}
 body[data-mode="tower"] #play > .pbar{display:none!important}
@@ -375,35 +376,55 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .sud .cell.hl{background:#EEF0FF}
 .sud .cell.sel{background:#FFE88A}
 .sud .cell.same{background:#FFF4C2}
-.shead{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:13px; color:#7A8BA6; margin:2px 2px 10px; white-space:nowrap}
-.shead b{color:var(--ink); font-weight:700}
-.sct{display:flex; align-items:center; gap:6px}
-#sclock{font-variant-numeric:tabular-nums; font-weight:700; font-size:14px}
-#spause{width:30px; height:30px; border-radius:50%; background:#EAEEF4; color:#344861; font-size:10px; letter-spacing:-1px}
-.swrap{position:relative}
-.s9{border:2px solid #344861; border-radius:4px; background:#344861; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr)}
-.s9 .cell{background:#FFFFFF; color:#344861; font-family:system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; font-size:clamp(18px,6vw,30px); font-weight:400}
-.s9 .cell.user{color:#325AAF}
-.s9 .cell.wrong{color:#E55C6C}
-.s9 .cell.hl{background:#E2EBF3}
-.s9 .cell.same{background:#C3D7EA}
-.s9 .cell.sel{background:#BBDEFB}
-.s9 .cell.wrong.sel, .s9 .cell.wrong.hl, .s9 .cell.wrong.same{background:#F7CFD6}
-.nt{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; font-size:clamp(8px,2.4vw,12px); color:#6E7C8C; line-height:1}
+/* ===== 스도쿠: 밤하늘 + 양피지 카드 + 우리 색(자체 화면 설계) =====
+   판 선 남보라 · 선택 칸 금색 · 같은 줄·칸 연보라 · 같은 숫자 연분홍 · 내가 넣은 숫자 보라 · 틀린 숫자 빨강 */
+.shead{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) 48px; align-items:center; gap:6px; min-height:56px; padding:5px 6px 5px 10px; margin:0 0 12px; border-radius:18px; color:var(--ink); white-space:nowrap;
+  background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 4px 0 var(--outline2)}
+.sch{display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; min-width:0}
+.sch small{font-size:12.5px; font-weight:700; color:var(--sub)}
+.sch b{font-family:var(--heavy); font-weight:400; font-size:20px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:var(--ink)}
+.smis{display:flex; gap:5px; height:24px; align-items:center}
+.smis i{width:15px; height:15px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,22,80,.35); box-sizing:border-box; transition:background .2s, border-color .2s, transform .2s}
+.smis i.on{background:#E5484D; border-color:#8E1C26; transform:scale(1.12); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+#sclock{font-variant-numeric:tabular-nums}
+#spause{width:44px; height:44px; border-radius:14px; display:grid; place-items:center; color:#fff; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:2.5px solid #3B1D96; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 #3B1D96}
+#spause svg{width:20px; height:20px; display:block}
+#spause:active{transform:translateY(2px); box-shadow:0 1px 0 #3B1D96}
+.swrap{position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
+.board.s9{border:2.5px solid #2A1650; border-radius:8px; background:#2A1650; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr)}
+.s9 .cell{background:#FFFFFF; color:#2A1650; font-family:var(--disp); font-size:clamp(20px,6.4vw,30px); font-weight:400; transition:background .12s}
+.s9 .cell.user{color:#6C3CE0}
+.s9 .cell.hl{background:#F3EDFF}
+.s9 .cell.same{background:#FFD6E8}
+.s9 .cell.sel{background:#FFE38A}
+.s9 .cell.wrong{color:#E5484D; background:#FFE1E3}
+.s9 .cell.wrong.sel{background:#FFC7A8}
+.nt{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; font-family:var(--font); font-weight:700; font-size:clamp(8px,2.4vw,12px); color:#8B7BAE; line-height:1}
 .nt span{display:grid; place-items:center}
-.pcover{position:absolute; inset:0; background:#F4F6FA; border:2px solid #344861; border-radius:4px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#344861; font-size:20px}
+.pcover{position:absolute; inset:8px; background:linear-gradient(180deg,#F6F0FF,#E6DAFF); border:2.5px solid #2A1650; border-radius:10px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#2A1650; font-family:var(--disp); font-size:22px}
 .pcover.on{display:flex}
+.pcover .pc-ico{width:64px; height:64px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:3px solid #3B1D96; box-shadow:0 4px 0 #3B1D96}
+.pcover .pc-ico svg{width:28px; height:28px}
 .pcover button{padding:12px 22px; border-radius:16px; font-weight:700; font-size:15px}
-.tools{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:14px}
-.tools button{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:12px; color:#325AAF}
-.tc{position:relative; width:52px; height:52px; border-radius:50%; background:#EAEEF4; display:grid; place-items:center; color:#344861}
-.tools button.on .tc{background:#325AAF; color:#fff}
-.tools button.used .tc{opacity:.45}
-.tb{position:absolute; top:-6px; right:-10px; font-style:normal; font-size:10px; font-weight:700; background:#325AAF; color:#fff; border-radius:10px; min-width:22px; height:20px; display:grid; place-items:center; padding:0 5px; border:2px solid var(--bg)}
-.tb.off{background:#AEB7C4}
-.pad9{display:grid; grid-template-columns:repeat(9,1fr); gap:4px; margin-top:12px}
-.pad9 button{background:#EAEEF4; border-radius:10px; padding:10px 0; font-family:system-ui, -apple-system, sans-serif; font-size:clamp(22px,7vw,30px); color:#325AAF}
-.pad9 button:active{background:#C3D7EA}
+.tools{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:16px}
+.tools button{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96; position:relative; overflow:hidden; isolation:isolate; min-height:60px; padding:5px 2px; border-radius:15px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-family:var(--disp); font-size:14.5px; line-height:1.1; color:#fff; text-shadow:0 2px 0 var(--c3); white-space:nowrap; background:linear-gradient(180deg,var(--c1),var(--c2)); border:2.5px solid var(--c3);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 var(--c3), 0 7px 12px rgba(20,5,40,.25); transition:transform .08s, box-shadow .08s}
+.tools button::before{content:""; position:absolute; z-index:-1; left:5px; right:5px; top:3px; height:40%; border-radius:11px 11px 16px 16px; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0))}
+.tools button:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
+.tools .tc{display:inline-flex; align-items:center; gap:4px}
+.tools .tc svg{width:22px; height:22px; display:block; filter:drop-shadow(0 1.5px 0 var(--c3))}
+.tools #tErase{--c1:#FFA8CF; --c2:#F0368A; --c3:#8E0F4F}
+.tools #tMemo{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+.tools #tMemo.on{--c1:#8BF06A; --c2:#23A548; --c3:#0F5A23}
+.tools #tHint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.tools #tHint .tc svg{filter:none}
+.tools button.used{filter:grayscale(.8); opacity:.55}
+.tb{min-width:22px; height:20px; padding:0 5px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-style:normal; font-weight:400; font-size:12px; line-height:1; color:var(--c3); background:rgba(255,255,255,.92); text-shadow:none}
+.tb.off{color:#5B6789}
+.pad9{display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; margin-top:14px}
+.pad9 button{min-height:54px; border-radius:12px; padding:0; font-family:var(--disp); font-size:clamp(22px,7vw,30px); line-height:1; color:#6C3CE0; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:2.5px solid var(--outline); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 var(--outline2)}
+.pad9 button:active{background:#F3EDFF; transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
 .pad9 button.gone{visibility:hidden}
 .pad{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:12px}
 .pad button{background:var(--card); border:2px solid var(--line); border-radius:14px; padding:12px 0; font-family:"Jua",system-ui,sans-serif; font-size:24px}
@@ -433,41 +454,39 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .modal.wood .b2{background:#4A2F17; color:#FFF3DC}
 .modal.wood .b1{background:#E8A33A; color:#3B2A1A}
 .modal.wood .sgrid{border-color:#E8C27A; box-shadow:none}
-/* 레퍼런스 게임 화면 보정(가독성) */
+/* 게임 화면 보정(가독성) */
 .nbtn small{font-size:11px} .itm small, .undo small{font-size:11px}
 .stile i{color:#6E6A60}
 #spause{width:44px; height:44px}
 .shead{font-size:13px}
 .board{border-width:2px; border-radius:16px}
-/* ===== 여우 자리 찾기(레퍼런스 화면) ===== */
-body.fxmode{background:#F5EEEB}
-body.fxmode #play > .pbar, body.fxmode #play > .stats{display:none!important}
-.fxg{--ink:#7A4450; color:#7A4450; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
-.fx-top{display:grid; grid-template-columns:52px 1fr 52px; align-items:center; margin:4px 0 10px}
-.fx-round{width:52px; height:52px; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(122,68,80,.12); display:grid; place-items:center}
-.fx-round svg{width:26px; height:26px}
-.fx-lv{display:flex; justify-content:center; gap:36px; text-align:center; line-height:1.15}
-.fx-lv small{display:block; font-size:15px; font-weight:500}
-.fx-lv b{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
-.fx-row{display:flex; justify-content:center; gap:14px; margin-bottom:10px}
-.fx-pill{height:46px; padding:0 16px; border-radius:23px; background:#fff; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(122,68,80,.06)}
-.fx-paw svg{width:30px; height:30px; display:block; fill:#F58A3A}
-.fx-paw.off svg{fill:#F1E1D8}
-.fx-paw.lost{animation:pawlost .5s}
-@keyframes pawlost{0%{transform:scale(1.3)}30%{transform:translateX(-4px) rotate(-10deg)}60%{transform:translateX(4px) rotate(10deg)}}
-.fx-w svg{width:30px; height:30px; display:block}
-.fx-time{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; min-width:62px}
-.fx-bar{display:flex; justify-content:center; gap:3px; padding:6px 12px; margin:0 auto 10px; border-radius:24px; background:#fff; box-shadow:0 2px 6px rgba(122,68,80,.06); width:fit-content; max-width:100%}
-.fx-head{width:28px; height:27px; display:block}
-.fx-head svg{width:100%; height:100%; display:block}
-.fx-head:not(.on){opacity:.62}
-.fx-head.pop{animation:headpop .5s}
-@keyframes headpop{40%{transform:scale(1.45) translateY(-4px)}}
-.fx-rules{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px; border-radius:20px; background:#fff; margin-bottom:12px}
-.frule{word-break:keep-all; display:flex; align-items:center; gap:6px; padding:8px 7px; border-radius:12px; background:#F9EEEA; font-size:12.5px; line-height:1.3; font-weight:500; min-width:0}
-.frule-ico{width:26px; height:26px; flex:none}
-.fx-board{--n:9; position:relative; display:grid; grid-template-columns:repeat(var(--n),minmax(0,1fr)); grid-template-rows:repeat(var(--n),minmax(0,1fr)); gap:calc(26px / var(--n)); padding:8px; border-radius:20px; background:#fff; aspect-ratio:1; touch-action:none; box-shadow:0 4px 14px rgba(122,68,80,.08)}
-.fx-wait{grid-column:1/-1; align-self:center; text-align:center; font-weight:700; color:#B08A92}
+/* ===== 여우 자리 찾기: 밤하늘 + 연보라 종이 카드(자체 화면 설계) =====
+   상단은 공용 막대(← 제목 ?), 그 아래 한 줄(기회 별 · 여우 · 시간 · 점수), 판 카드, 사탕 도구 버튼 3개 */
+body[data-mode="fox"]{background:var(--night)}
+body[data-mode="fox"] .scene{display:block}
+body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 70px)}
+.fxg{--ink:#2A1650; color:var(--ink); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
+.fx-stats{display:grid; grid-template-columns:auto repeat(3,minmax(0,1fr)); align-items:center; gap:4px; min-height:56px; padding:6px 10px 6px 8px; margin:0 0 14px; border-radius:18px;
+  background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 4px 0 var(--outline2)}
+.fx-st{display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; min-width:0}
+.fx-st small{font-size:12.5px; font-weight:700; color:var(--sub); white-space:nowrap}
+.fx-st b{font-family:var(--heavy); font-weight:400; font-size:20px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:var(--ink); white-space:nowrap}
+.fx-st b.bump{animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
+.fx-lives{display:flex; align-items:center; gap:1px; padding:4px 8px 4px 2px; margin-right:2px; border-right:2px dashed var(--paper-line); border-radius:0}
+.fx-star{width:25px; height:25px; display:block; transition:opacity .25s, filter .25s}
+.fx-star svg{width:100%; height:100%; display:block; overflow:visible}
+.fx-star.off{opacity:.32; filter:grayscale(1)}
+.fx-star.lost{animation:starlost .5s}
+@keyframes starlost{0%{transform:scale(1.35)}30%{transform:translateX(-4px) rotate(-14deg)}60%{transform:translateX(4px) rotate(14deg)}}
+.fx-star.last{animation:starlast 1s ease-in-out infinite}
+@keyframes starlast{50%{transform:scale(1.28); filter:drop-shadow(0 0 5px rgba(255,70,80,.95))}}
+.fx-lives.hurt{animation:hurt .5s}
+@keyframes hurt{30%{background:#FFE1E3; transform:scale(1.06)}}
+.fx-card{position:relative; padding:9px; border-radius:24px; background:linear-gradient(180deg,#F1E8FF 0%,#DDCDFB 100%); border:3px solid var(--outline);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), inset 0 -4px 0 rgba(108,60,224,.10), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35); transition:box-shadow .3s}
+.fx-card.danger{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 0 0 4px #FF5A64, 0 0 28px 8px rgba(255,70,90,.5)}
+.fx-board{--n:9; position:relative; display:grid; grid-template-columns:repeat(var(--n),minmax(0,1fr)); grid-template-rows:repeat(var(--n),minmax(0,1fr)); gap:calc(24px / var(--n)); aspect-ratio:1; touch-action:none}
+.fx-wait{grid-column:1/-1; align-self:center; text-align:center; font-family:var(--disp); font-size:16px; color:var(--sub)}
 .fxc{aspect-ratio:1; min-width:0; min-height:0; border-radius:22%; display:grid; place-items:center; position:relative; overflow:visible; cursor:pointer}
 /* 칸도 공용 캐릭터와 같은 도톰한 질감: 위는 살짝 밝게, 아래는 살짝 그늘 */
 .fxc{box-shadow:inset 0 2px 0 rgba(255,255,255,.32), inset 0 -3px 0 rgba(0,0,0,.12); background-image:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%, rgba(0,0,0,.05))}
@@ -480,15 +499,24 @@ body.fxmode #play > .pbar, body.fxmode #play > .stats{display:none!important}
 .fxc.dance svg{animation:foxdance .5s ease-in-out both}
 @keyframes foxdance{40%{transform:translateY(-22%) scale(1.15)}}
 .fx-board.shake{animation:shake .35s}
-.fx-tools{display:flex; justify-content:center; gap:28px; margin:22px 0 6px}
-.fx-tool{position:relative; width:68px; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#7A4450}
-.fx-tool > svg{width:68px; height:68px; padding:17px; border-radius:50%; background:#fff; box-shadow:0 4px 12px rgba(122,68,80,.14); box-sizing:border-box}
-.fx-tool i{position:absolute; top:-6px; right:-8px; min-width:30px; height:26px; padding:0 7px; border-radius:13px; background:#E53935; color:#fff; font-style:normal; font-size:14px; font-weight:800; display:grid; place-items:center; border:2px solid #F5EEEB}
-.fx-tool:disabled{opacity:.45}
-.fx-tip{text-align:center; font-size:13px; color:#A07A82; margin:10px 0 0}
+.fx-tools{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:18px 0 4px}
+.fx-tool{position:relative; overflow:hidden; isolation:isolate; min-height:62px; padding:6px 4px; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-family:var(--disp); font-size:15.5px; line-height:1.1; color:#fff; text-shadow:0 2px 0 var(--c3); background:linear-gradient(180deg,var(--c1) 0%,var(--c2) 100%); border:2.5px solid var(--c3);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 var(--c3), 0 7px 12px rgba(20,5,40,.25); transition:transform .08s, box-shadow .08s}
+.fx-tool::before{content:""; position:absolute; z-index:-1; left:6px; right:6px; top:3px; height:40%; border-radius:12px 12px 18px 18px; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0))}
+.fx-tool .ico{width:24px; height:24px; vertical-align:0; filter:drop-shadow(0 1.5px 0 var(--c3))}
+.fx-tool span{display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
+.fx-tool b{min-width:22px; height:22px; padding:0 6px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; color:var(--c3); background:rgba(255,255,255,.92); text-shadow:none; box-shadow:inset 0 -2px 0 rgba(0,0,0,.08)}
+.fx-tool.hint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.fx-tool.hint .ico{filter:none}
+.fx-tool.auto{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+.fx-tool.undo{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96}
+.fx-tool:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
+.fx-tool:disabled{filter:grayscale(.8); opacity:.55}
+.fx-tip{text-align:center; font-size:14px; line-height:1.45; color:#E4DCFF; margin:12px 4px 0; text-shadow:0 1px 0 var(--outline2)}
 /* ===== 여우 효과(효과팀) ===== */
 .fxfx{position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:30}
-.fxfloat{position:fixed; transform:translate(-50%,-50%); pointer-events:none; z-index:19; font-weight:800; font-size:22px; color:#fff; -webkit-text-stroke:4px #7A4450; paint-order:stroke fill; animation:floatup 1.2s cubic-bezier(.2,.8,.3,1) forwards; white-space:nowrap}
+.fxfloat{position:fixed; transform:translate(-50%,-50%); pointer-events:none; z-index:19; font-weight:800; font-size:22px; color:#fff; -webkit-text-stroke:4px #2A1650; paint-order:stroke fill; animation:floatup 1.2s cubic-bezier(.2,.8,.3,1) forwards; white-space:nowrap}
 .fxfloat.bad{color:#FF6A2B}
 @keyframes floatup{0%{opacity:0; transform:translate(-50%,-30%) scale(.5)} 15%{opacity:1; transform:translate(-50%,-70%) scale(1.25)} 30%{transform:translate(-50%,-90%) scale(1)} 100%{opacity:0; transform:translate(-50%,-260%) scale(1)}}
 .fxfly{position:fixed; z-index:19; pointer-events:none; filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
@@ -508,10 +536,10 @@ body.fxmode #play > .pbar, body.fxmode #play > .stats{display:none!important}
 @keyframes shake2{10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(5px)} 30%,50%,70%{transform:translateX(-9px) rotate(-.6deg)} 40%,60%{transform:translateX(9px) rotate(.6deg)}}
 .fxvig{position:fixed; inset:0; pointer-events:none; z-index:17; box-shadow:inset 0 0 90px 30px rgba(255,40,30,.55); animation:vig .6s ease-out forwards}
 @keyframes vig{0%{opacity:0} 20%{opacity:1} 100%{opacity:0}}
-.fxbubble{position:fixed; z-index:19; pointer-events:none; background:#3A2A30; color:#fff; font-size:14px; font-weight:700; padding:9px 13px; border-radius:12px; white-space:nowrap; box-shadow:0 6px 16px rgba(0,0,0,.25); animation:bubin .25s cubic-bezier(.2,1.5,.5,1)}
+.fxbubble{position:fixed; z-index:19; pointer-events:none; background:#2A1650; color:#fff; font-size:14px; font-weight:700; padding:9px 13px; border-radius:12px; white-space:nowrap; box-shadow:0 6px 16px rgba(0,0,0,.25); animation:bubin .25s cubic-bezier(.2,1.5,.5,1)}
 .fxbubble::after{content:""; position:absolute; left:calc(var(--ax) - 7px); border:7px solid transparent}
-.fxbubble.up::after{top:100%; border-top-color:#3A2A30}
-.fxbubble.down::after{bottom:100%; border-bottom-color:#3A2A30}
+.fxbubble.up::after{top:100%; border-top-color:#2A1650}
+.fxbubble.down::after{bottom:100%; border-bottom-color:#2A1650}
 .fxbubble.out{opacity:0; transition:opacity .35s}
 @keyframes bubin{from{transform:scale(.6); opacity:0}}
 .fxcombo{position:fixed; z-index:19; pointer-events:none; transform:translate(-50%,0); display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:linear-gradient(90deg,#FF8A3D,#FF5C8A); color:#fff; box-shadow:0 8px 20px rgba(255,92,138,.4); animation:combo 1.2s cubic-bezier(.2,1.4,.4,1) forwards}
@@ -520,20 +548,13 @@ body.fxmode #play > .pbar, body.fxmode #play > .stats{display:none!important}
 .fxcombo.max{background:linear-gradient(90deg,#FFB300,#FF5C8A,#8E6BD1)}
 @keyframes combo{0%{opacity:0; transform:translate(-50%,10px) scale(.4)} 18%{opacity:1; transform:translate(-50%,0) scale(1.15)} 30%{transform:translate(-50%,0) scale(1)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-14px)}}
 #fxScore.bump{display:inline-block; animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
-@keyframes bump{40%{transform:scale(1.35); color:#FF8A3D}}
-.fx-pill.hurt{animation:hurt .5s}
-@keyframes hurt{30%{background:#FFE1DC; transform:scale(1.08)}}
-.fx-paw.last svg{animation:lastpaw 1s ease-in-out infinite; fill:#FF5A3C}
-@keyframes lastpaw{50%{transform:scale(1.25); filter:drop-shadow(0 0 6px rgba(255,60,40,.8))}}
-.fx-board.danger{box-shadow:0 0 0 3px rgba(255,90,60,.55), 0 4px 14px rgba(122,68,80,.08)}
-.fxlast{position:absolute; left:50%; top:-14px; transform:translateX(-50%); background:#FF5A3C; color:#fff; font-size:13px; font-weight:800; padding:4px 12px; border-radius:999px; z-index:3; white-space:nowrap; animation:lastin .4s cubic-bezier(.2,1.6,.4,1)}
+@keyframes bump{40%{transform:scale(1.35); color:#FF6FA8}}
+.fxlast{position:absolute; left:50%; top:-16px; transform:translateX(-50%); background:linear-gradient(#FF7A82,#E5484D); color:#fff; font-family:var(--disp); font-size:14px; padding:3px 14px 4px; border:2.5px solid var(--outline2); border-radius:999px; z-index:3; white-space:nowrap; animation:lastin .4s cubic-bezier(.2,1.6,.4,1)}
 @keyframes lastin{from{transform:translateX(-50%) scale(.3)}}
 .fxstamp{white-space:nowrap; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-12deg); z-index:4; font-size:clamp(40px,13vw,60px); font-weight:800; color:#FF5C8A; background:rgba(255,255,255,.9); border:6px solid #FF5C8A; border-radius:22px; padding:6px 26px; pointer-events:none; animation:stamp .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-12deg) scale(3); opacity:0} 100%{transform:translate(-50%,-50%) rotate(-12deg) scale(1); opacity:1}}
-.fx-snd{width:46px; height:46px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 2px 6px rgba(122,68,80,.06)}
-.fx-snd svg{width:24px; height:24px}
-.fx-lost{position:fixed; z-index:19; pointer-events:none; width:30px; height:30px}
-.fx-lost svg{width:100%; height:100%; fill:#F58A3A}
+.fx-lost{position:fixed; z-index:19; pointer-events:none; width:26px; height:26px}
+.fx-lost svg{width:100%; height:100%}
 @media (prefers-reduced-motion: reduce){ .fxfloat,.fxcombo{animation-duration:.01s} }
 /* ===== 함대 결전(해전 전략) ===== */
 body.flmode{background:radial-gradient(120% 55% at 50% 0%,#11355A 0%,#071A2E 55%,#050F1C 100%) fixed #050F1C}
@@ -1059,17 +1080,17 @@ body[data-mode] .dock{display:none}
 /* 스도쿠: 맞힘 반짝, 줄·칸 완성 물결, 완성 파도 */
 .s9 .cell.pop{animation:spop .42s cubic-bezier(.2,1.7,.4,1), sok .7s ease-out}
 @keyframes spop{45%{transform:scale(1.28)}}
-@keyframes sok{0%{background:#8FD0FF; color:#0D47A1}}
+@keyframes sok{0%{background:#D9C8FF; color:#3B1D96}}
 .s9 .cell.wave{animation:swave .62s ease-out var(--wd,0s) both}
 @keyframes swave{35%{background:#FFE27A; color:#7A4B00; transform:scale(1.14); box-shadow:0 0 14px rgba(255,190,40,.9); z-index:2}}
 .s9 .cell.winw{animation:swin .8s ease-in-out var(--wd,0s) both}
-@keyframes swin{30%{background:#8FD0FF; transform:scale(1.12)} 60%{background:#FFE27A; transform:scale(.96)}}
+@keyframes swin{30%{background:#D9C8FF; transform:scale(1.12)} 60%{background:#FFE38A; transform:scale(.96)}}
 .s9.shake2{animation:shake2 .45s cubic-bezier(.36,.07,.19,.97)}
 .s9 .cell.flash{animation:sbad .6s ease-out}
 @keyframes sbad{0%,40%{background:#FF8A94; transform:scale(1.08)} 20%{transform:scale(.9)}}
 .pad9 button.hit{animation:padhit .3s ease-out}
-@keyframes padhit{40%{transform:scale(.86); background:#BBDEFB}}
-.fxfloat.sud{font-size:18px; -webkit-text-stroke:4px #325AAF}
+@keyframes padhit{40%{transform:scale(.86); background:#E6DAFF}}
+.fxfloat.sud{font-size:18px; -webkit-text-stroke:4px #6C3CE0}
 .fxfloat.big{font-size:24px; color:#FFE27A; -webkit-text-stroke:5px #7A4B00}
 /* 여우: 자동 ✕가 차례로 찍힘 */
 .fxc.xin svg{animation:xin .32s cubic-bezier(.2,1.6,.4,1) var(--xd,0s) both}
@@ -1214,7 +1235,7 @@ body.duel-ready .duelbar{visibility:hidden}
 .pbar.has-duel .db-who{display:none}                  /* 얼굴로 구분(내 얼굴 / 상대 동물) */
 .pbar.has-duel .db-tag{top:-11px; right:auto; left:50%; transform:translateX(-50%)}
 #play > .duelbar{margin-top:12px}
-body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 44px)}
+body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .pbar.has-duel .db-tag.flip{animation:tagFlipC .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes tagFlipC{0%{transform:translateX(-50%) scale(.5)} 60%{transform:translateX(-50%) scale(1.18)}}
 .pbar.has-duel .dping{top:calc(100% + 8px)}
@@ -1812,7 +1833,7 @@ const GAME_META = {
   ball:{ col:'var(--g-ball)', time:'약 3분' }, tower:{ col:'var(--g-tower)', time:'약 5분' }, fleet:{ col:'var(--g-fleet)', time:'약 5분' }
 };
 const GAME_IDS = ['fox','sudoku','ball','tower','fleet'];
-/* 새 게임 모듈(동물 팡·네모 그림·블록 채우기·카드 짝·숫자 합치기)이 여기에 등록된다. ngRegister()가 GAMES·GCOL·HELP 등에 합친다. */
+/* 새 게임 모듈(동물 삼총사·네모 그림·블록 채우기·카드 짝·숫자 합치기)이 여기에 등록된다. ngRegister()가 GAMES·GCOL·HELP 등에 합친다. */
 const NG = {};
 /* 모드 v6: 오늘 = 10게임 중 날짜별 5개, 솔로 = 새 스테이지 첫 클리어 점수, 대전 = 승패 점수 */
 const DAILY_N = 5, SOLO_CAP = 1000, DUEL_PTS = { w:400, d:250, l:150 };
@@ -1821,7 +1842,7 @@ const soloPts = st => 100 + 50 * st;
 const isStage = id => id === 'ball' || id === 'tower';
 const FRIEND_COL = ['#FFD6E0','#FFE7A8','#C9F0DE','#CFE0FF','#E4D4FF','#FFDCC2'];
 const HELP = {
-  fox:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 발바닥 1개','틀린 자리는 주황 ✕가 되고 발바닥이 줄어요. 3번 틀리면 끝. 힌트·자동 ✕는 판당 3번.']],
+  fox:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 기회 별 1개','틀린 자리는 주황 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 별 3개를 다 잃으면 끝. 힌트·자동 ✕는 판당 3번.']],
   sudoku:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 3×3 칸마다 1부터 9까지 한 번씩 넣어요.'],['메모로 예비 숫자','메모를 켜면 작은 예비 숫자를 적어둘 수 있어요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요. 힌트는 3번 쓸 수 있어요.']],
   ball:[['조준하고 손 떼기','판을 누른 채 끌거나 아래 슬라이더를 끌어 조준하고, 손을 떼면 구슬이 날아가요.'],['숫자만큼 맞히기','숫자만큼 맞히면 블록이 깨져요. 점선 고리를 먹으면 다음 턴에 구슬이 1개 늘어요.'],['바닥에 닿으면 끝','번개(모든 숫자 20% 감소)와 멀티볼(구슬 약 2.6배)은 판당 1번. 주황 블록은 폭탄·레이저예요.']],
   fleet:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 5초, 안 쏘면 차례가 넘어가요. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']],
@@ -1956,29 +1977,34 @@ const avatar = x => {
 
 /* 게임 썸네일 그림 */
 const ART = {
-  fox(){
-    const reg = [0,0,1,1,1,2, 0,3,3,1,2,2, 4,4,3,5,5,2, 4,6,6,6,5,5], cols = ['#E87BAD','#5DB3E6','#9ED27F','#E0B43A','#8E6BD1','#FFA462','#3EAFA5'];
+  fox(){   /* 밤하늘 + 연보라 종이 카드 + 우리 구역 색 + 기회 별 */
+    const reg = [0,0,1,1,1,2, 0,3,3,1,2,2, 4,4,3,5,5,2, 4,6,6,6,5,5], cols = ['#FF8C9E','#FFD04D','#5ECF9C','#62AEFF','#B48BFF','#FF9E4F','#3FC2C4'];
     const marks = { 1:'x', 4:'x', 7:'fox', 11:'x', 13:'x', 16:'x', 20:'fox', 22:'x' };
     let g = '';
-    reg.forEach((r, k) => { const x = 23 + (k % 6) * 19.5, y = 13 + Math.floor(k / 6) * 19.5;
-      g += `<rect x="${x}" y="${y}" width="17.5" height="17.5" rx="4.5" fill="${cols[r]}"/>`;
-      if(marks[k] === 'x') g += `<path d="M${x + 5.5} ${y + 5.5}l6.5 6.5M${x + 12} ${y + 5.5}l-6.5 6.5" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>`;
-      if(marks[k] === 'fox') g += FOX_FACE.replace('<svg ', `<svg x="${x - 1}" y="${y - 1}" width="19.5" height="19.5" `);
+    reg.forEach((r, k) => { const x = 29 + (k % 6) * 17.5, y = 22 + Math.floor(k / 6) * 17.5;
+      g += `<rect x="${x}" y="${y}" width="15.5" height="15.5" rx="4" fill="${cols[r]}"/>`;
+      if(marks[k] === 'x') g += `<path d="M${x + 5} ${y + 5}l5.5 5.5M${x + 10.5} ${y + 5}l-5.5 5.5" stroke="#2A1650" stroke-opacity=".55" stroke-width="2.6" stroke-linecap="round"/>`;
+      if(marks[k] === 'fox') g += FOX_FACE.replace('<svg ', `<svg x="${x - 1}" y="${y - 1}" width="17.5" height="17.5" `);
     });
-    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="aFox" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE6C9"/><stop offset="1" stop-color="#FFB98A"/></linearGradient></defs>
-      <rect width="160" height="100" fill="url(#aFox)"/><circle cx="18" cy="16" r="26" fill="#fff" opacity=".35"/><circle cx="150" cy="92" r="30" fill="#FF8A3D" opacity=".25"/>
-      <rect x="18" y="8" width="124" height="88" rx="12" fill="#fff" stroke="#7A4450" stroke-width="2.5"/>${g}
-      ${FOX_FACE.replace('<svg ', '<svg x="120" y="58" width="40" height="38" ')}</svg>`;
+    const star = (x, y, on) => `<path transform="translate(${x} ${y}) scale(.42)" d="M12 1.9l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.2l-6 3.2 1.2-6.7L2.3 9l6.7-1z" fill="${on ? '#FFC93C' : '#8C7BC0'}" stroke="#2A1650" stroke-width="3" stroke-linejoin="round"/>`;
+    const gid = 'aFox' + (ART._n = (ART._n || 0) + 1);   /* 숨은 탭의 같은 id를 참조하면 그라데이션이 안 보여서 그릴 때마다 새 id */
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4B30B0"/><stop offset="1" stop-color="#1E1260"/></linearGradient></defs>
+      <rect width="160" height="100" fill="url(#${gid})"/><circle cx="14" cy="18" r="1.4" fill="#fff" opacity=".8"/><circle cx="148" cy="30" r="1.2" fill="#fff" opacity=".7"/><circle cx="140" cy="10" r="1.6" fill="#FFF3A8"/><circle cx="10" cy="70" r="1.1" fill="#fff" opacity=".6"/>
+      <rect x="22" y="15" width="116" height="85" rx="13" fill="#1A0F45"/><rect x="22" y="12" width="116" height="83" rx="13" fill="#E9DDFF" stroke="#2A1650" stroke-width="2.5"/>${g}
+      ${star(3, 1, 1)}${star(14, 1, 1)}${star(25, 1, 0)}
+      ${FOX_FACE.replace('<svg ', '<svg x="122" y="60" width="40" height="38" ')}</svg>`;
   },
-  sudoku(){
+  sudoku(){   /* 밤하늘 + 양피지 카드 + 우리 색 스도쿠 판 */
     const s = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
-    const x0 = 40, y0 = 8, c = 84 / 9; let g = '';
-    g += `<rect x="${x0}" y="${y0 + 4 * c}" width="84" height="${c}" fill="#E2EBF3"/><rect x="${x0 + 6 * c}" y="${y0}" width="${c}" height="84" fill="#E2EBF3"/><rect x="${x0 + 6 * c}" y="${y0 + 4 * c}" width="${c}" height="${c}" fill="#BBDEFB"/>`;
-    for(let i=0;i<81;i++) if(s[i] !== '0') g += `<text x="${x0 + (i % 9 + .5) * c}" y="${y0 + (Math.floor(i / 9) + .5) * c + 2.8}" text-anchor="middle" font-size="7.4" font-family="system-ui,sans-serif" fill="${i % 7 === 3 ? '#325AAF' : '#344861'}">${s[i]}</text>`;
-    for(let k=1;k<9;k++){ const w = k % 3 ? .6 : 1.6, col = k % 3 ? '#BEC6D4' : '#344861'; g += `<path d="M${x0 + k * c} ${y0}v84M${x0} ${y0 + k * c}h84" stroke="${col}" stroke-width="${w}"/>`; }
-    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="aSud" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D7E6FF"/><stop offset="1" stop-color="#8FB2F0"/></linearGradient></defs>
-      <rect width="160" height="100" fill="url(#aSud)"/><rect x="${x0 - 3}" y="${y0 - 3}" width="90" height="90" rx="6" fill="#344861"/><rect x="${x0}" y="${y0}" width="84" height="84" fill="#fff"/>${g}
-      <g font-family="Black Han Sans, Jua, sans-serif" font-size="15" text-anchor="middle"><circle cx="18" cy="28" r="12" fill="#fff" stroke="#1B3C86" stroke-width="2.5"/><text x="18" y="33.5" fill="#3B6FD8">7</text><circle cx="142" cy="70" r="12" fill="#FFD23F" stroke="#1B3C86" stroke-width="2.5"/><text x="142" y="75.5" fill="#1B3C86">9</text><circle cx="20" cy="76" r="8" fill="#fff" opacity=".6"/><circle cx="141" cy="24" r="7" fill="#fff" opacity=".6"/></g></svg>`;
+    const x0 = 40, y0 = 9, c = 82 / 9; let g = '';
+    g += `<rect x="${x0}" y="${y0 + 4 * c}" width="82" height="${c}" fill="#F3EDFF"/><rect x="${x0 + 6 * c}" y="${y0}" width="${c}" height="82" fill="#F3EDFF"/><rect x="${x0 + 6 * c}" y="${y0 + 4 * c}" width="${c}" height="${c}" fill="#FFE38A"/>`;
+    for(let i=0;i<81;i++) if(s[i] !== '0') g += `<text x="${x0 + (i % 9 + .5) * c}" y="${y0 + (Math.floor(i / 9) + .5) * c + 2.8}" text-anchor="middle" font-size="7.4" font-family="Jua,sans-serif" fill="${i % 7 === 3 ? '#6C3CE0' : '#2A1650'}">${s[i]}</text>`;
+    for(let k=1;k<9;k++){ const w = k % 3 ? .6 : 1.6, col = k % 3 ? '#D9CCF0' : '#2A1650'; g += `<path d="M${x0 + k * c} ${y0}v82M${x0} ${y0 + k * c}h82" stroke="${col}" stroke-width="${w}"/>`; }
+    const gid = 'aSud' + (ART._n = (ART._n || 0) + 1);
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4B30B0"/><stop offset="1" stop-color="#1E1260"/></linearGradient></defs>
+      <rect width="160" height="100" fill="url(#${gid})"/><circle cx="16" cy="12" r="1.4" fill="#fff" opacity=".8"/><circle cx="148" cy="44" r="1.2" fill="#fff" opacity=".7"/><circle cx="24" cy="94" r="1.1" fill="#fff" opacity=".6"/>
+      <rect x="${x0 - 6}" y="${y0 - 4}" width="94" height="94" rx="9" fill="#1A0F45"/><rect x="${x0 - 6}" y="${y0 - 6}" width="94" height="94" rx="9" fill="#FBEBCB" stroke="#2A1650" stroke-width="2.2"/><rect x="${x0 - 1}" y="${y0 - 1}" width="84" height="84" rx="2" fill="#2A1650"/><rect x="${x0}" y="${y0}" width="82" height="82" fill="#fff"/>${g}
+      <g font-family="Black Han Sans, Jua, sans-serif" font-size="15" text-anchor="middle"><circle cx="18" cy="30" r="12" fill="#fff" stroke="#2A1650" stroke-width="2.5"/><text x="18" y="35.5" fill="#6C3CE0">7</text><circle cx="142" cy="70" r="12" fill="#FFD04D" stroke="#2A1650" stroke-width="2.5"/><text x="142" y="75.5" fill="#2A1650">9</text></g></svg>`;
   },
   ball(){
     const neon = ['#A95CFF','#FF3D5A','#FF6EB4','#FFA24C','#3DDC84'];
@@ -2622,7 +2648,7 @@ function calcScore(){
     let time = Math.max(0, 350 - Math.floor(sec * 350 / lim)), paw = G.paws * 50, base = id === 'sudoku' || id === 'fox' ? Math.round(G.earned) : 500;
     let l1 = id === 'sudoku' ? '칸 채우기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '칸 제외)' : '') : id === 'fox' ? '여우 찾기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '마리 제외)' : '') : '클리어';
     let l2 = '시간 보너스 (' + mmss(sec) + ')';
-    let l3 = id === 'sudoku' ? '실수 ' + (3 - G.paws) + '번' : '남은 발바닥 ' + G.paws + '개';
+    let l3 = id === 'sudoku' ? '실수 ' + (3 - G.paws) + '번' : '남은 기회 별 ' + G.paws + '개';
     if(id === 'ball'){ time = Math.max(0, 350 - Math.max(0, G.turn - G.R) * 35); paw = G.undoUsed ? 0 : 150; l1 = '스테이지 클리어'; l2 = '턴 보너스 (' + G.turn + '턴, 최소 ' + G.R + '턴)'; l3 = G.undoUsed ? '되돌리기 사용' : '되돌리기 안 씀'; }
     if(id === 'fleet'){ const n = flShotN(); base = 500; time = Math.round(350 * Math.max(0, Math.min(1, (100 - n) / 83))); paw = Math.round(150 * G.myLeft / FL_TOTAL);
       l1 = G.forfeit ? '승리 (상대 기권)' : '승리'; l2 = '명중률 보너스 (' + n + '발 중 ' + G.hitsN + '명중)'; l3 = '남은 내 함선 ' + G.myLeft + '/' + FL_TOTAL + '칸'; }
@@ -2771,29 +2797,32 @@ function renderStage(){
   } else {
     const L = G.L;
     const ico = {
-      undo:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v5h5"/><path d="M5.5 15a7 7 0 1 0 1.2-7.3L4 10"/></svg>',
-      erase:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4l5 5-9.5 9.5H7L3.5 15z"/><path d="M9.5 8.5l5 5"/><path d="M14 20h7"/></svg>',
-      memo:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/><path d="M13 20h8"/></svg>',
-      hint:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>'
+      undo:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>',
+      erase:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.8l5.7 5.7-9.8 9.8H6.3l-3-3z" fill="rgba(255,255,255,.25)"/><path d="M8.6 9.7l5.7 5.7"/><path d="M13 20.3h7.5"/></svg>',
+      memo:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="13" height="17.5" rx="2.5" fill="rgba(255,255,255,.25)"/><path d="M7 8h6M7 12h4"/><path d="M20.5 9.5l-7.2 7.2-.8 3.1 3.1-.8 7.2-7.2z" fill="#fff"/></svg>',
+      hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6a6.6 6.6 0 0 0-3.9 11.9c.7.5 1.1 1.3 1.1 2.1v1h5.6v-1c0-.8.4-1.6 1.1-2.1A6.6 6.6 0 0 0 12 2.6z" fill="#FFF7D6" stroke="#4A2A00" stroke-width="2" stroke-linejoin="round"/><path d="M9.4 19.6h5.2v.6a1.9 1.9 0 0 1-1.9 1.9h-1.4a1.9 1.9 0 0 1-1.9-1.9z" fill="#4A2A00"/><path d="M9.9 8.4a2.8 2.8 0 0 1 2.1-1.5" stroke="#FFB020" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+      pause:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/></svg>'
     };
     st.innerHTML = `<div class="shead">
-        <span>난이도: <b>${L.name}</b></span><span>실수: <b id="smis">0/3</b></span><span>점수: <b id="sscore">0</b></span>
-        <span class="sct"><span id="sclock">00:00</span><button id="spause" aria-label="일시정지">❚❚</button></span>
+        <span class="sch"><small>실수</small><span class="smis" id="smis" role="img" aria-label="실수 0번, 3번까지"><i></i><i></i><i></i></span></span>
+        <span class="sch"><small>점수</small><b id="sscore">0</b></span>
+        <span class="sch"><small>시간</small><b id="sclock">00:00</b></span>
+        <button id="spause" aria-label="일시정지">${ico.pause}</button>
       </div>
-      <div class="swrap"><div class="board s9" id="bd"></div>
-        <div class="pcover" id="pcover"><b>일시정지</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
+      <div class="swrap"><div class="board s9" id="bd" role="grid" aria-label="스도쿠 판"></div>
+        <div class="pcover" id="pcover"><span class="pc-ico">${ico.pause}</span><b>잠깐 쉬는 중</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
       <div class="tools">
-        <button id="tUndo"><span class="tc">${ico.undo}</span>실행 취소</button>
-        <button id="tErase"><span class="tc">${ico.erase}</span>지우기</button>
-        <button id="tMemo"><span class="tc">${ico.memo}<i class="tb off" id="memoBadge">OFF</i></span>메모</button>
-        <button id="tHint"><span class="tc">${ico.hint}<i class="tb" id="hintBadge">3</i></span>힌트</button>
+        <button id="tUndo" aria-label="실행 취소"><span class="tc">${ico.undo}</span>실행 취소</button>
+        <button id="tErase" aria-label="지우기"><span class="tc">${ico.erase}</span>지우기</button>
+        <button id="tMemo" aria-label="메모 끄기 상태"><span class="tc">${ico.memo}<i class="tb off" id="memoBadge">OFF</i></span>메모</button>
+        <button id="tHint" aria-label="힌트 3번 남음"><span class="tc">${ico.hint}<i class="tb" id="hintBadge">3</i></span>힌트</button>
       </div>
       <div class="pad9" id="pad"></div>`;
     const bd = $('#bd');
     for(let i=0;i<81;i++){
       const r = Math.floor(i/9), c = i%9;
       const el = document.createElement('div'); el.className = 'cell'; el.dataset.i = i;
-      const edge = '2px solid #344861', thin = '1px solid #BEC6D4';
+      const edge = '2px solid #2A1650', thin = '1px solid #D9CCF0';
       el.style.borderTop = r===0 ? '0' : (r%3===0 ? edge : thin);
       el.style.borderLeft = c===0 ? '0' : (c%3===0 ? edge : thin);
       el.onclick = () => { if(G.over || G.paused) return; G.sel = i; paintSud(); sfx('sSel'); };
@@ -2813,19 +2842,17 @@ function renderStage(){
   }
 }
 
-/* ---------- 여우 자리 찾기: 레퍼런스(Meowdoku) 화면 구성, 그림은 직접 그린 여우 ---------- */
-const FOX_COLORS = ['#E87BAD','#4E68A8','#A0603A','#3EAFA5','#8E6BD1','#9ED27F','#E0B43A','#FFA462','#5DB3E6','#9FB5CE','#D96464'];
+/* ---------- 여우 자리 찾기: 밤하늘 위 연보라 종이 카드, 공용 상단 막대, 기회 별, 사탕 도구 버튼(자체 화면). 그림은 직접 그린 3D 여우 ---------- */
+/* 구역 색 11가지(우리 팔레트): 파스텔이지만 또렷하게. 앞에서부터 쓰므로 작은 판일수록 서로 멀리 떨어진 색만 쓴다
+   (색각 차이가 있어도 밝기·색상이 갈리게 순서를 정함, 분홍 계열은 하나뿐) */
+const FOX_PAL = ['#FF8C9E','#FFD04D','#5ECF9C','#62AEFF','#B48BFF','#FF9E4F','#A3ADC6','#C6DC52','#D8A274','#2FA8A0','#E48AD8'];
 const FOX_FACE = `<svg viewBox="0 0 40 38" aria-hidden="true">${toyImage('fox', -3, -4, 46, 46)}</svg>`;   /* 공용 3D 여우(40×38 틀 안) */
-const FOX_SIL = c => `<svg viewBox="7 5 86 86" aria-hidden="true" fill="${c}"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z"/></svg>`;
 const FX_X = c => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/></svg>`;
 const FX_ICON = {
-  back:'<svg viewBox="0 0 24 24" fill="none" stroke="#7A4450" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
-  help:'<svg viewBox="0 0 24 24" fill="none" stroke="#7A4450" stroke-width="2.6" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.2 2.8c-.8.4-1.2 1-1.2 1.9v.3"/><circle cx="12" cy="17.8" r=".9" fill="#7A4450"/></svg>',
-  paw:'<svg viewBox="0 0 24 24"><circle cx="6.5" cy="9.5" r="2.3"/><circle cx="10.5" cy="5.6" r="2.3"/><circle cx="15.4" cy="6.1" r="2.3"/><circle cx="18.8" cy="10.3" r="2.1"/><path d="M12.2 10.8c3.1 0 6.2 4.2 6.2 6.8 0 2.1-1.8 2.7-3.1 2.7-1.2 0-2-.8-3.1-.8s-1.9.8-3.1.8c-1.3 0-3.1-.6-3.1-2.7 0-2.6 3.1-6.8 6.2-6.8z"/></svg>',
-  watch:'<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="8.5" fill="#F7B733"/><circle cx="12" cy="13.5" r="6.4" fill="#FFF6E5"/><rect x="10.2" y="1.8" width="3.6" height="3" rx="1" fill="#E0962A"/><path d="M12 9.6v4.2l2.8 1.7" stroke="#7A4450" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
-  bulb:'<svg viewBox="0 0 24 24"><path d="M12 2.5a6.8 6.8 0 0 0-4 12.3c.7.5 1.1 1.3 1.1 2.1V18h5.8v-1.1c0-.8.4-1.6 1.1-2.1A6.8 6.8 0 0 0 12 2.5z" fill="#FFD23F"/><path d="M9.3 19.3h5.4v1.2a1.8 1.8 0 0 1-1.8 1.8h-1.8a1.8 1.8 0 0 1-1.8-1.8z" fill="#9C7BD8"/><path d="M9.8 7.6a3 3 0 0 1 2.2-1.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
-  auto:'<svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="8.5" height="8.5" rx="2.2" fill="#E87BAD"/><rect x="13" y="2.5" width="8.5" height="8.5" rx="2.2" fill="#5DB3E6"/><rect x="2.5" y="13" width="8.5" height="8.5" rx="2.2" fill="#9ED27F"/><rect x="13" y="13" width="8.5" height="8.5" rx="2.2" fill="#E0B43A"/><path d="M4.8 4.8l3.9 3.9M8.7 4.8L4.8 8.7M15.3 15.3l3.9 3.9M19.2 15.3l-3.9 3.9M4.8 15.3l3.9 3.9M8.7 15.3l-3.9 3.9" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg>',
-  undo:'<svg viewBox="0 0 24 24" fill="none" stroke="#7A4450" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5L4 10l5 5"/><path d="M4 10h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
+  star:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.9l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.2l-6 3.2 1.2-6.7L2.3 9l6.7-1z" fill="url(#gGold)" stroke="#2A1650" stroke-width="1.9" stroke-linejoin="round"/><path d="M8.6 9.3l2.3-.4 1-2.1" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>',
+  bulb:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6a6.6 6.6 0 0 0-3.9 11.9c.7.5 1.1 1.3 1.1 2.1v1h5.6v-1c0-.8.4-1.6 1.1-2.1A6.6 6.6 0 0 0 12 2.6z" fill="#FFF7D6" stroke="#4A2A00" stroke-width="2" stroke-linejoin="round"/><path d="M9.4 19.6h5.2v.6a1.9 1.9 0 0 1-1.9 1.9h-1.4a1.9 1.9 0 0 1-1.9-1.9z" fill="#4A2A00"/><path d="M9.9 8.4a2.8 2.8 0 0 1 2.1-1.5" stroke="#FFB020" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+  auto:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#fff" stroke-linecap="round"><rect x="2.5" y="2.5" width="19" height="19" rx="4.5" stroke-width="2.2"/><path d="M12 2.5v19M2.5 12h19" stroke-width="1.6" opacity=".7"/><path d="M5.2 5.2l3.6 3.6M8.8 5.2L5.2 8.8M15.2 15.2l3.6 3.6M18.8 15.2l-3.6 3.6M15.2 5.2l3.6 3.6M18.8 5.2l-3.6 3.6" stroke-width="2.3"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>'
 };
 /* ---------- 여우 게임 효과(효과팀·기획팀): 조각·충격파·날아가기·점수 떠오름·연속 배지·틀림 연출·효과음 ---------- */
 const FXR = { cv:null, ctx:null, parts:[], rings:[], raf:0, reduce:false };
@@ -2888,7 +2915,7 @@ function fxPop(el, kind){
 function fxShake(el, px){ if(!el || FXR.reduce || !el.animate) return; const a = px || 6; el.animate([{ transform:'translate(0,0)' }, { transform:`translate(${-a}px,${a * .4}px)` }, { transform:`translate(${a * .8}px,${-a * .3}px)` }, { transform:`translate(${-a * .5}px,${a * .2}px)` }, { transform:'translate(0,0)' }], { duration:360, easing:'ease-out' }); }
 function fxConfetti(){   /* 완성: 화면 위에서 색종이 */
   if(FXR.reduce) return; fxCanvas();
-  const cols = ['#FF8A3D','#FFD23F','#E87BAD','#5DB3E6','#9ED27F','#8E6BD1','#fff'];
+  const cols = ['#FF9E4F','#FFD04D','#FF8C9E','#62AEFF','#5ECF9C','#B48BFF','#fff'];
   for(let i=0;i<110;i++) FXR.parts.push({ x:Math.random() * innerWidth, y:-20 - Math.random() * 120, vx:(Math.random() - .5) * 120, vy:120 + Math.random() * 220, g:260, drag:.6,
     rot:Math.random() * 6, vr:(Math.random() - .5) * 10, s:5 + Math.random() * 5, c:cols[i % cols.length], kind:i % 5 ? 'rect' : 'star', t:-Math.random() * .6, dur:2.4, shrink:false });
   /* 양옆 아래에서 쏘아 올리는 색종이 대포 */
@@ -2906,7 +2933,7 @@ function fxFloat(x, y, html, cls){
   setTimeout(() => d.remove(), 1300);
   return d;
 }
-function fxFly(fromEl, toEl, html, done){   /* 작은 여우가 구역 막대의 자기 자리로 날아감 */
+function fxFly(fromEl, toEl, html, done){   /* 작은 여우가 위쪽 '여우 n/N' 칸으로 날아감 */
   if(!fromEl || !toEl || FXR.reduce){ done && done(); return; }
   const a = fxCenter(fromEl), b = fxCenter(toEl), d = document.createElement('div');
   d.className = 'fxfly'; d.innerHTML = html; d.style.width = a.w + 'px'; d.style.height = a.h + 'px'; d.style.left = (a.x - a.w/2) + 'px'; d.style.top = (a.y - a.h/2) + 'px';
@@ -3300,39 +3327,22 @@ function fxStamp(){
   setTimeout(() => { sfx('fStamp'); fxShake(bd, 7); const p = fxCenter(d); fxRing(p.x, p.y, '#FF5C8A', p.w * .9, .6, 10); }, 330);
 }
 
-function foxMiniRule(kind){   /* 규칙 칩의 3×3 미니 그림 */
-  const X = '<rect width="7" height="7" rx="1.4" fill="#9B6A55"/><path d="M2 2l3 3M5 2L2 5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>';
-  const E = '<rect width="7" height="7" rx="1.4" fill="#D9B8A8"/>';
-  const F = '<rect width="7" height="7" rx="1.4" fill="#9B6A55"/><g transform="translate(.6 .9) scale(.145)">' + FOX_FACE.replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g>';
-  const maps = { color:['X','X','X','X','F','E','X','E','E'], line:['X','F','X','E','X','E','E','X','E'], touch:['X','X','X','X','F','X','X','X','X'] };
-  return `<svg viewBox="0 0 23 23" class="frule-ico">${maps[kind].map((k, i) => `<g transform="translate(${(i%3)*8} ${Math.floor(i/3)*8})">${k === 'X' ? X : k === 'F' ? F : E}</g>`).join('')}</svg>`;
-}
 function foxStage(st){
-  const L = G.L, now = new Date(), date = String(now.getMonth() + 1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
   st.innerHTML = `<div class="fxg" id="fxg">
-    <div class="fx-top">
-      <button class="fx-round" id="fxBack" aria-label="그만하기">${FX_ICON.back}</button>
-      <div class="fx-lv"><div><small>레벨 · ${L.name}</small><b>${date}</b></div><div><small>점수</small><b id="fxScore">0</b></div></div>
-      <button class="fx-round" id="fxHelp" aria-label="게임 방법">${FX_ICON.help}</button>
+    <div class="fx-stats">
+      <div class="fx-lives" id="fxLives" role="img" aria-label="남은 기회"></div>
+      <div class="fx-st"><small>여우</small><b id="fxCnt" class="num">0/${G.N}</b></div>
+      <div class="fx-st"><small>시간</small><b id="sclock" class="num">00:00</b></div>
+      <div class="fx-st"><small>점수</small><b id="fxScore" class="num">0</b></div>
     </div>
-    <div class="fx-row"><div class="fx-pill" id="fxLives" aria-label="남은 기회"></div><div class="fx-pill"><span class="fx-w">${FX_ICON.watch}</span><b id="sclock" class="fx-time">00:00</b></div><button class="fx-snd" id="fxSnd" aria-label="효과음"></button></div>
-    <div class="fx-bar" id="fxBar" aria-label="구역별 여우"></div>
-    <div class="fx-rules">
-      <div class="frule">${foxMiniRule('color')}<span>색깔당 여우 1마리</span></div>
-      <div class="frule">${foxMiniRule('line')}<span>행과 열마다 여우 1마리</span></div>
-      <div class="frule">${foxMiniRule('touch')}<span>여우끼리 붙으면 안 돼요</span></div>
-    </div>
-    <div class="fx-board" id="bd"><div class="fx-wait">문제를 만드는 중…</div></div>
+    <div class="fx-card" id="fxCard"><div class="fx-board" id="bd" role="grid" aria-label="여우 자리 찾기 판"><div class="fx-wait">문제를 만드는 중…</div></div></div>
     <div class="fx-tools">
-      <button class="fx-tool" id="fxHint" aria-label="힌트">${FX_ICON.bulb}<i id="fxHintN">3</i><span>힌트</span></button>
-      <button class="fx-tool" id="fxAuto" aria-label="자동 ✕">${FX_ICON.auto}<i id="fxAutoN">3</i><span>자동 ✕</span></button>
-      <button class="fx-tool" id="fxUndo" aria-label="되돌리기">${FX_ICON.undo}<span>되돌리기</span></button>
+      <button class="fx-tool hint" id="fxHint" aria-label="힌트, 3번 남음"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트 <b id="fxHintN">3</b></span></button>
+      <button class="fx-tool auto" id="fxAuto" aria-label="자동 ✕, 3번 남음"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕ <b id="fxAutoN">3</b></span></button>
+      <button class="fx-tool undo" id="fxUndo" aria-label="되돌리기"><span class="ico" aria-hidden="true">${FX_ICON.undo}</span><span>되돌리기</span></button>
     </div>
     <p class="fx-tip">한 번 누르면 ✕, 한 번 더 누르면 여우. 끌면 ✕를 여러 칸에 칠해요.</p>
   </div>`;
-  $('#fxBack').onclick = confirmQuit; $('#fxHelp').onclick = () => openHelp('fox');
-  const sndIco = () => { $('#fxSnd').innerHTML = SND.on ? '<svg viewBox="0 0 24 24" fill="none" stroke="#7A4450" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#7A4450"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="#B08A92" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#B08A92"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'; $('#fxSnd').setAttribute('aria-pressed', SND.on); };
-  sndIco(); $('#fxSnd').onclick = () => { sndSetOn(!SND.on); sndIco(); if(SND.on) sfx('toggle', { on:true }); };
   $('#fxHint').onclick = foxHint; $('#fxAuto').onclick = foxAuto; $('#fxUndo').onclick = foxUndo;
   foxLives();
   if(!G.reg){
@@ -3340,7 +3350,7 @@ function foxStage(st){
     setTimeout(() => {
       if(G !== me || me.over) return;
       const p = genFox(me.rng, me.N);
-      Object.assign(me, p, { cells:new Array(me.N*me.N).fill(0), placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, colors:shuffle(FOX_COLORS.slice(), me.rng).slice(0, me.N) });
+      Object.assign(me, p, { cells:new Array(me.N*me.N).fill(0), placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, colors:shuffle(FOX_PAL.slice(0, me.N), me.rng) });
       if(!me.duel){ me.start = Date.now(); me.pausedMs = 0; }
       foxBuild(true);
     }, 30);
@@ -3349,14 +3359,15 @@ function foxStage(st){
 function foxBuild(intro){
   const N = G.N, bd = $('#bd'); if(!bd) return;
   bd.innerHTML = ''; bd.style.setProperty('--n', N);
+  const mid = (N - 1) / 2;
   for(let i=0;i<N*N;i++){
     const r = Math.floor(i/N), c = i%N, el = document.createElement('div');
     el.className = 'fxc' + (intro ? ' in' : ''); el.dataset.i = i; el.style.background = G.colors[G.reg[i]];
-    if(intro) el.style.animationDelay = ((N - 1 - r) + c) * 22 + 'ms';   /* 원본처럼 왼쪽 아래에서 대각선으로 차오름 */
+    if(intro) el.style.animationDelay = Math.round((Math.abs(r - mid) + Math.abs(c - mid)) * 34) + 'ms';   /* 가운데에서 바깥으로 퍼지며 나타남 */
     el.setAttribute('role', 'gridcell');
     bd.appendChild(el);
   }
-  foxBar(); foxPaint();
+  foxPaint();
   let down = null, drag = false, paintTo = 0, touched = null;
   const cellAt = e => { const t = document.elementFromPoint(e.clientX, e.clientY); return t && t.closest ? t.closest('.fxc') : null; };
   const apply = i => { if(touched.has(i)) return; touched.add(i); const s = G.cells[i]; if(paintTo === 1 && s === 0) G.cells[i] = 1; else if(paintTo === 0 && s === 1) G.cells[i] = 0; else return; foxPaint(i); sfx(paintTo ? 'fPaint' : 'fErase'); };
@@ -3381,33 +3392,35 @@ function foxBuild(intro){
   bd.onpointercancel = () => { down = null; };
   bd.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
 }
+/* 기회 별 3개: 틀리면 하나씩 꺼지고, 마지막 하나는 두근거리며 판 카드가 붉게 빛남 */
 function foxLives(){
   const el = $('#fxLives'); if(!el) return;
   const prev = +(el.dataset.n || 3);
-  el.innerHTML = [0,1,2].map(k => `<span class="fx-paw${k >= G.paws ? ' off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}">${FX_ICON.paw}</span>`).join('');
+  el.innerHTML = [0,1,2].map(k => `<span class="fx-star${k >= G.paws ? ' off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}">${FX_ICON.star}</span>`).join('');
   el.dataset.n = G.paws; el.setAttribute('aria-label', '남은 기회 ' + G.paws + '번');
-  if(G.paws === 1){ const last = el.querySelector('.fx-paw:not(.off)'); if(last) last.classList.add('last'); }
-  const bd = $('#bd');
-  if(bd){ bd.classList.toggle('danger', G.paws === 1); const tag = bd.querySelector('.fxlast'); if(G.paws === 1 && !tag){ const t = document.createElement('div'); t.className = 'fxlast'; t.textContent = '마지막 기회!'; bd.appendChild(t); } else if(G.paws !== 1 && tag) tag.remove(); }
+  if(G.paws === 1){ const last = el.querySelector('.fx-star:not(.off)'); if(last) last.classList.add('last'); }
+  const card = $('#fxCard');
+  if(card){ card.classList.toggle('danger', G.paws === 1); const tag = card.querySelector('.fxlast'); if(G.paws === 1 && !tag){ const t = document.createElement('div'); t.className = 'fxlast'; t.textContent = '마지막 기회!'; card.appendChild(t); } else if(G.paws !== 1 && tag) tag.remove(); }
 }
-function foxBar(){
-  const bar = $('#fxBar'); if(!bar || !G.reg) return;
-  const has = new Array(G.N).fill(false); for(let i=0;i<G.N*G.N;i++) if(G.cells[i] === 2) has[G.reg[i]] = true;
-  bar.innerHTML = G.colors.map((c, g) => `<span class="fx-head${has[g] ? ' on' : ''}" data-g="${g}">${has[g] ? FOX_FACE : FOX_SIL(c)}</span>`).join('');
+function foxCount(bump){
+  const el = $('#fxCnt'); if(!el) return;
+  el.textContent = (G.placed || 0) + '/' + G.N;
+  if(bump){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 }
 function foxPaint(only){
   const list = only != null ? [only] : [...Array(G.N*G.N).keys()];
   for(const i of list){
     const el = document.querySelector(`#bd .fxc[data-i="${i}"]`); if(!el) continue;
     const s = G.cells[i];
-    el.innerHTML = s === 1 ? FX_X('#fff') : s === 2 ? FOX_FACE : s === 4 ? FX_X('#FF6A2B') : '';
+    el.innerHTML = s === 1 ? FX_X('rgba(42,22,80,.55)') : s === 2 ? FOX_FACE : s === 4 ? FX_X('#D6243A') : '';
     el.classList.toggle('fox', s === 2);
     el.setAttribute('aria-label', s === 2 ? '여우' : s === 1 ? '✕ 표시' : s === 4 ? '틀린 자리' : '빈 칸');
   }
   const sc = $('#fxScore'); if(sc) sc.textContent = fmt(Math.round(G.earned * G.L.mult));
+  foxCount(false);
   const h = $('#fxHintN'), a = $('#fxAutoN');
-  if(h){ h.textContent = G.hints; $('#fxHint').disabled = !G.hints; }
-  if(a){ a.textContent = G.autos; $('#fxAuto').disabled = !G.autos; }
+  if(h){ h.textContent = G.hints; $('#fxHint').disabled = !G.hints; $('#fxHint').setAttribute('aria-label', '힌트, ' + G.hints + '번 남음'); }
+  if(a){ a.textContent = G.autos; $('#fxAuto').disabled = !G.autos; $('#fxAuto').setAttribute('aria-label', '자동 ✕, ' + G.autos + '번 남음'); }
   const u = $('#fxUndo'); if(u) u.disabled = !G.hist || !G.hist.length;
 }
 function foxCanPlace(i){
@@ -3442,7 +3455,7 @@ function foxPlace(i, earn){
     setTimeout(() => finish(true), 1500 + G.N * 70);
   }
 }
-/* 맞힘 연출: 충격파 + 구역색 조각 + 구역 물결 + 막대로 날아가기 + 점수 떠오름 + 연속 배지 */
+/* 맞힘 연출: 충격파 + 구역색 조각 + 구역 물결 + 여우 수 칸으로 날아가기 + 점수 떠오름 + 연속 배지 */
 function foxCelebrate(i, earn){
   const N = G.N, el = document.querySelector(`#bd .fxc[data-i="${i}"]`); if(!el) return;
   const g = G.reg[i], col = G.colors[g], p = fxCenter(el);
@@ -3457,8 +3470,8 @@ function foxCelebrate(i, earn){
     const d = Math.abs(Math.floor(j/N) - r0) + Math.abs(j%N - c0);
     e.classList.remove('glow'); void e.offsetWidth; e.style.animationDelay = d * 45 + 'ms'; e.classList.add('glow');
   });
-  const head = document.querySelector(`#fxBar .fx-head[data-g="${g}"]`);
-  fxFly(el, head, FOX_FACE, () => { foxBar(); const h2 = document.querySelector(`#fxBar .fx-head[data-g="${g}"]`); if(h2){ h2.classList.add('pop'); sfx('fLand'); const q = fxCenter(h2); fxBurst(q.x, q.y, [col, '#FFD23F'], 8, { speed:140, size:3.5, up:40 }); } });
+  const cnt = $('#fxCnt');
+  fxFly(el, cnt, FOX_FACE, () => { foxCount(true); if(cnt && cnt.isConnected){ sfx('fLand'); const q = fxCenter(cnt); fxBurst(q.x, q.y, [col, '#FFD23F'], 8, { speed:140, size:3.5, up:40 }); } });
   if(earn){
     const pts = Math.round(500 / N * G.L.mult);
     fxFloat(p.x, p.y - p.h * .4, '+' + pts);
@@ -3467,7 +3480,7 @@ function foxCelebrate(i, earn){
     sfx('fOk', { n:lv, pan:panX(p.x) }); fxBuzz(G.combo >= 3 ? [15, 30, 15, 30, 25] : [15, 30, 20]);
   } else { fxFloat(p.x, p.y - p.h * .4, '힌트'); sfx('fHint', { pan:panX(p.x) }); fxBuzz(15); fxBurst(p.x, p.y, ['#FFE27A','#FFFFFF','#9C7BD8'], 14, { speed:160, size:4, kinds:['spark','star'], glow:true, up:120, g:200 }); }
 }
-/* 틀림 연출: 주황 ✕ 내려찍기 + 판 흔들림 + 붉은 가장자리 + 발바닥 떨어짐 + 틀린 이유 말풍선 */
+/* 틀림 연출: 주황 ✕ 내려찍기 + 판 흔들림 + 붉은 가장자리 + 기회 별 떨어짐 + 틀린 이유 말풍선 */
 function foxWrong(i){
   const why = foxWhy(i);
   G.cells[i] = 4; foxPaint(i); G.combo = 0;
@@ -3475,19 +3488,19 @@ function foxWrong(i){
   el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
   const p = fxCenter(el);
   fxRing(p.x, p.y, '#FF3B30', p.w * 1.9, .45, 8);
-  fxBurst(p.x, p.y, ['#FF6A2B', '#7A4450', '#FF3B30'], 10, { speed:200, size:4, kinds:['rect','dot'], g:900, up:20 });
+  fxBurst(p.x, p.y, ['#FF6A2B', '#2A1650', '#FF3B30'], 10, { speed:200, size:4, kinds:['rect','dot'], g:900, up:20 });
   if(!FXR.reduce){ const b = $('#bd'); b.classList.remove('shake2'); void b.offsetWidth; b.classList.add('shake2'); }
   fxVignette(); fxSound('bad'); fxBuzz([70, 40, 110]);
   if(why.f >= 0){ const fe = document.querySelector(`#bd .fxc[data-i="${why.f}"]`); if(fe){ fe.classList.remove('conflict'); void fe.offsetWidth; fe.classList.add('conflict'); } }
   fxBubble(el, why.text);
-  const paws = document.querySelectorAll('#fxLives .fx-paw'), lostEl = paws[G.paws - 1];
+  const stars = document.querySelectorAll('#fxLives .fx-star'), lostEl = stars[G.paws - 1];
   if(lostEl && !FXR.reduce){
-    const q = fxCenter(lostEl), d = document.createElement('div'); d.className = 'fx-lost'; d.innerHTML = FX_ICON.paw;
-    d.style.left = (q.x - 15) + 'px'; d.style.top = (q.y - 15) + 'px'; document.body.appendChild(d);
+    const q = fxCenter(lostEl), d = document.createElement('div'); d.className = 'fx-lost'; d.innerHTML = FX_ICON.star;
+    d.style.left = (q.x - 13) + 'px'; d.style.top = (q.y - 13) + 'px'; document.body.appendChild(d);
     d.animate([{ transform:'translate(0,0) rotate(0)', opacity:1 }, { transform:'translate(-10px,-30px) rotate(-40deg) scale(1.3)', opacity:1, offset:.25 }, { transform:'translate(30px,160px) rotate(220deg) scale(.6)', opacity:0 }], { duration:900, easing:'cubic-bezier(.3,0,.7,1)' }).onfinish = () => d.remove();
   }
   G.paws--; foxLives();
-  const pill = $('#fxLives'); pill.classList.remove('hurt'); void pill.offsetWidth; pill.classList.add('hurt');
+  const pill = $('#fxLives'); if(pill){ pill.classList.remove('hurt'); void pill.offsetWidth; pill.classList.add('hurt'); }
   fxFloat(p.x, p.y - p.h * .4, '−1', 'bad');
   if(G.paws <= 0) setTimeout(() => finish(false), 900);
 }
@@ -6102,11 +6115,12 @@ function paintSud(){
     const v = +b.dataset.v; let n = 0; for(let i=0;i<81;i++) if(G.grid[i] === v && !G.wrong[i]) n++;
     b.classList.toggle('gone', n >= 9);
   });
-  $('#smis').textContent = (3 - G.paws) + '/3';
+  const mis = $('#smis'), mn = 3 - G.paws;
+  if(mis){ [...mis.children].forEach((d, k) => d.classList.toggle('on', k < mn)); mis.setAttribute('aria-label', '실수 ' + mn + '번, 3번까지'); }
   $('#sscore').textContent = fmt(Math.round(G.earned * G.L.mult));
   $('#memoBadge').textContent = G.memo ? 'ON' : 'OFF'; $('#memoBadge').classList.toggle('off', !G.memo);
-  $('#tMemo').classList.toggle('on', G.memo);
-  $('#hintBadge').textContent = G.hints; $('#tHint').classList.toggle('used', G.hints === 0);
+  $('#tMemo').classList.toggle('on', G.memo); $('#tMemo').setAttribute('aria-pressed', G.memo); $('#tMemo').setAttribute('aria-label', '메모 ' + (G.memo ? '켜짐' : '꺼짐'));
+  $('#hintBadge').textContent = G.hints; $('#tHint').classList.toggle('used', G.hints === 0); $('#tHint').setAttribute('aria-label', '힌트 ' + G.hints + '번 남음');
 }
 function snap(){ G.undo.push({ grid:G.grid.slice(), notes:G.notes.slice(), wrong:G.wrong.slice() }); if(G.undo.length > 200) G.undo.shift(); }
 function placeCorrect(i, v, earn){
@@ -6152,8 +6166,8 @@ function sudCelebrate(i, v, padR, hint){
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   const p = fxCenter(el), pan = panX(p.x);
   G.scombo = hint ? 0 : (G.scombo || 0) + 1;
-  fxRing(p.x, p.y, hint ? '#FFD54F' : '#5AA9FF', p.w * 1.4, .45, 5);
-  fxBurst(p.x, p.y, hint ? ['#FFE27A','#FFFFFF','#9C7BD8'] : ['#5AA9FF','#BBDEFB','#FFFFFF','#FFD54F'], hint ? 14 : 9, { speed:170, size:3.4, kinds:['dot','star','spark'], up:70, g:480, dur:.6, glow:hint });
+  fxRing(p.x, p.y, hint ? '#FFD54F' : '#8B5CF6', p.w * 1.4, .45, 5);
+  fxBurst(p.x, p.y, hint ? ['#FFE27A','#FFFFFF','#9C7BD8'] : ['#8B5CF6','#D9CCF0','#FFFFFF','#FFD54F'], hint ? 14 : 9, { speed:170, size:3.4, kinds:['dot','star','spark'], up:70, g:480, dur:.6, glow:hint });
   if(hint){ fxFloat(p.x, p.y - p.h * .5, '힌트', 'sud'); sfx('fHint', { pan }); }
   else { fxFloat(p.x, p.y - p.h * .5, '+' + Math.round(G.perCell * G.L.mult), 'sud'); sfx('sNum', { v, n:G.scombo, pan }); fxBuzz(10); }
   /* 가로줄·세로줄·굵은 칸이 완성되면: 놓은 칸에서부터 물결 + 반짝임 + 차임 */
@@ -6176,7 +6190,7 @@ function sudCelebrate(i, v, padR, hint){
     fxBuzz(found.length > 1 ? [20, 30, 20, 30, 30] : [20, 30, 20]);
   }
   if(padR){
-    setTimeout(() => { sfx('sDigit'); fxRing(padR.x, padR.y, '#FFD54F', padR.w * 1.6, .5, 6); fxBurst(padR.x, padR.y, ['#FFE27A','#FFFFFF','#5AA9FF'], 16, { speed:220, size:4, kinds:['star','spark','dot'], up:160, g:500, glow:true }); fxFloat(padR.x, padR.y - padR.h, v + ' 끝!', 'sud'); }, 160);
+    setTimeout(() => { sfx('sDigit'); fxRing(padR.x, padR.y, '#FFD54F', padR.w * 1.6, .5, 6); fxBurst(padR.x, padR.y, ['#FFE27A','#FFFFFF','#8B5CF6'], 16, { speed:220, size:4, kinds:['star','spark','dot'], up:160, g:500, glow:true }); fxFloat(padR.x, padR.y - padR.h, v + ' 끝!', 'sud'); }, 160);
   }
 }
 /* 스도쿠 완성: 왼쪽 위에서 오른쪽 아래로 파도 → 완성 음악 → 색종이 → 결과 */
@@ -6225,8 +6239,8 @@ function miss(el){
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   const p = fxCenter(el), bd = $('#bd');
   sfx('sBad'); fxBuzz([60, 40, 90]);
-  fxRing(p.x, p.y, '#E55C6C', p.w * 1.6, .4, 6);
-  fxBurst(p.x, p.y, ['#E55C6C', '#FF9AA4', '#7A2A36'], 8, { speed:170, size:3.4, kinds:['rect','dot'], g:900, up:20 });
+  fxRing(p.x, p.y, '#E5484D', p.w * 1.6, .4, 6);
+  fxBurst(p.x, p.y, ['#E5484D', '#FF9AA4', '#2A1650'], 8, { speed:170, size:3.4, kinds:['rect','dot'], g:900, up:20 });
   fxFloat(p.x, p.y - p.h * .5, '실수 ' + (3 - G.paws) + '/3', 'bad');
   if(bd && !FXR.reduce){ bd.classList.remove('shake2'); void bd.offsetWidth; bd.classList.add('shake2'); }
   if(G.paws === 1) fxVignette();
@@ -6237,7 +6251,7 @@ function miss(el){
 
 /* ===== 새 게임 모듈 ===== */
 /* @@NG_MODULES_BEGIN@@ */
-/* ===== 동물 팡 (match) · 7×7 동물 3개 맞추기 · 60초 목표 점수 ===== */
+/* ===== 동물 삼총사 (match) · 7×7 같은 동물 3마리 맞추기 · 오늘의 문제·대전은 이동 20번 목표 점수 ===== */
 NG.match = (() => {
   const N = 7;
   const KINDS = ['octopus','whale','chick','frog','owl','fox','panda'];
@@ -6247,8 +6261,9 @@ NG.match = (() => {
   const TLIT = ['#FFD2D6','#D3EEFF','#FFF3B5','#D8F7C4','#E9E0FF','#FFE3C8','#FFFFFF'];
   const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4, S_SP = 5, S_BOX = 6;   /* 5 팽이(2×2), 6 나무 상자(장애물) */
   const ACT_BONUS = { 1:40, 2:40, 3:60, 4:100, 5:50 };
-  /* 그리디 자동 플레이어(1수≈생각 0.6초+연출 시간, 60초)의 평균 점수. levels·stage 목표의 기준 */
-  const BOT = { 5:12020, 6:6560, 7:3930 };   /* 2026-09-29 네모·덩어리 규칙 추가 후 다시 잰 값(각 12판 평균) */
+  /* 그리디 자동 플레이어가 이동 20번에 얻는 평균 점수(2026-09-30, 동물 수별 150판). 오늘의 문제·대전 목표의 기준 */
+  const BOT = { 5:7620, 6:3220 };
+  const DAY_MOVES = 20;
   const MT_D = [0,2.97,2.91,3.73,1.28,1.09,4.99,4.99,1.55,1.93,1.57,[0.5,19],4.99,1.01,1.05,0.77,1.86,1.37,1.41,1,0.83,[0.5,23],1.39,0.66,1.39,0.88,4.99,0.65,1.41,0.59,[0.5,32],0.52,0.98,0.86,0.96,[0.5,25],0.85,0.81,1.22,0.54,[0.5,27],[0.5,36],[0.5,40],0.51,0.57,0.76,4.99,1.32,0.75,0.88,0.77,0.83,[0.5,36],0.69,1.6,[0.5,34],1.03,0.89,1.06,0.67,[0.5,33],0.64,[0.5,40],0.54,1,0.57,0.52,0.9,0.7,0.88,0.51,[0.5,30],0.7,[0.5,40],[0.5,34],[0.5,40],1.15,0.58,0.6,0.67,[0.5,37],0.72,0.74,0.74,0.68,[0.5,36],0.73,0.8,0.54,0.61,[0.5,40],[0.5,40],0.66,0.52,0.81,0.72,0.84,0.68,0.62,0.81,[0.5,40]];   /* 솔로 스테이지별 난이도 배율(자동 플레이어로 맞춘 값, 14_난이도_벤치마크.md). 비어 있으면 1 */
   const mult = k => 1 + 0.25 * (k - 1);
   const mb = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -6533,13 +6548,13 @@ NG.match = (() => {
     for(const m of ms){ const C = clone(E), r = move(C, m[0], m[1], 1); const v = r.ok ? r.steps[0].pts + (E.goals ? (goalVal(C) - g0) * 60 : 0) : -1; if(v > bv){ bv = v; best = m; } }
     return best;
   }
-  function botRun(rng, K, secs, think){
-    const E = makeEngine(rng, K); let t = 0, n = 0;
-    while(t < secs * 1000){
-      if(!hasMove(E)){ shuffleBoard(E); t += 700; }
+  /* 이동 n번 동안 그리디로 둔 결과(오늘의 문제·대전 목표를 맞출 때 씀) */
+  function botRun(rng, K, moves){
+    const E = makeEngine(rng, K); let n = 0;
+    while(n < (moves || DAY_MOVES)){
+      if(!hasMove(E)) shuffleBoard(E);
       const m = bestMove(E); if(!m) break;
-      const r = move(E, m[0], m[1]); n++;
-      t += think + 140 + r.steps.reduce((s, st) => s + stepMs(st), 0);
+      move(E, m[0], m[1]); n++;
     }
     return { pts:E.pts, moves:n, maxCombo:E.maxCombo };
   }
@@ -6548,10 +6563,18 @@ NG.match = (() => {
      난이도
   ------------------------------------------------------------------ */
   const r10 = v => Math.round(v / 10) * 10;
-  const LV = { easy:{ kinds:5, f:.6 }, normal:{ kinds:6, f:.85 }, hard:{ kinds:6, f:1 } };
-  function levelCfg(lv){ const L = LV[lv] || LV.normal; return { limit:60, kinds:L.kinds, target:r10(BOT[L.kinds] * L.f) }; }
+  /* 오늘의 문제·대전: 시간 제한 없이 이동 20번 안에 목표 점수. f = 자동 플레이어 평균의 몇 배인가
+     (자동 플레이어 성공률 쉬움 약 90% · 보통 약 75% · 어려움 약 55%가 되게 맞춘 값) */
+  const LV = { easy:{ kinds:5, f:.55 }, normal:{ kinds:6, f:.78 }, hard:{ kinds:6, f:.9 } };
+  function levelCfg(lv){ const L = LV[lv] || LV.normal; return { mode:'score', moves:DAY_MOVES, limit:0, kinds:L.kinds, target:r10(BOT[L.kinds] * L.f) }; }
+  /* 대전 AI: 자동 플레이어처럼 이동 20번을 두고(점수는 목표의 0.75~1.55배), 사람 평균 속도(1번에 약 6초)로 진행 */
+  function duelAi(rng){
+    const cfg = levelCfg('normal'), t = cfg.target, r = .75 + rng() * .8, pts = r10(t * r), ok = pts >= t;
+    const mc = 2 + Math.floor(rng() * 4), bonus = Math.max(0, Math.min(350, Math.round(350 * (pts - t) / (0.8 * t)))), extra = Math.min(150, 25 * (mc - 1));
+    return { ok, T:DAY_MOVES * (5 + rng() * 2), pts, sc:ok ? 500 + bonus + extra : 0, fail:Math.min(.99, pts / t) };
+  }
   /* ------------------------------------------------------------------
-     솔로 스테이지(2026-09-29): 이동 횟수 + 목표 모으기(3매치 게임 벤치마크, 14_난이도_벤치마크.md)
+     솔로 스테이지(2026-09-29): 이동 횟수 + 목표 모으기(자체 난이도 곡선, 자동 플레이어로 맞춤)
      - 10스테이지 한 사이클: 1~4 오르막, 5 어려움, 6 쉬어가기, 7~9 오르막, 10 보스(아주 어려움)
      - 새 장애물은 약 5~10스테이지마다 하나씩(처음 두 판은 그 장애물만)
      - 이동 횟수 = 흔들리는 자동 플레이어가 그 판을 깨는 데 쓴 이동의 분위수(목표 승률) → MT_MOVES 표
@@ -6772,25 +6795,11 @@ NG.match = (() => {
       M.views.forEach(v => { if(v.dirty){ v.dirty = false; applyView(v); } });
     }
     if(M.waits.length){ const due = M.waits.filter(w => w.at <= now); if(due.length){ M.waits = M.waits.filter(w => w.at > now); due.forEach(w => w.res()); } }
-    if(!isMoves()) tickTime();
-    if(!M.busy && !M.timeUp && !M.item && !G.over && !G.paused && !M.hint && now - M.last > 5000) showHint();
-  }
-  function tickTime(){
-    if(G.over) return;
-    const rem = Math.max(0, G.limit - elapsed()), f = M.tf;
-    if(f){ f.style.transform = `scaleX(${(rem / G.limit).toFixed(4)})`; }
-    const sec = Math.ceil(rem);
-    if(sec !== M.lastSec){
-      M.lastSec = sec; const tx = $m('#mtSec'); if(tx) tx.textContent = sec;
-      const warn = rem <= 10 && rem > 0;
-      M.root.classList.toggle('warn', warn);
-      if(warn && !G.paused){ sfx('matchWarn', { hi:sec <= 3 }); if(sec <= 3) fxBuzz(12); }
-    }
-    if(rem <= 0 && !M.timeUp){ M.timeUp = true; clearHint(); M.sel = -1; paintSel(); if(!M.busy) endRound(); }
+    if(!M.busy && !M.stop && !M.item && !G.over && !G.paused && !M.hint && now - M.last > 5000) showHint();
   }
   const cellXY = i => { const g = M.grid.getBoundingClientRect(), r = Math.floor(i / N), c = i % N; return { x:g.left + (c + .5) * M.s, y:g.top + (r + .5) * M.s }; };
 
-  const isMoves = () => !!(G && G.cfg && G.cfg.mode === 'moves');
+  const isMoves = () => !!(G && G.cfg && G.cfg.mode === 'moves');   /* 솔로: 이동 횟수 + 목표 모으기 */
   const gGot = (E, g) => g.t === 'k' ? (E.got.k[g.k] || 0) : E.got[g.t];
   const goalIcon = g => g.t === 'k' ? img(g.k) : g.t === 'box' ? IK('box' + (g.hp || 1)) : g.t === 'lock' ? IK('lock') : 'none';
   function hudMoves(){
@@ -6823,6 +6832,14 @@ NG.match = (() => {
       }
     });
     const g = $m('#mtGoal'); if(g) g.classList.toggle('done', p >= cfg.target);
+    /* 남은 이동(시간 제한 없음). 마지막 3번은 경고 */
+    const left = M.E.movesLeft, mv = $m('#mtMv');
+    if(mv && mv.textContent !== String(left)){
+      mv.textContent = left; mv.classList.remove('bump'); void mv.offsetWidth; mv.classList.add('bump');
+      if(M.ready && left > 0 && left <= 3){ sfx('matchWarn', { hi:left === 1 }); fxBuzz(12); }
+    }
+    const f = M.tf; if(f) f.style.transform = `scaleX(${(Math.max(0, left) / cfg.moves).toFixed(4)})`;
+    M.root.classList.toggle('warn', left > 0 && left <= 3);
   }
   function banner(text, cls){
     const b = document.createElement('div'); b.className = 'mt-banner ' + (cls || ''); b.innerHTML = `<b>${text}</b>`;
@@ -6956,7 +6973,7 @@ NG.match = (() => {
   function land(v){ tw(v, { sx:1.1, sy:.88 }, 55, 'out').then(() => tw(v, { sx:1, sy:1 }, 150, 'back')); }
 
   async function tryMove(a, b){
-    if(!M || M.busy || M.timeUp || G.over || G.paused) return;
+    if(!M || M.busy || M.stop || G.over || G.paused) return;
     if(a < 0 || b < 0 || a >= N * N || b >= N * N) return;
     const ra = Math.floor(a / N), rb = Math.floor(b / N);
     if(Math.abs(ra - rb) + Math.abs(a % N - b % N) !== 1) return;
@@ -6975,7 +6992,6 @@ NG.match = (() => {
       [va, vb].forEach(v => { v.el.classList.remove('no'); void v.el.offsetWidth; v.el.classList.add('no'); });
       va.el.style.zIndex = '';
       M.busy = false; M.last = M.clock;
-      if(M.timeUp) endRound();
       return;
     }
     tw(va, { x:bx, y:by }, 130, 'inout'); await tw(vb, { x:ax, y:ay }, 130, 'inout');
@@ -6984,15 +7000,15 @@ NG.match = (() => {
     if(res.steps.length >= 2) M.best = Math.max(M.best, res.steps.length);
     hud();
     if(isMoves() && await movesCheck()) return;
-    if(!hasMove(E) && !M.timeUp){ await doShuffle(); }
+    if(!isMoves() && E.movesLeft <= 0){ M.stop = true; clearHint(); endRound(); return; }
+    if(!hasMove(E) && !M.stop){ await doShuffle(); }
     M.busy = false; M.last = M.clock;
-    if(M.timeUp) endRound();
   }
   /* 솔로(이동 횟수): 목표를 다 모으면 성공 + 남은 이동 보너스, 이동이 끝나면 실패 */
   async function movesCheck(){
     const E = M.E;
     if(goalDone(E)){
-      M.timeUp = true; M.leftAtWin = E.movesLeft; clearHint();
+      M.stop = true; M.leftAtWin = E.movesLeft; clearHint();
       banner('목표 완료!', 'goal'); sfx('win', { g:'match' }); fxBuzz([30, 50, 30]);
       await wait(900);
       const left = Math.min(6, E.movesLeft);
@@ -7008,7 +7024,7 @@ NG.match = (() => {
       }
       endMoves(true); return true;
     }
-    if(E.movesLeft <= 0){ M.timeUp = true; clearHint(); endMoves(false); return true; }
+    if(E.movesLeft <= 0){ M.stop = true; clearHint(); endMoves(false); return true; }
     return false;
   }
   function endMoves(win){
@@ -7041,7 +7057,7 @@ NG.match = (() => {
       return `<button class="mt-bst it${open ? '' : ' lk'}${M.item === it.key ? ' on' : ''}" data-it="${it.key}" ${open && n > 0 ? '' : 'disabled'} aria-label="${it.name}: ${it.desc}${open ? ', ' + n + '개' : ', 스테이지 ' + it.at + '에서 열려요'}">
         <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span><em>${it.name}</em>${open ? `<b class="mt-cnt num">${n}</b>` : `<b class="mt-cnt lk">${it.at}</b>`}</button>`; }).join('');
     d.querySelectorAll('button[data-it]').forEach(b => b.onclick = () => {
-      if(M.busy || M.timeUp || G.over) return;
+      if(M.busy || M.stop || G.over) return;
       const k = b.dataset.it;
       if(k === 'hat'){ useItem('hat', -1); return; }
       M.item = M.item === k ? null : k; clearHint(); paintDock();
@@ -7081,7 +7097,7 @@ NG.match = (() => {
     if(M.ended || G.over) return;
     M.ended = true; M.busy = true; clearHint();
     const win = M.E.pts >= G.cfg.target;
-    banner(win ? '시간 끝! 성공!' : '시간 끝!', win ? 'goal end' : 'end');
+    banner(win ? '이동 끝! 성공!' : '이동 끝!', win ? 'goal end' : 'end');
     sfx('matchEnd'); fxBuzz([30, 50, 30]);
     if(win) setTimeout(() => sfx('win', { g:'match' }), 350);
     setTimeout(() => { if(G && !G.over && G.mt === M) finish(win); }, 1100);
@@ -7095,7 +7111,7 @@ NG.match = (() => {
     const cellAt = e => { const g = gr.getBoundingClientRect(), c = Math.floor((e.clientX - g.left) / M.s), r = Math.floor((e.clientY - g.top) / M.s); return r >= 0 && r < N && c >= 0 && c < N ? idx(r, c) : -1; };
     let st = null;
     gr.onpointerdown = e => {
-      if(G.over || G.paused || M.timeUp) return;
+      if(G.over || G.paused || M.stop) return;
       const i = cellAt(e); if(i < 0) return;
       if(M.item){ e.preventDefault(); if(!M.busy) useItem(M.item, i); st = null; return; }
       try{ gr.setPointerCapture(e.pointerId); }catch(_){}
@@ -7115,7 +7131,7 @@ NG.match = (() => {
     };
     gr.onpointerup = e => {
       if(!st) return; const s0 = st; st = null;
-      if(s0.done || M.busy || M.timeUp) return;
+      if(s0.done || M.busy || M.stop) return;
       const i = s0.i;
       if(M.sel >= 0 && M.sel !== i){
         const d = Math.abs(Math.floor(M.sel / N) - Math.floor(i / N)) + Math.abs(M.sel % N - i % N);
@@ -7163,7 +7179,7 @@ NG.match = (() => {
   const FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round"/><path d="M7 4.5h11l-2.6 3.8L18 12H7z" fill="#FF5C8A" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
 
   return {
-    name:'동물 팡', abil:'추리력', col:['#FFB2D6','#FF5FA2','#A3155A'], time:'약 1분',
+    name:'동물 삼총사', abil:'추리력', col:['#FFB2D6','#FF5FA2','#A3155A'], time:'약 2분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 14.5a8 8 0 1 0 16 0a8 8 0 1 0-16 0zM3.3 7.8a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0zM14.3 7.8a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0zM8.1 13.4a1.5 1.5 0 1 1 3 0a1.5 1.5 0 1 1-3 0zM12.9 13.4a1.5 1.5 0 1 1 3 0a1.5 1.5 0 1 1-3 0zM10.2 16.6h3.6l-1.8 2z"/><path d="M20.5 .8l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>',
     art(){
       const lay = [[1,0,3,4,2],[0,2,2,2,3],[4,3,0,1,5]];
@@ -7174,17 +7190,18 @@ NG.match = (() => {
         if(hot) g += `<rect x="${x + 1}" y="${y + 1}" width="22" height="22" rx="6" fill="#FFF6A8" opacity=".75"/>`;
         g += `<image href='${SRC[k]}' x="${x - 2}" y="${y - 3}" width="28" height="28"/>`;
       }));
-      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="matchA1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F8FE0"/><stop offset=".7" stop-color="#9FD6FF"/><stop offset="1" stop-color="#CDEBFF"/></linearGradient></defs>
-        <rect width="160" height="100" fill="url(#matchA1)"/><ellipse cx="18" cy="10" rx="18" ry="7" fill="#fff" opacity=".85"/><ellipse cx="146" cy="8" rx="16" ry="6" fill="#fff" opacity=".75"/>
+      const gid = 'matchA' + (ART._n = (ART._n || 0) + 1);
+      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F8FE0"/><stop offset=".7" stop-color="#9FD6FF"/><stop offset="1" stop-color="#CDEBFF"/></linearGradient></defs>
+        <rect width="160" height="100" fill="url(#${gid})"/><ellipse cx="18" cy="10" rx="18" ry="7" fill="#fff" opacity=".85"/><ellipse cx="146" cy="8" rx="16" ry="6" fill="#fff" opacity=".75"/>
         <rect x="19" y="11" width="126" height="78" rx="6" fill="#E8B64A" stroke="#1A0F45" stroke-width="2.2"/>${g}
         <path d="M130 64l5 8 9-3-3 9 8 5-9 3 1 9-8-4-6 7-2-9-9-1 6-7-5-8 9 1z" fill="#FFE45C" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/>
         <text x="134" y="86" font-family="Black Han Sans, Jua, sans-serif" font-size="12" text-anchor="middle" fill="#FF3D8B" stroke="#fff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round" transform="rotate(-10 134 86)">3콤보!</text>
         </svg>`;
     },
     help:[
-      ['같은 동물 3개를 맞춰요', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로·세로 3개 한 줄, 2×2 네모, 이어진 5개 이상 덩어리가 되면 펑! 붙어 있는 같은 동물은 모두 함께 터져요. 맞춰지지 않는 자리는 바뀌지 않아요.'],
+      ['같은 동물 셋이 모이면 짝!', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로·세로 3마리 한 줄, 2×2 네모, 이어진 5마리 이상 덩어리가 되면 사라져요. 붙어 있는 같은 동물은 모두 함께 사라져요. 맞춰지지 않는 자리는 바뀌지 않아요.'],
       ['특수 동물을 만들어요', '4개 한 줄 = 줄 폭탄, ㄱ·ㅗ 모양 = 3×3 폭탄, 5개 한 줄 = 무지개 별, 2×2 네모 = 팽이(주변 + 목표 한 칸). 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라지고, 팽이는 옆 칸과 바꾸기만 해도 날아가요.'],
-      ['오늘의 문제·대전: 60초 목표 점수', '연달아 터지면 콤보! 시간이 끝났을 때 목표 점수를 넘기면 성공이에요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.'],
+      ['오늘의 문제·대전: 이동 20번 목표 점수', '시간 제한은 없어요. 20번 움직이는 동안 목표 점수를 넘기면 성공! 연달아 사라지면 콤보 점수가 커져요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.'],
       ['솔로: 이동 횟수 안에 목표 모으기', '위쪽 목표(동물·상자·얼음·사슬)를 이동 횟수 안에 다 모으면 성공! 상자는 옆에서 맞추거나 폭탄으로 깨고, 얼음은 그 칸에서 터뜨리고, 사슬은 맞춰서 풀어요. 2×2로 맞추면 생기는 팽이는 목표로 날아가요. 아래 아이템은 이동을 쓰지 않아요.']
     ],
     chapters:['문어 바닷가','병아리 농장','개구리 연못','부엉이 숲','판다 대나무숲'],
@@ -7196,7 +7213,8 @@ NG.match = (() => {
     levelDesc(lv){ const c = levelCfg(lv); return '동물 ' + c.kinds + '종 · 목표 ' + fmt(c.target) + '점'; },
     init(cfg, rng){
       const E = cfg.mode === 'moves' ? makeStage(rng, cfg) : makeEngine(rng, cfg.kinds || 6);
-      M = { E, item:null, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, timeUp:false, ended:false, sel:-1, kc:-1, kbd:false, hint:null, best:0, lastSec:-1, ready:false, dead:false };
+      if(cfg.mode !== 'moves') E.movesLeft = cfg.moves || DAY_MOVES;
+      M = { E, item:null, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, stop:false, ended:false, sel:-1, kc:-1, kbd:false, hint:null, best:0, ready:false, dead:false };
       G.mt = M;
       G.cleanup = () => {
         const m = G.mt; if(!m) return; m.dead = true;
@@ -7221,7 +7239,7 @@ NG.match = (() => {
             <div class="mt-prog" aria-label="목표까지 진행"><div class="mt-pbar"><i id="mtProgF"></i></div>
               <span class="mt-mk" id="mtMk0" style="left:62.5%" aria-label="목표">★</span><span class="mt-mk" id="mtMk1" style="left:81.25%" aria-label="목표의 1.3배">★</span><span class="mt-mk last" id="mtMk2" style="left:100%" aria-label="목표의 1.6배">★</span></div>
           </div>
-          <div class="mt-box mt-time" aria-label="남은 시간"><span class="mt-tag">남은 시간</span><b class="num" id="mtSec">${G.limit}</b><div class="mt-tbar"><i id="mtTF"></i></div></div>
+          <div class="mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="mt-tag">남은 이동</span><b class="num" id="mtMv">${cfg.moves}</b><div class="mt-tbar"><i id="mtTF"></i></div></div>
         </div>`;
       const dockHtml = mv ? `<div class="mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
           <span class="mt-bst"><span class="mt-bi"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i></span><em>4개<br>줄 폭탄</em></span>
@@ -7234,7 +7252,7 @@ NG.match = (() => {
         <div class="mt-top"><button class="mt-rbt" id="mtBack" aria-label="그만하기">${ic('back')}</button><div class="mt-ttl" id="mtTtl"></div><button class="mt-rbt" id="mtHelp" aria-label="게임 방법">${ic('help')}</button></div>
         ${hudHtml}
         <div class="mt-stage"><div class="mt-roof" aria-hidden="true"></div>
-          <div class="mt-panel" id="mtPanel"><div class="mt-grid" id="mtGrid" role="application" aria-label="동물 팡 판. 이웃한 동물을 밀어서 바꿔요"></div><div class="mt-combo" id="mtCombo" aria-live="polite"></div></div>
+          <div class="mt-panel" id="mtPanel"><div class="mt-grid" id="mtGrid" role="application" aria-label="동물 삼총사 판. 이웃한 동물을 밀어서 바꿔요"></div><div class="mt-combo" id="mtCombo" aria-live="polite"></div></div>
         </div>
         ${dockHtml}
       </div>`;
@@ -7243,7 +7261,8 @@ NG.match = (() => {
       st.querySelector('#mtHelp').onclick = () => { if(G && !G.over) openHelp(G.id); };
       M.root = st.querySelector('#mtRoot'); M.grid = st.querySelector('#mtGrid'); M.panel = st.querySelector('#mtPanel'); M.tf = st.querySelector('#mtTF');
       sizeBoard(); layoutAll(); bindInput(); hud();
-      if(mv){ paintDock(); paintIce(); setTimeout(() => { if(M && !M.dead) banner('이동 ' + cfg.moves + '번 안에 목표를 모아요', 'mix'); }, 350); }
+      if(mv){ paintDock(); paintIce(); }
+      setTimeout(() => { if(M && !M.dead) banner(mv ? '이동 ' + cfg.moves + '번 안에 목표를 모아요' : '이동 ' + cfg.moves + '번 안에 ' + fmt(cfg.target) + '점!', 'mix'); }, 350);
       bake(Math.min(256, Math.round(M.s * 1.25 * Math.min(3, window.devicePixelRatio || 1))), () => { if(M && !M.dead && !M.busy){ M.views.forEach(v => { const t = M.E.b.find(x => x && x.id === v.id); if(t) restyle(v, t); }); } });
       M.ready = true; M.last = 0;
       const bestEl = () => { const b = $m('#mtBest'); if(b) b.textContent = M.E.maxCombo >= 2 ? M.E.maxCombo : '–'; };
@@ -7254,13 +7273,13 @@ NG.match = (() => {
       const oc = G.cleanup; G.cleanup = () => { clearInterval(obs); oc && oc(); };
     },
     progress(){ const m = G && G.mt; if(!m || !G.cfg) return 0; if(isMoves()){ const tot = G.cfg.goals.reduce((s, g) => s + g.n, 0); return Math.min(1, (tot - goalLeft(m.E)) / tot); } return Math.min(1, m.E.pts / G.cfg.target); },
-    lossText(){ const m = G.mt; if(isMoves()) return `목표까지 ${m ? goalLeft(m.E) : 0}개 남았어요. 이동 ${G.cfg.moves}번을 다 썼어요.`; return `목표 ${fmt(G.cfg.target)}점 중 ${fmt(m ? m.E.pts : 0)}점을 모았어요.`; },
+    lossText(){ const m = G.mt; if(isMoves()) return `목표까지 ${m ? goalLeft(m.E) : 0}개 남았어요. 이동 ${G.cfg.moves}번을 다 썼어요.`; return `목표 ${fmt(G.cfg.target)}점 중 ${fmt(m ? m.E.pts : 0)}점을 모았어요. 이동 ${G.cfg.moves}번을 다 썼어요.`; },
     score(){
       const m = G.mt, pts = m.E.pts, t = G.cfg.target, mc = m.E.maxCombo;
       if(isMoves()){ const left = m.leftAtWin || 0; return { base:500, time:Math.min(350, left * 35), extra:Math.max(0, Math.min(150, 25 * (mc - 1))), rows:['목표 완료', `남은 이동 보너스 (${left}번)`, `최고 콤보 ${Math.max(1, mc)}연속`] }; }
       const time = Math.max(0, Math.min(350, Math.round(350 * (pts - t) / (0.8 * t))));
       const extra = Math.max(0, Math.min(150, 25 * (mc - 1)));
-      return { base:500, time, extra, rows:['목표 달성', `초과 점수 보너스 (${fmt(pts)}점)`, `최고 콤보 ${Math.max(1, mc)}연속`] };
+      return { base:500, time, extra, rows:['목표 달성 (이동 ' + G.cfg.moves + '번)', `목표 넘긴 점수 보너스 (${fmt(pts)}점)`, `최고 콤보 ${Math.max(1, mc)}연속`] };
     },
     stars(){ const m = G.mt; if(isMoves()){ const l = m.leftAtWin || 0, mv = G.cfg.moves; return l >= Math.max(2, Math.ceil(mv * .2)) ? 3 : l >= Math.max(1, Math.ceil(mv * .1)) ? 2 : 1; } const p = m.E.pts, t = G.cfg.target; return p >= 1.6 * t ? 3 : p >= 1.3 * t ? 2 : 1; },
     css:`
@@ -7291,6 +7310,8 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .mt-gl b{font-family:var(--heavy); font-weight:400; font-size:26px; color:#3A2261; letter-spacing:.3px}
 .ng-match .mt-gl b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
 .ng-match .mt-gl small{font-family:var(--disp); font-size:13px; color:#9A7A55}
+.ng-match .mt-gl{white-space:nowrap}
+@media (max-width:380px){ .ng-match .mt-hud{grid-template-columns:60px minmax(0,1fr) 82px; gap:6px} .ng-match .mt-gl b{font-size:22px} .ng-match .mt-gl small{font-size:12px} }
 @keyframes mtBump{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
 .ng-match .mt-goal.done{background:linear-gradient(180deg,#FFF8C8,#FFDE6A)}
 .ng-match .mt-prog{position:relative; height:20px; margin:6px 10px 0 2px}
@@ -7433,11 +7454,12 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
     },
     gate:{ matchPop:40, matchWarn:250, matchLine:60, matchBomb:80, matchMake:60, matchSwap:40 },
     jingle(){ [0, 2, 4, 5, 7, 9].forEach((d, i) => aMarimba(penta(d, 72), { t:i * .065, v:.16 })); [72, 76, 79, 84].forEach(m => aMarimba(m2f(m), { t:.48, d:1, v:.11 })); aSparkle({ t:.52, n:6 }); },
-    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, hatConvert, MT_D },
+    duelAi,
+    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, duelAi, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, hatConvert, MT_D },
     _test:{
-      auto(n){ const m = G.mt; if(!m) return; let k = 0; const go = async () => { while(k++ < n && !G.over && !m.timeUp){ const mv = bestMove(m.E); if(!mv) break; await tryMove(mv[0], mv[1]); } }; return go(); },
+      auto(n){ const m = G.mt; if(!m) return; let k = 0; const go = async () => { while(k++ < n && !G.over && !m.stop){ const mv = bestMove(m.E); if(!mv) break; await tryMove(mv[0], mv[1]); } }; return go(); },
       boost(p){ G.mt.E.pts += p; hud(); },
-      timeUp(){ G.start -= (G.limit + 1) * 1000; },
+      lastMove(){ G.mt.E.movesLeft = 1; hud(); },
       snap(){ return G.mt.E.b.map(t => t.s === S_RB ? '*' : t.k + (t.s ? 'HVB'[t.s - 1] : '')).join(','); },
       tryMove:(a, b) => tryMove(a, b),
       shuffle:() => doShuffle()
@@ -9670,7 +9692,7 @@ function renderSoloPts(){
 }
 
 /* ---- 대전: 같은 문제를 동시에 풀고 게임 점수로 승부. 함대는 기존 턴제 실시간 ---- */
-const DUEL_AI = { fox:[150,.72], sudoku:[420,.68], ball:[170,.66], tower:[280,.62], nono:[220,.72], match:[60,.62], block:[200,.66], memory:[70,.74], merge:[240,.62] };
+const DUEL_AI = { fox:[150,.72], sudoku:[420,.68], ball:[170,.66], tower:[280,.62], nono:[220,.72], match:[120,.62], block:[200,.66], memory:[70,.74], merge:[240,.62] };
 const DUEL_NICK_A = ['재빠른','느긋한','꼼꼼한','용감한','반짝이는','새벽의','번개','조용한','씩씩한','영리한'];
 const DUEL_NICK_B = ['토끼','곰','고양이','강아지','판다','호랑이'];   /* 동물 얼굴(FACE_KIND)과 짝 */
 const duelNick = () => DUEL_NICK_A[Math.floor(Math.random() * DUEL_NICK_A.length)] + ' ' + DUEL_NICK_B[Math.floor(Math.random() * DUEL_NICK_B.length)];
@@ -9688,7 +9710,7 @@ function renderDuel(d){
   const list = $('#duelList'); list.innerHTML = '';
   for(const id of GAME_IDS){
     const r = R[id] || { w:0, d:0, l:0 }, tot = r.w + r.d + r.l, wait = duelWaiting(id);
-    const how = id === 'fleet' ? '서로 포격하는 턴제 대전' : id === 'match' ? '60초 동안 누가 더 높은 점수?' : '같은 문제 · 점수가 높으면 승리';
+    const how = id === 'fleet' ? '서로 포격하는 턴제 대전' : id === 'match' ? '20번 움직여 누가 더 높은 점수?' : '같은 문제 · 점수가 높으면 승리';
     const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
     row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><span class="gr-mid"><b>${GAMES[id].name}</b><span>${how}</span><span class="drec">${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : '첫 대전을 해 보세요'}</span></span><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button>`;
     row.querySelector('.gr-go').onclick = () => duelStart(id);
@@ -9795,9 +9817,10 @@ function duelGoAI(S){
 }
 /* AI 상대: 게임별 평균 시간·성공률로 결과를 미리 정하고, 경과 시간에 맞춰 진행도를 보여 준다 */
 function duelAiPlan(id, rng){
+  if(NG[id] && NG[id].duelAi) return NG[id].duelAi(rng);   /* 게임이 직접 정하는 AI(동물 삼총사: 이동 20번 점수) */
   const [T0, p] = DUEL_AI[id] || [180, .65], cfg = levelOf(id, 'normal')[id] || {}, lim = cfg.limit || 0;
   const ok = rng() < p;
-  let T = id === 'match' ? 60 : T0 * (0.7 + rng() * 0.6); if(lim && id !== 'match') T = Math.min(T, lim * 0.97);
+  let T = T0 * (0.7 + rng() * 0.6); if(lim) T = Math.min(T, lim * 0.97);
   return { ok, T, sc: ok ? Math.round((560 + rng() * 380) / 10) * 10 : 0, fail: 0.3 + rng() * 0.6 };
 }
 function gameProg(){
@@ -9918,7 +9941,7 @@ function duelBarPlace(bar){
   const play = $('#play'), pbar = play.querySelector(':scope > .pbar');
   pbar.classList.remove('has-duel');
   if(G.id === 'tower'){ const w = $('#tdwrap'); if(w){ w.appendChild(bar); return; } }
-  /* 상단 바가 보이는 게임만 제목 자리에. 자체 머리를 쓰는 게임(여우·동물 팡 등)은 맨 위 단독 막대 */
+  /* 상단 바가 보이는 게임만 제목 자리에. 자체 머리를 쓰는 게임(동물 삼총사 등)은 맨 위 단독 막대 */
   if(G.id !== 'tower' && getComputedStyle(pbar).display !== 'none'){ pbar.insertBefore(bar, $('#helpBtn')); pbar.classList.add('has-duel'); return; }
   play.insertBefore(bar, play.firstChild);
 }
@@ -9952,7 +9975,7 @@ function duelBarInit(){
   duelGoOpen();
   duelRender();
 }
-/* 앞섬 판정: 5%p 넘으면 앞섬, 2%p 안으로 좁혀지면 풀림. 동물 팡은 점수 차 */
+/* 앞섬 판정: 5%p 넘으면 앞섬, 2%p 안으로 좁혀지면 풀림. 동물 삼총사는 점수 차 */
 function duelLeadOf(me, op, prev){
   const S = DUEL_STAT[G.id] || {};
   const d = S.score ? ((me.v || 0) - (op.v || 0)) / Math.max(1, me.t || 1) : (me.pg || 0) - (op.pg || 0);
@@ -9969,7 +9992,8 @@ function duelOppStat(){
   const D = G.duel, o = D.opp, st = D.oppStat || {}, S = DUEL_STAT[G.id] || {};
   /* AI는 칸 수(v/t)와 막대가 어긋나지 않게 칸 수 기준으로 */
   let pg = o.pg;
-  if(D.mode === 'ai' && st.t && !S.score && !(o.dn && !o.sc)) pg = S.tile ? Math.max(0, Math.min(1, (Math.log2(Math.max(2, st.v || 2)) - 1) / (Math.log2(st.t) - 1))) : st.v / st.t;
+  if(D.mode === 'ai' && st.t && S.score && D.ai.pts) pg = Math.min(1, (st.v || 0) / st.t);
+  else if(D.mode === 'ai' && st.t && !S.score && !(o.dn && !o.sc)) pg = S.tile ? Math.max(0, Math.min(1, (Math.log2(Math.max(2, st.v || 2)) - 1) / (Math.log2(st.t) - 1))) : st.v / st.t;
   return Object.assign({}, st, { pg, dn:o.dn ? 1 : 0, ok:!!o.sc, sc:o.sc, left:!!D.oppLeft && !o.dn });
 }
 function duelRender(){
@@ -10055,7 +10079,7 @@ function duelOppEvents(){
     D.oppLf = st.lf;
   }
   if(!S.score && D.opp.pg >= .8) duelPing('oppHot', '상대가 마무리 중이에요!');
-  if(S.score && G.limit && G.limit - elapsed() <= 10) duelPing('last10', `마지막 10초 · 상대 ${fmt(st.v || 0)}점`);
+  if(S.score && G.mt && G.mt.E.movesLeft != null && G.mt.E.movesLeft <= 3) duelPing('last10', `마지막 3번 · 상대 ${fmt(st.v || 0)}점`);
 }
 function duelOppDone(){
   const D = G.duel;
@@ -10087,7 +10111,7 @@ function duelAiStat(){
   if(t != null){
     st.t = t;
     if(S.tile){ const top = Math.log2(Math.max(4, t)); st.v = Math.pow(2, Math.max(1, Math.round(1 + pg * (top - 1)))); }
-    else if(S.score) st.v = Math.round(pg * (a.sc || t * .5) / 10) * 10;
+    else if(S.score) st.v = Math.round((a.pts ? (a.ok ? pg : pg / Math.max(.01, a.fail)) * a.pts : pg * (a.sc || t * .5)) / 10) * 10;
     else st.v = Math.min(t, Math.floor(pg * t));
   }
   if(S.lfMax === 3){
