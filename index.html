@@ -947,6 +947,18 @@ body[data-mode] .dock{display:none}
 @keyframes curpulse{50%{box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 6px color-mix(in srgb, var(--gc) 35%, transparent)}}
 .st.sel{outline:3px solid #FFB020; outline-offset:3px}
 .st.boss{border-radius:30%}
+.modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
+.modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}
+.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:11px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
+.rule .cline{display:inline-block; margin-top:4px; font-size:13.5px; color:#5B3FB5; background:#EFE7FF; border-radius:10px; padding:3px 9px}
+.legend3{font-size:12.5px; color:var(--sub); margin:6px 0 0; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap}
+.legend3 .lg-n{font:11px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
+.legend3 .lg-h, .legend3 .lg-x{display:inline-block; width:12px; height:12px; border-radius:4px; background:linear-gradient(#FF7A7A,#B3122E)}
+.legend3 .lg-x{background:linear-gradient(#A77BFF,#4B1E9E)}
+.ncard{display:flex; gap:12px; align-items:center; text-align:left; background:#FFF8EA; border:3px solid var(--outline); border-radius:18px; padding:12px 14px; margin:10px 0 4px; box-shadow:0 4px 0 var(--outline2); color:var(--ink)}
+.ncard .nc-ic{flex:none; width:48px; height:48px; border-radius:14px; background:var(--gc); color:#fff; display:grid; place-items:center; border:2.5px solid var(--outline)}
+.ncard .nc-ic svg{width:28px; height:28px}
+.ncard p{margin:0; font-size:15px; line-height:1.55}
 .st.boss::after{content:""; position:absolute; top:-12px; width:22px; height:14px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 14'><path d='M1 13 2 3l5 5 4-7 4 7 5-5 1 10z' fill='%23FFC93C' stroke='%231A0F45' stroke-width='1.6' stroke-linejoin='round'/></svg>") no-repeat center/contain}
 .amap .rule{margin:12px 0 0; font-size:12.5px; color:var(--sub); line-height:1.5}
 .amap .rule b{color:#B87400}
@@ -1823,6 +1835,78 @@ const GAME_META = {
 };
 const GAME_IDS = ['fox','sudoku','ball','tower','fleet'];
 /* 새 게임 모듈(동물 삼총사·네모 그림·블록 채우기·카드 짝·숫자 합치기)이 여기에 등록된다. ngRegister()가 GAMES·GCOL·HELP 등에 합친다. */
+/* ===================== 난이도 v2: 개념 사이클 (기획팀, 2026-09-30 · 17·18번 문서) =====================
+   벤치마크: 로얄 매치(약 8판마다 새 블록, 5·9로 끝나는 판 어려움, 10판마다 아주 어려움), 컷 더 로프(박스마다 새 기믹),
+   닌텐도 기승전결(소개 → 전개 → 반전 → 정리). → 5판마다 새 개념 하나.
+   챕터(10판) 자리 k: 1 새 규칙 소개(쉬움) · 2~3 익히기 · 4 섞기(이전 규칙과) · 5 어려움 · 6 변주 소개(쉬움) · 7~8 규칙+변주 · 9 쉬어가기 · 10 보스(규칙+이전 규칙+변주, 아주 어려움)
+   챕터 1은 기본 규칙만(6부터 첫 변주). 새 규칙은 11·21·31·41, 변주는 6·16·26·36·46. 51부터는 리믹스(배운 규칙 2개를 챕터마다 바꿔 섞음).
+   게임 쪽 계약: 개념 목록 = NG[id].concepts 또는 CONCEPTS[id] = { order:[새 규칙 키 4개], info:{키:{name,desc}}, twists:[변주 키…], twInfo?:{키:{name,desc}} }
+                 또는 이미 등장 판이 정해진 게임은 { fixed:[{ at, key, name, desc }] } (카드·표시만).
+                 각 게임의 stage(n)/advLevel은 planOf(id, n)을 읽어 mj(켜진 규칙)·tw(변주)·easy/hard/boss를 반영한다. */
+const TWISTS = {
+  flash:{ name:'번개', desc:'시간(또는 기준 이동·턴)이 짧아요. 빠르고 정확하게!' },
+  tight:{ name:'외줄 타기', desc:'실수는 딱 한 번까지만 허용돼요.' },
+  bare:{ name:'맨손', desc:'힌트와 아이템 없이 오직 실력으로 풀어요.' }
+};
+const CONCEPTS = {};
+function cyclePlan(n, majors, twists){
+  const c = Math.ceil(n / 10), k = n - (c - 1) * 10, M = majors || [], T = twists || [];
+  const twKey = T.length ? T[(c - 1) % T.length] : null;
+  const o = { c, k, mj:[], tw:null, twKey, intro:null, introKind:null, hard:k === 5, boss:k === 10, easy:k === 1 || k === 6 || k === 9, remix:false };
+  const twOn = k === 6 || k === 7 || k === 8 || k === 10;
+  if(c === 1){ if(twOn) o.tw = twKey; if(k === 6 && twKey){ o.intro = twKey; o.introKind = 'twist'; } return o; }
+  if(c <= 1 + M.length && c <= 5){
+    const cur = M[c - 2], prev = c > 2 ? M[c - 3] : null;
+    o.mj = k === 6 ? [] : (k === 4 || k === 10) && prev ? [cur, prev] : [cur];
+    if(twOn) o.tw = twKey;
+    if(k === 1){ o.intro = cur; o.introKind = 'major'; }
+    if(k === 6 && twKey){ o.intro = twKey; o.introKind = 'twist'; }
+    return o;
+  }
+  /* 리믹스 */
+  o.remix = true;
+  if(M.length){
+    const r = mulberry(seedFrom('remix:' + c)), a = Math.floor(r() * M.length); let b = Math.floor(r() * M.length); if(M.length > 1 && b === a) b = (a + 1) % M.length;
+    const A = M[a], B = M[b];
+    o.mj = { 1:[A], 2:[B], 3:[A], 4:[A, B], 5:[A, B], 6:[A], 7:[B], 8:[A, B], 9:[B], 10:[A, B] }[k].filter((x, i, arr) => arr.indexOf(x) === i);
+  }
+  if(k === 6 || k === 7 || k === 10) o.tw = twKey;
+  return o;
+}
+function conceptsOf(id){ return (NG[id] && NG[id].concepts) || CONCEPTS[id] || null; }
+function planOf(id, n){
+  const C = conceptsOf(id);
+  if(!C || C.fixed){ const k = n - (Math.ceil(n / 10) - 1) * 10, f = C && C.fixed ? C.fixed.find(x => x.at === n) : null;
+    return { c:Math.ceil(n / 10), k, mj:[], tw:null, intro:f ? f.key : null, introKind:f ? 'major' : null, hard:k === 5, boss:k === 10, easy:k === 1 || k === 6 || k === 9, remix:false, fixed:true }; }
+  return cyclePlan(n, C.order, C.twists);
+}
+function conceptInfo(id, key){
+  const C = conceptsOf(id) || {};
+  if(C.fixed){ const f = C.fixed.find(x => x.key === key); return f || null; }
+  return (C.info && C.info[key]) || (C.twInfo && C.twInfo[key]) || TWISTS[key] || null;
+}
+/* 스테이지 설명에 붙는 한 줄: "새 규칙: 바위 칸" / "변주: 번개" / "리믹스: A + B" */
+function conceptLine(id, n){
+  const p = planOf(id, n), nm = k => (conceptInfo(id, k) || {}).name || k, bits = [];
+  if(p.intro) bits.push((p.introKind === 'twist' ? '새 변주' : '새 규칙') + ': ' + nm(p.intro));
+  else if(p.mj.length) bits.push((p.remix ? '리믹스' : '규칙') + ': ' + p.mj.map(nm).join(' + '));
+  if(p.tw && p.intro !== p.tw) bits.push('변주: ' + nm(p.tw));
+  if(p.boss) bits.unshift('보스(아주 어려움)'); else if(p.hard) bits.unshift('어려움');
+  return bits.join(' · ');
+}
+function stageClass(id, n){ const p = planOf(id, n); return (p.boss ? ' xhard' : p.hard ? ' hard' : '') + (p.intro ? ' newc' : ''); }
+/* 새 개념을 처음 만나는 판: 시작 전에 규칙 카드 한 장 */
+function conceptCard(id, n, go){
+  const p = planOf(id, n), inf = conceptInfo(id, p.intro); if(!inf){ go(); return; }
+  const tw = p.introKind === 'twist';
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">${tw ? 'NEW TWIST' : 'NEW RULE'}</p><div class="ttl">${tw ? '새 변주' : '새 규칙'} · ${inf.name}</div>
+    <div class="ncard" style="--gc:${GCOL[id][1]}"><span class="nc-ic">${ic(id)}</span><p>${inf.desc}</p></div>
+    <p class="note">스테이지 ${n} · ${GAMES[id].name}<br>${tw ? '익숙한 판에 조건 하나가 더해져요.' : p.fixed ? '이 판부터 새로 나와요. 챕터 끝 보스에서 제대로 시험해요!' : '첫 판은 이 규칙만 나와서 쉬워요. 챕터 끝 보스에서 제대로 시험해요!'}</p>
+    <div class="mbtns one"><button class="b1" id="ncGo">도전!</button></div>`);
+  $('#modal').classList.add('celebrate'); sfx('fanfare');
+  $('#ncGo').onclick = () => { store.set('hp:seenC:' + id + ':' + p.intro, 1); closeModal(); go(); };
+}
+
 const NG = {};
 /* 모드 v6: 오늘 = 10게임 중 날짜별 5개, 솔로 = 새 스테이지 첫 클리어 점수, 대전 = 승패 점수 */
 const DAILY_N = 5, SOLO_CAP = 1000, DUEL_PTS = { w:400, d:250, l:150 };
@@ -2344,12 +2428,13 @@ function openAdvMap(id, want){
   const draw = () => {
     const cs = (c - 1) * 10;
     const cells = [1,2,3,4,5,10,9,8,7,6].map(k => { const n = cs + k, lock = n > p.max, s = p.stars[n] || 0;
-      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id] && NG[id].stageTag ? ' ' + NG[id].stageTag(n) : ''}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + ' 잠김"' : 'aria-label="스테이지 ' + n + (k === 10 ? ' 보스' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}</button>`; }).join('');
+      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id] && NG[id].stageTag ? ' ' + NG[id].stageTag(n) : stageClass(id, n)}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + ' 잠김"' : 'aria-label="스테이지 ' + n + (k === 10 ? ' 보스' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}</button>`; }).join('');
     const canNext = p.max > c * 10;
     openModal(`<h3>${GAMES[id].name} 솔로</h3>
       <div class="chhead"><button id="chPrev" aria-label="이전 챕터" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>챕터 ${c} · 별 ${chStars(id, c)}/30${chCleared(id, c) ? ' · 클리어' : ''}</small></div><button id="chNext" aria-label="다음 챕터" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
       <div class="path">${cells}</div>
-      <p class="rule">${ADV_RULE[id]}<br>스테이지 ${pick}${pick % 10 === 0 ? ' (보스)' : ''}: <b>${advDesc(id, pick)}</b></p>
+      <p class="rule">${ADV_RULE[id]}<br>스테이지 ${pick}: <b>${advDesc(id, pick)}</b>${conceptLine(id, pick) ? `<br><span class="cline">${conceptLine(id, pick)}</span>` : ''}</p>
+      <p class="legend3"><span class="lg-n">NEW</span> 새 규칙 · <span class="lg-h"></span> 어려움 · <span class="lg-x"></span> 보스</p>
       <div class="mbtns"><button class="b2" id="mClose">닫기</button><button class="b1" id="mGo">${pick} 시작 · 무료</button></div>`);
     const m = $('#modal'); m.classList.add('amap'); m.style.setProperty('--gc', GCOL[id][1]);
     $('#mClose').onclick = closeModal;
@@ -2697,6 +2782,7 @@ let G = null, tick = null;
 
 function startGame(id, lv = 'normal', o = {}){
   const adv = o.adv || 0, duel = o.duel || null;
+  if(adv && !o.cardDone){ const p0 = planOf(id, adv); if(p0.intro && !store.get('hp:seenC:' + id + ':' + p0.intro, 0)){ conceptCard(id, adv, () => startGame(id, lv, Object.assign({}, o, { cardDone:true }))); return; } }
   if(!adv && !spendHeart()){ openHeartSheet('empty'); return; }
   if(!adv) sfx('heartUse'); if(!duel || duel.fleet) sfx('start');
   if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; }
@@ -9439,6 +9525,25 @@ function ngRegister(){
   }
 }
 ngRegister();
+/* 이미 새 요소 등장 판이 정해진 게임: 카드·표시만(난이도 표는 그대로) */
+CONCEPTS.ball = { fixed:[
+  { at:3, key:'clock', name:'시계 블록', desc:'깨지면 다음 한 턴 동안 블록이 내려오지 않아요.' },
+  { at:7, key:'shield', name:'방패 블록', desc:'아래쪽 면으로 맞으면 끄떡없어요. 벽에 튕겨 옆이나 위로 맞혀요.' },
+  { at:12, key:'paint', name:'물감 블록', desc:'깨지면 같은 색 블록 모두 체력이 25% 줄어요.' },
+  { at:18, key:'fire', name:'폭죽 블록', desc:'깨지면 불꽃 구슬 4개가 대각선으로 튀어 한 번 더 때려요.' }] };
+CONCEPTS.tower = { fixed:[
+  { at:4, key:'crow', name:'까마귀', desc:'하늘을 날아요. 솔방울 나무와 반딧불 등만 맞힐 수 있어요.' },
+  { at:5, key:'boar', name:'멧돼지(중간 대장)', desc:'단단하고, 창고에 닿으면 도토리 2개를 훔쳐요.' },
+  { at:8, key:'beetle', name:'딱정벌레', desc:'단단한 껍질(갑옷)이 있어요. 반딧불 등은 갑옷을 무시해요.' },
+  { at:10, key:'bear', name:'먹보 곰(챕터 대장)', desc:'아주 튼튼하고 도토리 5개를 훔쳐요. 요정 도움을 아껴 두세요.' },
+  { at:13, key:'mole', name:'두더지', desc:'5초마다 2초씩 땅속에 숨어 공격받지 않아요.' }] };
+if(NG.match) NG.match.concepts = { fixed:[
+  { at:6, key:'box', name:'나무 상자', desc:'옆에서 맞추거나 폭탄에 닿으면 한 겹씩 깨져요. 상자는 움직이지 않아요.' },
+  { at:11, key:'ice', name:'얼음 바닥', desc:'그 칸의 동물이 터지면 얼음이 한 겹 녹아요.' },
+  { at:21, key:'chain', name:'사슬', desc:'묶인 동물은 옮길 수 없어요. 맞추거나 폭탄에 닿으면 풀려요.' },
+  { at:26, key:'box2', name:'2겹 상자', desc:'두 번 깨야 사라지는 상자예요.' },
+  { at:31, key:'ice2', name:'두꺼운 얼음', desc:'두 번 녹여야 하는 얼음이에요.' },
+  { at:46, key:'box3', name:'3겹 상자', desc:'세 번 깨야 하는 가장 단단한 상자예요.' }] };
 
 /* ===================== 모드 v6: 솔로 점수 카드 · 대전 ===================== */
 function renderSoloPts(){
