@@ -538,6 +538,7 @@ body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .fx-tool.hint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
 .fx-tool.hint .ico{filter:none}
 .fx-tool.auto{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+.fx-tool.empty{filter:grayscale(.7); opacity:.7}   /* 가진 개수 0: 누르면 얻는 방법 안내 */
 .fx-tool.undo{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96}
 .fx-tool:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
 .fx-tool:disabled{filter:grayscale(.8); opacity:.55}
@@ -1830,7 +1831,7 @@ const soloPts = st => 100 + 50 * st;
 const isStage = id => id === 'ball' || id === 'tower';
 const FRIEND_COL = ['#FFD6E0','#FFE7A8','#C9F0DE','#CFE0FF','#E4D4FF','#FFDCC2'];
 const HELP = {
-  fox:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 기회 별 1개','틀린 자리는 주황 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 별 3개를 다 잃으면 끝. 힌트·자동 ✕는 판당 3번.']],
+  fox:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 기회 별 1개','틀린 자리는 주황 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 별 3개를 다 잃으면 끝. 힌트·자동 ✕는 가진 개수에서 한 판에 1번씩만 써요.']],
   sudoku:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 3×3 칸마다 1부터 9까지 한 번씩 넣어요.'],['메모로 예비 숫자','메모를 켜면 작은 예비 숫자를 적어둘 수 있어요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요. 힌트는 3번 쓸 수 있어요.']],
   ball:[['끌어서 조준, 떼면 발사','판을 누른 채 끌면 점선이 보여요. 손을 떼면 구슬이 날아가요. 아래 ◀ ▶로 조금씩 맞추고 [발사]를 눌러도 돼요.'],['숫자만큼 맞혀 깨기','젤리 블록과 둥근 범퍼는 숫자만큼 맞히면 깨져요. 별 조각을 먹으면 다음 턴 구슬 +1. 시계·방패·물감·폭죽 블록은 깨거나 맞힐 때 특별한 일이 생겨요.'],['바닥선을 지켜요','턴마다 블록이 한 줄 내려와요. 바닥선에 닿으면 별빛 방어막이 한 번 막아 주고, 두 번째엔 끝나요. 관통 구슬·망원경·밀어 올리기는 판마다 1번씩.']],
   fleet:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 5초, 안 쏘면 차례가 넘어가요. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']],
@@ -2373,9 +2374,9 @@ function advFinish(win){
     st = advStarCalc(); first = !prev; better = st > prev;
     p.stars[n] = Math.max(prev, st); p.max = Math.max(p.max, n + 1); store.set(advKey(id), p);
     if(first){ const want = soloPts(st); spts = Math.max(0, Math.min(want, SOLO_CAP - dd.solo)); capped = spts < want; dd.solo += spts; }
-    if(n % 10 === 0 && first){ addHearts(2); cel.push({ kind:'chapter', id, c:n / 10 }); }
+    if(n % 10 === 0 && first){ addHearts(2); cel.push({ kind:'chapter', id, c:n / 10 }); itemReward([['foxHint', 1], ['foxAuto', 1]], '챕터 클리어 보상'); }
     const lv1 = lvInfo(), seen = store.get('hp:advLv', 1);
-    if(lv1.L > seen){ addHearts(lv1.L - seen); store.set('hp:advLv', lv1.L); cel.push({ kind:'level', L:lv1.L, from:seen, hearts:lv1.L - seen }); }
+    if(lv1.L > seen){ addHearts(lv1.L - seen); itemAdd('foxHint', lv1.L - seen); store.set('hp:advLv', lv1.L); cel.push({ kind:'level', L:lv1.L, from:seen, hearts:lv1.L - seen }); }
   }
   saveDay(dd);
   const tlS = myTL(), attPill = firstToday ? `<span class="pill grit">${ic('flame')} 오늘 출석 · 연속 ${tlS.streak}일 · 보너스 +${tlS.today.pct}%</span>` : '';
@@ -2427,7 +2428,7 @@ function showCelebrations(list, done){
     html = `<div class="burst" aria-hidden="true"></div><p class="kick">LEVEL UP</p><div class="ttl">레벨 업!</div>
       <div class="emb">${shieldSVG(e.L)}</div>${newT ? `<div class="newtitle">새 칭호 · ${titleOf(e.L)}</div>` : ''}
       <p class="note">솔로 별을 모아 <b>Lv.${e.L}</b>이 되었어요!${newT ? '' : ` 칭호는 '${titleOf(e.L)}'`}</p>
-      <div class="rewards"><div class="reward"><span class="ri">${HEART_G}</span><b>+${e.hearts}</b>하트</div><div class="reward"><span class="ri">${STAR_G}</span><b>Lv.${e.L}</b>레벨</div></div>`;
+      <div class="rewards"><div class="reward"><span class="ri">${HEART_G}</span><b>+${e.hearts}</b>하트</div><div class="reward"><span class="ri">${FX_ICON.bulb}</span><b>+${e.hearts}</b>여우 힌트</div><div class="reward"><span class="ri">${STAR_G}</span><b>Lv.${e.L}</b>레벨</div></div>`;
   } else {
     const nx = e.c + 1;
     html = `<div class="burst" aria-hidden="true"></div><p class="kick">CHAPTER CLEAR</p><div class="ttl">챕터 ${e.c} 클리어!</div>
@@ -2639,6 +2640,7 @@ function finish(win){
     const q = calcScore(); const { base, time, paw, l1, l2, l3 } = q; score = q.score;
     const prev = d.best[id], isBest = score > prev;
     if(isBest){ d.best[id] = score; saveDay(d); newRec = true; }
+    if(!d.itemDone && d.set && d.set.every(g => d.best[g] > 0)){ d.itemDone = 1; saveDay(d); itemReward([['foxAuto', 1]], '오늘의 문제 5게임 완주'); }
     const d2 = dayState(), r1 = myPos(d2);
     const passed = r1.b.filter(x => !x.me && x.score < meScore(r1.b)).map(x => x.name).filter(n => !before.includes(n));
     const tl2 = myTL();
@@ -2706,7 +2708,7 @@ function startGame(id, lv = 'normal', o = {}){
   const rng = adv ? mulberry(seedFrom('adv:' + id + ':' + adv)) : duel ? mulberry(seedFrom(duel.seed || ('duel:' + id + ':' + Date.now()))) : mulberry(seedFrom(dayKey() + ':' + id + ':' + lv + ':' + (o.chal && o.chal.same ? 1 : attempt)));
   G = { id, lv, adv, duel, L, attempt, chal:o.chal || null, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
   if(id === 'fox'){
-    Object.assign(G, { N:L.fox.N, rng, reg:null, cells:[], placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, combo:0 });
+    Object.assign(G, { N:L.fox.N, rng, reg:null, cells:[], placed:0, earned:0, hints:FOX_ITEM_PER_GAME, autos:FOX_ITEM_PER_GAME, hist:[], hintUsed:0, combo:0 });
   } else if(id === 'ball'){
     ballInit(genBall(rng, L.ball));
   } else if(id === 'tower'){
@@ -3281,10 +3283,24 @@ function fxCombo(n){
   d.style.left = (p.left + p.width / 2) + 'px'; d.style.top = (p.top + 18) + 'px';
   document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
 }
+/* ===== 아이템(누적 보유) =====
+   여우 힌트·자동 ✕는 판마다 새로 주지 않고 쌓아 둔 개수에서 쓴다. 한 판에 각각 1번까지.
+   지금은 이 브라우저에 저장(hp:items). 로그인(카카오)이 붙으면 계정별 서버 저장으로 옮긴다. */
+const ITEM_DEF = { foxHint:{ name:'여우 힌트', start:3 }, foxAuto:{ name:'자동 ✕', start:3 } };
+const ITEM_MAX = 20, FOX_ITEM_PER_GAME = 1;
+function items(){ const s = store.get('hp:items', null) || {}; for(const k in ITEM_DEF) if(typeof s[k] !== 'number') s[k] = ITEM_DEF[k].start; return s; }
+const itemN = k => items()[k];
+function itemAdd(k, n){ const s = items(); s[k] = Math.min(ITEM_MAX, s[k] + n); store.set('hp:items', s); }
+function itemUse(k){ const s = items(); if(s[k] < 1) return false; s[k]--; store.set('hp:items', s); return true; }
+/* 보상: 솔로 챕터 첫 클리어 = 힌트+1·자동+1, 레벨 업 = 힌트+1, 오늘의 문제 5게임 완주(하루 1번) = 자동+1 */
+function itemReward(list, why){
+  list.forEach(([k, n]) => itemAdd(k, n));
+  setTimeout(() => toast(why + ' · ' + list.map(([k, n]) => ITEM_DEF[k].name + ' +' + n).join(' · ')), 1400);
+}
 function fxStamp(){
   const bd = $('#bd'); if(!bd) return;
   const d = document.createElement('div'); d.className = 'fxstamp'; d.textContent = '완성!'; bd.appendChild(d);
-  setTimeout(() => { sfx('fStamp'); fxShake(bd, 7); const p = fxCenter(d); fxRing(p.x, p.y, '#FF5C8A', p.w * .9, .6, 10); }, 330);
+  setTimeout(() => { sfx('fStamp'); const p = fxCenter(d); fxRing(p.x, p.y, '#FF5C8A', p.w * .9, .6, 10); }, 330);
 }
 
 function foxStage(st){
@@ -3297,8 +3313,8 @@ function foxStage(st){
     </div>
     <div class="fx-card" id="fxCard"><div class="fx-board" id="bd" role="grid" aria-label="여우 자리 찾기 판"><div class="fx-wait">문제를 만드는 중…</div></div></div>
     <div class="fx-tools">
-      <button class="fx-tool hint" id="fxHint" aria-label="힌트, 3번 남음"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트 <b id="fxHintN">3</b></span></button>
-      <button class="fx-tool auto" id="fxAuto" aria-label="자동 ✕, 3번 남음"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕ <b id="fxAutoN">3</b></span></button>
+      <button class="fx-tool hint" id="fxHint" aria-label="힌트"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트 <b id="fxHintN">${itemN('foxHint')}</b></span></button>
+      <button class="fx-tool auto" id="fxAuto" aria-label="자동 ✕"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕ <b id="fxAutoN">${itemN('foxAuto')}</b></span></button>
       <button class="fx-tool undo" id="fxUndo" aria-label="되돌리기"><span class="ico" aria-hidden="true">${FX_ICON.undo}</span><span>되돌리기</span></button>
     </div>
     <p class="fx-tip">한 번 누르면 ✕, 한 번 더 누르면 여우. 끌면 ✕를 여러 칸에 칠해요.</p>
@@ -3310,7 +3326,7 @@ function foxStage(st){
     setTimeout(() => {
       if(G !== me || me.over) return;
       const p = genFox(me.rng, me.N);
-      Object.assign(me, p, { cells:new Array(me.N*me.N).fill(0), placed:0, earned:0, hints:3, autos:3, hist:[], hintUsed:0, colors:shuffle(FOX_PAL.slice(0, me.N), me.rng) });
+      Object.assign(me, p, { cells:new Array(me.N*me.N).fill(0), placed:0, earned:0, hints:FOX_ITEM_PER_GAME, autos:FOX_ITEM_PER_GAME, hist:[], hintUsed:0, colors:shuffle(FOX_PAL.slice(0, me.N), me.rng) });
       if(!me.duel){ me.start = Date.now(); me.pausedMs = 0; }
       foxBuild(true);
     }, 30);
@@ -3332,7 +3348,7 @@ function foxBuild(intro){
   const cellAt = e => { const t = document.elementFromPoint(e.clientX, e.clientY); return t && t.closest ? t.closest('.fxc') : null; };
   const apply = i => { if(touched.has(i)) return; touched.add(i); const s = G.cells[i]; if(paintTo === 1 && s === 0) G.cells[i] = 1; else if(paintTo === 0 && s === 1) G.cells[i] = 0; else return; foxPaint(i); sfx(paintTo ? 'fPaint' : 'fErase'); };
   bd.onpointerdown = e => {
-    if(G.over || G.paused) return;
+    if(G.over || G.paused || G.done) return;
     const el = cellAt(e); if(!el) return;
     e.preventDefault(); try{ bd.setPointerCapture(e.pointerId); }catch(_){}
     down = +el.dataset.i; drag = false; touched = new Set();
@@ -3379,8 +3395,10 @@ function foxPaint(only){
   const sc = $('#fxScore'); if(sc) sc.textContent = fmt(Math.round(G.earned * G.L.mult));
   foxCount(false);
   const h = $('#fxHintN'), a = $('#fxAutoN');
-  if(h){ h.textContent = G.hints; $('#fxHint').disabled = !G.hints; $('#fxHint').setAttribute('aria-label', '힌트, ' + G.hints + '번 남음'); }
-  if(a){ a.textContent = G.autos; $('#fxAuto').disabled = !G.autos; $('#fxAuto').setAttribute('aria-label', '자동 ✕, ' + G.autos + '번 남음'); }
+  const tool = (el, n, left, name) => { if(!el) return; const b = el.closest('button'); el.textContent = left ? n : '✓';
+    b.disabled = !left || G.done; b.classList.toggle('empty', left && !n);
+    b.setAttribute('aria-label', left ? `${name}, 가진 개수 ${n}개 · 이 판에서 1번 쓸 수 있어요` : `${name}, 이번 판에서 이미 썼어요`); };
+  tool(h, itemN('foxHint'), G.hints, '힌트'); tool(a, itemN('foxAuto'), G.autos, '자동 ✕');
   const u = $('#fxUndo'); if(u) u.disabled = !G.hist || !G.hist.length;
 }
 function foxCanPlace(i){
@@ -3390,7 +3408,7 @@ function foxCanPlace(i){
   return G.sol[r] === c;   /* 답이 하나뿐인 판이라 정답 자리만 맞음 */
 }
 function foxTap(i){
-  if(G.over || G.paused || !G.reg) return;
+  if(G.over || G.paused || !G.reg || G.done) return;
   const s = G.cells[i];
   if(s === 0){ G.hist.push(G.cells.slice()); G.cells[i] = 1; foxPaint(i); fxSound('x'); fxBuzz(6); return; }
   if(s !== 1) return;
@@ -3412,7 +3430,7 @@ function foxPlace(i, earn){
       document.querySelectorAll('#bd .fxc.fox').forEach((e, k) => { e.style.animationDelay = k * 70 + 'ms'; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('dance'); });
       fxStamp(); fxConfetti(); fxSound('win'); fxBuzz([30, 60, 30, 60, 80]);
     }, 450);
-    setTimeout(() => finish(true), 1500 + G.N * 70);
+    const me = G; setTimeout(() => { if(G === me) finish(true); }, 1500 + G.N * 70);
   }
 }
 /* 맞힘 연출: 충격파 + 구역색 조각 + 구역 물결 + 여우 수 칸으로 날아가기 + 점수 떠오름 + 연속 배지 */
@@ -3462,19 +3480,21 @@ function foxWrong(i){
   G.paws--; foxLives();
   const pill = $('#fxLives'); if(pill){ pill.classList.remove('hurt'); void pill.offsetWidth; pill.classList.add('hurt'); }
   fxFloat(p.x, p.y - p.h * .4, '−1', 'bad');
-  if(G.paws <= 0) setTimeout(() => finish(false), 900);
+  if(G.paws <= 0){ const me = G; setTimeout(() => { if(G === me) finish(false); }, 900); }
 }
 function foxHint(){
   if(G.over || G.paused || !G.reg || G.hints < 1 || G.done) return;
+  if(itemN('foxHint') < 1){ toast('힌트가 없어요 · 챕터·레벨업 보상으로 받아요', 'err'); return; }
   const N = G.N, has = new Set(); for(let i=0;i<N*N;i++) if(G.cells[i] === 2) has.add(G.reg[i]);
   /* 가장 작은 구역(스스로 찾기 쉬운 곳 대신 막힌 곳 위주로)에서 정답 한 칸을 알려줌 */
   const size = g => G.reg.filter(x => x === g).length;
   const rows = [...Array(N).keys()].filter(r => !has.has(G.reg[r*N + G.sol[r]])).sort((a, b) => size(G.reg[a*N + G.sol[a]]) - size(G.reg[b*N + G.sol[b]]));
   if(!rows.length) return;
-  G.hints--; G.hintUsed++; foxPlace(rows[0]*N + G.sol[rows[0]], false);
+  itemUse('foxHint'); G.hints--; G.hintUsed++; foxPlace(rows[0]*N + G.sol[rows[0]], false);
 }
 function foxAuto(){   /* 놓은 여우 때문에 여우가 올 수 없는 칸에 ✕ */
   if(G.over || G.paused || !G.reg || G.autos < 1 || G.done) return;
+  if(itemN('foxAuto') < 1){ toast('자동 ✕가 없어요 · 5게임 완주·챕터 보상으로 받아요', 'err'); return; }
   const N = G.N, foxes = []; for(let i=0;i<N*N;i++) if(G.cells[i] === 2) foxes.push(i);
   if(!foxes.length){ toast('여우를 먼저 1마리 놓아 보세요', 'err'); return; }
   G.hist.push(G.cells.slice()); let n = 0; const marked = [];
@@ -3484,7 +3504,7 @@ function foxAuto(){   /* 놓은 여우 때문에 여우가 올 수 없는 칸에
     if(foxes.some(f => { const r = Math.floor(f/N), c = f%N; return rr === r || cc === c || G.reg[j] === G.reg[f] || (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1); })){ G.cells[j] = 1; n++; marked.push(j); }
   }
   if(!n){ G.hist.pop(); toast('더 칠할 칸이 없어요', 'err'); return; }
-  G.autos--; foxPaint();
+  itemUse('foxAuto'); G.autos--; foxPaint();
   /* 효과: ✕가 가까운 칸부터 차례로 찍히며 쓸어가는 소리 */
   const f0 = foxes[foxes.length - 1];
   marked.sort((a, b) => (Math.abs(Math.floor(a/N) - Math.floor(f0/N)) + Math.abs(a%N - f0%N)) - (Math.abs(Math.floor(b/N) - Math.floor(f0/N)) + Math.abs(b%N - f0%N)));
