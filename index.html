@@ -5923,12 +5923,13 @@ NG.match = (() => {
   const TCOL = ['#FF7B84','#5DB8FF','#FFD23F','#6ED147','#A98BF5','#FF9A3F','#F4F4FA'];
   const TDRK = ['#C9404F','#2A7BC4','#D39A00','#2F8F22','#6C4CC4','#C75E12','#3A3340'];
   const TLIT = ['#FFD2D6','#D3EEFF','#FFF3B5','#D8F7C4','#E9E0FF','#FFE3C8','#FFFFFF'];
-  const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4, S_SP = 5, S_BOX = 6;   /* 5 팽이(2×2), 6 나무 상자(장애물) */
+  const S_H = 1, S_V = 2, S_BOMB = 3, S_RB = 4, S_STAR = 5, S_BOX = 6;   /* 5 별사탕(2×2, 대각선 X), 6 나무 상자(장애물) */
+  const A_HAM = 7, A_FLUTE = 8;   /* 아이템 연출 종류: 뿅망치 · 동물 피리 */
   const ACT_BONUS = { 1:40, 2:40, 3:60, 4:100, 5:50 };
-  /* 그리디 자동 플레이어가 이동 20번에 얻는 평균 점수(2026-09-30, 동물 수별 150판). 오늘의 문제·대전 목표의 기준 */
-  const BOT = { 5:7620, 6:3220 };
+  /* 그리디 자동 플레이어가 이동 20번에 얻는 평균 점수(2026-09-30 별사탕 규칙으로 다시 잼, 동물 수별 150판, tools/match-tune.js daily). 오늘의 문제·대전 목표의 기준 */
+  const BOT = { 5:8520, 6:3480 };
   const DAY_MOVES = 20;
-  const MT_D = [0,2.97,2.91,3.73,1.28,1.09,4.99,4.99,1.55,1.93,1.57,[0.5,19],4.99,1.01,1.05,0.77,1.86,1.37,1.41,1,0.83,[0.5,23],1.39,0.66,1.39,0.88,4.99,0.65,1.41,0.59,[0.5,32],0.52,0.98,0.86,0.96,[0.5,25],0.85,0.81,1.22,0.54,[0.5,27],[0.5,36],[0.5,40],0.51,0.57,0.76,4.99,1.32,0.75,0.88,0.77,0.83,[0.5,36],0.69,1.6,[0.5,34],1.03,0.89,1.06,0.67,[0.5,33],0.64,[0.5,40],0.54,1,0.57,0.52,0.9,0.7,0.88,0.51,[0.5,30],0.7,[0.5,40],[0.5,34],[0.5,40],1.15,0.58,0.6,0.67,[0.5,37],0.72,0.74,0.74,0.68,[0.5,36],0.73,0.8,0.54,0.61,[0.5,40],[0.5,40],0.66,0.52,0.81,0.72,0.84,0.68,0.62,0.81,[0.5,40]];   /* 솔로 스테이지별 난이도 배율(자동 플레이어로 맞춘 값, 14_난이도_벤치마크.md). 비어 있으면 1 */
+  const MT_D = [0,2.82,2.82,2.78,1.55,1.34,4.99,4.99,1.45,1.59,1.34,[0.5,22],4.99,0.5,1.13,0.89,1.41,1.13,1.24,0.99,1.1,[0.5,31],[0.5,24],[0.5,22],1.13,0.64,4.99,0.75,0.99,0.57,0.5,[0.5,26],0.99,0.82,0.96,[0.5,27],0.85,0.64,1.13,[0.5,31],[0.5,38],[0.5,37],[0.5,31],0.57,0.71,[0.5,31],4.99,1.13,0.75,0.89,0.89,0.78,[0.5,32],0.71,1.13,[0.5,31],0.85,0.92,0.75,0.75,0.54,0.68,[0.5,40],0.54,0.82,0.57,[0.5,38],1.03,0.71,0.99,[0.5,37],[0.5,40],0.61,[0.5,39],[0.5,40],[0.5,40],0.85,[0.5,31],0.57,0.82,[0.5,40],[0.5,33],[0.5,40],0.89,0.85,[0.5,38],0.71,0.78,0.5,0.57,[0.5,40],[0.5,40],0.78,0.5,0.57,0.68,0.82,0.5,0.78,0.78,[0.5,40]];   /* 솔로 스테이지별 난이도 배율(자동 플레이어로 맞춘 값, 14_난이도_벤치마크.md). 2026-09-30 별사탕 규칙으로 다시 맞춤(tools/match-tune.js tune, 판마다 40번). 비어 있으면 1 */
   const mult = k => 1 + 0.25 * (k - 1);
   const mb = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const idx = (r, c) => r * N + c;
@@ -5938,7 +5939,7 @@ NG.match = (() => {
      새로 떨어지는 동물은 열마다 따로 쌓아 둔 수열(E.cols)에서 순서대로 꺼낸다.
      → 같은 씨앗 + 같은 수 = 같은 결과. 시뮬레이션용 복제도 같은 수열을 공유한다.
   ------------------------------------------------------------------ */
-  const kindAt = (b, i) => { const t = b[i]; return t && t.s !== S_RB && t.s !== S_SP && t.s !== S_BOX ? t.k : -1; };
+  const kindAt = (b, i) => { const t = b[i]; return t && t.s !== S_RB && t.s !== S_STAR && t.s !== S_BOX ? t.k : -1; };
   const movable = t => !!t && t.s !== S_BOX && !t.lk;
   const nb4 = i => { const r = Math.floor(i / N), c = i % N, o = []; if(r) o.push(i - N); if(r < N - 1) o.push(i + N); if(c) o.push(i - 1); if(c < N - 1) o.push(i + 1); return o; };
   function newTile(E, k, s){ return { id:++E.uid, k, s:s || 0 }; }
@@ -6011,11 +6012,11 @@ NG.match = (() => {
     if(isSquare(b, r - 1, c - 1) || isSquare(b, r - 1, c) || isSquare(b, r, c - 1) || isSquare(b, r, c)) return true;
     return blob(b, i, new Set()).length >= 5;
   }
-  const isBlast = t => t && (t.s === S_H || t.s === S_V || t.s === S_BOMB || t.s === S_SP);
+  const isBlast = t => t && (t.s === S_H || t.s === S_V || t.s === S_BOMB || t.s === S_STAR);
   function swapValid(E, a, b){
     const ta = E.b[a], tb = E.b[b];
     if(!movable(ta) || !movable(tb)) return false;
-    if(ta.s === S_RB || tb.s === S_RB || ta.s === S_SP || tb.s === S_SP) return true;
+    if(ta.s === S_RB || tb.s === S_RB || ta.s === S_STAR || tb.s === S_STAR) return true;
     if(isBlast(ta) && isBlast(tb)) return true;
     E.b[a] = tb; E.b[b] = ta;
     const ok = matchThrough(E.b, a) || matchThrough(E.b, b);
@@ -6039,22 +6040,15 @@ NG.match = (() => {
     const r = Math.floor(i / N), c = i % N, out = [];
     if(type === S_H) for(let x = 0; x < N; x++) out.push(idx(r, x));
     else if(type === S_V) for(let y = 0; y < N; y++) out.push(idx(y, c));
-    else if(type === S_BOMB) for(let y = r - 1; y <= r + 1; y++) for(let x = c - 1; x <= c + 1; x++) if(y >= 0 && y < N && x >= 0 && x < N) out.push(idx(y, x));
-    else if(type === S_SP){ out.push(i); nb4(i).forEach(j => out.push(j)); }
+    else if(type === S_BOMB){ for(let y = r - 1; y <= r + 1; y++) for(let x = c - 1; x <= c + 1; x++) if(y >= 0 && y < N && x >= 0 && x < N) out.push(idx(y, x)); }
+    else if(type === S_STAR) return diagX(i, 2);
     return out;
   }
-  /* 팽이가 날아갈 칸: 상자 > 얼음 > 사슬 > 아직 모자란 목표 동물 > 아무 동물. 같은 판·같은 수면 같은 칸(결정적) */
-  function spinTarget(E, i, skip){
-    const b = E.b, need = k => E.goals ? E.goals.some(g => g.t === 'k' && g.k === k && (E.got.k[k] || 0) < g.n) : false;
-    let best = -1, bv = -1;
-    for(let j = 0; j < N * N; j++){
-      if(j === i || skip.has(j) || !b[j]) continue;
-      const t = b[j];
-      const v = t.s === S_BOX ? 5 : (E.ice && E.ice[j] > 0) ? 4 : t.lk ? 3 : (t.k >= 0 && need(t.k)) ? 2 : t.k >= 0 && !t.s ? 1 : 0;
-      const tie = ((j * 37 + E.moves * 11) % 97) / 100;
-      if(v + tie > bv){ bv = v + tie; best = j; }
-    }
-    return best;
+  /* 별사탕: 자기 칸을 지나는 두 대각선을 네 방향으로 len칸씩(X자, 반지름 2면 최대 9칸). 날아가거나 목표를 고르지 않는다 */
+  function diagX(i, len){
+    const r = Math.floor(i / N), c = i % N, out = [i];
+    for(const [dy, dx] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) for(let d = 1; d <= len; d++){ const y = r + dy * d, x = c + dx * d; if(y < 0 || y >= N || x < 0 || x >= N) break; out.push(idx(y, x)); }
+    return out;
   }
   function commonKind(E, skip){
     const n = new Array(E.K).fill(0);
@@ -6068,7 +6062,7 @@ NG.match = (() => {
     let raw = seed ? seed.bonus : 0;
     for(const g of groups){
       const n = g.cells.length, lg = g.longest.cells.length;
-      let type = lg >= 5 ? S_RB : (g.hasH && g.hasV) || n >= 6 ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : g.sq ? S_SP : 0, pos = -1;
+      let type = lg >= 5 ? S_RB : (g.hasH && g.hasV) || n >= 6 ? S_BOMB : lg === 4 ? (g.longest.h ? S_H : S_V) : g.sq ? S_STAR : 0, pos = -1;
       if(type){
         const cand = [];
         (prefer || []).forEach(p => { if(g.cells.includes(p)) cand.push(p); });
@@ -6078,7 +6072,7 @@ NG.match = (() => {
         if(pos == null){ pos = -1; type = 0; }
       }
       g.cells.forEach(x => { if(x !== pos) clear.add(x); });
-      if(type){ keep.add(pos); created.push({ i:pos, id:b[pos].id, s:type, k:type === S_RB || type === S_SP ? -1 : g.k }); }
+      if(type){ keep.add(pos); created.push({ i:pos, id:b[pos].id, s:type, k:type === S_RB || type === S_STAR ? -1 : g.k }); }
       const gp = 10 * n + 20 * Math.max(0, n - 3);
       raw += gp; ginfo.push({ cells:g.cells, pts:gp, k:g.k });
     }
@@ -6088,7 +6082,7 @@ NG.match = (() => {
       const i = queue.shift(); if(activated.has(i)) continue; activated.add(i);
       const t = b[i]; let cells;
       if(t.s === S_RB){ const kk = commonKind(E, clear); cells = []; b.forEach((u, j) => { if(u && u.k === kk) cells.push(j); }); acts.push({ type:S_RB, i, cells, kind:kk }); }
-      else if(t.s === S_SP){ cells = area(S_SP, i); const tg = spinTarget(E, i, new Set([...clear, ...cells])); if(tg >= 0) cells.push(tg); acts.push({ type:S_SP, i, cells, tg }); }
+      else if(t.s === S_STAR){ cells = area(S_STAR, i); acts.push({ type:S_STAR, i, cells, len:2 }); }
       else { cells = area(t.s, i); acts.push({ type:t.s, i, cells }); }
       raw += ACT_BONUS[t.s];
       for(const j of cells){ if(keep.has(j) || !b[j]) continue; if(!clear.has(j)){ clear.add(j); if(b[j].s && !activated.has(j)) queue.push(j); } }
@@ -6135,7 +6129,12 @@ NG.match = (() => {
       const rbPos = ta.s === S_RB ? b2 : tb.s === S_RB ? a : -1, oPos = rbPos === a ? b2 : a, other = E.b[oPos];
       seed = { clear:[], acts:[], activated:[], converted:[], bonus:0 };
       if(rbPos >= 0 && other.s === S_RB){
-        E.b.forEach((t, i) => seed.clear.push(i)); seed.acts.push({ type:5, i:b2, cells:seed.clear.slice() }); seed.bonus = 300;
+        E.b.forEach((t, i) => seed.clear.push(i)); seed.acts.push({ type:S_RB, i:b2, cells:seed.clear.slice(), kind:-1 }); seed.bonus = 300;
+      } else if(rbPos >= 0 && other.s === S_STAR){
+        /* 별사탕 + 무지개: 판에 가장 많은 동물이 모두 별사탕이 되어 한꺼번에 터진다 */
+        const kk = commonKind(E, new Set()), cells = [rbPos, oPos];
+        E.b.forEach((t, i) => { if(!t || t.k !== kk) return; cells.push(i); if(!t.s && !t.lk){ t.s = S_STAR; seed.converted.push({ id:t.id, s:S_STAR }); } });
+        seed.clear = cells; seed.activated = [rbPos]; seed.acts.push({ type:S_RB, i:rbPos, cells, kind:kk }); seed.bonus = 150;
       } else if(rbPos >= 0){
         const kk = other.k, cells = [rbPos];
         E.b.forEach((t, i) => { if(t.k === kk && i !== rbPos) cells.push(i); });
@@ -6147,14 +6146,20 @@ NG.match = (() => {
       } else {
         const r = Math.floor(b2 / N), c = b2 % N, set = new Set();
         const both = [ta.s, tb.s].sort();
-        if(both[0] === S_BOMB){ for(let y = r - 2; y <= r + 2; y++) for(let x = c - 2; x <= c + 2; x++) if(y >= 0 && y < N && x >= 0 && x < N) set.add(idx(y, x)); seed.acts.push({ type:S_BOMB, i:b2, cells:[...set], big:2 }); }
+        if(both[1] === S_STAR){
+          /* 별사탕 조합: 별사탕+별사탕 = 두 칸의 대각선 끝까지, +폭탄 = 반지름 3 X + 가운데 3×3, +줄 폭탄 = 대각선 끝까지 + 그 줄 */
+          if(both[0] === S_STAR){ diagX(a, N).forEach(x => set.add(x)); diagX(b2, N).forEach(x => set.add(x)); seed.acts.push({ type:S_STAR, i:a, cells:[], len:N }, { type:S_STAR, i:b2, cells:[...set], len:N }); }
+          else if(both[0] === S_BOMB){ diagX(b2, 3).forEach(x => set.add(x)); area(S_BOMB, b2).forEach(x => set.add(x)); seed.acts.push({ type:S_STAR, i:b2, cells:[...set], len:3 }, { type:S_BOMB, i:b2, cells:[] }); }
+          else { diagX(b2, N).forEach(x => set.add(x)); area(both[0], b2).forEach(x => set.add(x)); seed.acts.push({ type:S_STAR, i:b2, cells:[...set], len:N }, { type:both[0], i:b2, cells:[] }); }
+        }
+        else if(both[0] === S_BOMB){ for(let y = r - 2; y <= r + 2; y++) for(let x = c - 2; x <= c + 2; x++) if(y >= 0 && y < N && x >= 0 && x < N) set.add(idx(y, x)); seed.acts.push({ type:S_BOMB, i:b2, cells:[...set], big:2 }); }
         else if(both[1] === S_BOMB){ for(let d = -1; d <= 1; d++){ area(S_H, idx(Math.max(0, Math.min(N - 1, r + d)), c)).forEach(x => set.add(x)); area(S_V, idx(r, Math.max(0, Math.min(N - 1, c + d)))).forEach(x => set.add(x)); } seed.acts.push({ type:S_H, i:b2, cells:[...set], wide:true }, { type:S_V, i:b2, cells:[], wide:true }); }
         else { area(S_H, b2).forEach(x => set.add(x)); area(S_V, b2).forEach(x => set.add(x)); seed.acts.push({ type:S_H, i:b2, cells:[] }, { type:S_V, i:b2, cells:[] }); }
         seed.clear = [...set]; seed.activated = [a, b2]; seed.bonus = 120;
       }
       steps.push(step(E, [], seed, 1, null));
-    } else if(ta.s === S_SP || tb.s === S_SP){
-      const sp = ta.s === S_SP ? b2 : a;   /* 바꾼 뒤 팽이가 있는 칸 */
+    } else if(ta.s === S_STAR || tb.s === S_STAR){
+      const sp = ta.s === S_STAR ? b2 : a;   /* 바꾼 뒤 별사탕이 있는 칸 */
       steps.push(step(E, findGroups(E.b), { clear:[sp], acts:[], activated:[], converted:[], bonus:0 }, 1, [b2, a]));
     } else {
       steps.push(step(E, findGroups(E.b), null, 1, [b2, a]));
@@ -6167,20 +6172,29 @@ NG.match = (() => {
     if(E.movesLeft != null) E.movesLeft--;
     return { ok:true, steps };
   }
-  /* 아이템: 이동을 쓰지 않고 칸들을 터뜨린다(망치 1칸 · 가로 한 줄 · 세로 한 줄) */
-  function blastCells(E, cells, type, at){
-    const steps = [];
-    steps.push(step(E, [], { clear:cells.slice(), acts:[{ type, i:at, cells:cells.slice(), item:true }], activated:[], converted:[], bonus:0 }, 1, null));
+  /* 아이템: 이동을 쓰지 않고 칸들을 터뜨린다. types = 연출 종류 하나 또는 여러 개(십자 폭죽 = 가로 + 세로) */
+  function blastCells(E, cells, types, at){
+    const steps = [], acts = [].concat(types).map((type, n) => ({ type, i:at, cells:n ? [] : cells.slice(), item:true }));
+    steps.push(step(E, [], { clear:cells.slice(), acts, activated:[], converted:[], bonus:0 }, 1, null));
     for(;;){ const g = findGroups(E.b); if(!g.length) break; steps.push(step(E, g, null, steps.length + 1, null)); }
     E.maxCombo = Math.max(E.maxCombo, steps.length);
     return { ok:true, steps };
   }
-  /* 요술 모자: 보통 동물 3마리를 특수 동물로(줄 폭탄 2 + 폭탄 1) */
-  function hatConvert(E){
-    const cand = []; E.b.forEach((t, i) => { if(t && !t.s && !t.lk && t.k >= 0) cand.push(i); });
-    const out = [], types = [S_H, S_V, S_BOMB];
-    for(let n = 0; n < 3 && cand.length; n++){ const j = cand.splice((E.moves * 13 + n * 29 + E.uid) % cand.length, 1)[0]; E.b[j].s = types[n]; out.push({ i:j, id:E.b[j].id, s:types[n], k:E.b[j].k }); }
-    return out;
+  /* 아이템 칸 계산: 뿅망치 1칸 · 십자 폭죽 가로+세로 · 동물 피리 그 동물 전부 */
+  function itemCells(E, key, i){
+    const r = Math.floor(i / N), c = i % N;
+    if(key === 'ham') return [i];
+    if(key === 'cross'){ const s = new Set(); for(let x = 0; x < N; x++){ s.add(idx(r, x)); s.add(idx(x, c)); } return [...s]; }
+    if(key === 'flute'){ const t = E.b[i]; if(!t || t.s === S_BOX || t.s === S_RB || t.s === S_STAR || t.k < 0) return null; const out = []; E.b.forEach((u, j) => { if(u && u.k === t.k && u.s !== S_BOX && u.s !== S_RB) out.push(j); }); return out; }
+    return null;
+  }
+  /* 바꿔 장갑: 이웃한 두 칸을 이동 없이 바꾼다. 맞춰지면(특수 동물 포함) 보통 수처럼 터지고, 아니면 자리만 바뀐다 */
+  function gloveSwap(E, a, b2){
+    const ta = E.b[a], tb = E.b[b2];
+    if(!movable(ta) || !movable(tb) || Math.abs(Math.floor(a / N) - Math.floor(b2 / N)) + Math.abs(a % N - b2 % N) !== 1) return { ok:false };
+    if(swapValid(E, a, b2)){ const mv = E.moves, ml = E.movesLeft, r = move(E, a, b2); E.moves = mv; E.movesLeft = ml; return { ok:true, steps:r.steps }; }
+    E.b[a] = tb; E.b[b2] = ta;
+    return { ok:true, steps:[] };
   }
   /* 목표 */
   const goalLeft = E => E.goals ? E.goals.reduce((s, g) => s + Math.max(0, g.n - (g.t === 'k' ? (E.got.k[g.k] || 0) : E.got[g.t])), 0) : 0;
@@ -6229,7 +6243,7 @@ NG.match = (() => {
   const r10 = v => Math.round(v / 10) * 10;
   /* 오늘의 문제·대전: 시간 제한 없이 이동 20번 안에 목표 점수. f = 자동 플레이어 평균의 몇 배인가
      (자동 플레이어 성공률 쉬움 약 90% · 보통 약 75% · 어려움 약 55%가 되게 맞춘 값) */
-  const LV = { easy:{ kinds:5, f:.55 }, normal:{ kinds:6, f:.78 }, hard:{ kinds:6, f:.9 } };
+  const LV = { easy:{ kinds:5, f:.6 }, normal:{ kinds:6, f:.77 }, hard:{ kinds:6, f:.91 } };   /* 2026-09-30 별사탕 규칙으로 다시 맞춤 */
   function levelCfg(lv){ const L = LV[lv] || LV.normal; return { mode:'score', moves:DAY_MOVES, limit:0, kinds:L.kinds, target:r10(BOT[L.kinds] * L.f) }; }
   /* 대전 AI: 자동 플레이어처럼 이동 20번을 두고(점수는 목표의 0.75~1.55배), 사람 평균 속도(1번에 약 6초)로 진행 */
   function duelAi(rng){
@@ -6355,12 +6369,15 @@ NG.match = (() => {
   const ARW_BODY = `<g filter="url(#pm)"><path d="M4 50l17-15v9h58v-9l17 15-17 15v-9H21v9z" fill="#FFC400"/></g>`;
   const BOMB_BODY = `<g filter="url(#pm)"><path d="M58 38l9-10" stroke="#8A6A3A" stroke-width="5" stroke-linecap="round"/></g><g filter="url(#pb)"><circle cx="45" cy="60" r="27" fill="#3B3F5C"/></g>${GL(36, 49, 9, 5)}<g filter="url(#ps)"><path d="M69 18l3 6 7 1-5 5 1 7-6-4-6 3 1-7-5-5 7-1z" fill="#FFB000"/></g>`;
   ['rb', 'arw', 'bomb'].forEach((n, i) => SRC[n] = svgSrc([RB_BODY, ARW_BODY, BOMB_BODY][i]));
-  /* 팽이(2×2) · 나무 상자(1~3겹) · 사슬 · 아이템 — 같은 비닐 장난감 질감, 직접 그린 오리지널 */
-  SRC.sp = svgSrc(`<ellipse cx="50" cy="90" rx="24" ry="5" fill="url(#gs)"/>
-    <g filter="url(#pm)"><rect x="45" y="10" width="10" height="26" rx="5" fill="#3B6BE0"/></g>
-    <g filter="url(#pb)"><path d="M18 50c0-9 14-16 32-16s32 7 32 16c0 6-4 9-10 12L50 88 28 62c-6-3-10-6-10-12z" fill="#FF4F6E"/></g>
-    <g filter="url(#pm)"><path d="M22 49c3-7 14-11 28-11v24zM78 49c-3-7-14-11-28-11v24z" fill="#FFC928"/><path d="M50 38c-9 0-17 2-22 6l22 18zM50 38c9 0 17 2 22 6L50 62z" fill="#FF8A1F" opacity=".9"/></g>
-    ${GL(36, 44, 11, 5, -12)}<g filter="url(#ps)"><circle cx="50" cy="50" r="6" fill="#fff"/></g>`);
+  /* 별사탕(2×2) · 나무 상자(1~3겹) · 사슬 · 아이템 — 같은 비닐 장난감 질감, 직접 그린 오리지널 */
+  /* 별사탕: 뿔이 짧고 통통한 여섯 뿔 별사탕(분홍) + 반짝이 알갱이. 대각선 X로 터지는 것을 모서리 반짝이로 암시 */
+  const STAR_PTS = [...Array(12)].map((_, k) => { const a = k * Math.PI / 6 - Math.PI / 2, R = k % 2 ? 22 : 36; return (50 + Math.cos(a) * R).toFixed(1) + ' ' + (53 + Math.sin(a) * R).toFixed(1); }).join(' ');
+  const SPK = (x, y, r, c) => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}z" fill="${c}"/>`;
+  SRC.star = svgSrc(`<ellipse cx="50" cy="92" rx="27" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pb)"><polygon points="${STAR_PTS}" fill="#FF6FB1" stroke="#FF6FB1" stroke-width="13" stroke-linejoin="round"/></g>
+    <g filter="url(#pm)"><circle cx="50" cy="53" r="15" fill="#FFA8D2"/></g>
+    <g filter="url(#ps)"><circle cx="43" cy="47" r="3.8" fill="#FFE45C"/><circle cx="58" cy="58" r="3.4" fill="#7FD6FF"/><circle cx="56" cy="45" r="2.8" fill="#fff"/><circle cx="44" cy="61" r="2.8" fill="#9BF07A"/></g>
+    ${GL(38, 32, 10, 5, -30)}${SPK(12, 12, 9, '#FFE45C')}${SPK(89, 12, 7, '#fff')}${SPK(90, 90, 6, '#FFE45C')}`);
   const BOXB = hp => `<ellipse cx="50" cy="92" rx="36" ry="5" fill="url(#gs)"/>
     <g filter="url(#pb)"><rect x="8" y="10" width="84" height="80" rx="14" fill="${['#D9894A', '#C46F33', '#9E5424'][hp - 1]}"/></g>
     <g filter="url(#pm)"><rect x="18" y="20" width="64" height="60" rx="8" fill="${['#E9A565', '#D98A4A', '#B86A34'][hp - 1]}"/></g>
@@ -6371,10 +6388,22 @@ NG.match = (() => {
   SRC.lock = svgSrc(`<g filter="url(#pm)"><path d="M6 20L94 80M6 80L94 20" stroke="#8E97AC" stroke-width="11" stroke-linecap="round" stroke-dasharray="14 7"/></g>
     <g filter="url(#pm)"><path d="M38 50v-9a12 12 0 0 1 24 0v9" fill="none" stroke="#6E7A8E" stroke-width="7"/></g><g filter="url(#pb)"><rect x="30" y="47" width="40" height="32" rx="8" fill="#FFB020"/></g><g filter="url(#ps)"><circle cx="50" cy="60" r="4.5" fill="#6A3B00"/><rect x="48" y="62" width="4" height="9" rx="2" fill="#6A3B00"/></g>`);
   SRC.ham = svgSrc(`<ellipse cx="50" cy="90" rx="26" ry="5" fill="url(#gs)"/><g filter="url(#pm)"><rect x="44" y="40" width="12" height="48" rx="6" fill="#C98A4A" transform="rotate(35 50 64)"/></g><g filter="url(#pb)"><rect x="18" y="14" width="50" height="30" rx="10" fill="#FF5C7A" transform="rotate(35 43 29)"/></g>${GL(34, 20, 10, 5, 35)}`);
-  SRC.row = svgSrc(`<g filter="url(#pb)"><path d="M6 50l20-18v10h48V32l20 18-20 18V58H26v10z" fill="#43A6FF"/></g>${GL(40, 42, 18, 4, 0)}`);
-  SRC.col = svgSrc(`<g filter="url(#pb)"><path d="M50 6l18 20H58v48h10L50 94 32 74h10V26H32z" fill="#2FBF6A"/></g>${GL(46, 30, 4, 12, 0)}`);
-  SRC.hat = svgSrc(`<ellipse cx="50" cy="90" rx="30" ry="5" fill="url(#gs)"/><g filter="url(#pb)"><path d="M50 8l22 62H28z" fill="#7B4BE0"/><ellipse cx="50" cy="74" rx="38" ry="12" fill="#5B34C4"/></g>
-    <g filter="url(#ps)"><path d="M44 36l3-7 3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5z" fill="#FFE45C"/><circle cx="58" cy="56" r="3.5" fill="#FFE45C"/></g>${GL(42, 30, 5, 12, 20)}`);
+  /* 십자 폭죽: 가운데 폭죽 통 + 네 방향 화살 불꽃 */
+  SRC.cross = svgSrc(`<ellipse cx="50" cy="91" rx="24" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pm)"><path d="M4 50l13-11v6h66v-6l13 11-13 11v-6H17v6zM50 4l11 13h-6v66h6L50 96 39 83h6V17h-6z" fill="#FFC928"/></g>
+    <g filter="url(#pb)"><rect x="33" y="31" width="34" height="42" rx="10" fill="#FF3B55"/></g>
+    <g filter="url(#ps)"><rect x="34" y="43" width="32" height="6" rx="2" fill="#FFE9A0"/><rect x="34" y="57" width="32" height="6" rx="2" fill="#FFE9A0"/></g>${GL(42, 38, 5, 9, 0)}`);
+  /* 바꿔 장갑: 노란 장갑 + 파란 맞바꾸기 화살 */
+  SRC.glove = svgSrc(`<ellipse cx="44" cy="92" rx="26" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pb)" fill="#FFD23F"><rect x="20" y="42" width="46" height="40" rx="16"/><rect x="22" y="20" width="13" height="34" rx="6.5"/><rect x="36" y="14" width="13" height="38" rx="6.5"/><rect x="50" y="20" width="13" height="34" rx="6.5"/><rect x="6" y="50" width="26" height="13" rx="6.5" transform="rotate(-35 19 56)"/></g>
+    <g filter="url(#pm)"><rect x="22" y="76" width="42" height="14" rx="6" fill="#FF8A1F"/></g>${GL(30, 50, 7, 11, 0)}
+    <g filter="url(#ps)" fill="none" stroke="#2E8FE8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M70 30h22l-7-7"/><path d="M92 46H70l7 7"/></g>`);
+  /* 동물 피리: 보라 피리 + 분홍 음표 */
+  SRC.flute = svgSrc(`<ellipse cx="46" cy="91" rx="26" ry="5" fill="url(#gs)"/>
+    <g filter="url(#pb)"><rect x="37" y="14" width="18" height="78" rx="9" fill="#A57BFF" transform="rotate(38 46 53)"/></g>
+    <g filter="url(#pm)"><rect x="37" y="14" width="18" height="16" rx="8" fill="#6C4CC4" transform="rotate(38 46 53)"/></g>
+    <g filter="url(#ps)" fill="#4A2C9E"><circle cx="41.5" cy="59" r="3.4"/><circle cx="48" cy="50.5" r="3.4"/><circle cx="54.5" cy="42" r="3.4"/><circle cx="61" cy="33.5" r="3.4"/></g>${GL(40, 58, 4, 14, 38)}
+    <g filter="url(#ps)"><path d="M78 10v24" stroke="#FF5C8A" stroke-width="5" stroke-linecap="round"/><path d="M78 10l12 5v8l-12-5z" fill="#FF5C8A"/><ellipse cx="73" cy="35" rx="7" ry="5.5" fill="#FF5C8A" transform="rotate(-20 73 35)"/><path d="M18 18v14" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/><ellipse cx="14.5" cy="33" rx="5" ry="4" fill="#FFB020" transform="rotate(-20 14.5 33)"/></g>`);
   const IK = k => IMG[k] || toURL(SRC[k]);
   ANIM.forEach((f, k) => SRC[k] = svgSrc(f()));
   const img = k => IMG[k] || toURL(SRC[k]);
@@ -6396,7 +6425,7 @@ NG.match = (() => {
   }
   function tileInner(t){
     if(t.s === S_BOX) return `<div class="mt-in bx"><i class="mt-img" style="background-image:${IK('box' + Math.max(1, Math.min(3, t.hp)))}"></i></div>`;
-    if(t.s === S_SP) return `<div class="mt-in sp"><i class="mt-img" style="background-image:${IK('sp')}"></i></div>`;
+    if(t.s === S_STAR) return `<div class="mt-in sc"><i class="mt-img" style="background-image:${IK('star')}"></i></div>`;
     if(t.lk) return tileInner0(t) .replace(/<\/div>$/, `<i class="mt-lock" style="background-image:${IK('lock')}"></i></div>`);
     return tileInner0(t);
   }
@@ -6533,18 +6562,31 @@ NG.match = (() => {
 
   function fxAct(act){
     const bd = M.panel, o = cellXY(act.i), r = Math.floor(act.i / N), c = act.i % N;
-    if(act.type === S_SP){
-      sfx('matchMake'); fxRing(o.x, o.y, '#FFE27A', M.s * 1.7, .4, 8);
-      if(act.tg >= 0){
-        const f = document.createElement('div'); f.className = 'mt-fly'; f.style.width = f.style.height = M.s + 'px'; f.style.backgroundImage = IK('sp');
-        const x0 = c * M.s, y0 = r * M.s, x1 = (act.tg % N) * M.s, y1 = Math.floor(act.tg / N) * M.s;
-        f.style.transform = `translate(${x0}px,${y0}px)`; M.grid.appendChild(f);
-        f.animate([{ transform:`translate(${x0}px,${y0}px) rotate(0) scale(1)` }, { transform:`translate(${(x0 + x1) / 2}px,${Math.min(y0, y1) - M.s * 1.2}px) rotate(540deg) scale(1.3)`, offset:.5 }, { transform:`translate(${x1}px,${y1}px) rotate(1080deg) scale(.9)` }], { duration:420, easing:'cubic-bezier(.4,0,.3,1)', fill:'forwards' });
-        setTimeout(() => { f.remove(); const q = cellXY(act.tg); fxRing(q.x, q.y, '#FFFFFF', M.s * 1.5, .35, 8); fxBurst(q.x, q.y, ['#FFE27A', '#FF4F6E', '#fff'], 12, { speed:220, size:4.5, kinds:['star','spark'], up:40, dur:.6 }); }, 430);
-      }
+    if(act.type === S_STAR){
+      /* 별사탕: 두 대각선으로 반짝이는 빛줄기(X자). len = 네 방향 칸 수 */
+      const len = act.len || 2, svgNS = 'http://www.w3.org/2000/svg', sv = document.createElementNS(svgNS, 'svg');
+      sv.setAttribute('class', 'mt-diag'); sv.setAttribute('viewBox', `0 0 ${N * M.s} ${N * M.s}`);
+      const cx = (c + .5) * M.s, cy = (r + .5) * M.s;
+      [[-1, -1], [1, 1], [-1, 1], [1, -1]].forEach(([dy, dx], n) => {
+        let d = 0; while(d < len && r + dy * (d + 1) >= 0 && r + dy * (d + 1) < N && c + dx * (d + 1) >= 0 && c + dx * (d + 1) < N) d++;
+        const ln = document.createElementNS(svgNS, 'line'); ln.setAttribute('x1', cx); ln.setAttribute('y1', cy); ln.setAttribute('x2', cx + dx * (d + .45) * M.s); ln.setAttribute('y2', cy + dy * (d + .45) * M.s);
+        ln.style.stroke = n % 2 ? '#FFE45C' : '#FFB2D8'; sv.appendChild(ln);
+        const q = cellXY(act.i); fxBurst(q.x + dx * d * M.s, q.y + dy * d * M.s, ['#FFE45C', '#FF7EB8', '#fff'], 5, { speed:160, size:4, kinds:['star','spark'], up:30, dur:.5 });
+      });
+      M.grid.appendChild(sv); setTimeout(() => sv.remove(), 560);
+      sfx('matchStar', { pan:panX(o.x) }); fxBuzz(22);
+      fxRing(o.x, o.y, '#FFE27A', M.s * (1.4 + len * .2), .4, 8); fxShake(bd, 3);
       return;
     }
-    if(act.type === 7){
+    if(act.type === A_FLUTE){
+      /* 동물 피리: 고른 칸에서 음표가 퍼지고 같은 동물마다 작은 고리 */
+      sfx('matchFlute'); fxBuzz([15, 25, 15]);
+      fxRing(o.x, o.y, '#C9B2FF', M.s * 2.2, .5, 9);
+      fxBurst(o.x, o.y, ['#A57BFF', '#FF5C8A', '#FFE45C', '#fff'], 18, { speed:260, size:5, kinds:['star','dot'], up:60, glow:true, dur:.8 });
+      act.cells.forEach((j, n) => { if(j === act.i) return; setTimeout(() => { if(!M || M.dead) return; const q = cellXY(j); fxRing(q.x, q.y, '#FFFFFF', M.s * 1.1, .3, 5); }, 40 + n * 22); });
+      return;
+    }
+    if(act.type === A_HAM){
       sfx('matchBomb', { pan:panX(o.x), big:1 }); fxBuzz(30);
       fxRing(o.x, o.y, '#FFFFFF', M.s * 1.6, .35, 10); fxBurst(o.x, o.y, ['#FF5C7A', '#FFE27A', '#fff'], 14, { speed:240, size:5, kinds:['star','dot'], up:60, dur:.6 }); fxShake(bd, 5);
       return;
@@ -6698,20 +6740,32 @@ NG.match = (() => {
     sfx('matchEnd'); fxBuzz([30, 50, 30]);
     setTimeout(() => { if(G && !G.over && G.mt === M) finish(win); }, win ? 900 : 1300);
   }
-  /* 아이템(솔로 전용, 이동을 쓰지 않음) */
+  /* 아이템(솔로 전용, 이동을 쓰지 않음). 2026-09-30 개편: 십자 폭죽 · 바꿔 장갑 · 동물 피리 */
   const ITEMS = [
-    { key:'ham', name:'뿅망치', desc:'한 칸(상자는 한 겹)', at:8 },
-    { key:'row', name:'가로 화살', desc:'가로 한 줄', at:13 },
-    { key:'col', name:'세로 화살', desc:'세로 한 줄', at:18 },
-    { key:'hat', name:'요술 모자', desc:'특수 동물 3개', at:23 }
+    { key:'ham', name:'뿅망치', desc:'한 칸(상자는 한 겹)', at:8, pick:'깰 칸을 골라요' },
+    { key:'cross', name:'십자 폭죽', desc:'고른 칸의 가로·세로 한 줄씩', at:13, pick:'터뜨릴 칸을 골라요' },
+    { key:'glove', name:'바꿔 장갑', desc:'이웃한 두 동물을 그냥 바꾸기', at:18, pick:'바꿀 두 칸을 차례로 눌러요' },
+    { key:'flute', name:'동물 피리', desc:'고른 동물을 판에서 모두 모으기', at:23, pick:'모을 동물을 골라요' }
   ];
   const INV_KEY = 'hp:mtItems';
+  /* 예전 아이템(가로·세로 화살 → 십자 폭죽, 요술 모자 → 동물 피리)을 한 번만 옮긴다 */
+  function invMigrate(v){
+    if(v.v >= 2) return false;
+    const n = v.n || {}, got = v.got || {};
+    const arrows = (n.row || 0) + (n.col || 0);
+    if(got.row || got.col){ got.cross = 1; n.cross = (n.cross || 0) + arrows; }
+    if(got.hat){ got.flute = 1; n.flute = (n.flute || 0) + (n.hat || 0); }
+    ['row', 'col', 'hat'].forEach(k => { delete n[k]; delete got[k]; });
+    v.n = n; v.got = got; v.v = 2;
+    return true;
+  }
   function inv(){
-    const v = store.get(INV_KEY, null) || { n:{}, got:{} };
+    const v = store.get(INV_KEY, null) || { n:{}, got:{}, v:2 };
     const top = Math.max(G.adv || 0, (typeof advProg === 'function' ? advProg('match').max : 1));
-    let ch = false;
-    ITEMS.forEach(it => { if(top >= it.at && !v.got[it.key]){ v.got[it.key] = 1; v.n[it.key] = (v.n[it.key] || 0) + 3; ch = true; } });
+    let ch = invMigrate(v); const fresh = [];
+    ITEMS.forEach(it => { if(top >= it.at && !v.got[it.key]){ v.got[it.key] = 1; v.n[it.key] = (v.n[it.key] || 0) + 3; ch = true; fresh.push(it); } });
     if(ch) store.set(INV_KEY, v);
+    if(fresh.length && M && M.root && typeof toast === 'function') setTimeout(() => toast(fresh.length === 1 ? '새 아이템! ' + fresh[0].name + ' 3개를 받았어요' : '새 아이템 ' + fresh.length + '가지를 3개씩 받았어요'), 700);
     return v;
   }
   function paintDock(){
@@ -6723,23 +6777,37 @@ NG.match = (() => {
     d.querySelectorAll('button[data-it]').forEach(b => b.onclick = () => {
       if(M.busy || M.stop || G.over) return;
       const k = b.dataset.it;
-      if(k === 'hat'){ useItem('hat', -1); return; }
-      M.item = M.item === k ? null : k; clearHint(); paintDock();
-      if(M.item) banner(ITEMS.find(x => x.key === k).name + ' · 칸을 고르세요', 'mix');
+      M.item = M.item === k ? null : k; M.gsel = -1; M.sel = -1; clearHint(); paintDock(); paintSel();
+      if(M.item) banner(ITEMS.find(x => x.key === k).pick, 'mix');
     });
   }
-  async function useItem(key, i){
-    const v = inv(); if(!(v.n[key] > 0)) return;
-    v.n[key]--; store.set(INV_KEY, v); M.item = null; paintDock();
+  /* 아이템 칸 누르기: 장갑은 두 칸(두 번째는 이웃 칸), 나머지는 한 칸 */
+  function itemTap(i){
+    if(M.item === 'glove'){
+      const a = M.gsel;
+      if(a >= 0 && a !== i && Math.abs(Math.floor(a / N) - Math.floor(i / N)) + Math.abs(a % N - i % N) === 1 && movable(M.E.b[i])){ M.gsel = -1; M.sel = -1; useItem('glove', a, i); return; }
+      if(!movable(M.E.b[i])){ sfx('matchBad'); return; }
+      M.gsel = a === i ? -1 : i; M.sel = M.gsel; paintSel(); sfx('sSel'); return;
+    }
+    useItem(M.item, i);
+  }
+  async function useItem(key, i, j){
+    const E = M.E, v = inv(); if(!(v.n[key] > 0)) return;
+    let cells = null;
+    if(key !== 'glove'){ cells = itemCells(E, key, i); if(!cells){ sfx('matchBad'); banner('동물을 골라 주세요', 'mix'); return; } }
+    v.n[key]--; store.set(INV_KEY, v); M.item = null; M.gsel = -1; paintDock();
     M.busy = true; clearHint(); M.sel = -1; paintSel();
-    const E = M.E;
-    if(key === 'hat'){
-      const cv = hatConvert(E); sfx('matchMake');
-      cv.forEach(c => { const vw = M.views.get(c.id); if(vw){ restyle(vw, E.b[c.i]); tw(vw, { sx:1.35, sy:1.35, rot:20 }, 160, 'out').then(() => tw(vw, { sx:1, sy:1, rot:0 }, 220, 'back')); const p = cellXY(c.i); fxBurst(p.x, p.y, ['#B58CFF', '#FFE45C', '#fff'], 12, { speed:220, size:4.5, kinds:['star','spark'], up:50, dur:.6 }); } });
-      await wait(420);
+    if(key === 'glove'){
+      const ta = E.b[i], tb = E.b[j], va = M.views.get(ta.id), vb = M.views.get(tb.id), ax = va.x, ay = va.y;
+      const res = gloveSwap(E, i, j);
+      sfx('matchSwap'); va.el.style.zIndex = 3;
+      const p = cellXY(i), q = cellXY(j); fxBurst((p.x + q.x) / 2, (p.y + q.y) / 2, ['#FFD23F', '#2E8FE8', '#fff'], 10, { speed:200, size:4.5, kinds:['star','spark'], up:40, dur:.5 });
+      tw(va, { x:vb.x, y:vb.y }, 180, 'inout'); await tw(vb, { x:ax, y:ay }, 180, 'inout');
+      va.el.style.zIndex = '';
+      for(const st of res.steps) await playStep(st);
+      if(res.steps.length >= 2) M.best = Math.max(M.best, res.steps.length);
     } else {
-      const r = Math.floor(i / N), c = i % N, cells = key === 'ham' ? [i] : key === 'row' ? [...Array(N)].map((_, x) => idx(r, x)) : [...Array(N)].map((_, y) => idx(y, c));
-      const res = blastCells(E, cells, key === 'ham' ? 7 : key === 'row' ? S_H : S_V, i);
+      const res = blastCells(E, cells, key === 'ham' ? A_HAM : key === 'cross' ? [S_H, S_V] : A_FLUTE, i);
       for(const st of res.steps) await playStep(st);
     }
     hud();
@@ -6777,7 +6845,7 @@ NG.match = (() => {
     gr.onpointerdown = e => {
       if(G.over || G.paused || M.stop) return;
       const i = cellAt(e); if(i < 0) return;
-      if(M.item){ e.preventDefault(); if(!M.busy) useItem(M.item, i); st = null; return; }
+      if(M.item){ e.preventDefault(); if(!M.busy) itemTap(i); st = null; return; }
       try{ gr.setPointerCapture(e.pointerId); }catch(_){}
       st = { i, x:e.clientX, y:e.clientY, done:false }; M.kbd = false; e.preventDefault();
       if(M.hint){ clearHint(); } M.last = M.clock;
@@ -6864,21 +6932,21 @@ NG.match = (() => {
     },
     help:[
       ['같은 동물 셋이 모이면 짝!', '이웃한 두 동물을 손가락으로 밀어 자리를 바꿔요(차례로 두 번 눌러도 돼요). 가로·세로 3마리 한 줄, 2×2 네모, 이어진 5마리 이상 덩어리가 되면 사라져요. 붙어 있는 같은 동물은 모두 함께 사라져요. 맞춰지지 않는 자리는 바뀌지 않아요.'],
-      ['특수 동물을 만들어요', '4개 한 줄 = 줄 폭탄, ㄱ·ㅗ 모양 = 3×3 폭탄, 5개 한 줄 = 무지개 별, 2×2 네모 = 팽이(주변 + 목표 한 칸). 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라지고, 팽이는 옆 칸과 바꾸기만 해도 날아가요.'],
+      ['특수 동물을 만들어요', '4개 한 줄 = 줄 폭탄, ㄱ·ㅗ 모양 = 3×3 폭탄, 5개 한 줄 = 무지개 별, 2×2 네모 = 별사탕. 별사탕은 옆 칸과 바꾸거나 폭발에 닿으면 X자 대각선으로 두 칸씩 터져요. 무지개 별을 아무 동물과 바꾸면 그 동물이 모두 사라져요. 특수 동물끼리 바꾸면 더 크게 터져요(별사탕 + 줄 폭탄 = 대각선 끝까지, 별사탕 + 무지개 별 = 가장 많은 동물이 모두 별사탕으로).'],
       ['오늘의 문제·대전: 이동 20번 목표 점수', '시간 제한은 없어요. 20번 움직이는 동안 목표 점수를 넘기면 성공! 연달아 사라지면 콤보 점수가 커져요. 5초 동안 가만히 있으면 움직일 곳이 살짝 흔들려요.'],
-      ['솔로: 이동 횟수 안에 목표 모으기', '위쪽 목표(동물·상자·얼음·사슬)를 이동 횟수 안에 다 모으면 성공! 상자는 옆에서 맞추거나 폭탄으로 깨고, 얼음은 그 칸에서 터뜨리고, 사슬은 맞춰서 풀어요. 2×2로 맞추면 생기는 팽이는 목표로 날아가요. 아래 아이템은 이동을 쓰지 않아요.']
+      ['솔로: 이동 횟수 안에 목표 모으기', '위쪽 목표(동물·상자·얼음·사슬)를 이동 횟수 안에 다 모으면 성공! 상자는 옆에서 맞추거나 폭탄으로 깨고, 얼음은 그 칸에서 터뜨리고, 사슬은 맞춰서 풀어요. 아래 아이템은 이동을 쓰지 않아요: 뿅망치(한 칸) · 십자 폭죽(가로·세로 한 줄씩) · 바꿔 장갑(이웃한 두 동물을 그냥 바꾸기) · 동물 피리(고른 동물을 판에서 모두 모으기).']
     ],
     chapters:['문어 바닷가','병아리 농장','개구리 연못','부엉이 숲','판다 대나무숲'],
     starRule:'★ 목표 완료 · ★★ 이동 10% 남기기 · ★★★ 이동 20% 남기기',
     levels:{ easy:levelCfg('easy'), normal:levelCfg('normal'), hard:levelCfg('hard') },
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return (c.boss ? '보스(아주 어려움) · ' : c.hard ? '어려움 · ' : '') + '이동 ' + c.moves + ' · ' + c.goals.map(g => (g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? (g.hp > 1 ? g.hp + '겹 ' : '') + '상자' : g.t === 'ice' ? (g.lv > 1 ? '두꺼운 ' : '') + '얼음' : '사슬') + ' ' + g.n).join(' · '); },
+    stageDesc(n){ const c = stageCfg(n), it = ITEMS.find(x => x.at === n); return (c.boss ? '보스(아주 어려움) · ' : c.hard ? '어려움 · ' : '') + '이동 ' + c.moves + ' · ' + c.goals.map(g => (g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? (g.hp > 1 ? g.hp + '겹 ' : '') + '상자' : g.t === 'ice' ? (g.lv > 1 ? '두꺼운 ' : '') + '얼음' : '사슬') + ' ' + g.n).join(' · ') + (it ? ' · 새 아이템: ' + it.name + '(' + it.desc + ')' : ''); },
     stageTag(n){ const c = stagePlan(n); return c.boss ? 'xhard' : c.hard ? 'hard' : ''; },
     levelDesc(lv){ const c = levelCfg(lv); return '동물 ' + c.kinds + '종 · 목표 ' + fmt(c.target) + '점'; },
     init(cfg, rng){
       const E = cfg.mode === 'moves' ? makeStage(rng, cfg) : makeEngine(rng, cfg.kinds || 6);
       if(cfg.mode !== 'moves') E.movesLeft = cfg.moves || DAY_MOVES;
-      M = { E, item:null, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, stop:false, ended:false, sel:-1, kc:-1, kbd:false, hint:null, best:0, ready:false, dead:false };
+      M = { E, item:null, s:44, views:new Map(), tws:[], waits:[], clock:0, lt:0, last:0, busy:false, stop:false, ended:false, sel:-1, gsel:-1, kc:-1, kbd:false, hint:null, best:0, ready:false, dead:false };
       G.mt = M;
       G.cleanup = () => {
         const m = G.mt; if(!m) return; m.dead = true;
@@ -6909,7 +6977,7 @@ NG.match = (() => {
           <span class="mt-bst"><span class="mt-bi"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i></span><em>4개<br>줄 폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i></span><em>ㄱ·ㅗ<br>폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${RB_IMG}"></i></span><em>5개<br>무지개</em></span>
-          <span class="mt-bst"><span class="mt-bi"><i style="background-image:${IK('sp')}"></i></span><em>2×2<br>팽이</em></span>
+          <span class="mt-bst"><span class="mt-bi"><i style="background-image:${IK('star')}"></i></span><em>2×2<br>별사탕</em></span>
           <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>최고<br>콤보</em></span>
         </div>`;
       st.innerHTML = `<div class="ng-match" id="mtRoot">
@@ -7089,7 +7157,9 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
 .ng-match .mt-cells i.ice2{background:linear-gradient(135deg,rgba(255,255,255,.85) 0 9%,transparent 9% 44%,rgba(255,255,255,.7) 44% 50%,transparent 50%),linear-gradient(180deg,#9EE6FF,#35AEE6); box-shadow:inset 0 0 0 4px #1C8FC8, inset 0 3px 0 #fff, 0 0 8px rgba(40,170,240,.7)}
 .ng-match .mt-lock{position:absolute; inset:-4%; z-index:3; background:center/contain no-repeat; pointer-events:none}
 .ng-match .bx .mt-img{inset:-2%}
-.ng-match .mt-fly{position:absolute; left:0; top:0; z-index:6; pointer-events:none; background:center/contain no-repeat}
+.ng-match .mt-diag{position:absolute; inset:0; width:100%; height:100%; z-index:5; pointer-events:none; overflow:visible}
+.ng-match .mt-diag line{stroke-width:calc(var(--s) * .34); stroke-linecap:round; opacity:.9; filter:drop-shadow(0 0 5px #fff); stroke-dasharray:1200; stroke-dashoffset:1200; animation:mtDiag .55s ease-out forwards}
+@keyframes mtDiag{0%{stroke-dashoffset:1200; opacity:1}40%{stroke-dashoffset:0; opacity:1}100%{stroke-dashoffset:0; opacity:0; stroke-width:2px}}
 .ng-match .mt-dock.items{grid-template-columns:repeat(4,1fr)}
 .ng-match .mt-bst.it{cursor:pointer; min-height:88px}
 .ng-match .mt-bst.it:disabled{cursor:default; opacity:.55}
@@ -7112,14 +7182,16 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
       matchLine(o){ aTone({ f:2400, f2:320, type:'sawtooth', lp:4200, d:.28, v:.05, pan:o.pan, rev:.2 }); aWhoosh({ f:700, f2:4200, a:.02, d:.24, v:.06 }); },
       matchBomb(o){ const b = o.big || 1; aThump({ f:115, f2:34, d:.5 + b * .1, v:.36 + b * .04, pan:o.pan }); aNoise({ ft:'lowpass', f:2600, f2:160, d:.55 + b * .1, v:.28, pan:o.pan, rev:.3 }); aNoise({ ft:'highpass', f:3200, d:.08, v:.08 }); },
       matchRainbow(){ aSparkle({ root:79, n:8, gap:.035, v:.06 }); aTone({ f:300, f2:2400, type:'triangle', d:.5, v:.05, rev:.3 }); aThump({ t:.2, f:120, f2:50, d:.4, v:.22 }); },
+      matchStar(o){ aSparkle({ root:88, n:5, gap:.03, v:.055 }); aTone({ f:1800, f2:600, type:'triangle', d:.22, v:.05, pan:o.pan, rev:.25 }); aWhoosh({ f:1200, f2:3600, a:.01, d:.16, v:.045 }); },
+      matchFlute(){ [0, 2, 4, 7, 9, 12].forEach((d, i) => aTone({ f:m2f(79 + d), type:'sine', t:i * .06, a:.01, d:.18, v:.06, rev:.3 })); aSparkle({ t:.3, root:84, n:4, gap:.04, v:.045 }); },
       matchWarn(o){ aTone({ f:o.hi ? 1760 : 1320, type:'square', lp:3200, d:.05, v:o.hi ? .06 : .04 }); },
       matchEnd(){ aTone({ f:1900, f2:2250, type:'triangle', a:.02, hold:.12, d:.25, v:.07 }); aTone({ f:2250, f2:1700, type:'triangle', t:.22, hold:.18, d:.35, v:.07, rev:.3 }); aThump({ f:140, f2:60, d:.3, v:.2 }); },
       matchShuffle(){ aWhoosh({ f:300, f2:3200, a:.12, d:.4, v:.07 }); for(let k = 0; k < 6; k++) aTone({ f:700 + k * 120, type:'triangle', t:.05 + k * .05, d:.04, v:.03 }); }
     },
-    gate:{ matchPop:40, matchWarn:250, matchLine:60, matchBomb:80, matchMake:60, matchSwap:40 },
+    gate:{ matchPop:40, matchWarn:250, matchLine:60, matchBomb:80, matchMake:60, matchSwap:40, matchStar:60 },
     jingle(){ [0, 2, 4, 5, 7, 9].forEach((d, i) => aMarimba(penta(d, 72), { t:i * .065, v:.16 })); [72, 76, 79, 84].forEach(m => aMarimba(m2f(m), { t:.48, d:1, v:.11 })); aSparkle({ t:.52, n:6 }); },
     duelAi,
-    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, duelAi, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, hatConvert, MT_D },
+    _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, duelAi, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, itemCells, gloveSwap, diagX, MT_D, S_STAR },
     _test:{
       auto(n){ const m = G.mt; if(!m) return; let k = 0; const go = async () => { while(k++ < n && !G.over && !m.stop){ const mv = bestMove(m.E); if(!mv) break; await tryMove(mv[0], mv[1]); } }; return go(); },
       boost(p){ G.mt.E.pts += p; hud(); },
