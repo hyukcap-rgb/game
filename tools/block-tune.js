@@ -11,7 +11,7 @@
 const fs = require('fs'), vm = require('vm'), path = require('path');
 
 function load(file){
-  const src = fs.readFileSync(file || path.join(__dirname, '..', 'index.html'), 'utf8');
+  const src = require('./source').readSource(file);
   const cut = (startMark, endRe) => { const a = src.indexOf(startMark); if(a < 0) throw new Error('not found: ' + startMark); const rest = src.slice(a); const m = rest.match(endRe); return rest.slice(0, m.index + m[0].length); };
   const seed = src.match(/^function seedFrom\(.*$/m)[0] + '\n' + src.match(/^function mulberry\(.*$/m)[0];
   const cyc = cut('const TWISTS = {', /\nfunction conceptInfo[\s\S]*?\n\}\n/);
@@ -94,6 +94,7 @@ function apply(files, html){
   const T = [];
   for(const f of files) fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).forEach(l => { const o = JSON.parse(l); T[o.n] = [o.y, o.par]; });
   const lit = '[' + Array.from({ length:T.length }, (_, i) => T[i] ? '[' + T[i][0] + ',' + T[i][1] + ']' : 0).join(',') + ']';
+  html = require('./source').fileWith('const BK_T = [', html);   /* 표가 든 실제 파일(games/block/block.js) */
   const src = fs.readFileSync(html, 'utf8'), re = /const BK_T = \[.*\];/;
   if(!re.test(src)) throw new Error('BK_T not found');
   fs.writeFileSync(html, src.replace(re, 'const BK_T = ' + lit + ';'));

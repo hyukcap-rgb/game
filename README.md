@@ -28,7 +28,35 @@
 | 숫자 합치기 | 전략력 |
 
 ## 실행
-`index.html` 파일 하나로 된 웹 프로토타입입니다. 브라우저로 열면 바로 플레이할 수 있습니다. 기록은 브라우저 저장소(localStorage)에만 남습니다.
+`index.html`을 브라우저로 열면 바로 플레이할 수 있습니다(같은 폴더의 `core/`·`games/`를 함께 불러옵니다). 기록은 브라우저 저장소(localStorage)에만 남습니다.
+파일을 컴퓨터에서 바로 열 때 브라우저가 막으면 폴더에서 `python3 -m http.server`를 켜고 `http://localhost:8000`으로 여세요.
+
+## 폴더 구조 — 게임별로 고치기
+게임 하나를 고칠 때는 그 게임 폴더만 열면 됩니다.
+
+| 폴더 | 게임 | 파일 |
+|---|---|---|
+| `games/fox/` | 여우 자리 찾기 | `fox-maker.js` 문제 만들기 · `fox.js` 화면·조작·솔로 · `fox.css` 모양 |
+| `games/sudoku/` | 스도쿠 | `sudoku-maker.js` 문제 만들기 · `sudoku.js` 화면·조작·솔로 · `sudoku.css` |
+| `games/ball/` | 별빛 구슬 | `ball.js` · `ball.css` |
+| `games/tower/` | 숲 지킴이 | `tower.js` · `tower.css` |
+| `games/fleet/` | 함대 결전 | `fleet.js` · `fleet.css` |
+| `games/match/` | 동물 삼총사 | `match.js` (모양 CSS도 이 안에) |
+| `games/nono/` | 네모 그림 | `nono.js` |
+| `games/block/` | 블록 채우기 | `block.js` |
+| `games/memory/` | 카드 짝 맞추기 | `memory.js` |
+| `games/merge/` | 숫자 합치기 | `merge.js` |
+
+`core/`는 모든 게임이 함께 쓰는 부분입니다.
+- `util.js` 공용 도구 · `main.js` 본체(점수·리그·홈 화면·게임 시작/끝·결과 창) · `effects-sound.js` 효과·소리·아이템
+- `modes.js` 새 게임 등록·솔로 점수·대전 · `viral.js` 공유·도전장·초대 · `start.js` 시작(항상 맨 마지막)
+- `base.css`·`effects.css`·`home.css` 공용 모양
+
+알아 둘 점
+- 처음 5게임(여우·스도쿠·구슬·숲·함대)의 **이름·규칙 문구(`GAMES`), 도움말(`HELP`), 썸네일 그림(`ART`), 챕터 이름(`ADV_CH`)** 은 아직 `core/main.js`의 공용 표에 모여 있습니다. 뒤의 5게임은 자기 파일 안에 모두 들어 있습니다.
+- `index.html`의 `<link>`·`<script>` 순서가 중요합니다. 새 게임 파일은 `core/main.js` 다음, `core/modes.js` 앞에 넣으세요.
+- 한 파일짜리 사본이 필요하면(Claude 공유 링크·프로젝트 문서용) `node tools/build-single.js`를 실행하면 `하루퍼즐_한파일.html`이 만들어집니다.
+- `tools/`의 난이도 도구들은 `tools/source.js`로 나뉜 파일을 합쳐 읽으므로 예전처럼 그대로 쓰면 됩니다.
 
 GitHub Pages를 켜면(Settings → Pages → Branch: `main` / root) 링크로 공유할 수 있습니다.
 

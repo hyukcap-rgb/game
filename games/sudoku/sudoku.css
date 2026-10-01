@@ -1,0 +1,106 @@
+/* 스도쿠 화면 */
+.mode button.on{background:var(--grape); border-color:var(--grape); color:#fff}
+.board{display:grid; width:100%; aspect-ratio:1; border:3px solid var(--edge); border-radius:10px; overflow:hidden; background:var(--edge); touch-action:manipulation}
+.cell{display:grid; place-items:center; min-width:0; min-height:0; overflow:hidden; color:var(--cellink); font-family:"Jua",system-ui,sans-serif; user-select:none; -webkit-user-select:none; position:relative}
+.fox .cell{font-size:clamp(16px,6vw,30px)}
+.cell .x{font-size:.6em; opacity:.45}
+.cell .x.auto{opacity:.22}
+.cell.flash{animation:flash .5s}
+@keyframes flash{0%,100%{box-shadow:none}30%{box-shadow:inset 0 0 0 99px rgba(255,77,77,.75)}}
+.cell.pop{animation:pop .3s}
+@keyframes pop{50%{transform:scale(1.25)}}
+.mode{display:flex; gap:8px; margin-top:12px}
+.mode button{flex:1; padding:12px; border-radius:16px; background:var(--card); border:2px solid var(--line); font-weight:700}
+.mode button[aria-pressed="true"]{background:var(--grape); border-color:var(--grape); color:#fff}
+.sud .cell{background:#FFFFFF; font-size:clamp(20px,7vw,30px)}
+.sud .cell.given{color:#26215C}
+.sud .cell.user{color:#4B3FA8}
+.sud .cell.hl{background:#EEF0FF}
+.sud .cell.sel{background:#FFE88A}
+.sud .cell.same{background:#FFF4C2}
+/* ===== 스도쿠: 밤하늘 + 양피지 카드 + 우리 색(자체 화면 설계) =====
+   판 선 남보라 · 선택 칸 금색 · 같은 줄·칸 연보라 · 같은 숫자 연분홍 · 내가 넣은 숫자 보라 · 틀린 숫자 빨강 */
+.shead{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) 48px; align-items:center; gap:6px; min-height:56px; padding:5px 6px 5px 10px; margin:0 0 12px; border-radius:18px; color:var(--ink); white-space:nowrap;
+  background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 4px 0 var(--outline2)}
+.sch{display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; min-width:0}
+.sch small{font-size:12.5px; font-weight:700; color:var(--sub)}
+.sch b{font-family:var(--heavy); font-weight:400; font-size:20px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:var(--ink)}
+.smis{display:flex; gap:5px; height:24px; align-items:center}
+.smis i{width:15px; height:15px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,22,80,.35); box-sizing:border-box; transition:background .2s, border-color .2s, transform .2s}
+.smis i.on{background:#E5484D; border-color:#8E1C26; transform:scale(1.12); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+#sclock{font-variant-numeric:tabular-nums}
+#spause{width:44px; height:44px; border-radius:14px; display:grid; place-items:center; color:#fff; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:2.5px solid #3B1D96; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 #3B1D96}
+#spause svg{width:20px; height:20px; display:block}
+#spause:active{transform:translateY(2px); box-shadow:0 1px 0 #3B1D96}
+.swrap{position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
+.board.s9{border:2.5px solid #2A1650; border-radius:8px; background:#2A1650; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr)}
+.s9 .cell{background:#FFFFFF; color:#2A1650; font-family:var(--disp); font-size:clamp(20px,6.4vw,30px); font-weight:400; transition:background .12s}
+.s9 .cell.user{color:#6C3CE0}
+.s9 .cell.dg{background:#DCEAFF}
+.s9 .cell.wn{background:#D6F3E3}
+.s9 .cell.dg.wn{background:#CFEAF0}
+.s9 .cell.ev{isolation:isolate}
+.s9 .cell.ev::before{content:""; position:absolute; inset:13%; border-radius:50%; background:#D9D4E3; box-shadow:inset 0 0 0 1.5px #B9B0CC; z-index:-1}
+.board.s9.sxb{position:relative}
+.sxo{position:absolute; inset:0; pointer-events:none; z-index:3}
+.sxo .wnb{position:absolute; width:33.333%; height:33.333%; box-sizing:border-box; border:2.5px solid rgba(20,140,96,.8); border-radius:5px}
+.sxo .iq{position:absolute; width:14px; height:16px; margin:-8px 0 0 -7px; border-radius:5px; background:#fff; display:grid; place-items:center}
+.sxo .iq svg{width:12px; height:14px; display:block}
+.sxchips{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:-4px 0 10px}
+.sxc{font-size:12.5px; font-weight:700; line-height:1.2; padding:4px 11px; border-radius:999px; border:2px solid var(--outline); background:#DCEAFF; color:#1B3C86}
+.sxc.t{background:#FFE7B8; color:#7A4300}
+.s9 .cell.hl{background:#F3EDFF}
+.s9 .cell.same{background:#FFD6E8}
+.s9 .cell.sel{background:#FFE38A}
+.s9 .cell.wrong{color:#E5484D; background:#FFE1E3}
+.s9 .cell.wrong.sel{background:#FFC7A8}
+.nt{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; font-family:var(--font); font-weight:700; font-size:clamp(8px,2.4vw,12px); color:#8B7BAE; line-height:1}
+.nt span{display:grid; place-items:center}
+.pcover{position:absolute; inset:8px; background:linear-gradient(180deg,#F6F0FF,#E6DAFF); border:2.5px solid #2A1650; border-radius:10px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#2A1650; font-family:var(--disp); font-size:22px}
+.pcover.on{display:flex}
+.pcover .pc-ico{width:64px; height:64px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:3px solid #3B1D96; box-shadow:0 4px 0 #3B1D96}
+.pcover .pc-ico svg{width:28px; height:28px}
+.pcover button{padding:12px 22px; border-radius:16px; font-weight:700; font-size:15px}
+.tools{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:16px}
+.tools button{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96; position:relative; overflow:hidden; isolation:isolate; min-height:60px; padding:5px 2px; border-radius:15px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-family:var(--disp); font-size:14.5px; line-height:1.1; color:#fff; text-shadow:0 2px 0 var(--c3); white-space:nowrap; background:linear-gradient(180deg,var(--c1),var(--c2)); border:2.5px solid var(--c3);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 var(--c3), 0 7px 12px rgba(20,5,40,.25); transition:transform .08s, box-shadow .08s}
+.tools button::before{content:""; position:absolute; z-index:-1; left:5px; right:5px; top:3px; height:40%; border-radius:11px 11px 16px 16px; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0))}
+.tools button:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
+.tools .tc{display:inline-flex; align-items:center; gap:4px}
+.tools .tc svg{width:22px; height:22px; display:block; filter:drop-shadow(0 1.5px 0 var(--c3))}
+.tools #tErase{--c1:#FFA8CF; --c2:#F0368A; --c3:#8E0F4F}
+.tools #tMemo{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+.tools #tMemo.on{--c1:#8BF06A; --c2:#23A548; --c3:#0F5A23}
+.tools #tHint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.tools #tHint .tc svg{filter:none}
+.tools button.used{filter:grayscale(.8); opacity:.55}
+.tb{min-width:22px; height:20px; padding:0 5px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-style:normal; font-weight:400; font-size:12px; line-height:1; color:var(--c3); background:rgba(255,255,255,.92); text-shadow:none}
+.tb.off{color:#5B6789}
+.pad9{display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; margin-top:14px}
+.pad9 button{min-height:54px; border-radius:12px; padding:0; font-family:var(--disp); font-size:clamp(22px,7vw,30px); line-height:1; color:#6C3CE0; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:2.5px solid var(--outline); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 var(--outline2)}
+.pad9 button:active{background:#F3EDFF; transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
+.pad9 button.gone{visibility:hidden}
+.pad{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:12px}
+.pad button{background:var(--card); border:2px solid var(--line); border-radius:14px; padding:12px 0; font-family:"Jua",system-ui,sans-serif; font-size:24px}
+.pad button:active{background:var(--lemon); color:#26215C}
+.pad button.done{opacity:.3}
+/* 게임 화면 보정(가독성) */
+#spause{width:44px; height:44px}
+.shead{font-size:13px}
+.board{border-width:2px; border-radius:16px}
+/* 스도쿠: 맞힘 반짝, 줄·칸 완성 물결, 완성 파도 */
+.s9 .cell.pop{animation:spop .42s cubic-bezier(.2,1.7,.4,1), sok .7s ease-out}
+@keyframes spop{45%{transform:scale(1.28)}}
+@keyframes sok{0%{background:#D9C8FF; color:#3B1D96}}
+.s9 .cell.wave{animation:swave .62s ease-out var(--wd,0s) both}
+@keyframes swave{35%{background:#FFE27A; color:#7A4B00; transform:scale(1.14); box-shadow:0 0 14px rgba(255,190,40,.9); z-index:2}}
+.s9 .cell.winw{animation:swin .8s ease-in-out var(--wd,0s) both}
+@keyframes swin{30%{background:#D9C8FF; transform:scale(1.12)} 60%{background:#FFE38A; transform:scale(.96)}}
+.s9.shake2{animation:shake2 .45s cubic-bezier(.36,.07,.19,.97)}
+.s9 .cell.flash{animation:sbad .6s ease-out}
+@keyframes sbad{0%,40%{background:#FF8A94; transform:scale(1.08)} 20%{transform:scale(.9)}}
+.pad9 button.hit{animation:padhit .3s ease-out}
+@keyframes padhit{40%{transform:scale(.86); background:#E6DAFF}}
+.fxfloat.sud{font-size:18px; -webkit-text-stroke:4px #6C3CE0}
+.fxfloat.big{font-size:24px; color:#FFE27A; -webkit-text-stroke:5px #7A4B00}

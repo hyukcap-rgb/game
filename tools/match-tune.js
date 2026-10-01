@@ -9,7 +9,7 @@
 const fs = require('fs'), vm = require('vm'), path = require('path');
 
 function load(file){
-  const src = fs.readFileSync(file || path.join(__dirname, '..', 'index.html'), 'utf8');
+  const src = require('./source').readSource(file);
   const cut = (startMark, endRe) => { const a = src.indexOf(startMark); if(a < 0) throw new Error('not found: ' + startMark); const rest = src.slice(a); const m = rest.match(endRe); return rest.slice(0, m.index + m[0].length); };
   const toy = cut('const TOY = (() => {', /\n\}\)\(\);/);
   const match = cut('NG.match = (() => {', /\n\}\)\(\);/);

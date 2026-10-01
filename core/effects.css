@@ -1,0 +1,43 @@
+/* 공용 효과: 점수 떠오름·연속 배지·도장·흔들림 (모든 게임이 씀) */
+/* ===== 여우 효과(효과팀) ===== */
+.fxfx{position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:30}
+.fxfloat{position:fixed; transform:translate(-50%,-50%); pointer-events:none; z-index:19; font-weight:800; font-size:22px; color:#fff; -webkit-text-stroke:4px #2A1650; paint-order:stroke fill; animation:floatup 1.2s cubic-bezier(.2,.8,.3,1) forwards; white-space:nowrap}
+.fxfloat.bad{color:#FF6A2B}
+@keyframes floatup{0%{opacity:0; transform:translate(-50%,-30%) scale(.5)} 15%{opacity:1; transform:translate(-50%,-70%) scale(1.25)} 30%{transform:translate(-50%,-90%) scale(1)} 100%{opacity:0; transform:translate(-50%,-260%) scale(1)}}
+.fxfly{position:fixed; z-index:19; pointer-events:none; filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
+.fxfly svg{width:100%; height:100%; display:block}
+.fxc.glow{animation:regglow .55s ease-out both}
+@keyframes regglow{35%{filter:brightness(1.35) saturate(1.2); transform:scale(1.07)}}
+.fxc.pop{z-index:2}
+.fxc.pop svg{animation:foxpop2 .6s cubic-bezier(.2,1.8,.4,1)}
+@keyframes foxpop2{0%{transform:scale(.1) rotate(-30deg)} 55%{transform:scale(1.35) rotate(8deg)} 100%{transform:scale(1) rotate(0)}}
+.fxc.bad{z-index:2; animation:badcell .5s ease-out}
+.fxc.bad svg{animation:xslam .38s cubic-bezier(.3,1.6,.5,1)}
+@keyframes badcell{0%,40%{box-shadow:0 0 0 4px #FF3B30, 0 0 18px 6px rgba(255,59,48,.7); filter:brightness(.8) saturate(1.4)} 100%{box-shadow:none}}
+@keyframes xslam{0%{transform:scale(2.6) rotate(-35deg); opacity:0} 60%{transform:scale(.85) rotate(4deg); opacity:1} 100%{transform:scale(1) rotate(0)}}
+.fxc.conflict{z-index:2; animation:conflict .45s ease-in-out 3}
+@keyframes conflict{50%{box-shadow:0 0 0 4px #FF3B30, 0 0 16px rgba(255,59,48,.8); transform:scale(1.1)}}
+.fx-board.shake2{animation:shake2 .45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake2{10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(5px)} 30%,50%,70%{transform:translateX(-9px) rotate(-.6deg)} 40%,60%{transform:translateX(9px) rotate(.6deg)}}
+.fxvig{position:fixed; inset:0; pointer-events:none; z-index:17; box-shadow:inset 0 0 90px 30px rgba(255,40,30,.55); animation:vig .6s ease-out forwards}
+@keyframes vig{0%{opacity:0} 20%{opacity:1} 100%{opacity:0}}
+.fxbubble{position:fixed; z-index:19; pointer-events:none; background:#2A1650; color:#fff; font-size:14px; font-weight:700; padding:9px 13px; border-radius:12px; white-space:nowrap; box-shadow:0 6px 16px rgba(0,0,0,.25); animation:bubin .25s cubic-bezier(.2,1.5,.5,1)}
+.fxbubble::after{content:""; position:absolute; left:calc(var(--ax) - 7px); border:7px solid transparent}
+.fxbubble.up::after{top:100%; border-top-color:#2A1650}
+.fxbubble.down::after{bottom:100%; border-bottom-color:#2A1650}
+.fxbubble.out{opacity:0; transition:opacity .35s}
+@keyframes bubin{from{transform:scale(.6); opacity:0}}
+.fxcombo{position:fixed; z-index:19; pointer-events:none; transform:translate(-50%,0); display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:linear-gradient(90deg,#FF8A3D,#FF5C8A); color:#fff; box-shadow:0 8px 20px rgba(255,92,138,.4); animation:combo 1.2s cubic-bezier(.2,1.4,.4,1) forwards}
+.fxcombo b{font-size:20px; font-weight:800}
+.fxcombo span{font-size:15px; font-weight:700}
+.fxcombo.max{background:linear-gradient(90deg,#FFB300,#FF5C8A,#8E6BD1)}
+@keyframes combo{0%{opacity:0; transform:translate(-50%,10px) scale(.4)} 18%{opacity:1; transform:translate(-50%,0) scale(1.15)} 30%{transform:translate(-50%,0) scale(1)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-14px)}}
+#fxScore.bump{display:inline-block; animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
+@keyframes bump{40%{transform:scale(1.35); color:#FF6FA8}}
+.fxlast{position:absolute; left:50%; top:-16px; transform:translateX(-50%); background:linear-gradient(#FF7A82,#E5484D); color:#fff; font-family:var(--disp); font-size:14px; padding:3px 14px 4px; border:2.5px solid var(--outline2); border-radius:999px; z-index:3; white-space:nowrap; animation:lastin .4s cubic-bezier(.2,1.6,.4,1)}
+@keyframes lastin{from{transform:translateX(-50%) scale(.3)}}
+.fxstamp{white-space:nowrap; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-12deg); z-index:4; font-size:clamp(40px,13vw,60px); font-weight:800; color:#FF5C8A; background:rgba(255,255,255,.9); border:6px solid #FF5C8A; border-radius:22px; padding:6px 26px; pointer-events:none; animation:stamp .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-12deg) scale(3); opacity:0} 100%{transform:translate(-50%,-50%) rotate(-12deg) scale(1); opacity:1}}
+.fx-lost{position:fixed; z-index:19; pointer-events:none; width:26px; height:26px}
+.fx-lost svg{width:100%; height:100%}
+@media (prefers-reduced-motion: reduce){ .fxfloat,.fxcombo{animation-duration:.01s} }

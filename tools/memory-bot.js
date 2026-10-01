@@ -16,7 +16,7 @@ const nums = argv.filter((a, i) => /^\d+$/.test(a) && argv[i - 1] !== '--file').
 const RUNS = nums[0] || 400, FROM = nums[1] || 1, TO = nums[2] || 70, CALIB = flag('--calib');
 
 function loadStages(file){
-  const src = fs.readFileSync(file || path.join(__dirname, '..', 'index.html'), 'utf8');
+  const src = require('./source').readSource(file);
   const cut = (startMark, endMark) => { const a = src.indexOf(startMark); if(a < 0) throw new Error('not found: ' + startMark); const e = src.indexOf(endMark, a); if(e < 0) throw new Error('not found: ' + endMark); return src.slice(a, e); };
   const cyc = cut('const TWISTS = {', '/* 스테이지 설명에 붙는 한 줄');
   const memSrc = cut('NG.memory = (() => {', '\n})();') + '\n})();';

@@ -1,0 +1,45 @@
+/* 숲 지킴이 화면 */
+/* ===== 숲 지킴이: 줄(도토리·무리·햇살) + 칸 판 + 손패 + 아이템 줄 ===== */
+html body[data-mode="tower"] .wrap{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+.fsw{display:flex; flex-direction:column; align-items:center; gap:7px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; margin-top:-4px}
+.fstop{display:flex; gap:6px; width:100%; align-items:center}
+.fchip, .fsun{display:inline-flex; align-items:center; gap:4px; height:34px; padding:0 10px 0 7px; border-radius:17px; background:linear-gradient(#FFF9EA,#F2E2BE); border:2.5px solid var(--outline2,#2A1650); box-shadow:inset 0 2px 0 rgba(255,255,255,.7), 0 3px 0 #0E0730; flex:none}
+.fchip b{font-family:var(--heavy); font-size:18px; font-weight:400; color:#3B2366; line-height:1}
+.fchip small{font-family:var(--disp); font-size:13px; color:#7A6A99}
+.fchip svg, .fsun svg{width:22px; height:22px; flex:none}
+.fchip.hit{animation:fsHit .55s}
+.fsun{flex:1; min-width:0; padding:0 9px 0 5px}
+.fsunbar{flex:1; height:12px; border-radius:6px; background:#E3D2AE; border:2px solid var(--outline2,#2A1650); overflow:hidden}
+.fsunbar i{display:block; height:100%; width:0; border-radius:4px; background:linear-gradient(90deg,#FFD65A,#FF9F1C); transition:width .3s}
+.fsun.full{animation:fsGlow .8s}
+.fsbox{position:relative; line-height:0; border-radius:18px; border:3px solid var(--outline2,#2A1650); box-shadow:0 4px 0 #0E0730, 0 12px 26px rgba(0,0,0,.4); overflow:hidden; background:#7BBE50}
+.fscv{display:block; touch-action:none}
+.fshand{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px; width:100%}
+.fcard{height:60px; min-width:0; border-radius:12px; border:2.5px solid var(--outline2,#2A1650); background:linear-gradient(#FFFDF6,#F1E3C3); box-shadow:inset 0 2px 0 #fff, 0 3px 0 #0E0730;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; padding:2px 0 4px; font-family:var(--disp); font-size:12.5px; line-height:1.1; color:#3B2366; transition:transform .15s, box-shadow .15s}
+.fcard svg{width:34px; height:34px; flex:none}
+.fcard.k-compost{background:linear-gradient(#F7EBDD,#E3CBAE)}
+.fcard.on{transform:translateY(-7px); background:linear-gradient(#FFF7CC,#FFD86B); box-shadow:0 0 0 3px #FFC93C, 0 8px 0 #0E0730}
+.fcard.empty{border-style:dashed; border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.05); box-shadow:none}
+.fcard.new{animation:fsCardIn .45s cubic-bezier(.2,1.5,.4,1)}
+.fsctl{display:flex; gap:6px; width:100%; align-items:center}
+.fitm, .fspd{position:relative; width:48px; height:48px; flex:none; border-radius:14px; border:2.5px solid var(--outline2,#2A1650); display:grid; place-items:center; padding:0;
+  background:linear-gradient(#A8E4FF,#4FB3F0); box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 3px 0 #0E0730}
+.fitm svg{width:32px; height:32px}
+.fitm[data-it="vine"]{background:linear-gradient(#C9F2A0,#6CC24A)}
+.fitm[data-it="wind"]{background:linear-gradient(#D9CCFF,#9A82F0)}
+.fitm b{position:absolute; right:-7px; top:-8px; min-width:21px; height:21px; border-radius:11px; background:#FF4F8B; color:#fff; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:17px; border:2px solid var(--outline2,#2A1650); padding:0 3px; text-align:center}
+.fitm.on{box-shadow:0 0 0 3px #FFC93C, 0 3px 0 #0E0730; transform:translateY(-3px)}
+.fitm:disabled{filter:grayscale(1); opacity:.45}
+.fitm:active, .fspd:active, .fcard:active, .fsgo:active{transform:translateY(2px)}
+.fspd{background:linear-gradient(#FFF1B8,#FFC93C); font-family:var(--heavy); font-size:18px; color:#3B2366}
+.fspd.on{background:linear-gradient(#FFB36B,#FF7A1F); color:#fff; text-shadow:0 2px 0 rgba(90,30,0,.4)}
+.fsgo{flex:1; min-width:0; height:48px; border-radius:16px; border:2.5px solid var(--outline2,#2A1650); background:linear-gradient(#FF9EC4,#FF4F8B); color:#fff; font-family:var(--disp); font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px;
+  text-shadow:0 2px 0 rgba(90,20,60,.45); box-shadow:inset 0 2px 0 rgba(255,255,255,.45), 0 4px 0 #0E0730}
+.fsgo:disabled{background:linear-gradient(#DCD4EE,#A99BC8); text-shadow:none; color:#F6F2FF}
+.fsgo.pulse{animation:fsPulse 1.3s ease-in-out infinite}
+@keyframes fsHit{0%,100%{transform:none} 20%{transform:translateX(-4px) scale(1.08); background:#FFC9C9} 45%{transform:translateX(4px)} 70%{transform:translateX(-2px)}}
+@keyframes fsGlow{0%{box-shadow:0 0 0 0 rgba(255,201,60,.9), 0 3px 0 #0E0730} 100%{box-shadow:0 0 0 14px rgba(255,201,60,0), 0 3px 0 #0E0730}}
+@keyframes fsCardIn{0%{transform:translateY(24px) scale(.6); opacity:0} 100%{transform:none; opacity:1}}
+@keyframes fsPulse{0%,100%{transform:none} 50%{transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){ .fsgo.pulse, .fcard.new, .fchip.hit, .fsun.full{animation:none} }

@@ -3,7 +3,7 @@
 //   모드: stages:1:30 | stagesL:5,10,20 | daily:easy|normal|hard:판수   예) node tools/star-ball-bot.js index.html stages:1:30 40
 //   각도 16 + 흔들림 0.03 = 서툰 사람 흉내, 각도 40 = 잘하는 사람
 const fs = require('fs'), vm = require('vm');
-const src = fs.readFileSync(process.argv[2] || require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const src = require('./source').readSource(process.argv[2]);
 const a = src.indexOf('/* ---------- 별빛 구슬: 밤하늘'), b = src.indexOf('\nObject.assign(SFX_GATE, { bTink');
 if(a < 0 || b < 0) throw new Error('section not found');
 const pick = name => { const m = src.match(new RegExp('^function ' + name + '\\(.*$', 'm')); return m[0]; };

@@ -10,7 +10,7 @@
 const fs = require('fs'), vm = require('vm'), path = require('path');
 
 function load(file){
-  const src = fs.readFileSync(file || path.join(__dirname, '..', 'index.html'), 'utf8');
+  const src = require('./source').readSource(file);
   const fn = name => {
     const a = src.search(new RegExp('^function ' + name + '\\(', 'm')); if(a < 0) throw new Error('no function ' + name);
     let i = src.indexOf('{', a), d = 0;
