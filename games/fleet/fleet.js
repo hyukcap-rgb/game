@@ -701,7 +701,7 @@ function flTurnUI(){
   const pill = $('#flTurn'); if(!pill || G.phase !== 'battle') return;
   const t = flTurn();
   if(t !== G.lastTurn){
-    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp'){ flSound('ping'); G.myDl = flNow() + FL_TURN_PVP * 1000; if(G.nr) G.nr.presence({ td:G.myDl, tk:G.sh.length }).catch(() => {}); } }
+    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp'){ flSound('ping'); G.myDl = flNow() + FL_TURN_PVP * 1000 + Math.max(0, 1700 - (Date.now() - G.start));   /* 첫 차례는 '전투 개시' 알림이 지나간 뒤부터 */ if(G.nr) G.nr.presence({ td:G.myDl, tk:G.sh.length }).catch(() => {}); } }
     if(t === 'op') G.opSince = Date.now();
     G.lastTurn = t;
   }
@@ -723,7 +723,12 @@ function flTimerTick(){
   if(G.phase !== 'battle' || G.over || G.ending) return;
   flTurnUI();
   const t = flTurn();
-  if(G.mode === 'pvp' && t === 'me' && G.myDl && flNow() >= G.myDl){ flPass(); return; }
+  if(G.mode === 'pvp' && t === 'me' && G.myDl && flNow() >= G.myDl){
+    /* 칸을 조준해 두었으면(한 번만 누름) 넘기지 않고 그 칸에 쏜다. 아무 칸도 안 골랐을 때만 차례를 넘김 */
+    if(G.aimI >= 0 && flCanShoot(G.aimI) && !G.enShot[G.aimI]){ toast('시간이 다 돼서 조준한 칸에 쐈어요'); flFire(G.aimI); }
+    else flPass();
+    return;
+  }
   if(G.mode !== 'pvp' && t === 'me' && (Date.now() - G.turnAt) / 1000 >= (G.fx ? G.fx.turnSec : FL_TURN)){
     if(G.fx && G.fx.salvo){ G.radarMode = false; const open = flOpenCells().filter(i => !G.salvoSel.includes(i)); while(G.salvoSel.length < flSalvoNeed() && open.length) G.salvoSel.push(open.splice(Math.floor(Math.random() * open.length), 1)[0]); toast('시간이 지나 자동으로 발사했어요'); flSalvoFire(); return; }
     G.radarMode = false;
