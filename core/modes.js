@@ -27,7 +27,7 @@ const DUEL_AI = { fox:[150,.72], sudoku:[420,.68], ball:[170,.66], tower:[280,.6
 const DUEL_NICK_A = ['재빠른','느긋한','꼼꼼한','용감한','반짝이는','새벽의','번개','조용한','씩씩한','영리한'];
 const DUEL_NICK_B = ['토끼','곰','고양이','강아지','판다','호랑이'];   /* 동물 얼굴(FACE_KIND)과 짝 */
 const duelNick = () => DUEL_NICK_A[Math.floor(Math.random() * DUEL_NICK_A.length)] + ' ' + DUEL_NICK_B[Math.floor(Math.random() * DUEL_NICK_B.length)];
-const duelLive = () => ROOM_STATE === 'ok' && !!ROOM;
+const duelLive = () => ROOM_STATE === 'ok' && !!ROOM && netUp();
 function duelRec(){ return store.get('hp:duelRec', null) || {}; }
 function duelWaiting(id){ try{ return ROOM ? ROOM.peers().filter(p => !p.sameTab && p.presence && p.presence.du === 'wait' && (!id || p.presence.dg === id)).length : 0; }catch(_){ return 0; } }
 const oppAv = nick => { const k = DUEL_NICK_B.findIndex(a => String(nick || '').endsWith(a)), i = k >= 0 ? k : seedFrom(nick || '?') % 6; return `<span class="av" style="--avbg:${FACE_BG[i]}">${animalFace(FACE_KIND[i])}</span>`; };
@@ -299,7 +299,7 @@ function duelBarInit(){
   Object.assign(D, { lastPub:0, pubSig:'', lead:null, pingAt:{}, pingOnce:{}, pingLast:0, pingPri:0, oppLf:null, oppLfPing:null, meLf:null });
   if(D.mode === 'pvp'){
     const me = G;
-    try{ D.un = D.nr.onPeers(ch => { if(G !== me || !G.duel) return; duelReadOpp(); if(ch.left && ch.left.some(p => p.peer === D.oppPeer)) duelOppLeft(); }, () => { if(G === me && G.duel && !G.duel.oppLeft) duelOppLeft(); }); }catch(_){}
+    try{ D.un = D.nr.onPeers(ch => { if(G !== me || !G.duel) return; duelReadOpp(); if(ch.left && ch.left.some(p => p.peer === D.oppPeer)) duelOppGone(); }, () => { if(G === me && G.duel) duelMyNetLost(); }); }catch(_){}
   }
   /* 시작 전: 판은 만들어 두되 멈춰 두고 가림 → 준비·카운트다운 */
   G.paused = true; G.pauseAt = G.start = Date.now(); G.pausedMs = 0;
@@ -362,6 +362,9 @@ const DPING = {
   oppDone: { pri:5, cls:'end',  sfx:'flHorn', buzz:[30, 40, 30], ms:3200 },
   oppFail: { pri:5, cls:'gray', sfx:'toggle', ms:2800 },
   oppLeft: { pri:5, cls:'gray', sfx:'toggle', ms:3200 },
+  oppNet:  { pri:5, cls:'gray', sfx:'toggle', ms:3200 },
+  meNet:   { pri:5, cls:'gray', sfx:'toggle', ms:3600 },
+  oppBack: { pri:5, cls:'good', sfx:'toast',  ms:2200 },
   meLead:  { pri:4, cls:'good', sfx:'star',   ms:2200, same:12000 },
   oppLead: { pri:4, cls:'bad',  sfx:'starOff', buzz:20, ms:2400, same:12000 },
   oppHot:  { pri:3, cls:'hot',  sfx:'flPing', ms:2600, once:true },
@@ -390,7 +393,10 @@ function duelReadOpp(){
   let ps = []; try{ ps = D.nr.peers(); }catch(_){ return; }
   const o = ps.find(p => !p.sameTab && p.peer === D.oppPeer) || ps.find(p => !p.sameTab);
   if(!o || !o.presence) return;
+  if(o.peer !== D.oppPeer) D.oppPeer = o.peer;   /* 상대가 다시 연결하면 peer id가 바뀜 */
+  if(D.oppGone){ D.oppGone = 0; if(!G.over) duelPing('oppBack', '상대가 다시 연결됐어요'); }
   const q = o.presence, qs = JSON.stringify(q);
+  if(q.q && !q.dn){ duelOppLeft(); return; }   /* 상대가 그만두기를 눌러 나감 */
   if(qs !== D.oppSig){ D.oppSig = qs; D.lastOppMsg = Date.now(); }
   if(D.startAt == null && typeof q.go === 'number') D.startAt = duelLocalStart(q.go);
   if(!D.go) return;
@@ -417,6 +423,33 @@ function duelOppDone(){
   if(!G.over) duelPing(D.opp.sc ? 'oppDone' : 'oppFail', D.opp.sc ? `상대가 끝냈어요 · ${fmt(D.opp.sc)}점` : '상대가 실패했어요');
   else sfx(D.opp.sc ? 'flPing' : 'toggle');
   duelRender();
+}
+/* 상대 연결 끊김: 휴대폰은 앱을 오가면 잠깐 끊겼다 다시 들어오므로 15초 기다린 뒤에 나감으로 처리 */
+function duelOppGone(){
+  const D = G && G.duel; if(!D || D.oppLeft || D.opp.dn || D.oppGone) return;
+  D.oppGone = Date.now();
+  if(!G.over) duelPing('oppNet', '상대 연결이 끊겼어요 · 15초 기다려요');
+}
+/* 내 연결이 20초 넘게 끊김: 결과를 주고받을 수 없어서 무승부로 처리 */
+function duelMyNetLost(){
+  const D = G && G.duel; if(!D || D.netLost || D.resolved) return;
+  D.netLost = true;
+  if(!G.over) duelPing('meNet', '연결이 끊겼어요 · 이번 판은 무승부로 처리돼요');
+  if(G.over && D.me) duelResolve();
+}
+/* 연결 상태 점검(게임 중·대기 창 모두): 상대 15초 유예, 내 연결 끊김/복구 알림 */
+function duelNetCheck(){
+  const D = G && G.duel; if(!D || D.mode !== 'pvp') return;
+  if(D.oppGone && !D.oppLeft && !D.opp.dn){
+    let back = false; try{ back = !!D.nr && D.nr.peers().some(p => !p.sameTab); }catch(_){}
+    if(back){ D.oppGone = 0; if(!G.over) duelPing('oppBack', '상대가 다시 연결됐어요'); }
+    else if(Date.now() - D.oppGone > 15000){ D.oppGone = 0; duelOppLeft(); }
+  }
+  if(!D.netLost && D.go){
+    const up = typeof netUp === 'function' ? netUp() : true;
+    if(!up && !D.netDown){ D.netDown = Date.now(); if(!G.over) duelPing('meNet', '연결이 끊겼어요 · 다시 연결하는 중…'); }
+    else if(up && D.netDown){ D.netDown = 0; if(!G.over) duelPing('oppBack', '다시 연결됐어요'); duelPub(true); }
+  }
 }
 function duelOppLeft(){
   const D = G && G.duel; if(!D || D.oppLeft || D.opp.dn) return;
@@ -463,7 +496,7 @@ function duelTick(){
     duelAiStat(); duelOppEvents();
     if(t >= a.T){ D.opp.dn = 1; D.opp.sc = a.ok ? a.sc : 0; D.opp.pg = a.ok ? 1 : a.fail; duelOppDone(); }
   }
-  if(D.mode === 'pvp'){ duelReadOpp(); if(!G.over) duelPub(false); }
+  if(D.mode === 'pvp'){ duelReadOpp(); duelNetCheck(); if(!G.over) duelPub(false); }
   duelRender();
 }
 
@@ -530,13 +563,13 @@ function duelFinish(win){
   if(D.mode === 'pvp'){
     try{ D.nr.presence({ dn:1, sc:D.me.sc, pg:D.me.pg }).catch(() => {}); }catch(_){}
     duelReadOpp();
-    if(D.opp.dn || D.oppLeft){ setTimeout(duelResolve, win ? 700 : 400); return; }
+    if(D.opp.dn || D.oppLeft || D.netLost){ setTimeout(duelResolve, win ? 700 : 400); return; }
     duelWaitModal();
     const me = G, t0 = Date.now();
     D.waitIv = setInterval(() => {
       if(G !== me){ clearInterval(D.waitIv); return; }
-      duelReadOpp(); duelWaitText();
-      if(D.opp.dn || D.oppLeft){ clearInterval(D.waitIv); duelResolve(); }
+      duelReadOpp(); duelNetCheck(); duelWaitText();
+      if(D.opp.dn || D.oppLeft || D.netLost){ clearInterval(D.waitIv); duelResolve(); }
       else if(Date.now() - t0 > 240000){ clearInterval(D.waitIv); D.oppLeft = true; duelResolve(); }
     }, 400);
     return;
@@ -556,7 +589,8 @@ function duelFinish(win){
 function duelResolve(){
   const D = G.duel; if(!D || D.resolved) return;
   const a = D.me, b = D.opp; let r;
-  if(D.oppLeft && !b.dn) r = 'w';
+  if(D.netLost && !b.dn && !D.oppLeft) r = 'd';
+  else if(D.oppLeft && !b.dn) r = 'w';
   else if(a.sc !== b.sc) r = a.sc > b.sc ? 'w' : 'l';
   else if(!a.sc){ const dp = a.pg - b.pg; r = Math.abs(dp) < .02 ? 'd' : dp > 0 ? 'w' : 'l'; }
   else r = 'd';
@@ -571,7 +605,7 @@ function duelResult(r, a, b){
   const tl = myTL(), win = r === 'w', nick = D.opp.nick;
   const side = (me, sc, pg, won) => `<div class="dr-side${won ? ' win' : ''}">${won ? '<span class="crown">👑</span>' : ''}${me ? avatar({ me:true }) : oppAv(nick)}<b>${me ? '나' : flEsc(nick)}</b>${sc == null ? '' : `<span class="num">${sc ? fmt(sc) + '점' : '실패'}</span>`}${sc === 0 && pg != null ? `<small>진행 ${Math.round(pg * 100)}%</small>` : ''}</div>`;
   const why = D.fleet ? (win ? (G.forfeit ? '상대가 떠나 기권승이에요' : '적 함대를 모두 격침했어요') : '우리 함대가 먼저 침몰했어요')
-    : D.oppLeft && win && !b.dn ? '상대가 나가서 기권승이에요' : a && b && a.sc && b.sc ? (r === 'd' ? '점수가 똑같아요!' : `${fmt(Math.abs(a.sc - b.sc))}점 차이`) : a && b && !a.sc && !b.sc ? '둘 다 못 풀어서 진행도로 판정했어요' : '';
+    : D.netLost && r === 'd' && !b.dn && !D.oppLeft ? '연결이 끊겨서 무승부로 처리했어요' : D.oppLeft && win && !b.dn ? '상대가 나가서 기권승이에요' : a && b && a.sc && b.sc ? (r === 'd' ? '점수가 똑같아요!' : `${fmt(Math.abs(a.sc - b.sc))}점 차이`) : a && b && !a.sc && !b.sc ? '둘 다 못 풀어서 진행도로 판정했어요' : '';
   let html = `${win ? '<div class="burst" aria-hidden="true"></div>' : ''}<h3 class="${r === 'l' ? 'bad' : 'ok'}">${win ? '승리!' : r === 'd' ? '무승부' : '패배'}</h3>
     <div class="dres">${side(true, a ? a.sc : null, a ? a.pg : null, r === 'w')}<div class="dr-vs">VS</div>${side(false, b ? b.sc : null, b ? b.pg : null, r === 'l')}</div>
     ${why ? `<p class="note">${why}</p>` : ''}
@@ -595,7 +629,7 @@ function duelResult(r, a, b){
 function duelNetClose(){
   const D = G && G.duel; if(!D) return;
   clearInterval(D.waitIv); if(D.un) try{ D.un(); }catch(_){} D.un = null;
-  if(D.nr){ const nr = D.nr; D.nr = null; setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1500); }
+  if(D.nr){ const nr = D.nr; D.nr = null; if(!D.resolved) try{ nr.presence({ q:1 }).catch(() => {}); }catch(_){} setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1500); }
 }
 function duelClose(){
   duelSearchStop();
