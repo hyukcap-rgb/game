@@ -231,7 +231,7 @@ function audVol(){
 function audReady(){
   if(!SND.on) return null;
   const ac = audInit(); if(!ac) return null;
-  if(ac.state === 'suspended') ac.resume().catch(() => {});
+  if(ac.state !== 'running') ac.resume().catch(() => {});   /* 아이폰: 전화·백그라운드 뒤 'interrupted'도 다시 켬 */
   return ac;
 }
 function sndSetOn(v){
@@ -240,13 +240,34 @@ function sndSetOn(v){
   audVol();
   if(!v) ambStop(); else if(typeof G !== 'undefined' && G && !G.over && document.body.dataset.mode) ambStart(ambFor(G.id));
 }
-/* 첫 터치 때 오디오 잠금 해제(아이폰은 사용자 터치 안에서만 소리를 켤 수 있음) */
-function audUnlock(){
-  const ac = audInit(); if(!ac) return;
-  if(ac.state === 'suspended') ac.resume().catch(() => {});
-  try{ const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); }catch(_){}
+/* 휴대폰 소리 켜기
+   · 아이폰은 화면을 누르는 순간에만 소리를 켤 수 있다 → 누를 때마다(한 번만이 아니라) 꺼져 있으면 다시 켬
+     (첫 터치가 실패하거나 전화·카톡 전환으로 'interrupted'가 되면 예전엔 다시 켜지지 않았음)
+   · 아이폰 무음(벨소리) 스위치를 켜 두면 웹 소리가 꺼지는 문제: iOS 17+는 audioSession을 'playback'으로,
+     그보다 오래된 기기는 무음 오디오 태그를 한 번 재생해 미디어 소리로 바꾼다(게임 소리는 미디어 볼륨으로 남) */
+let AUD_EL = null;
+function audSession(){
+  try{ if(navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; return !!navigator.audioSession; }catch(_){ return false; }
 }
-['pointerdown','touchend','keydown'].forEach(ev => addEventListener(ev, audUnlock, { once:true, passive:true, capture:true }));
+function audUnlock(){
+  if(!SND.on) return;
+  const hasSession = audSession();
+  const ac = audInit(); if(!ac) return;
+  if(ac.state !== 'running') ac.resume().catch(() => {});
+  if(!AUD.unlocked){
+    try{ const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); }catch(_){}
+    if(!hasSession && /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document){
+      try{
+        if(!AUD_EL){ AUD_EL = document.createElement('audio'); AUD_EL.setAttribute('playsinline', ''); AUD_EL.setAttribute('x-webkit-airplay', 'deny'); AUD_EL.preload = 'auto';
+          AUD_EL.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='; }
+        const p = AUD_EL.play(); if(p && p.catch) p.catch(() => {});
+      }catch(_){}
+    }
+    if(ac.state === 'running') AUD.unlocked = true;
+  }
+}
+audSession();
+['touchend','click','pointerup','keydown'].forEach(ev => addEventListener(ev, audUnlock, { passive:true, capture:true }));
 document.addEventListener('visibilitychange', () => { if(!AUD.ac) return; if(document.hidden) AUD.ac.suspend().catch(() => {}); else if(SND.on) AUD.ac.resume().catch(() => {}); });
 
 /* ----- 소리 재료 ----- */
