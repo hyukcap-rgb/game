@@ -352,12 +352,13 @@ function confirmQuit(){
   /* 솔로·대전 문구는 엔진이, 그 밖(사이트의 오늘의 시험지, 모듈의 연습 판)은 HOST가 정한다 */
   const q = G.adv ? { note:'지금 나가면 이번 도전은 기록되지 않아요. ' + HOST.soloFreeNote, label:'그만하기' }
     : G.duel ? { note:'지금 나가면 이번 대전은 기권패예요. ' + HOST.duelQuitNote + (duelNoStop() ? ' 시간은 계속 가요.' : ''), label:'기권하고 나가기' }
+    : G.practice ? { note:'계속 풀기는 기록되지 않아요.', label:'나가기' }
     : HOST.quitInfo();
   openModal(`<h3>그만할까요?</h3><p class="note">${q.note}</p>
     <div class="mbtns two"><button class="b2" id="mQuit">${q.label}</button><button class="b1" id="mStay">계속하기</button></div>`);
   $('#mStay').onclick = () => { closeModal(); if(paused) gResume(); };
   $('#mQuit').onclick = () => {
-    if(!G.adv && !G.duel && q.onQuit) q.onQuit();
+    if(!G.adv && !G.duel && !G.practice && q.onQuit) q.onQuit();
     G.over = true; closeModal(); HOST.exit(); };
 }
 
@@ -374,6 +375,7 @@ function finish(win){
   ambStop();
   if(win && NG[G.id].winSfx){ sfx('win', { g:G.id }); fxBuzz([30, 60, 30, 60, 80]); }
   if(G.duel){ duelFinish(win); return; }
+  if(G.practice){ practiceFinish(win); return; }   /* 대전 뒤 계속 풀기: 기록 안 함 */
   HOST.finish(win);
 }
 /* 게임 화면 정리(다른 화면으로 나가기 전에) */

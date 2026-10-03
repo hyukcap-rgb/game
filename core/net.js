@@ -48,14 +48,13 @@ function netRoomConnect(url, onLate){
       clearTimeout(reT);
       try{ ws = new WebSocket(url); }catch(e){ if(first){ first = false; reject(e); } reT = setTimeout(open, 5000); return; }
       const me = ws;
-      const failT = setTimeout(() => { if(first){ first = false; reject(new Error('timeout')); } }, 7000);   /* 연결은 계속 시도 */
       ws.onmessage = ev => {
         if(ws !== me) return;
         lastMsg = Date.now();
         let m; try{ m = JSON.parse(ev.data); }catch(_){ return; }
         if(m.t === 'pong'){ if(typeof m.now === 'number' && pingT){ offset = m.now - (pingT + Date.now()) / 2; pingT = 0; } return; }
         if(m.t === 'hello'){
-          you = m.you; retry = 0; downAt = 0; clearTimeout(failT);
+          you = m.you; retry = 0; downAt = 0;
           if(typeof m.now === 'number') offset = m.now - Date.now();
           pingT = Date.now(); send({ t:'ping' });
           st('lobby');
@@ -81,7 +80,6 @@ function netRoomConnect(url, onLate){
         }
       };
       ws.onclose = () => {
-        clearTimeout(failT);
         if(ws !== me) return;
         you = null;
         if(!downAt) downAt = Date.now();
@@ -91,6 +89,8 @@ function netRoomConnect(url, onLate){
       ws.onerror = () => {};
     }
     open();
+    /* 첫 연결이 7초 안에 안 되면 일단 실패로 알림(AI로), 연결은 계속 시도 → 되면 onLate */
+    setTimeout(() => { if(first){ first = false; reject(new Error('timeout')); } }, 7000);
     /* 살아 있는지 확인 · 오래 끊긴 대전 방 정리 */
     setInterval(() => {
       if(isOpen()){

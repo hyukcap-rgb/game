@@ -59,6 +59,19 @@ for(const g of GAMES){
   const r=sc.map(s=>s.txt.trim()||'?');
   const good=ok.every(Boolean)&&res.every(Boolean)&&st[0].mode==='pvp'&&st[1].mode==='pvp'&&st[0].seed===st[1].seed&&Math.abs(st[0].start-st[1].start)<400&&sc[0].me===sc[1].opp&&sc[1].me===sc[0].opp&&!A.errs.length&&!Bp.errs.length
     &&({'승리!':'패배','패배':'승리!','무승부':'무승부'})[r[0]]===r[1];   /* 한쪽이 이기면 다른 쪽은 져야 함 */
+  /* 한쪽이 끝나면 다른 쪽도 끝: B는 A가 끝낸 뒤 스스로 끝내기 전에 끊겨야 함 → '계속 풀기'로 혼자 이어 풀기 */
+  const cut=await Bp.pg.evaluate(()=>({cut:G.duel.cut||'',btn:!!document.querySelector('#mCont')}));
+  let cont='-';
+  if(cut.btn){ await Bp.pg.click('#mCont'); await w(800);
+    cont=await Bp.pg.evaluate(()=>({p:!!G.practice,over:G.over,duel:!!G.duel,stage:!!document.querySelector('#stage').children.length,prog:Math.round(NG[G.id].progress()*100)}));
+    const before=await Bp.pg.evaluate(()=>JSON.stringify(dayState()));
+    await Bp.pg.evaluate(()=>finish(true)); await w(1200);
+    const after=await Bp.pg.evaluate(()=>({d:JSON.stringify(dayState()),t:(document.querySelector('#modal h3')||{}).textContent||''}));
+    cont=Object.assign(cont,{rec:before===after.d?'안 바뀜':'바뀜!',t:after.t});
+  }
+  const cutOk=cut.cut==='done'&&cut.btn&&cont.p&&!cont.over&&!cont.duel&&cont.stage&&cont.rec==='안 바뀜'&&cont.t==='다 풀었어요!';
+  if(!cutOk)fail++;
+  console.log(`  ${cutOk?'✓':'✗'} 상대가 끝내면 나도 끝=${cut.cut} 계속풀기=${JSON.stringify(cont)}`);
   if(!good)fail++;
   console.log(`${good?'✓':'✗'} ${g}  pvp=${st.map(s=>s.mode)} 같은문제=${st[0].seed===st[1].seed} 시작차=${Math.abs(st[0].start-st[1].start)}ms 점수A=${sc[0].me}/${sc[0].opp} B=${sc[1].me}/${sc[1].opp} 결과=${r.join(' | ')} ${[...A.errs,...Bp.errs].join(' ')}`);
   await A.ctx.close(); await Bp.ctx.close();

@@ -186,7 +186,7 @@ function embDuelResult(r, a, b){
     <p class="note">대전 기록 ${x.w}승 ${x.d}무 ${x.l}패</p>`;
   const pri = ['다시 대전', () => { embMenu(); embStart('duel'); }], sc = ['처음으로', embMenu];
   setTimeout(() => {
-    openModal(html + embButtons(pri, sc)); embBind(pri, sc);
+    openModal(html + duelContinueHtml() + embButtons(pri, sc)); embBind(pri, sc); duelContinueBind();
     if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
     try{ const mm = r === 'w' ? ['joy', 'sad'] : r === 'l' ? ['sad', 'joy'] : ['wow', 'wow']; document.querySelectorAll('#modal .dr-side').forEach((e, i) => toyMood(e, mm[i])); }catch(_){}   /* 이긴 쪽 기쁨 · 진 쪽 아쉬움 */
     const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);

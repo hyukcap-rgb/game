@@ -774,13 +774,14 @@ function portalDuelResult(r, a, b){
     <p class="dr-lb">대전 포인트</p><div class="big" id="bigScore">+0</div>
     <div><span class="pill info">오늘 대전 ${d.dw}승 ${d.dd}무 ${d.dl}패 · 대전 포인트 ${fmt(d.duel)}</span>${firstToday ? attPillHtml() : ''}</div>
     <p class="note">${r === 'l' ? '져도 대전 포인트를 받아요. ' : ''}대전 포인트는 대전 기록에 쌓이고, 오늘 점수(시험지)와는 따로예요.</p>
-    <div class="mbtns"><button class="b2" id="mSec">대전 목록</button><button class="b1" id="mPri">다시 대전 ${costTag()}</button></div><button class="btn ghost" id="mGh">홈으로</button>`;
+    ${duelContinueHtml()}<div class="mbtns"><button class="b2" id="mSec">대전 목록</button><button class="b1" id="mPri">다시 대전 ${costTag()}</button></div><button class="btn ghost" id="mGh">홈으로</button>`;
   setTimeout(() => {
     openModal(html);
     if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
     $('#mPri').onclick = () => { closeModal(); goHome(); duelStart(id); };
     $('#mSec').onclick = () => { closeModal(); goHome(); setTab('duel'); };
     $('#mGh').onclick = () => { closeModal(); goHome(); setTab('today'); };
+    duelContinueBind();
     const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800;
     const stepN = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
       if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };

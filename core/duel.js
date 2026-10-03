@@ -367,9 +367,50 @@ function duelOppEvents(){
 }
 function duelOppDone(){
   const D = G.duel;
-  if(!G.over) duelPing(D.opp.sc ? 'oppDone' : 'oppFail', D.opp.sc ? `상대가 끝냈어요 · ${fmt(D.opp.sc)}점` : '상대가 실패했어요');
+  if(!G.over){ duelPing(D.opp.sc ? 'oppDone' : 'oppFail', D.opp.sc ? `상대가 끝냈어요 · ${fmt(D.opp.sc)}점` : '상대가 실패했어요'); duelCutSoon('done'); }
   else sfx(D.opp.sc ? 'flPing' : 'toggle');
   duelRender();
+}
+/* 한쪽이 끝나면(성공·실패·나감) 다른 쪽 판도 바로 끝난다. 끝난 쪽은 결과 뒤 '계속 풀기'로 혼자 이어 풀 수 있다(기록 안 됨) */
+function duelCutSoon(why){
+  const D = G && G.duel, me = G; if(!D || D.fleet || G.over || D.cutT) return;
+  D.cutT = setTimeout(() => { if(G === me && !G.over && G.duel === D) duelCut(why); }, 700);   /* 알림을 잠깐 보여 준 뒤 */
+}
+function duelCut(why){
+  const D = G && G.duel; if(!D || D.fleet || G.over) return;
+  D.cut = why; D.cutSec = elapsed();
+  finish(false);
+}
+function duelCanContinue(){
+  const D = G && G.duel;
+  return !!(D && !D.fleet && D.cut && G.over && !(D.me && D.me.sc) && NG[G.id] && NG[G.id].render);
+}
+/* 결과 창에 붙이는 '계속 풀기' 버튼(사이트·모듈 결과 창이 같이 씀) */
+function duelContinueHtml(){
+  return duelCanContinue() ? `<button class="btn secondary block dcont" id="mCont">${ic('play')} 계속 풀기 <small>혼자 이어 풀기 · 기록 안 됨</small></button>` : '';
+}
+function duelContinueBind(){ const b = $('#mCont'); if(b) b.onclick = duelContinue; }
+function duelContinue(){
+  if(!duelCanContinue()) return;
+  const D = G.duel, id = G.id, sec = D.cutSec || 0;
+  closeModal();
+  duelClose();
+  Object.assign(G, { duel:null, practice:true, over:false, paused:false, pauseAt:0, pausedMs:0, start:Date.now() - sec * 1000, lt:0 });
+  try{ NG[id].render($('#stage')); }catch(_){}
+  $('#ptitle').innerHTML = GAMES[id].name + '<small>대전 뒤 계속 풀기 · 기록되지 않아요</small>';
+  clearInterval(tick); tick = setInterval(updateClock, 250); updateClock();
+  ambStart(ambFor(id));
+  toast('혼자 이어서 풀어요 · 기록되지 않아요');
+}
+/* 계속 풀기 판이 끝남 */
+function practiceFinish(win){
+  setTimeout(() => {
+    openModal(`<h3 class="${win ? 'ok' : 'bad'}">${win ? '다 풀었어요!' : '여기까지예요'}</h3>
+      <p class="note">${win ? '대전 뒤 혼자 끝까지 풀었어요.' : lossProgress()} 계속 풀기는 기록되지 않아요.</p>
+      <div class="mbtns one"><button class="b1" id="mOut">나가기</button></div>`);
+    if(win){ sfx('result'); try{ fxConfetti(); }catch(_){} } else sfx('lose');
+    $('#mOut').onclick = () => { closeModal(); HOST.exit(); };
+  }, win ? 500 : 250);
 }
 /* 상대 연결 끊김: 휴대폰은 앱을 오가면 잠깐 끊겼다 다시 들어오므로 15초 기다린 뒤에 나감으로 처리 */
 function duelOppGone(){
@@ -401,7 +442,7 @@ function duelNetCheck(){
 function duelOppLeft(){
   const D = G && G.duel; if(!D || D.oppLeft || D.opp.dn) return;
   D.oppLeft = true;
-  if(!G.over) duelPing('oppLeft', '상대가 나갔어요 · 끝까지 하면 승리');
+  if(!G.over){ duelPing('oppLeft', '상대가 나갔어요 · 내가 이겼어요'); duelCutSoon('left'); }
   duelRender();
   if(G.over && D.me) duelResolve();
 }
@@ -521,17 +562,10 @@ function duelFinish(win){
     }, 400);
     return;
   }
-  /* AI: 아직 안 끝났으면 빨리 감기로 마무리 */
-  if(D.opp.dn){ setTimeout(duelResolve, win ? 700 : 400); return; }
-  duelWaitModal();
-  const a = D.ai, p0 = D.opp.pg, pEnd = a.ok ? 1 : a.fail, t0 = performance.now(), me = G;
-  const step = () => {
-    if(G !== me) return;
-    const k = Math.min(1, (performance.now() - t0) / 1400);
-    D.opp.pg = p0 + (pEnd - p0) * k; duelAiStat(); duelWaitText(); duelRender();
-    if(k < 1) requestAnimationFrame(step); else { D.opp.dn = 1; D.opp.sc = a.ok ? a.sc : 0; D.opp.pg = pEnd; setTimeout(duelResolve, 350); }
-  };
-  setTimeout(() => requestAnimationFrame(step), 450);
+  /* AI: 내가 끝나면 AI 판도 그 자리에서 끝(대전은 한쪽이 끝나면 둘 다 끝) */
+  if(!D.opp.dn){ D.opp.dn = 1; D.opp.sc = 0; D.opp.cut = true; duelAiStat(); }
+  duelRender();
+  setTimeout(duelResolve, win ? 700 : 400);
 }
 function duelResolve(){
   const D = G.duel; if(!D || D.resolved) return;
@@ -558,6 +592,9 @@ function duelSidesHtml(r, a, b){
 function duelWhy(r, a, b){
   const D = G.duel, win = r === 'w';
   return D.fleet ? (win ? (G.forfeit ? '상대가 떠나 기권승이에요' : '적 함대를 모두 격침했어요') : '우리 함대가 먼저 침몰했어요')
+    : D.cut === 'done' && b && b.sc ? '상대가 먼저 끝내서 판이 끝났어요'
+    : D.cut === 'done' && b && !b.sc ? '상대가 실패해서 판이 끝났어요 · 진행도로 판정했어요'
+    : !D.cut && a && a.sc && b && !b.sc && !D.oppLeft && !D.netLost ? '내가 먼저 끝내서 상대 판도 끝났어요'
     : D.netLost && r === 'd' && !b.dn && !D.oppLeft ? '연결이 끊겨서 무승부로 처리했어요' : D.oppLeft && win && !b.dn ? '상대가 나가서 기권승이에요' : a && b && a.sc && b.sc ? (r === 'd' ? '점수가 똑같아요!' : `${fmt(Math.abs(a.sc - b.sc))}점 차이`) : a && b && !a.sc && !b.sc ? '둘 다 못 풀어서 진행도로 판정했어요' : '';
 }
 function duelNetClose(){
@@ -567,6 +604,7 @@ function duelNetClose(){
 }
 function duelClose(){
   duelSearchStop();
+  if(G && G.duel) clearTimeout(G.duel.cutT);
   if(G && G.duel) duelNetClose();
   duelBarRestore();
   const bar = $('#duelBar'); if(bar){ bar.hidden = true; bar.innerHTML = ''; }

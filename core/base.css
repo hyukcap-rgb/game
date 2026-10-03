@@ -311,3 +311,6 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 @keyframes moodjoy{0%{transform:scale(1)} 35%{transform:scale(1.18) translateY(-4px)} 100%{transform:scale(1)}}
 @keyframes moodsad{0%{transform:none} 40%{transform:translateY(3px) rotate(-6deg)} 100%{transform:translateY(1px) rotate(-3deg)}}
 @media (prefers-reduced-motion: reduce){ .modal h3 .resface, .dr-side img.toy{animation:none} }
+/* 대전 결과 창 '계속 풀기'(상대가 먼저 끝나 판이 끊긴 쪽만) */
+.modal .dcont{display:flex; width:100%; margin:12px 0 0; min-height:52px; height:auto; padding:8px 14px; flex-wrap:wrap; column-gap:6px; row-gap:0}
+.modal .dcont small{flex-basis:100%; font-family:var(--font); font-size:12px; font-weight:700; opacity:.9}
