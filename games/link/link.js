@@ -224,7 +224,7 @@ NG.link = (() => {
     const f = $('#lkFound'); if(f) f.textContent = m.found;
     const h = $('#lkHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const x = $('#lkMix'); if(x){ x.querySelector('b').textContent = m.mixLeft; x.disabled = m.mixLeft <= 0; }
-    const lv = $('#lkLives'); if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="lk-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    const lv = $('#lkLives'); if(lv && !m.lives) lv.hidden = true; else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="lk-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#lkMsg'); if(!e) return; e.className = 'lk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
@@ -295,17 +295,16 @@ NG.link = (() => {
     if(p){ setSel(a, false); m.sel = null; clear(a, i, p); return; }
     /* 실수(마구 누르기 막기): 다른 그림을 고르거나, 같은 그림인데 길이 없으면 기회 하나를 잃는다. 기회를 다 쓰면 끝 */
     m.misses++; m.combo = 0;
-    const left = Math.max(0, m.lives - m.misses);
+    const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;   /* -1 = 기회 제한 없음(대전) */
     [a, i].forEach(j => { const el = cellEl(j); if(el){ el.classList.add('bad'); fxShake(el, 4); } });
     setSel(a, false); m.sel = null;
     sfx('linkMiss'); fxBuzz(25);
-    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
-    const hs = document.querySelectorAll('.ng-link .lk-heart'), lost = hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
+    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left < 0 ? '점수 −25' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
+    const hs = document.querySelectorAll('.ng-link .lk-heart'), lost = left >= 0 && hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
     if(m.tick){ m.pen += m.tick; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }
     hud();
     T(() => { [a, i].forEach(j => { const el = cellEl(j); if(el) el.classList.remove('bad'); }); if(m.phase === 'play') msg(playMsg()); }, 700);
-    G.paws = left;
-    if(!left) failMiss();
+    if(left >= 0){ G.paws = left; if(!left) failMiss(); }
   }
 
   function clear(a, b, p){
@@ -496,9 +495,9 @@ NG.link = (() => {
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { cols:cfg.cols, rows:cfg.rows, pairs:cfg.pairs, b:d.b, id:d.b.map((k, i) => k != null && k !== STONE ? i : null), turns:cfg.turns || 2, slide:!!cfg.slide, tick:cfg.tick || 0,
         sel:null, lock:false, found:0, combo:0, best:0, misses:0, hints:0, mixes:0, manualMix:0, autoMix:0, pen:0, bonus:0,
-        hintLeft:cfg.hints == null ? 3 : cfg.hints, mixLeft:cfg.mixes == null ? 2 : cfg.mixes, lives:cfg.lives || LIVES,
+        hintLeft:cfg.hints == null ? 3 : cfg.hints, mixLeft:cfg.mixes == null ? 2 : cfg.mixes, lives:G.duel ? 0 : cfg.lives || LIVES,   /* 대전은 기회 제한 없음(0) — 틀려도 끝나지 않고 점수만 깎인다 */
         phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, rng, lastSec:-1, sec:0, fail:null, timers:new Set(), geo:{ cw:40, ch:48, gap:3, pad:12 } };
-      G.limit = cfg.limit; G.paws = G.m.lives;
+      G.limit = cfg.limit; if(G.m.lives) G.paws = G.m.lives;
       const m = G.m;
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
@@ -657,6 +656,6 @@ body[data-mode="link"]{background:
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.link, { duelPace:[140,.72], duelStat:{ unit:"짝", lfMax:3, get:() => ({ v:G.m.found, t:G.m.pairs, lf:Math.max(0, G.m.lives - G.m.misses) }) } });
+Object.assign(NG.link, { duelPace:[140,.72], duelStat:{ unit:"짝", lfMax:3, get:() => ({ v:G.m.found, t:G.m.pairs, lf:G.m.lives ? Math.max(0, G.m.lives - G.m.misses) : null }) } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.link.scene = { kind:'motes', colors:['#FFFFFF','#B8F0D0','#FFF3B0'], density:1 };
