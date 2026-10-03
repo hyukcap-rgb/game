@@ -613,3 +613,45 @@ CONCEPTS.ball = { fixed:[
   { at:7, key:'shield', name:'방패 블록', desc:'아래쪽 면으로 맞으면 끄떡없어요. 벽에 튕겨 옆이나 위로 맞혀요.' },
   { at:12, key:'paint', name:'물감 블록', desc:'깨지면 같은 색 블록 모두 체력이 25% 줄어요.' },
   { at:18, key:'fire', name:'폭죽 블록', desc:'깨지면 불꽃 구슬 4개가 대각선으로 튀어 한 번 더 때려요.' }] };
+
+
+/* ===================== 게임 정의(엔진이 이 게임을 부르는 창구) =====================
+   이름·색·도움말·썸네일·챕터·난이도·시작·점수·별을 엔진(core/engine.js)에 알려 준다. 규칙은 games/CLAUDE.md의 '게임 정의 계약' 참고. */
+NG.ball = {
+  name:'별빛 구슬', col:['#D9A2FF','#9B44E8','#4E1683'], time:'약 3분', abil:'공간지각',
+  icon:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2.5" y="3" width="5.5" height="5" rx="1.4"/><rect x="9.25" y="3" width="5.5" height="5" rx="1.4" opacity=".55"/><rect x="16" y="3" width="5.5" height="5" rx="1.4"/><circle cx="12" cy="16" r="4.6"/></svg>',
+  art(){
+    const pal = ['#9CEBC6','#A6D2FF','#FFE38A','#FFBC96','#F7A3D6'];
+    const cells = [[0,0,3,2],[1,0,5,3],[3,0,9,4],[4,0,4,2],[0,1,2,1],[2,1,6,'b'],[5,1,3,1],[1,2,1,0],[4,2,2,0]];
+    let g = '', stars = '';
+    for(let k=0;k<22;k++) stars += `<circle cx="${(k * 37) % 160}" cy="${(k * 23) % 96}" r="${k % 5 ? .7 : 1.2}" fill="#fff" opacity="${.25 + (k % 3) * .15}"/>`;
+    cells.forEach(([c, r, n, b]) => { const x = 14 + c * 22, y = 6 + r * 22;
+      if(b === 'b') g += `<circle cx="${x + 10}" cy="${y + 10}" r="9" fill="${pal[3]}" stroke="#2A1650" stroke-width="2.2"/><ellipse cx="${x + 7}" cy="${y + 5.5}" rx="4" ry="1.8" fill="#fff" opacity=".6"/><text x="${x + 10}" y="${y + 13.4}" text-anchor="middle" font-size="9.5" font-family="Black Han Sans, Jua, sans-serif" fill="#2A1650">${n}</text>`;
+      else g += `<rect x="${x}" y="${y}" width="20" height="20" rx="5" fill="${pal[b]}" stroke="#2A1650" stroke-width="2.2"/><ellipse cx="${x + 8}" cy="${y + 5}" rx="5.5" ry="2" fill="#fff" opacity=".6"/><text x="${x + 10}" y="${y + 14.2}" text-anchor="middle" font-size="10" font-family="Black Han Sans, Jua, sans-serif" fill="#2A1650">${n}</text>`; });
+    let dots = ''; for(let k=1;k<7;k++) dots += `<circle cx="${96 - k * 5.2}" cy="${88 - k * 7.6}" r="1.6" fill="#fff" opacity="${1 - k * .1}"/>`;
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="aBallBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A2690"/><stop offset=".6" stop-color="#22166A"/><stop offset="1" stop-color="#170E44"/></linearGradient>
+      <radialGradient id="aBallG" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#FFF4C8"/><stop offset="1" stop-color="#F5C04A"/></radialGradient></defs>
+      <rect width="160" height="100" fill="url(#aBallBg)"/>${stars}${g}${dots}
+      <path d="M134 7l2.4 5 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" fill="#FFE27A" stroke="#2A1650" stroke-width="1.8" stroke-linejoin="round"/>
+      <rect x="0" y="93" width="160" height="2.5" fill="#BFEFFF"/><rect x="0" y="86" width="160" height="7" fill="#96E1FF" opacity=".25"/>
+      <circle cx="98" cy="88" r="4.6" fill="url(#aBallG)"/><text x="108" y="84" font-size="8.5" font-family="Black Han Sans, Jua, sans-serif" fill="#FFF4C8" stroke="#2A1650" stroke-width="2" paint-order="stroke">×12</text></svg>`;
+  },
+  help:[['끌어서 조준, 떼면 발사','판을 누른 채 끌면 점선이 보여요. 손을 떼면 구슬이 날아가요. 아래 ◀ ▶로 조금씩 맞추고 [발사]를 눌러도 돼요.'],['숫자만큼 맞혀 깨기','젤리 블록과 둥근 범퍼는 숫자만큼 맞히면 깨져요. 별 조각을 먹으면 다음 턴 구슬 +1. 시계·방패·물감·폭죽 블록은 깨거나 맞힐 때 특별한 일이 생겨요.'],['바닥선을 지켜요','턴마다 블록이 한 줄 내려와요. 바닥선에 닿으면 별빛 방어막이 한 번 막아 주고, 두 번째엔 끝나요. 관통 구슬·망원경·밀어 올리기는 판마다 1번씩.']],
+  chapters:['은하수 입구','젤리 성운','시계탑 별자리','방패 소행성대','불꽃놀이 은하'],
+  starRule:'★ 클리어 · ★★ 기준 턴+6 이내 · ★★★ 기준 턴+3 이내·방어막 지킴',
+  levels:{ easy:{ rows:10, like:5, limit:0 }, normal:{ rows:14, like:12, limit:0 }, hard:{ rows:18, like:22, limit:0 } },
+  levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return '블록 ' + c.rows + '줄'; },
+  saveKey:'hp:ballStages',
+  stage:n => ballStageCfg(n),
+  stageDesc(n){ const b = ballStageCfg(n); return b.rows + '줄 · 구슬 ' + b.start + '개' + (b.intro ? ' · 새 블록: ' + BSP_INFO[b.intro][0] : ''); },
+  init(cfg, rng){ ballInit(genBall(rng, cfg)); },
+  render:st => ballStage(st),
+  progress:() => G.total ? G.broken / G.total : 0,
+  lossText:() => `블록 ${G.broken}/${G.total}개를 깼어요${G.next < G.rowsN ? ' · 남은 줄 ' + (G.rowsN - G.next) + '줄' : ''}.`,
+  score(){ return { base:500, time:Math.max(0, 350 - Math.max(0, G.turn - G.R) * 30), extra:(G.shield ? 100 : 0) + (G.itemUsed ? 0 : 50),
+    rows:['스테이지 클리어', '턴 보너스 (' + G.turn + '턴, 기준 ' + G.R + '턴)', (G.shield ? '방어막 지킴' : '방어막 씀') + ' · ' + (G.itemUsed ? '아이템 씀' : '아이템 안 씀')] }; },
+  stars:() => ballStars(G.turn, G.R, G.shield > 0),
+  winSfx:true, amb:'stars',
+  duelPace:[170,.66],
+  duelStat:{ unit:'개',             get:() => ({ v:G.broken, t:G.total }) }
+};

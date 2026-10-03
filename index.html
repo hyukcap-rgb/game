@@ -21,15 +21,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
-<!-- 화면 모양(CSS): 아래 순서대로 불러와요. 순서를 바꾸면 겹치는 규칙의 우선순위가 달라질 수 있어요. -->
+<!-- 화면 모양(CSS): core(공용) → games(게임마다) → core/play.css → portal(이 사이트). 순서는 tools/build.js가 game.json을 보고 맞춰요. -->
+<!-- @build:css 손으로 고치지 마세요 -->
 <link rel="stylesheet" href="core/base.css">
-<link rel="stylesheet" href="games/ball/ball.css">
-<link rel="stylesheet" href="games/sudoku/sudoku.css">
-<link rel="stylesheet" href="games/tower/tower.css">
-<link rel="stylesheet" href="games/fox/fox.css">
 <link rel="stylesheet" href="core/effects.css">
+<link rel="stylesheet" href="games/fox/fox.css">
+<link rel="stylesheet" href="games/sudoku/sudoku.css">
+<link rel="stylesheet" href="games/ball/ball.css">
+<link rel="stylesheet" href="games/tower/tower.css">
 <link rel="stylesheet" href="games/fleet/fleet.css">
-<link rel="stylesheet" href="core/home.css">
+<link rel="stylesheet" href="core/play.css">
+<link rel="stylesheet" href="portal/portal.css">
+<!-- @end -->
 
 <svg class="gdefs" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6B8"/><stop offset=".45" stop-color="#FFCB3A"/><stop offset="1" stop-color="#D98300"/></linearGradient>
@@ -137,24 +140,28 @@
 <div class="veil" id="veil"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- 프로그램(JS): 순서가 중요해요. 게임 파일은 core/main.js 다음, core/start.js는 항상 맨 마지막. -->
+<!-- 프로그램(JS): core(공용 엔진) → games(게임마다 자기 폴더) → portal(이 사이트). portal/start.js는 항상 맨 마지막. 순서는 tools/build.js가 맞춰요. -->
+<!-- @build:js 손으로 고치지 마세요 -->
 <script src="core/util.js"></script>
-<script src="games/fox/fox-maker.js"></script>
-<script src="games/sudoku/sudoku-maker.js"></script>
-<script src="core/main.js"></script>
+<script src="core/engine.js"></script>
 <script src="core/effects-sound.js"></script>
+<script src="core/net.js"></script>
+<script src="core/duel.js"></script>
+<script src="games/fox/fox-maker.js"></script>
 <script src="games/fox/fox.js"></script>
+<script src="games/sudoku/sudoku-maker.js"></script>
+<script src="games/sudoku/sudoku.js"></script>
 <script src="games/ball/ball.js"></script>
 <script src="games/tower/tower.js"></script>
 <script src="games/fleet/fleet.js"></script>
-<script src="games/sudoku/sudoku.js"></script>
 <script src="games/match/match.js"></script>
 <script src="games/nono/nono.js"></script>
 <script src="games/block/block.js"></script>
 <script src="games/memory/memory.js"></script>
 <script src="games/merge/merge.js"></script>
-<script src="core/modes.js"></script>
-<script src="core/viral.js"></script>
-<script src="core/start.js"></script>
+<script src="portal/portal.js"></script>
+<script src="portal/viral.js"></script>
+<script src="portal/start.js"></script>
+<!-- @end -->
 </body>
 </html>

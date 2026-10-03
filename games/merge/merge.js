@@ -728,3 +728,7 @@ body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
 })();
 
 /* @@NG_MODULES_END@@ */
+
+
+/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+Object.assign(NG.merge, { duelPace:[240,.62], duelStat:{ unit:'', tile:true,    get:() => ({ v:G.M.best, t:G.M.target }) } });

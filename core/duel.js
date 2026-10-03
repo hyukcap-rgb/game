@@ -1,29 +1,6 @@
-/* 공용: 새 게임 등록(ngRegister)·솔로 점수·대전·테스트 도구 */
-function ngRegister(){
-  for(const id of Object.keys(NG)){
-    const m = NG[id];
-    GAMES[id] = { name:m.name, ico:'', rule:m.help.map(h => h[1]).join(' ') };
-    GAME_META[id] = { col:m.col[1], time:m.time };
-    GCOL[id] = m.col; HELP[id] = m.help; ADV_CH[id] = m.chapters; ADV_RULE[id] = m.starRule; ABIL[id] = m.abil;
-    SVG[id] = m.icon; ART[id] = () => m.art();
-    if(!GAME_IDS.includes(id)) GAME_IDS.push(id);
-    if(m.css){ const el = document.createElement('style'); el.dataset.ng = id; el.textContent = m.css; document.head.appendChild(el); }
-    if(m.sounds) Object.assign(SFX_LIB, m.sounds);
-    if(m.gate) Object.assign(SFX_GATE, m.gate);
-    if(m.jingle) WIN_JINGLE[id] = m.jingle;
-  }
-}
-ngRegister();
-
-/* ===================== 모드 v6: 솔로 점수 카드 · 대전 ===================== */
-function renderSoloPts(){
-  const d = dayState(), el = $('#soloPts'); if(!el) return;
-  const pct = Math.min(100, d.solo / SOLO_CAP * 100);
-  el.innerHTML = `<span class="sp-i">${ic('coin')}</span><span class="sp-t"><small>오늘 솔로 포인트 · 솔로 기록(오늘 점수와 따로)</small><b class="num">${fmt(d.solo)} <em>/ ${fmt(SOLO_CAP)}</em></b><span class="sp-bar"><i style="width:${pct}%"></i></span><span class="sp-r">새 스테이지 첫 클리어 +100 · 별 하나당 +50</span></span>`;
-}
-
+/* 1:1 대전(모든 게임 공용): 상대 찾기 · AI 상대 · 동시 시작 · 진행 막대 · 알림 · 승패 판정.
+   게임마다 다른 값은 게임 정의의 duelPace·duelStat·duelHow·duelLaunch에서 읽는다. */
 /* ---- 대전: 같은 문제를 동시에 풀고 게임 점수로 승부. 함대는 기존 턴제 실시간 ---- */
-const DUEL_AI = { fox:[150,.72], sudoku:[420,.68], ball:[170,.66], tower:[280,.62], nono:[220,.72], match:[120,.62], block:[200,.66], memory:[70,.74], merge:[240,.62] };
 const DUEL_NICK_A = ['재빠른','느긋한','꼼꼼한','용감한','반짝이는','새벽의','번개','조용한','씩씩한','영리한'];
 const DUEL_NICK_B = ['토끼','곰','고양이','강아지','판다','호랑이'];   /* 동물 얼굴(FACE_KIND)과 짝 */
 const duelNick = () => DUEL_NICK_A[Math.floor(Math.random() * DUEL_NICK_A.length)] + ' ' + DUEL_NICK_B[Math.floor(Math.random() * DUEL_NICK_B.length)];
@@ -32,28 +9,11 @@ function duelRec(){ return store.get('hp:duelRec', null) || {}; }
 function duelWaiting(id){ try{ return ROOM ? ROOM.peers().filter(p => !p.sameTab && p.presence && p.presence.du === 'wait' && (!id || p.presence.dg === id)).length : 0; }catch(_){ return 0; } }
 const oppAv = nick => { const k = DUEL_NICK_B.findIndex(a => String(nick || '').endsWith(a)), i = k >= 0 ? k : seedFrom(nick || '?') % 6; return `<span class="av" style="--avbg:${FACE_BG[i]}">${animalFace(FACE_KIND[i])}</span>`; };
 
-function renderDuel(d){
-  const live = duelLive(), n = duelWaiting(), R = duelRec();
-  $('#duelHead').innerHTML = `<div class="dh-top"><span class="dh-ico">${ic('duel')}</span><div><b>1:1 대전</b><small>상대와 같은 문제를 동시에 풀고 점수로 겨뤄요</small></div></div>
-    <div class="dh-rec"><div><b class="num">${d.dw}</b><span>승</span></div><div><b class="num">${d.dd}</b><span>무</span></div><div><b class="num">${d.dl}</b><span>패</span></div><div class="pts"><b class="num">+${fmt(d.duel)}</b><span>오늘 대전 점수</span></div></div>
-    <div class="dh-rw"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무승부 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span><span class="c">한 판 ${ic('heart')}1</span></div>
-    <div class="dh-live${live ? '' : ' off'}"><i></i>${live ? (n ? `지금 대전을 기다리는 사람 <b>${n}명</b>` : '실시간 서버 연결됨 · 상대가 없으면 AI와 겨뤄요') : '지금은 실시간 연결이 안 돼요 · AI와 겨뤄요'}</div>`;
-  const list = $('#duelList'); list.innerHTML = '';
-  for(const id of GAME_IDS){
-    const r = R[id] || { w:0, d:0, l:0 }, tot = r.w + r.d + r.l, wait = duelWaiting(id);
-    const how = id === 'fleet' ? '서로 포격하는 턴제 대전' : id === 'match' ? '20번 움직여 누가 더 높은 점수?' : '같은 문제 · 점수가 높으면 승리';
-    const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><span class="gr-mid"><b>${GAMES[id].name}</b><span>${how}</span><span class="drec">${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : '첫 대전을 해 보세요'}</span></span><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button>`;
-    row.querySelector('.gr-go').onclick = () => duelStart(id);
-    row.querySelector('.g-art').onclick = () => duelStart(id);
-    list.appendChild(row);
-  }
-}
 
 let DS = null;   /* 상대 찾기 상태 */
 function duelStart(id){
-  if(heartState().n < 1){ openHeartSheet('empty'); return; }
-  if(id === 'fleet'){ const lv = duelLive() ? 'pvp' : 'normal'; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : 'AI 함장' } } }); return; }
+  if(!HOST.canDuel()) return;
+  if(NG[id].duelLaunch){ NG[id].duelLaunch(); return; }   /* 함대: 자기 방식의 대전 */
   duelSearch(id);
 }
 function duelSearchStop(){
@@ -68,10 +28,10 @@ function duelSearch(id){
   const S = DS = { id, nick:duelNick(), t0:Date.now(), live:duelLive(), phase:'search' };
   const WAIT = 12;
   openModal(`<div class="dsearch" style="--gc:${GCOL[id][1]}"><p class="kick">1:1 대전</p><h3>${GAMES[id].name}</h3>
-    <div class="vsrow"><div class="vs-side">${avatar({ me:true })}<b>나</b><small>${flEsc(S.nick)}</small></div><div class="vs-x">VS</div>
+    <div class="vsrow"><div class="vs-side">${avatar({ me:true })}<b>나</b><small>${esc(S.nick)}</small></div><div class="vs-x">VS</div>
       <div class="vs-side op" id="dsOpp"><span class="ds-radar"><i></i><i></i><i></i></span><b id="dsOppN">찾는 중…</b><small id="dsOppS"></small></div></div>
     <p class="note" id="dsTxt"></p>
-    <div class="dh-rw sm"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span></div>
+    ${HOST.duelRewardHtml()}
     <div class="mbtns"><button class="b2" id="dsCancel">취소</button><button class="b1" id="dsAi">AI와 바로 대전 ${costTag()}</button></div></div>`);
   $('#modal').classList.add('duelm');
   sfx('flPing');
@@ -133,7 +93,7 @@ async function duelMatch(S, opp){
       const myId = String((meP && meP.peer) || S.myPeer || '');
       if(myId && myId < String(o.peer)){
         const fresh = !store.get('hp:help:' + S.id, false) || !!(o.presence && o.presence.nw);
-        const srv = flNow() + (fresh ? 6000 : 4000);
+        const srv = netNow() + (fresh ? 6000 : 4000);
         duel.startAt = duelLocalStart(srv); nr.presence({ go:srv }).catch(() => {});
       }
       duelSearchStop(); closeModal(); startGame(S.id, 'normal', { duel });
@@ -149,7 +109,7 @@ function duelGoAI(S){
 /* AI 상대: 게임별 평균 시간·성공률로 결과를 미리 정하고, 경과 시간에 맞춰 진행도를 보여 준다 */
 function duelAiPlan(id, rng){
   if(NG[id] && NG[id].duelAi) return NG[id].duelAi(rng);   /* 게임이 직접 정하는 AI(동물 삼총사: 이동 20번 점수) */
-  const [T0, p] = DUEL_AI[id] || [180, .65], cfg = levelOf(id, 'normal')[id] || {}, lim = cfg.limit || 0;
+  const [T0, p] = NG[id].duelPace || [180, .65], cfg = levelOf(id, 'normal')[id] || {}, lim = cfg.limit || 0;
   const ok = rng() < p;
   let T = T0 * (0.7 + rng() * 0.6); if(lim) T = Math.min(T, lim * 0.97);
   return { ok, T, sc: ok ? Math.round((560 + rng() * 380) / 10) * 10 : 0, fail: 0.3 + rng() * 0.6 };
@@ -157,37 +117,24 @@ function duelAiPlan(id, rng){
 function gameProg(){
   if(!G) return 0; const id = G.id; let v = 0;
   try{
-    if(NG[id]) v = NG[id].progress();
-    else if(id === 'fox') v = G.placed / G.N;
-    else if(id === 'sudoku') v = Object.keys(G.earnedCells).length / Math.max(1, Math.round(500 / G.perCell));
-    else if(id === 'ball') v = G.total ? G.broken / G.total : 0;
-    else if(id === 'tower') v = G.waves ? (G.cleared || 0) / G.waves.length : 0;
+    v = NG[id].progress();
   }catch(_){ v = 0; }
   return Math.max(0, Math.min(1, v || 0));
 }
 
 /* ---- 대전 v2 (UI팀 설계): 동시 시작 · 게임별 진행 표시 · 순간 알림 · 멈춤 없음 ---- */
 /* 게임별로 상대에게 보내는 값(presence). pg 진행도 0~1 · v 현재 수 · t 목표 수 · lf 남은 기회/생명 · dn 끝남 · sc 끝났을 때 점수 */
-const DUEL_STAT = {
-  fox:    { unit:'마리', lfMax:3,  get:() => ({ v:G.placed || 0, t:G.N, lf:G.paws }) },
-  sudoku: { unit:'칸',   lfMax:3,  get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), lf:G.paws }) },
-  ball:   { unit:'개',             get:() => ({ v:G.broken, t:G.total }) },
-  tower:  { unit:'무리', lfMax:10, get:() => ({ v:G.cleared || 0, t:G.waves.length, lf:G.lives }) },
-  nono:   { unit:'칸',   lfMax:3,  get:() => ({ v:G.found, t:G.total, lf:Math.max(0, 3 - (G.miss || 0)) }) },
-  block:  { unit:'줄',             get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target }) },
-  memory: { unit:'쌍',             get:() => ({ v:G.m.found, t:G.m.pairs }) },
-  merge:  { unit:'', tile:true,    get:() => ({ v:G.M.best, t:G.M.target }) },
-  match:  { unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) }
-};
+/* 게임마다 상대에게 보내는 값: 게임 정의의 duelStat = { unit, lfMax?, score?, tile?, lfIcon?, get:() => ({ v, t, lf }) } */
+const duelStatOf = id => NG[id] && NG[id].duelStat;
 function duelStatNow(){
-  const S = DUEL_STAT[G.id]; let s = {};
+  const S = duelStatOf(G.id); let s = {};
   try{ if(S) s = S.get(); }catch(_){}
   for(const k in s) if(typeof s[k] !== 'number' || !isFinite(s[k])) delete s[k];
   return Object.assign({ pg:Math.round(gameProg() * 1000) / 1000 }, s);
 }
 /* 값 칸 문구: 32/51칸 · 1,240점 · [128]/256 */
 function duelValHtml(id, s){
-  const S = DUEL_STAT[id] || {};
+  const S = duelStatOf(id) || {};
   if(s.dn) return s.ok ? `<span class="ck">✔</span>${fmt(s.sc || 0)}<small>점</small>` : '실패';
   if(s.left) return '나감';
   if(S.score) return `${fmt(s.v || 0)}<small>점</small>`;
@@ -196,9 +143,9 @@ function duelValHtml(id, s){
   return `${s.v || 0}<small>/${s.t}${S.unit}</small>`;
 }
 function duelSubHtml(id, s, lostFlash){
-  const S = DUEL_STAT[id] || {}; if(!S.lfMax || s.lf == null || s.dn || s.left) return '';
+  const S = duelStatOf(id) || {}; if(!S.lfMax || s.lf == null || s.dn || s.left) return '';
   if(S.lfMax === 3) return [0, 1, 2].map(i => `<i class="pip${i >= s.lf ? ' off' : ''}${lostFlash && i === s.lf ? ' lost' : ''}"></i>`).join('');
-  if(id === 'tower') return `${FS_ICO.acorn.replace('<svg ', '<svg class="ico" ')}${s.lf}`;
+  if(S.lfIcon) return `${S.lfIcon()}${s.lf}`;
   return `${ic('heart')}${s.lf}`;
 }
 const duelLocalStart = srv => srv - ((ROOM && ROOM.clockOffset) || 0);   /* 서버 시각 → 내 시계 */
@@ -216,9 +163,9 @@ function duelGoOpen(){
       <p class="dg-kick">1:1 대전 · ${G.L.name}</p>
       <h2 class="dg-title">${GAMES[id].name}</h2>
       <div class="dg-vs">
-        <div class="dg-side me">${avatar({ me:true })}<b>나</b><small>${flEsc(D.myNick || '')}</small></div>
+        <div class="dg-side me">${avatar({ me:true })}<b>나</b><small>${esc(D.myNick || '')}</small></div>
         <div class="dg-x">VS</div>
-        <div class="dg-side op">${oppAv(D.opp.nick)}<b>${flEsc(D.opp.nick)}</b><small class="ok">${D.mode === 'ai' ? 'AI 상대' : '실시간 상대 · 준비 완료'}</small></div>
+        <div class="dg-side op">${oppAv(D.opp.nick)}<b>${esc(D.opp.nick)}</b><small class="ok">${D.mode === 'ai' ? 'AI 상대' : '실시간 상대 · 준비 완료'}</small></div>
       </div>
       <ol class="dg-rules">${rules.map((r, i) => `<li><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span>${r[0]}</li>`).join('')}</ol>
       <p class="dg-win">같은 문제예요 · 끝났을 때 점수가 높은 쪽이 이겨요</p>
@@ -308,7 +255,7 @@ function duelBarInit(){
 }
 /* 앞섬 판정: 5%p 넘으면 앞섬, 2%p 안으로 좁혀지면 풀림. 동물 삼총사는 점수 차 */
 function duelLeadOf(me, op, prev){
-  const S = DUEL_STAT[G.id] || {};
+  const S = duelStatOf(G.id) || {};
   const d = S.score ? ((me.v || 0) - (op.v || 0)) / Math.max(1, me.t || 1) : (me.pg || 0) - (op.pg || 0);
   if(prev === 'me' && d > .02) return 'me';
   if(prev === 'op' && d < -.02) return 'op';
@@ -320,7 +267,7 @@ function duelMeStat(){
   return duelStatNow();
 }
 function duelOppStat(){
-  const D = G.duel, o = D.opp, st = D.oppStat || {}, S = DUEL_STAT[G.id] || {};
+  const D = G.duel, o = D.opp, st = D.oppStat || {}, S = duelStatOf(G.id) || {};
   /* AI는 칸 수(v/t)와 막대가 어긋나지 않게 칸 수 기준으로 */
   let pg = o.pg;
   if(D.mode === 'ai' && st.t && S.score && D.ai.pts) pg = Math.min(1, (st.v || 0) / st.t);
@@ -351,7 +298,7 @@ function duelRender(){
   }
   /* 역전 알림: me↔op로 바뀔 때만(막상막하를 거쳐도 마지막 앞선 쪽 기준) */
   if(lead === 'me' || lead === 'op'){
-    if(D.leadSide && D.leadSide !== lead && !me.dn && !op.dn) duelPing(lead === 'me' ? 'meLead' : 'oppLead', lead === 'me' ? '내가 앞섰어요!' : `${flEsc(D.opp.nick)}님이 앞질렀어요`);
+    if(D.leadSide && D.leadSide !== lead && !me.dn && !op.dn) duelPing(lead === 'me' ? 'meLead' : 'oppLead', lead === 'me' ? '내가 앞섰어요!' : `${esc(D.opp.nick)}님이 앞질렀어요`);
     D.leadSide = lead;
   }
   if(lead) D.lead = lead;
@@ -408,7 +355,7 @@ function duelReadOpp(){
 }
 /* 상대 기회 잃음 · 디펜스 생명 크게 줄어듦 · 마무리 중 */
 function duelOppEvents(){
-  const D = G.duel, st = D.oppStat || {}, S = DUEL_STAT[G.id] || {};
+  const D = G.duel, st = D.oppStat || {}, S = duelStatOf(G.id) || {};
   if(D.opp.dn || G.over) return;
   if(S.lfMax && typeof st.lf === 'number'){
     if(S.lfMax === 3){ if(D.oppLf != null && st.lf < D.oppLf && st.lf > 0) duelPing('oppMiss', '상대가 한 번 틀렸어요'); }
@@ -470,7 +417,7 @@ function duelPub(force){
 }
 /* AI 상대: 미리 정한 결과대로 진행도·수치·실수를 흉내 */
 function duelAiStat(){
-  const D = G.duel, a = D.ai, S = DUEL_STAT[G.id] || {}, me = duelStatNow(), t = me.t, pg = D.opp.pg;
+  const D = G.duel, a = D.ai, S = duelStatOf(G.id) || {}, me = duelStatNow(), t = me.t, pg = D.opp.pg;
   const st = D.oppStat || (D.oppStat = {});
   if(t != null){
     st.t = t;
@@ -536,7 +483,7 @@ function duelWaitModal(){
   const eta = G.limit && D.mode === 'pvp' ? `<span class="dw-eta">${ic('clock')}늦어도 <b class="num" id="dwEta">${mmss(Math.max(0, G.limit - elapsed()))}</b> 뒤엔 결과가 나와요</span>` : `<span class="dw-eta">${ic('clock')}상대가 끝내면 바로 결과가 나와요</span>`;
   openModal(`<div class="dsearch dwait"><p class="kick">대전</p><h3>${me.sc ? '다 풀었어요!' : '이번 판은 여기까지'}</h3>
     <div class="dw-me">${avatar({ me:true })}<div><small>내 점수 · 확정</small><br><b class="num">${me.sc ? fmt(me.sc) + '점' : '실패 · 진행 ' + Math.round(me.pg * 100) + '%'}</b></div></div>
-    <div class="dw-op">${oppAv(D.opp.nick)}<div><b>${flEsc(D.opp.nick)} ${D.mode === 'ai' ? '<em class="aitag">AI</em>' : ''}</b>
+    <div class="dw-op">${oppAv(D.opp.nick)}<div><b>${esc(D.opp.nick)} ${D.mode === 'ai' ? '<em class="aitag">AI</em>' : ''}</b>
       <span class="dw-stat" id="dwOp">아직 푸는 중 · ${duelValHtml(G.id, op).replace(/<[^>]+>/g, '')}</span>
       <span class="db-track"><i id="dwBar" style="width:${(op.pg || 0) * 100}%"></i></span></div></div>
     <p class="dw-need">${me.sc ? `상대가 <b>${fmt(me.sc)}점</b>보다 높아야 역전돼요` : '상대도 실패하면 진행도로 판정해요'}</p>
@@ -596,35 +543,22 @@ function duelResolve(){
   else r = 'd';
   duelResult(r, a, b);
 }
+/* 결과: 승패 판정 뒤 보여 주기는 HOST(사이트는 대전 포인트, 모듈은 이벤트) */
 function duelResult(r, a, b){
   const D = G.duel; if(D.resolved) return; D.resolved = true;
-  const id = G.id, pts = DUEL_PTS[r], d = dayState(), firstToday = !d.att;
-  d.duel += pts; d['d' + r] = (d['d' + r] || 0) + 1; d.att = true; saveDay(d);
-  const R = duelRec(), x = R[id] || { w:0, d:0, l:0 }; x[r]++; R[id] = x; store.set('hp:duelRec', R);
   duelNetClose();
-  const tl = myTL(), win = r === 'w', nick = D.opp.nick;
-  const side = (me, sc, pg, won) => `<div class="dr-side${won ? ' win' : ''}">${won ? '<span class="crown">👑</span>' : ''}${me ? avatar({ me:true }) : oppAv(nick)}<b>${me ? '나' : flEsc(nick)}</b>${sc == null ? '' : `<span class="num">${sc ? fmt(sc) + '점' : '실패'}</span>`}${sc === 0 && pg != null ? `<small>진행 ${Math.round(pg * 100)}%</small>` : ''}</div>`;
-  const why = D.fleet ? (win ? (G.forfeit ? '상대가 떠나 기권승이에요' : '적 함대를 모두 격침했어요') : '우리 함대가 먼저 침몰했어요')
+  HOST.duelResult(r, a, b);
+}
+/* 결과 창 공통 조각: 양쪽 얼굴·점수, 판정 이유 */
+function duelSidesHtml(r, a, b){
+  const D = G.duel, nick = D.opp.nick;
+  const side = (me, sc, pg, won) => `<div class="dr-side${won ? ' win' : ''}">${won ? '<span class="crown">👑</span>' : ''}${me ? avatar({ me:true }) : oppAv(nick)}<b>${me ? '나' : esc(nick)}</b>${sc == null ? '' : `<span class="num">${sc ? fmt(sc) + '점' : '실패'}</span>`}${sc === 0 && pg != null ? `<small>진행 ${Math.round(pg * 100)}%</small>` : ''}</div>`;
+  return `<div class="dres">${side(true, a ? a.sc : null, a ? a.pg : null, r === 'w')}<div class="dr-vs">VS</div>${side(false, b ? b.sc : null, b ? b.pg : null, r === 'l')}</div>`;
+}
+function duelWhy(r, a, b){
+  const D = G.duel, win = r === 'w';
+  return D.fleet ? (win ? (G.forfeit ? '상대가 떠나 기권승이에요' : '적 함대를 모두 격침했어요') : '우리 함대가 먼저 침몰했어요')
     : D.netLost && r === 'd' && !b.dn && !D.oppLeft ? '연결이 끊겨서 무승부로 처리했어요' : D.oppLeft && win && !b.dn ? '상대가 나가서 기권승이에요' : a && b && a.sc && b.sc ? (r === 'd' ? '점수가 똑같아요!' : `${fmt(Math.abs(a.sc - b.sc))}점 차이`) : a && b && !a.sc && !b.sc ? '둘 다 못 풀어서 진행도로 판정했어요' : '';
-  let html = `${win ? '<div class="burst" aria-hidden="true"></div>' : ''}<h3 class="${r === 'l' ? 'bad' : 'ok'}">${win ? '승리!' : r === 'd' ? '무승부' : '패배'}</h3>
-    <div class="dres">${side(true, a ? a.sc : null, a ? a.pg : null, r === 'w')}<div class="dr-vs">VS</div>${side(false, b ? b.sc : null, b ? b.pg : null, r === 'l')}</div>
-    ${why ? `<p class="note">${why}</p>` : ''}
-    <p class="dr-lb">대전 포인트</p><div class="big" id="bigScore">+0</div>
-    <div><span class="pill info">오늘 대전 ${d.dw}승 ${d.dd}무 ${d.dl}패 · 대전 포인트 ${fmt(d.duel)}</span>${firstToday ? attPillHtml() : ''}</div>
-    <p class="note">${r === 'l' ? '져도 대전 포인트를 받아요. ' : ''}대전 포인트는 대전 기록에 쌓이고, 오늘 점수(시험지)와는 따로예요.</p>
-    <div class="mbtns"><button class="b2" id="mSec">대전 목록</button><button class="b1" id="mPri">다시 대전 ${costTag()}</button></div><button class="btn ghost" id="mGh">홈으로</button>`;
-  setTimeout(() => {
-    openModal(html);
-    if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
-    $('#mPri').onclick = () => { closeModal(); goHome(); duelStart(id); };
-    $('#mSec').onclick = () => { closeModal(); goHome(); setTab('duel'); };
-    $('#mGh').onclick = () => { closeModal(); goHome(); setTab('today'); };
-    const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800;
-    const stepN = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
-      if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };
-    requestAnimationFrame(stepN);
-    const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);
-  }, $('#veil').classList.contains('on') ? 0 : (win ? 500 : 250));
 }
 function duelNetClose(){
   const D = G && G.duel; if(!D) return;
@@ -640,57 +574,3 @@ function duelClose(){
   const rc = $('#dRules'); if(rc) rc.hidden = true;
   document.body.classList.remove('duel-ready', 'is-duel');
 }
-
-let lastSig = '', ABOVE = null;
-/* 추월 알림: 친구가 나를 제치면 여우가 알려줌 */
-function checkOvertake(){
-  const d = dayState(); if(!myTotal(d)){ ABOVE = null; return; }
-  const b = board(d), mi = b.findIndex(x => x.me), above = b.slice(0, mi).filter(x => x.score > 0).map(x => x.name);
-  if(ABOVE){ const nw = above.filter(n => !ABOVE.includes(n)); if(nw.length) toast(nw[0] + '님이 당신을 제쳤어요! 가만있을 거예요? 🦊'); }
-  ABOVE = above;
-}
-function homeSig(){ const d = dayState(), h = heartState(); return [dayKey(), h.n, d.ads, d.att ? 1 : 0, RANK_MODE, TAB === 'duel' ? duelWaiting() + ':' + ROOM_STATE : '', FRIENDS.map(friendScore).join(',')].join('|'); }
-function tickHome(){
-  const h = heartState();
-  const ht = $('#hsT'); if(ht) ht.textContent = heartLeft(h);
-  if($('#home').style.display === 'none' || $('#veil').classList.contains('on')) return;
-  const sig = homeSig();
-  if(sig !== lastSig){ lastSig = sig; checkOvertake(); renderHome(); return; }
-  const t = $('#hTimer'); if(t) t.textContent = heartLeft(h);
-  const cl = $('#closing'); if(cl) cl.textContent = closingText();
-  const pa = $('#poolAmt'), pb = $('#poolAmt2'), lc = $('#lgClose'), pv = fmt(prizePool()) + '원';
-  if(pa) pa.textContent = pv; if(pb) pb.textContent = pv; if(lc) lc.textContent = weekLeft();
-}
-$('#quitBtn').innerHTML = ic('back'); $('#helpBtn').innerHTML = ic('help');
-document.querySelectorAll('#dock button').forEach(b => { b.innerHTML = b.innerHTML.replace(/ICO_(\w+)/, (_, n) => ic(n)); b.onclick = () => setTab(b.dataset.tab); });
-$('#meBtn').onclick = () => setTab('me');
-$('#strip').onclick = () => setTab('me');
-$('#pool').onclick = () => { RANK_MODE = 'week'; setTab('league'); };
-$('#devWeek').onclick = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
-$('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
-$('#meSound').onclick = () => openSoundSheet(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
-if(!store.get('hp:advLv', 0)) store.set('hp:advLv', lvInfo().L);
-$('#devAdv').onclick = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };
-$('#devLvUp').onclick = () => { const L = lvInfo().L + 1; showCelebrations([{ kind:'level', L, from:L - 1, hearts:1 }], () => {}); };
-$('#devCh').onclick = () => showCelebrations([{ kind:'chapter', id:'fox', c:1 }], () => {});
-$('#heartChip').onclick = () => openHeartSheet();
-$('#inboxBtn').innerHTML = MAIL_G + '<span class="badge" id="badge">0</span>'; $('#inboxBtn').onclick = openInbox;
-$('#quitBtn').onclick = confirmQuit;
-$('#helpBtn').onclick = () => { if(G && !G.over) openHelp(G.id); };
-$('#devFill').onclick = () => { const h = heartState(); if(h.n < MAX_H){ h.n = MAX_H; h.t = Date.now(); store.set('hp:hearts', h); } renderHome(); toast('하트를 채웠어요'); };
-$('#devReset').onclick = () => { store.set('hp:day:' + dayKey(), null); renderHome(); toast('오늘 기록을 초기화했어요'); };
-$('#devWelcome').onclick = () => { GAME_IDS.forEach(g => store.set('hp:help:' + g, 0)); welcome(); };
-$('#tabDay').onclick = () => { RANK_MODE = 'day'; renderHome(); };
-$('#tabMonth').onclick = () => { RANK_MODE = 'week'; renderHome(); };
-$('#devHist').onclick = () => {
-  const today = dayKey(), r = mulberry(seedFrom('hist' + today));
-  for(let i = 1; i <= 14; i++){
-    const k = addDays(today, -i);
-    if(i === 4 || i === 11){ store.set('hp:day:' + k, null); continue; }
-    const best = {}; for(const g of GAME_IDS) best[g] = r() < 0.75 ? Math.round((350 + r() * 750) / 10) * 10 : 0;
-    const set = todaySet(k); for(const g of GAME_IDS) if(!set.includes(g)) best[g] = 0;
-    store.set('hp:day:' + k, { best, tries:{}, sent:{}, claimed:[], ads:0, att:true, set, solo:r() < .5 ? 250 : 0, duel:r() < .4 ? 400 : 0 });
-  }
-  renderHome(); toast('지난 2주 기록을 만들었어요(2일은 휴식권)');
-};
-$('#devHistClr').onclick = () => { const today = dayKey(); for(let i = 0; i <= 120; i++) store.set('hp:day:' + addDays(today, -i), null); renderHome(); toast('출석 기록을 모두 지웠어요'); };

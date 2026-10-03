@@ -889,3 +889,50 @@ CONCEPTS.tower = { fixed:[
   { at:8, key:'beetle', name:'딱정벌레', desc:'단단한 껍질(갑옷)이 있어요. 반딧불 등은 갑옷을 무시해요.' },
   { at:10, key:'bear', name:'먹보 곰(챕터 대장)', desc:'아주 튼튼하고 도토리 5개를 훔쳐요. 요정 도움을 아껴 두세요.' },
   { at:13, key:'mole', name:'두더지', desc:'5초마다 2초씩 땅속에 숨어 공격받지 않아요.' }] };
+
+
+/* ===================== 게임 정의(엔진이 이 게임을 부르는 창구) =====================
+   이름·색·도움말·썸네일·챕터·난이도·시작·점수·별을 엔진(core/engine.js)에 알려 준다. 규칙은 games/CLAUDE.md의 '게임 정의 계약' 참고. */
+NG.tower = {
+  name:'숲 지킴이', col:['#9BE27A','#2E9E5B','#15562E'], time:'약 4분', abil:'전략력',
+  icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.8 10.6h12.4c.2 6.4-2.8 10.6-6.2 11.6-3.4-1-6.4-5.2-6.2-11.6z"/><path d="M4.2 9.6c0-3.8 3.4-6.2 7.8-6.2s7.8 2.4 7.8 6.2z" opacity=".6"/><path d="M11 3.6V1.8h2v1.8z"/></svg>',
+  art(){
+    /* 풀밭 칸 판 + 흙길 칸 + 솔방울 나무 + 개미 + 도토리 창고 */
+    const path = [[2,0],[2,1],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[7,3],[7,4],[6,4],[5,4],[4,4],[4,5],[4,6]];
+    let g = '';
+    for(let r = 0; r < 7; r++) for(let c = 0; c < 10; c++) g += `<rect x="${c * 16}" y="${r * 16 - 6}" width="16" height="16" fill="${(r + c) % 2 ? '#86C95A' : '#7BBE50'}"/>`;
+    const pts = '40,-10 ' + path.map(([c, r]) => `${c * 16 + 8},${r * 16 + 2}`).join(' ');
+    g += `<polyline points="${pts}" fill="none" stroke="#A97A45" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${pts}" fill="none" stroke="#D9AE73" stroke-width="10.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    path.forEach(([c, r], k) => { if(k % 2) g += `<ellipse cx="${c * 16 + 8}" cy="${r * 16 + 2}" rx="3" ry="2" fill="#E8CFA0"/>`; });
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}
+      <ellipse cx="40" cy="-2" rx="11" ry="7" fill="#8A5A34"/><ellipse cx="40" cy="-1" rx="7" ry="4" fill="#2B1A0E"/>
+      <g transform="translate(72 84)"><ellipse cx="0" cy="14" rx="30" ry="4" fill="rgba(20,50,10,.3)"/><rect x="-26" y="-6" width="52" height="20" rx="7" fill="#A56B3B" stroke="#5A3514" stroke-width="1.6"/><ellipse cx="0" cy="-6" rx="25" ry="5" fill="#E8C48E" stroke="#5A3514" stroke-width="1.6"/><ellipse cx="0" cy="-5.6" rx="11" ry="2.8" fill="#3B230F"/>
+        <g transform="translate(-6 -11)"><path d="M-3.5 0c-.3 4 1.4 6.4 3.5 7 2.1-.6 3.8-3 3.5-7z" fill="#E5A24B" stroke="#7A4A1C" stroke-width=".8"/><path d="M-4.4 .4c0-2.4 2-3.6 4.4-3.6s4.4 1.2 4.4 3.6z" fill="#8A5A2B"/></g>
+        <g transform="translate(5 -12)"><path d="M-3.5 0c-.3 4 1.4 6.4 3.5 7 2.1-.6 3.8-3 3.5-7z" fill="#E5A24B" stroke="#7A4A1C" stroke-width=".8"/><path d="M-4.4 .4c0-2.4 2-3.6 4.4-3.6s4.4 1.2 4.4 3.6z" fill="#8A5A2B"/></g></g>
+      <g transform="translate(88 50)"><ellipse cx="0" cy="12" rx="12" ry="3" fill="rgba(20,60,10,.28)"/><rect x="-2.2" y="3" width="4.4" height="9" rx="1.6" fill="#9A6A3F"/><ellipse cx="0" cy="3" rx="12.5" ry="6.5" fill="#3E9A45"/><ellipse cx="0" cy="-3" rx="10" ry="6" fill="#48A94E"/><ellipse cx="0" cy="-9" rx="6.8" ry="5" fill="#5CBF60"/><ellipse cx="-2.5" cy="-11" rx="2.6" ry="1.3" fill="rgba(255,255,255,.5)"/>
+        <circle cx="-2.6" cy="-3" r="1.1" fill="#1F2A1A"/><circle cx="2.6" cy="-3" r="1.1" fill="#1F2A1A"/><ellipse cx="-7" cy="5" rx="2" ry="2.6" fill="#A0673A"/><ellipse cx="6.5" cy="4" rx="2" ry="2.6" fill="#A0673A"/>
+        <circle cx="0" cy="-15.5" r="2.8" fill="#FFD54A" stroke="#B07A00" stroke-width=".8"/></g>
+      <g transform="translate(24 44)"><ellipse cx="0" cy="11" rx="13" ry="3" fill="rgba(20,60,10,.28)"/><path d="M0 12c0-5 3-7 1-13" fill="none" stroke="#3E8E41" stroke-width="2.2" stroke-linecap="round"/><circle cx="1" cy="-4" r="10" fill="#FFE36B" opacity=".35"/><ellipse cx="1" cy="-4" rx="6" ry="7" fill="#FFD84D" stroke="#E0A800" stroke-width=".8"/><ellipse cx="1" cy="-11" rx="5" ry="2" fill="#4CAF50"/></g>
+      <g transform="translate(110 68)"><path d="M-12 1l-2 5M-6 2l-1 5M0 2l1 5" stroke="#5A1E14" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="-9" cy="-1" rx="6.5" ry="5" fill="#C4452F"/><circle cx="-2" cy="-2" r="3.2" fill="#B23A27"/><circle cx="4" cy="-4.5" r="4.6" fill="#CF4F36"/><circle cx="5.6" cy="-5.2" r="1.7" fill="#fff"/><circle cx="6.1" cy="-5" r=".9" fill="#2A1010"/><path d="M3.5 -8.5q-1-4 2-5M6 -8q1.5-3.5 4-3.4" fill="none" stroke="#5A1E14" stroke-width="1" stroke-linecap="round"/></g>
+      <path d="M94 44L104 58" stroke="#A0673A" stroke-width="2" stroke-dasharray="2 3" stroke-linecap="round"/></svg>`;
+  },
+  help:[['씨앗 카드를 심어요','아래 카드를 누르고 풀밭 칸을 누르면 바로 자라요. 흙길·바위·개울 칸에는 못 심어요. 심은 식물을 누르면 닿는 거리가 보여요.'],['같은 씨앗은 겹쳐 키우기','같은 종류를 그 식물 위에 또 심으면 3단계까지 커져요. 퇴비 카드는 식물 하나를 거름으로 돌리고 새 씨앗 카드를 줘요.'],['도토리 창고를 지켜요','[시작 ▶]을 누르면 무리가 와요. 창고에 닿으면 도토리를 훔쳐 가요. 소나기·덩굴 올가미·돌개바람은 판마다 정해진 횟수만 쓸 수 있어요.']],
+  chapters:['도토리 숲','개울 건너','버섯 골짜기','두더지 굴','곰의 동굴'],
+  starRule:'★ 클리어 · ★★ 도토리 7개 이상 · ★★★ 도토리를 하나도 안 잃음',
+  levels:{ easy:{ limit:0, n:3, w:5 }, normal:{ limit:0, n:5, w:6 }, hard:{ limit:0, n:8, w:7 } },
+  levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return '공격 ' + Math.min(15, 5 + Math.ceil(c.n * 0.6)) + '번'; },
+  saveKey:'hp:towerStages',
+  stage:n => ({ n, w:fsWaveCount(n), limit:0 }),
+  stageDesc:n => FS_MAPS[(n - 1) % FS_MAPS.length].name + ' · 무리 ' + fsWaveCount(n) + '번' + (n % 10 === 0 ? ' · 멧돼지·먹보 곰' : n % 5 === 0 ? ' · 멧돼지' : ''),
+  init(cfg, rng){ tdInit(cfg.n, rng); },
+  render:st => tdStage(st),
+  titleExtra:() => ' · ' + G.mapName,
+  progress:() => G.waves ? (G.cleared || 0) / G.waves.length : 0,
+  lossText:() => `무리 ${G.cleared || 0}/${G.waves.length}번째까지 막았어요.`,
+  score(){ return { base:500, time:Math.round(350 * G.lives / 10), extra:Math.min(150, G.hand.length * 25),
+    rows:['숲 지키기 성공', '남은 도토리 보너스 (' + G.lives + '/10개)', '남은 씨앗 카드 ' + G.hand.length + '장'] }; },
+  stars:() => tdStars(G.lives),
+  winSfx:true, amb:'forest',
+  duelPace:[280,.62],
+  duelStat:{ unit:'무리', lfMax:10, lfIcon:() => FS_ICO.acorn.replace('<svg ', '<svg class="ico" '), get:() => ({ v:G.cleared || 0, t:G.waves.length, lf:G.lives }) }
+};

@@ -1,10 +1,6 @@
 /* 공용: 화면 효과·소리 엔진·아이템 */
-/* ---------- 여우 자리 찾기: 밤하늘 위 연보라 종이 카드, 공용 상단 막대, 기회 별, 사탕 도구 버튼(자체 화면). 그림은 직접 그린 3D 여우 ---------- */
-/* 구역 색 11가지(우리 팔레트): 파스텔이지만 또렷하게. 앞에서부터 쓰므로 작은 판일수록 서로 멀리 떨어진 색만 쓴다
-   (색각 차이가 있어도 밝기·색상이 갈리게 순서를 정함, 분홍 계열은 하나뿐) */
-const FOX_PAL = ['#FF8C9E','#FFD04D','#5ECF9C','#62AEFF','#B48BFF','#FF9E4F','#A3ADC6','#C6DC52','#D8A274','#2FA8A0','#E48AD8'];
+/* ---------- 공용 그림: 여우 얼굴(내 아바타)·도구 아이콘. (여우 게임 화면 설명은 games/fox로 옮김) 그림은 직접 그린 3D 여우 ---------- */
 const FOX_FACE = `<svg viewBox="0 0 40 38" aria-hidden="true">${toyImage('fox', -3, -4, 46, 46)}</svg>`;   /* 공용 3D 여우(40×38 틀 안) */
-const FX_X = c => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/></svg>`;
 const FX_ICON = {
   star:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.9l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.2l-6 3.2 1.2-6.7L2.3 9l6.7-1z" fill="url(#gGold)" stroke="#2A1650" stroke-width="1.9" stroke-linejoin="round"/><path d="M8.6 9.3l2.3-.4 1-2.1" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>',
   bulb:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6a6.6 6.6 0 0 0-3.9 11.9c.7.5 1.1 1.3 1.1 2.1v1h5.6v-1c0-.8.4-1.6 1.1-2.1A6.6 6.6 0 0 0 12 2.6z" fill="#FFF7D6" stroke="#4A2A00" stroke-width="2" stroke-linejoin="round"/><path d="M9.4 19.6h5.2v.6a1.9 1.9 0 0 1-1.9 1.9h-1.4a1.9 1.9 0 0 1-1.9-1.9z" fill="#4A2A00"/><path d="M9.9 8.4a2.8 2.8 0 0 1 2.1-1.5" stroke="#FFB020" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
@@ -237,7 +233,17 @@ const aCoin = (o = {}) => { aTone({ ...o, f:m2f(83), type:'square', lp:3500, d:.
 const aSparkle = (o = {}) => { const n = o.n || 6, base = o.root || 84, st = [0, 7, 12, 16, 19, 24, 28, 31]; for(let k = 0; k < n; k++) aBell({ ...o, f:m2f(base + st[k % st.length]), t:(o.t || 0) + k * (o.gap || .045), d:o.d || .55, v:o.v || .05, idx:1.4, rev:.4 }); aNoise({ ...o, ft:'highpass', f:6000, d:.35, v:(o.v || .05) * .6 }); };
 const aWhoosh = (o = {}) => aNoise({ ...o, ft:'bandpass', f:o.f || 400, f2:o.f2 || 3000, q:o.q || 1, a:o.a || .08, d:o.d || .3, v:o.v || .06 });
 
-/* ===== 소리 목록(이름 → 소리) ===== */
+/* 공용 버튼 아이콘(뒤로·도움말·소리 켜짐/꺼짐 등) */
+const UI_ICON = {
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.2 2.8c-.8.4-1.2 1-1.2 1.9v.3"/><circle cx="12" cy="17.8" r=".9" fill="currentColor"/></svg>',
+  snd:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity=".6"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>',
+  shuf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3.5c2 0 3 1 4.3 3l2.4 4c1.3 2 2.3 3 4.3 3H21M3 17h3.5c2 0 3-1 4.3-3M13.2 10c1.3-2 2.3-3 4.3-3H21M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>',
+  radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5" opacity=".6"/><path d="M12 12 18.4 5.6"/><circle cx="15.6" cy="9.2" r="1.6" fill="currentColor" stroke="none"/></svg>'
+};
+/* ===== 소리 목록(이름 → 소리): 모든 게임이 함께 쓰는 소리 라이브러리 ===== */
 const SFX_GATE = { tap:40, pop:40, tab:60, open:120, toast:350, tick:35, bAim:28, bShot:42, bHit:24, bBreak:36, bLand:300, bRing:40, bSlide:200,
   tArrow:65, tMagic:80, tCannon:110, tBoom:80, tDie:55, tGold:90, tHit:130, fPaint:32, sSel:30, error:200, heartSend:100 };
 const WIN_JINGLE = {
@@ -269,7 +275,7 @@ const SFX_LIB = {
   result(){ [60, 64, 67, 71, 74].forEach((m, i) => aPluck(m2f(m + 12), { t:i * .035, d:1, v:.07, rev:.35 })); aNoise({ ft:'bandpass', f:6000, q:.8, d:.45, v:.025 }); },
   xp(){ aTone({ f:500, f2:1300, type:'triangle', d:.6, v:.035 }); },
   lose(){ [67, 63, 60, 55].forEach((m, i) => aTone({ f:m2f(m), type:'triangle', t:i * .17, d:.4, v:.08, lp:2200, rev:.3 })); aTone({ f:m2f(43), t:.68, d:.9, v:.1, rev:.2 }); },
-  fanfare(){ WIN_JINGLE.tower(); },
+  fanfare(){ WIN_JINGLE.tower(); },   /* 축하 팡파르(숲 지킴이 승리 음악과 같은 소리) */
   demote(){ [64, 62, 60].forEach((m, i) => aPluck(m2f(m), { t:i * .2, d:.6, v:.08, rev:.35 })); aBell({ f:m2f(67), t:.7, d:1.2, v:.05, rev:.4 }); },
   win(o){ (WIN_JINGLE[o.g] || SFX_LIB.result)(); },
 
@@ -360,7 +366,7 @@ function fxSound(kind, level){
 function fxBuzz(p){ if(!AUD.set.hap) return; if(navigator.vibrate) try{ navigator.vibrate(p); }catch(_){} }
 
 /* ===== 배경 소리(게임별 분위기): 함대 = 바다 물결, 디펜스 = 숲 바람과 새, 구슬 = 별밤 ===== */
-function ambFor(id){ return { fleet:'sea', tower:'forest', ball:'stars' }[id] || null; }
+function ambFor(id){ return (NG[id] && NG[id].amb) || null; }   /* 게임 정의의 amb: 'sea' | 'forest' | 'stars' */
 function ambStart(kind){
   if(AUD.ambKind === kind && AUD.amb) return;
   ambStop();
@@ -440,21 +446,8 @@ function openSoundSheet(back){
   $('#ssOk').onclick = () => { if(typeof back === 'function') back(); else closeModal(); };
 }
 /* 일시정지 창 안의 소리 켜기/끄기 버튼 */
-function sndBtnHtml(){ return `<button class="psnd" id="mSnd">${SND.on ? FL_I.snd : FL_I.mute}<span>${SND.on ? '소리 켜짐 · 누르면 끄기' : '소리 꺼짐 · 누르면 켜기'}</span></button>`; }
+function sndBtnHtml(){ return `<button class="psnd" id="mSnd">${SND.on ? UI_ICON.snd : UI_ICON.mute}<span>${SND.on ? '소리 켜짐 · 누르면 끄기' : '소리 꺼짐 · 누르면 켜기'}</span></button>`; }
 function sndBtnBind(){ const b = $('#mSnd'); if(!b) return; b.onclick = () => { sndSetOn(!SND.on); ambDuck(true); b.outerHTML = sndBtnHtml(); sndBtnBind(); if(SND.on) sfx('toggle', { on:true }); }; }
-/* 틀린 이유: 이미 놓은 여우와 부딪히면 그 여우를 짚어줌 */
-function foxWhy(i){
-  const N = G.N, r = Math.floor(i/N), c = i%N;
-  for(let f=0; f<N*N; f++){
-    if(G.cells[f] !== 2) continue;
-    const fr = Math.floor(f/N), fc = f%N;
-    if(fr === r) return { f, text:'같은 가로줄에 여우가 있어요' };
-    if(fc === c) return { f, text:'같은 세로줄에 여우가 있어요' };
-    if(G.reg[f] === G.reg[i]) return { f, text:'같은 색 구역에 여우가 있어요' };
-    if(Math.abs(fr - r) <= 1 && Math.abs(fc - c) <= 1) return { f, text:'옆 여우와 붙어 있어요' };
-  }
-  return { f:-1, text:'여기는 여우 자리가 아니에요' };
-}
 function fxBubble(el, text){
   const p = fxCenter(el), d = document.createElement('div'); d.className = 'fxbubble'; d.textContent = text;
   document.body.appendChild(d);

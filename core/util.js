@@ -1,9 +1,13 @@
 /* 공용 도구: $, 저장소, 날짜, 씨앗 난수 */
 const $ = s => document.querySelector(s);
+/* 저장소(이 브라우저). 붙여 쓰는 모듈은 window.HP_NS로 이름 앞에 구분자를 붙여 사이트·사용자별로 기록을 나눈다 */
+const STORE_NS = (typeof window !== 'undefined' && window.HP_NS) || '';
 const store = {
-  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
-  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  get(k, d){ try{ const v = localStorage.getItem(STORE_NS + k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(STORE_NS + k, JSON.stringify(v)); }catch(e){} }
 };
+/* 글자를 HTML에 안전하게 넣기 */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function dayKey(d = new Date()){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }

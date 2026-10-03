@@ -1,4 +1,5 @@
 /* 시작: 모든 파일을 불러온 뒤 홈 화면을 띄움 (맨 마지막에 불러와야 함) */
+netStart();   /* 대전 서버 연결 */
 linkFriendsLoad();
 renderHome(); lastSig = homeSig(); checkOvertake();
 const LG_RES = leagueRollover();

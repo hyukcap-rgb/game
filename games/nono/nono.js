@@ -1022,3 +1022,7 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
     jingle(){ [0, 2, 4, 5, 7, 9, 11, 12].forEach((d, i) => aMarimba(m2f(67 + [0, 2, 4, 7, 9, 12, 16, 19][i]), { t:i * .065, v:.15 })); [72, 76, 79, 84].forEach(m => aBell({ f:m2f(m + 12), t:.58, d:1.4, v:.05, idx:1.2, rev:.5 })); aSparkle({ t:.62, n:6 }); }
   };
 })();
+
+
+/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+Object.assign(NG.nono, { duelPace:[220,.72], duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:G.found, t:G.total, lf:Math.max(0, 3 - (G.miss || 0)) }) } });

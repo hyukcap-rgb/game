@@ -13,16 +13,8 @@ const FL_LV = {
 };
 const FL_AI_DESC = { easy:'아무 데나 쏘는 AI', normal:'맞히면 주변을 노리는 AI', hard:'확률을 계산하는 AI' };
 const flName = i => FL_COLS[i % 10] + (Math.floor(i / 10) + 1);
-const flEsc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const FL_I = {
-  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
-  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.2 2.8c-.8.4-1.2 1-1.2 1.9v.3"/><circle cx="12" cy="17.8" r=".9" fill="currentColor"/></svg>',
-  snd:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
-  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity=".6"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
-  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>',
-  shuf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3.5c2 0 3 1 4.3 3l2.4 4c1.3 2 2.3 3 4.3 3H21M3 17h3.5c2 0 3-1 4.3-3M13.2 10c1.3-2 2.3-3 4.3-3H21M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>',
-  radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5" opacity=".6"/><path d="M12 12 18.4 5.6"/><circle cx="15.6" cy="9.2" r="1.6" fill="currentColor" stroke="none"/></svg>'
-};
+const flEsc = esc;   /* 글자 안전하게(공용 esc) */
+const FL_I = UI_ICON;   /* 버튼 아이콘(공용: core/effects-sound.js의 UI_ICON) */
 const FL_XH = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="12.5" fill="none" stroke="#FF4D4D" stroke-width="2.6" stroke-dasharray="14 5.6"/><circle cx="20" cy="20" r="2.6" fill="#FF4D4D"/><path d="M20 2v8M20 30v8M2 20h8M30 20h8" stroke="#FF4D4D" stroke-width="2.6" stroke-linecap="round"/></svg>';
 const FL_FLAME = '<svg class="fl-flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c1.2 3.8 5.6 5.9 5.6 11.2A5.6 5.6 0 0 1 6.4 12.9c0-2.2 1.1-3.7 2.2-4.8.2 2 1.1 3.2 2.4 3.7C10.4 8.4 10.9 4.8 12 1.5z" fill="#FF6A1A"/><path d="M12 9c.7 2.2 3.1 3.3 3.1 5.9a3.1 3.1 0 0 1-6.2 0c0-1.6.9-2.6 1.6-3.3.2 1 .7 1.6 1.2 1.9-.2-1.8-.2-3.1.3-4.5z" fill="#FFD84A"/><circle cx="12" cy="16.2" r="1.3" fill="#FFF6D0"/></svg>';
 
@@ -240,124 +232,6 @@ function flTune(p, fx){
   return { aiQ:Math.round(Math.max(0, Math.min(2, q)) * 100) / 100, aiRadar, tight };
 }
 
-/* ----- 실시간 대전: room(지금 이 페이지를 연 사람들). 없으면 AI로 ----- */
-let ROOM = null, ROOM_STATE = 'pending';
-/* 대전 서버(Railway). Claude 링크에서는 Claude의 room을, 그 밖(GitHub Pages 등)에서는 이 서버를 쓴다. */
-const BATTLE_WS = 'wss://battle-production-c11b.up.railway.app/ws';
-/* 대전 서버 연결. 휴대폰(특히 카카오톡 인앱 브라우저)은 화면을 끄거나 앱을 오가면 연결이 자주 끊긴다.
-   - 끊겨도 대전 방을 바로 버리지 않고 곧장 다시 연결해 같은 방에 다시 들어간다(20초까지 기다림).
-   - 다시 연결되면 모든 방에 다시 들어가고 내 presence를 다시 보낸다(서버는 새 연결마다 방을 새로 만듦).
-   - 서버 오류(err)·입장 시간 초과는 바로 실패로 알리고, 시간 초과된 방은 서버에서도 나간다.
-   - 응답이 45초 없으면 반쯤 죽은 연결로 보고 다시 연결한다. 화면이 다시 보이거나 온라인이 되면 바로 다시 연결.
-   - 첫 연결이 7초를 넘겨도 계속 시도하고, 나중에 연결되면 onLate로 알린다. */
-function netRoomConnect(url, onLate){
-  return new Promise((resolve, reject) => {
-    let ws = null, you = null, first = true, retry = 0, offset = 0, pingT = 0, lastMsg = 0, reT = 0, downAt = 0, ready = false;
-    const rooms = new Map(); // name -> {peers, pres, subs:Set, errs:Set, waiters:[], joined}
-    const isOpen = () => ws && ws.readyState === 1 && you;
-    const send = m => { try{ if(ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }catch(_){} };
-    const st = name => { let s = rooms.get(name); if(!s){ s = { peers:[], pres:{}, subs:new Set(), errs:new Set(), waiters:[], joined:false }; rooms.set(name, s); } return s; };
-    function api(name, isLobby){
-      const s = st(name);
-      return {
-        get clockOffset(){ return offset; },
-        get connected(){ return !!isOpen(); },
-        peers: () => s.peers.map(p => ({ peer:p.peer, presence:p.presence, sameTab:p.peer === you })),
-        presence: obj => { Object.assign(s.pres, obj); send({ t:'p', r:name, p:obj }); return Promise.resolve(); },
-        onPeers: (cb, err) => { s.subs.add(cb); if(err) s.errs.add(err); return () => { s.subs.delete(cb); if(err) s.errs.delete(err); }; },
-        join: sub => new Promise((res, rej) => {
-          const ss = st(sub); ss.pres = {}; ss.joined = false;
-          const w = { ok:() => { clearTimeout(tm); res(api(sub, false)); }, fail:e => { clearTimeout(tm); rej(e); } };
-          const tm = setTimeout(() => {   /* 시간 초과: 서버에 늦게 들어가 남지 않게 나가기까지 */
-            ss.waiters = ss.waiters.filter(x => x !== w); send({ t:'leave', r:sub }); if(!ss.joined) rooms.delete(sub); rej(new Error('join timeout'));
-          }, 8000);
-          ss.waiters.push(w);
-          if(isOpen()) send({ t:'join', r:sub }); else kick();   /* 끊겨 있으면 다시 연결 후 자동으로 들어감 */
-        }),
-        leave: () => { if(isLobby) return; send({ t:'leave', r:name }); rooms.delete(name); },
-      };
-    }
-    /* 지금 연결을 버리고 바로 새로 연결(닫힘 신호를 기다리지 않음: 휴대폰의 반쯤 죽은 연결은 닫힘이 늦게 옴) */
-    function restart(){
-      const old = ws; ws = null; you = null; if(!downAt) downAt = Date.now();
-      if(old){ old.onclose = old.onmessage = old.onerror = null; try{ old.close(); }catch(_){} }
-      const lob = rooms.get('lobby'); if(lob) lob.peers = [];
-      retry = 0; open();
-    }
-    function kick(){ if(ws && (ws.readyState === 0 || ws.readyState === 1)) return; clearTimeout(reT); retry = 0; open(); }
-    function open(){
-      clearTimeout(reT);
-      try{ ws = new WebSocket(url); }catch(e){ if(first){ first = false; reject(e); } reT = setTimeout(open, 5000); return; }
-      const me = ws;
-      const failT = setTimeout(() => { if(first){ first = false; reject(new Error('timeout')); } }, 7000);   /* 연결은 계속 시도 */
-      ws.onmessage = ev => {
-        if(ws !== me) return;
-        lastMsg = Date.now();
-        let m; try{ m = JSON.parse(ev.data); }catch(_){ return; }
-        if(m.t === 'pong'){ if(typeof m.now === 'number' && pingT){ offset = m.now - (pingT + Date.now()) / 2; pingT = 0; } return; }
-        if(m.t === 'hello'){
-          you = m.you; retry = 0; downAt = 0; clearTimeout(failT);
-          if(typeof m.now === 'number') offset = m.now - Date.now();
-          pingT = Date.now(); send({ t:'ping' });
-          st('lobby');
-          for(const [name, s] of rooms){   /* 대기실·대전 방 모두 다시 들어가고 내 정보 다시 보내기 */
-            send({ t:'join', r:name });
-            if(Object.keys(s.pres).length) send({ t:'p', r:name, p:s.pres });
-          }
-          if(first){ first = false; ready = true; resolve(api('lobby', true)); }
-          else if(!ready){ ready = true; if(onLate) try{ onLate(api('lobby', true)); }catch(_){} }
-          return;
-        }
-        if(m.t === 'err'){
-          const s = rooms.get(m.r);
-          if(m.e === 'too many rooms'){ restart(); return; }   /* 서버에 남은 방 정리: 새 연결로 다시 들어감 */
-          if(s && !s.joined && s.waiters.length){ const w = s.waiters.splice(0); w.forEach(x => x.fail(new Error(m.e || 'err'))); rooms.delete(m.r); }
-          return;
-        }
-        if(m.t === 'peers' && rooms.has(m.r)){
-          const s = rooms.get(m.r); s.peers = m.peers || []; s.joined = true;
-          const w = s.waiters.splice(0); w.forEach(x => x.ok());
-          const ch = { joined:m.joined || [], left:m.left || [] };
-          s.subs.forEach(cb => { try{ cb(ch); }catch(_){} });
-        }
-      };
-      ws.onclose = () => {
-        clearTimeout(failT);
-        if(ws !== me) return;
-        you = null;
-        if(!downAt) downAt = Date.now();
-        const lob = rooms.get('lobby'); if(lob) lob.peers = [];
-        reT = setTimeout(open, Math.min(8000, 800 * (++retry)));
-      };
-      ws.onerror = () => {};
-    }
-    open();
-    /* 살아 있는지 확인 · 오래 끊긴 대전 방 정리 */
-    setInterval(() => {
-      if(isOpen()){
-        if(lastMsg && Date.now() - lastMsg > 45000){ restart(); return; }
-        pingT = Date.now(); send({ t:'ping' });
-      }
-    }, 15000);
-    setInterval(() => {
-      if(!downAt || Date.now() - downAt < 20000) return;
-      for(const [name, s] of rooms){ if(name !== 'lobby'){ s.errs.forEach(f => { try{ f(); }catch(_){} }); s.waiters.splice(0).forEach(x => x.fail(new Error('offline'))); rooms.delete(name); } }
-    }, 1000);
-    const wake = () => { if(!document.hidden) kick(); };
-    document.addEventListener('visibilitychange', wake); addEventListener('online', kick); addEventListener('pageshow', wake); addEventListener('focus', wake);
-  });
-}
-try{
-  const useNet = () => {
-    if(BATTLE_WS.includes('__')){ ROOM_STATE = 'none'; return; }
-    netRoomConnect(BATTLE_WS, r => { if(!ROOM){ ROOM = r; ROOM_STATE = 'ok'; } })
-      .then(r => { ROOM = r; ROOM_STATE = 'ok'; }).catch(() => { if(!ROOM) ROOM_STATE = 'none'; });
-  };
-  if(window.claude && typeof window.claude.use === 'function') window.claude.use('room').then(r => { if(r){ ROOM = r; ROOM_STATE = 'ok'; } else useNet(); }).catch(useNet);
-  else useNet();
-}catch(_){ ROOM_STATE = 'none'; }
-/* 지금 연결돼 있나(Claude room은 항상 연결된 것으로 봄) */
-const netUp = () => !!ROOM && ROOM.connected !== false;
 function flWaitingCount(){ try{ return ROOM ? ROOM.peers().filter(p => !p.sameTab && p.presence && p.presence.fl === 'wait').length : 0; }catch(_){ return 0; } }
 const FL_NICK_A = ['푸른','용감한','날쌘','은빛','붉은','고요한','번개','새벽'], FL_NICK_B = ['고래','상어','돌고래','범고래','문어','거북','갈매기','해달'];
 
@@ -1138,3 +1012,44 @@ function flSound(kind, pan){
   const m = { fire:'flFire', splash:'flSplash', boom:'flBoom', sink:'flSink', ping:'flPing', aim:'flAim', lock:'flLock', bad:'flBad', horn:'flHorn' }[kind];
   if(m) sfx(m, { pan:pan || 0 });
 }
+
+
+/* ===================== 게임 정의(엔진이 이 게임을 부르는 창구) =====================
+   이름·색·도움말·썸네일·챕터·난이도·시작·점수·별을 엔진(core/engine.js)에 알려 준다. 규칙은 games/CLAUDE.md의 '게임 정의 계약' 참고. */
+NG.fleet = {
+  name:'함대 결전', col:['#7FD6FF','#1A8CC4','#0B4A6E'], time:'약 5분', abil:'추리력',
+  icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2.5h2V6h3.2l1 4.2H6.8l1-4.2H11z"/><path d="M2.6 11.6h18.8l-2.7 6.3a2 2 0 0 1-1.8 1.1H7.1a2 2 0 0 1-1.8-1.1z"/><path d="M1.8 21.6c1.7 0 1.7-1 3.4-1s1.7 1 3.4 1 1.7-1 3.4-1 1.7 1 3.4 1 1.7-1 3.4-1 1.7 1 3.4 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  art(){
+    let grid = ''; for(let k=1;k<10;k++) grid += `<path d="M${k * 16} 0v100M0 ${k * 10}h160" stroke="rgba(170,225,255,.14)" stroke-width="1"/>`;
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><radialGradient id="aSea" cx=".25" cy="0" r="1.1"><stop offset="0" stop-color="#2A8AC8"/><stop offset=".5" stop-color="#0F4A7A"/><stop offset="1" stop-color="#081F38"/></radialGradient></defs>
+      <rect width="160" height="100" fill="url(#aSea)"/>${grid}
+      <path d="M0 78q10-4 20 0t20 0 20 0 20 0 20 0 20 0 20 0 20 0" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+      <g transform="translate(14 36) scale(.29)">${flShipBody('battle', 4)}</g>
+      <g transform="translate(96 70) scale(.2)">${flShipBody('destroyer', 2)}</g>
+      <circle cx="132" cy="28" r="9" fill="none" stroke="#CFEFFF" stroke-width="1.6" opacity=".8"/><circle cx="132" cy="28" r="4" fill="#DDF1FF"/>
+      ${FL_FLAME.replace('<svg class="fl-flame" ', '<svg x="92" y="30" width="20" height="20" ')}
+      <g transform="translate(110 42)"><circle r="11" fill="none" stroke="#FF4D4D" stroke-width="2" stroke-dasharray="10 4"/><path d="M0-15v6M0 9v6M-15 0h6M9 0h6" stroke="#FF4D4D" stroke-width="2" stroke-linecap="round"/></g></svg>`;
+  },
+  help:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 5초, 안 쏘면 차례가 넘어가요. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.'],['솔로는 5판마다 새 규칙','섬·레이더·연발 포격·침묵 함대, 그리고 번개·안개 같은 변주가 차례로 나와요. 이번 판 규칙은 위쪽 작은 표시에 보여요. 솔로에선 격침한 적 배 둘레가 자동으로 "배 없음"으로 칠해져요(적 배는 서로 붙어 있지 않아요).']],
+  chapters:['잔잔한 만','안개 해협','폭풍 바다','빙하 항로','해적 섬'],
+  starRule:'★ 승리 · ★★ 기준 발수 이하 · ★★★ 더 적은 발수(판마다 달라요)',
+  levels:FL_LV,
+  levelCfg:lv => FL_LV[lv] || FL_LV.normal,   /* 실시간 대전(pvp)·AI 쉬움/보통/어려움 */
+  pickLv(lv){ if(!lv) lv = ROOM_STATE !== 'none' ? 'pvp' : 'normal'; if(lv === 'pvp' && ROOM_STATE === 'none') lv = 'normal'; return FL_LV[lv] ? lv : 'normal'; },
+  levelSheet:() => openFleetSheet(),
+  stage:n => ({ limit:0 }),
+  stageLevel(n){ const q = flStageFx(n).aiQ; return q < .67 ? 'easy' : q < 1.34 ? 'normal' : 'hard'; },   /* 솔로 스테이지의 AI 세기 */
+  stageDesc(n){ const fx = flStageFx(n); return FL_LV[this.stageLevel(n)].name + ' · ★★ ' + fx.th[0] + '발 · ★★★ ' + fx.th[1] + '발 이하' + (fx.tight ? ' · 포탄 ' + fx.tight + '발' : ''); },
+  init(cfg, rng, lv){ flInit(lv, rng); },
+  render:st => flStage(st),
+  progress:() => (G.enSunk ? G.enSunk.length : 0) / 5,
+  lossText:() => `적 함선 ${G.enSunk ? G.enSunk.length : 0}/5척을 격침했어요.`,
+  score(){ const n = flShotN(); return { base:500, time:Math.round(350 * Math.max(0, Math.min(1, (100 - n) / 83))), extra:Math.round(150 * G.myLeft / FL_TOTAL),
+    rows:[G.forfeit ? '승리 (상대 기권)' : '승리', '명중률 보너스 (' + n + '발 중 ' + G.hitsN + '명중)', '남은 내 함선 ' + G.myLeft + '/' + FL_TOTAL + '칸'] }; },
+  stars(){ const n = flShotN(), th = G.fx ? G.fx.th : [60, 45]; return n <= th[1] ? 3 : n <= th[0] ? 2 : 1; },
+  winTitle:'승리! 적 함대 전멸', loseTitle:'패배 · 우리 함대가 침몰했어요',
+  bodyClass:'flmode', noConfetti:true, amb:'sea',
+  duelHow:'서로 포격하는 턴제 대전',
+  /* 함대는 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 바로 포격전 */
+  duelLaunch(){ const lv = duelLive() ? 'pvp' : 'normal'; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : 'AI 함장' } } }); }
+};

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko" data-game="{{ID}}" data-ver="{{VER}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{NAME}} · 하루퍼즐</title>
+<meta name="theme-color" content="#1C1250">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<script>/* 기록을 사이트·사용자별로 나눔: ?ns=사이트이름&user=사용자번호 */(function(){var q=new URLSearchParams(location.search);window.HP_NS='hpe:'+(q.get('ns')||'')+':'+(q.get('user')||'')+':';})();</script>
+<style>{{CSS}}</style>
+</head>
+<body>
+<svg class="gdefs" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6B8"/><stop offset=".45" stop-color="#FFCB3A"/><stop offset="1" stop-color="#D98300"/></linearGradient>
+  <linearGradient id="gHeart" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9CC4"/><stop offset=".55" stop-color="#FF3D7F"/><stop offset="1" stop-color="#D1145A"/></linearGradient>
+  <linearGradient id="gMail" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFE9A8"/></linearGradient>
+</defs></svg>
+<div class="scene" aria-hidden="true"><i class="rays"></i></div>
+<div class="wrap">
+<section id="menu" aria-label="{{NAME}}"></section>
+<section id="play">
+  <div class="duelbar" id="duelBar" hidden></div>
+  <div class="pbar">
+    <button class="iconbtn" id="quitBtn" aria-label="그만하기"></button>
+    <div class="ptitle" id="ptitle"></div>
+    <button class="iconbtn" id="helpBtn" aria-label="게임 방법"></button>
+  </div>
+  <div class="stats">
+    <div class="paws" id="paws" aria-label="남은 기회"></div>
+    <div class="fcount" id="fcount"></div>
+    <div class="clock" id="clock">0:00</div>
+  </div>
+  <div id="stage"></div>
+</section>
+</div>
+<div class="veil" id="veil"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>{{JS}}</script>
+</body>
+</html>

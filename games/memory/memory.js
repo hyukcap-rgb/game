@@ -673,3 +673,7 @@ body[data-mode="memory"]{background:
     jingle(){ [0, 2, 4, 5, 7].forEach((d, i) => aMarimba(penta(d + 2, 72), { t:i * .075, v:.16 })); [76, 79, 84, 88].forEach((mm, i) => aBell({ f:m2f(mm), t:.42 + i * .03, d:1.2, v:.06, idx:1.3, rev:.45 })); aSparkle({ t:.5, n:6 }); }
   };
 })();
+
+
+/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+Object.assign(NG.memory, { duelPace:[70,.74], duelStat:{ unit:'쌍',             get:() => ({ v:G.m.found, t:G.m.pairs }) } });

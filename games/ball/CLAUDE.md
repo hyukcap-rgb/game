@@ -1,0 +1,86 @@
+# 별빛 구슬 — 게임 프롬프트 (games/ball)
+
+> 이 파일은 이 게임의 **프롬프트**예요. 개발팀(Claude)은 이 게임을 고칠 때 항상 이 파일을 먼저 읽고 따릅니다.
+> 바라는 방향·하지 말 것·고칠 점을 아래 **사용자 지시**에 적어 두면 다음 작업부터 반영돼요.
+
+## 사용자 지시
+<!-- 여기에 자유롭게 적으세요. 위에 적은 것이 가장 최근 지시예요. 개발팀은 이 목록을 지우지 않고 지킵니다. -->
+- (아직 없음)
+
+## 한 줄 소개
+밤하늘 판에서 구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐. 턴마다 블록이 한 줄씩 내려오고, 바닥선을 지키며 모든 줄을 깨면 클리어(`NG.ball`, 능력 '공간지각', 약 3분, game.json order 3).
+
+## 규칙 (플레이어가 보는 것)
+- 판 8열 × 10줄(`BC=8, BR=10`, 칸 100 논리 좌표). 줄 0은 여유 줄, 새 줄은 줄 1로 들어옴, 맨 아래 줄(9)은 발사 자리.
+- 판을 누른 채 끌어 조준(점선 = 첫 튕김까지), 떼면 발사. ◀ ▶ 1.5°씩 + [발사] 버튼도 됨. 각도 `BAIM_MIN 0.14 ~ BAIM_MAX π−0.14`.
+- 가진 구슬 수만큼 연달아 날아감(속도 `BSPD 1400`, 간격 0.06초). 4초 넘게 날면 자동 ×2, ⏩ 버튼으로 ×2 보기. 처음 떨어진 자리가 다음 발사 자리.
+- 젤리 블록(둥근 사각)·범퍼(원형)는 숫자만큼 맞히면 깨짐. 별 조각을 먹으면 다음 턴 구슬 +1(바닥 줄에 닿은 별 조각은 자동 획득).
+- 특수 블록: 시계(깨면 다음 턴 안 내려옴) · 방패(아래 면은 막힘) · 물감(깨면 같은 색 구간 블록 체력 25%↓) · 폭죽(깨면 불꽃 구슬 4개가 대각선으로 튐).
+- 블록이 바닥 줄에 닿으면 별빛 방어막이 1번 전체를 한 줄 올려 줌(`ballGuard`), 두 번째엔 실패.
+- 아이템 판마다 1번씩: 관통 구슬(이번 턴 뚫고 지나가며 1씩) · 망원경(조준선 두 번 튕긴 곳까지) · 밀어 올리기(전체 한 줄 위, 맨 윗줄이 비어 있을 때).
+- 시간 제한 없음(`limit:0`). 승패는 줄·턴으로.
+
+## 모드별 동작
+**오늘의 문제·연습** — `genBall(rng, cfg)`에서 `cfg.like`(비슷한 솔로 스테이지)의 설정을 가져와 `rows`만 바꾸고 새 블록 소개(intro)는 끔. 오늘의 문제는 씨앗 `'exam:'+날짜+':ball'`(모두 같은 판), 요일 난이도(월·화 쉬움 · 수·목·금 보통 · 토·일 어려움), 배율 없음. 연습(embed)은 새 씨앗 + LEVELS 배율.
+
+| 난이도 | levels | 판 | 따라 하는 스테이지 설정 | 연습 배율 |
+|---|---|---|---|---|
+| easy 쉬움 | `{ rows:10, like:5, limit:0 }` | 블록 10줄 | 5: 구슬 3, 시계만 | 0.6 |
+| normal 보통 | `{ rows:14, like:12, limit:0 }` | 블록 14줄 | 12: 구슬 3, 시계·방패·물감 | 1.0 |
+| hard 어려움 | `{ rows:18, like:22, limit:0 }` | 블록 18줄 | 22: 구슬 4, 특수 4종 | 1.4 |
+
+**솔로** — 씨앗 `'adv:ball:'+n`, 배율 1, 기록 저장 이름 `saveKey:'hp:ballStages'`. 개념 사이클(새 규칙·변주) **없음**: 난이도는 `ballStageCfg(n)`이 n에 따라 고르게 올림.
+- `rows = min(36, 7 + floor(0.45n))` (1→7줄, 10→11, 20→16, 30→20, 50→29)
+- 줄당 블록 수 `minN = min(5, 3 + floor(n/24))` ~ `maxN = min(6, 4 + floor(n/9))`
+- 체력 배수 `hpMul = min(1.5, 0.82 + 0.015n)`, 블록 체력 = `max(1, round((줄번호+1) × hpMul × (0.7~1.3)))`
+- 2배 체력 확률 `dbl` = n≥24일 때 `min(0.12, (n−20)×0.005)`, 범퍼 확률 `bump = min(0.2, 0.05 + (n−1)×0.0052)`
+- 별 조각: 줄마다 1개 + 두 번째 확률 `star2 = max(0, 0.34 − 0.02n)`. 시작 구슬 `start` = 3(n<22) / 4(22~44) / 5(45+)
+- 특수 블록은 `BSP_AT = { clock:3, shield:7, paint:12, fire:18 }`부터 9% 확률로 섞임(첫 등장 판은 앞쪽 줄에 1개 보장 + 안내 띠).
+- 등장 판은 `CONCEPTS.ball = { fixed:[...] }`로 엔진에 알려 규칙 카드만 보여 줌:
+
+| 스테이지 | 키 | 이름 | 하는 일 |
+|---|---|---|---|
+| 3 | clock | 시계 블록 | 깨면 다음 한 턴 안 내려옴(`G.freeze`), 기준 턴 R +1 |
+| 7 | shield | 방패 블록 | 아래 면(법선 ny>0.75)으로 맞으면 피해 없음 |
+| 12 | paint | 물감 블록 | 같은 색 구간(`band`) 블록 체력 `max(1, round(hp×0.25))` 감소 |
+| 18 | fire | 폭죽 블록 | 불꽃 구슬 4개(`BSPARK_V 1100`) 대각선 발사 |
+
+- 기준 턴 `R` = 줄 수에서 시작, 시계로 멈춘 턴·줄 1이 막혀 새 줄이 늦어진 턴마다 +1.
+- 별(`ballStars`): 턴 ≤ R+3 그리고 방어막 지킴 → ★★★, 턴 ≤ R+6 → ★★, 그 외 ★.
+- 대전: 보통 판(14줄), 같은 씨앗 동시 시작. `duelPace:[170,.66]`(AI 평균 170초·성공률 66%, 시간 한도 없음), `duelStat:{ unit:'개', get:() => ({ v:G.broken, t:G.total }) }`(기회 표시 없음).
+
+## 점수
+`score()` → `calcScore()` = `round((base + time + extra) × G.L.mult)` (클리어했을 때)
+- base = 500(클리어)
+- time = 턴 보너스 `max(0, 350 − max(0, G.turn − G.R) × 30)`
+- extra = 방어막 지킴 100 + 아이템 안 씀 50
+- mult: 오늘의 문제·솔로·대전 1, 연습 0.6/1.0/1.4. 최대 1000점(배율 1).
+
+## 파일 지도
+| 파일 | 하는 일 | 주요 함수 |
+|---|---|---|
+| ball.js | 상수·판 생성·물리·화면(canvas)·소리·게임 정의 전부 | `ballStageCfg`, `ballStars`, `genBall`, `ballInit`, `ballCell`, `ballSpawn`, `ballShift`, `ballHud`, `ballStage`(캔버스·조준 입력·rAF 루프), `ballPause`, `ballItem`, `ballLift`, `ballFire`, `ballEndTurn`, `ballGuard`, `ballWin`, `ballContact`/`ballCollide`/`ballWalls`/`ballMove`, `ballPick`, `ballDamage`, `ballKill`(특수 효과), `ballUpdate`, `ballGuide`(조준선), `ballDraw`/`ballSprite`/`ballBg`/`ballOrb`, 소리 `SFX_LIB` 추가, `CONCEPTS.ball`, `NG.ball` |
+| ball.css | 양피지 상태 줄·밤하늘 판·사탕 버튼(아이템·조준) 스타일(`.sb*`) | — |
+
+G의 주요 값: `rows`(미리 만든 줄), `rowsN, next`(다음 줄 번호), `gridB`(BR×BC 칸: `{hp,max,t:'sq'|'bump',sp,band}` 또는 `{star}`), `R, turn, total, broken, hpTop, balls, gained, sx`(발사 x), `phase`('aim'|'shoot'|'wait'|'end'), `fly, sparks, shield, items{pierce,scope,lift}, itemUsed, freeze, won, speed, boost, sim`(봇 모의 실행).
+
+## 고칠 때 지킬 것
+- **판 내용은 씨앗 rng로만**(`genBall`에서 `Math.random` 금지). 물리(`ballUpdate`·충돌)는 무작위 없이 결정적으로 — 같은 날짜 = 같은 판, 대전 공정성, 봇 재현성. `Math.random`은 효과(조각·흔들림·별 반짝임)에만.
+- 깰 수 없는 판이 나오면 안 됨: 수치를 바꾸면 반드시 봇으로 클리어율·기준 턴 확인(결정 135 개편 때 기준: 1~30 강한 봇 전부, 서툰 봇 24/30 클리어).
+- `star-ball-bot.js`는 소스에서 `/* ---------- 별빛 구슬: 밤하늘` ~ `\nObject.assign(SFX_GATE, { bTink` 구간을 잘라 씀 → 이 두 표시와 `function ballStageCfg`, `genBall/ballInit/ballFire/ballUpdate/ballStars/BAIM_MIN/BAIM_MAX/ballBlocksLeft` 이름을 유지. 화면 의존 코드는 `G.sim`일 때 건너뛰게(`ballAfter`). 봇의 오늘의 문제 표(`L`)는 `levels`와 같이 고칠 것.
+- `NG.ball` 계약 필드 이름·모양 유지. `saveKey`를 바꾸면 기존 솔로 기록이 사라짐.
+- 그림·색·이름은 우리 것만(젤리 팔레트 `BPAL`, 별빛 방어막, 별 조각). 원본 블록깨기 게임의 규칙 조합·화면·수치·용어를 가져오지 않음(결정 135).
+- 모바일: 캔버스 포인터 조준 + `touchstart preventDefault`, ◀ ▶ 길게 누르기, 화면 높이에 맞춘 캔버스 크기(`size()`), 정리(`G.cleanup`)에서 resize·반복 타이머 해제.
+- `core/`를 고치면 모든 게임과 모든 embed에 영향 → 꼭 필요할 때만.
+
+## 확인 방법
+- `node tools/build.js` (고친 뒤 매번: index.html 파일 목록, `embed/ball.html` 다시 만듦) → `index.html` 열어 별빛 구슬 플레이.
+- 모듈: `embed/ball.html?mode=daily` · `?mode=practice&level=hard` · `?mode=solo&stage=18&unlock=1` · `?mode=duel`.
+- `npm test -- ball` (사이트·모듈에서 모든 모드를 한 판씩 자동 점검, `tools/test.mjs`).
+- 자동 플레이 난이도 점검: `node tools/star-ball-bot.js [index.html] [모드] [각도 수] [조준 흔들림(rad)]`
+  - 예) `node tools/star-ball-bot.js index.html stages:1:30 40` (잘하는 사람) · `node tools/star-ball-bot.js index.html stages:1:30 16 0.03` (서툰 사람)
+  - 특정 판: `stagesL:5,10,20` · 오늘의 문제: `daily:normal:6` · 설정 바꿔 보기: `CFGFILE=파일 node tools/star-ball-bot.js ...` · 실패 판 출력: `DUMP=1`
+  - 끝 줄 `wins a/b, avg over-par, shield used, stars`를 비교.
+
+## 바뀐 기록
+- 2026-10-03 게임별 폴더·게임 정의(NG.<id>)·붙여 쓰는 모듈(embed/<id>.html) 구조로 정리

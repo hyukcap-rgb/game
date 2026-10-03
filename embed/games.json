@@ -1,0 +1,105 @@
+{
+  "version": "1.1.0",
+  "games": [
+    {
+      "id": "fox",
+      "name": "여우 자리 찾기",
+      "version": "1.0.0",
+      "summary": "색깔 구역마다 여우를 한 마리씩 놓는 논리 퍼즐",
+      "duel": true,
+      "file": "fox.html",
+      "bytes": 206870,
+      "gzip": 68552
+    },
+    {
+      "id": "sudoku",
+      "name": "스도쿠",
+      "version": "1.0.0",
+      "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
+      "duel": true,
+      "file": "sudoku.html",
+      "bytes": 201183,
+      "gzip": 66342
+    },
+    {
+      "id": "ball",
+      "name": "별빛 구슬",
+      "version": "1.0.0",
+      "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
+      "duel": true,
+      "file": "ball.html",
+      "bytes": 204304,
+      "gzip": 67288
+    },
+    {
+      "id": "tower",
+      "name": "숲 지킴이",
+      "version": "1.0.0",
+      "summary": "씨앗 카드로 식물을 심어 도토리 창고를 지키는 길목 방어",
+      "duel": true,
+      "file": "tower.html",
+      "bytes": 227063,
+      "gzip": 75649
+    },
+    {
+      "id": "fleet",
+      "name": "함대 결전",
+      "version": "1.0.0",
+      "summary": "함대를 숨기고 번갈아 포격하는 해전 추리(실시간 1:1·AI)",
+      "duel": true,
+      "file": "fleet.html",
+      "bytes": 233292,
+      "gzip": 76811
+    },
+    {
+      "id": "match",
+      "name": "동물 삼총사",
+      "version": "1.0.0",
+      "summary": "같은 동물 3마리를 맞추는 퍼즐",
+      "duel": true,
+      "file": "match.html",
+      "bytes": 240168,
+      "gzip": 80052
+    },
+    {
+      "id": "nono",
+      "name": "네모 그림",
+      "version": "1.0.0",
+      "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
+      "duel": true,
+      "file": "nono.html",
+      "bytes": 222458,
+      "gzip": 73673
+    },
+    {
+      "id": "block",
+      "name": "블록 채우기",
+      "version": "1.0.0",
+      "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
+      "duel": true,
+      "file": "block.html",
+      "bytes": 213361,
+      "gzip": 71950
+    },
+    {
+      "id": "memory",
+      "name": "카드 짝 맞추기",
+      "version": "1.0.0",
+      "summary": "보여 준 카드를 기억해 짝을 찾는 집중력 게임",
+      "duel": true,
+      "file": "memory.html",
+      "bytes": 210227,
+      "gzip": 69743
+    },
+    {
+      "id": "merge",
+      "name": "숫자 합치기",
+      "version": "1.0.0",
+      "summary": "밀어서 같은 숫자를 합치는 전략 퍼즐",
+      "duel": true,
+      "file": "merge.html",
+      "bytes": 208311,
+      "gzip": 69627
+    }
+  ]
+}

@@ -43,7 +43,7 @@ function sudStage(st){
   $('#tUndo').onclick = sudUndo; $('#tErase').onclick = sudErase; $('#tHint').onclick = sudHint;
   $('#tMemo').onclick = () => { if(G.noMemo){ toast('이 판은 메모 없이 풀어요', 'err'); return; } G.memo = !G.memo; paintSud(); sfx('toggle', { on:G.memo }); };
   $('#spause').onclick = () => togglePause(true); $('#presume').onclick = () => togglePause(false);
-  const ps = () => { $('#pSnd').innerHTML = (SND.on ? FL_I.snd : FL_I.mute) + (SND.on ? '소리 켜짐' : '소리 꺼짐'); };
+  const ps = () => { $('#pSnd').innerHTML = (SND.on ? UI_ICON.snd : UI_ICON.mute) + (SND.on ? '소리 켜짐' : '소리 꺼짐'); };
   ps(); $('#pSnd').onclick = () => { sndSetOn(!SND.on); ps(); if(SND.on) sfx('toggle', { on:true }); };
   paintSud();
 }
@@ -477,3 +477,46 @@ function miss(el){
   if(3 - G.paws === cap - 1) fxVignette();
   if(G.paws <= 0 || 3 - G.paws >= cap) setTimeout(() => finish(false), 650);
 }
+
+
+/* ===================== 게임 정의(엔진이 이 게임을 부르는 창구) =====================
+   이름·색·도움말·썸네일·챕터·난이도·시작·점수·별을 엔진(core/engine.js)에 알려 준다. 규칙은 games/CLAUDE.md의 '게임 정의 계약' 참고. */
+NG.sudoku = {
+  name:'스도쿠', col:['#8DB8FF','#3B6FD8','#1B3C86'], time:'약 10분', abil:'집중력',
+  icon:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="5" height="5" rx="1.3"/><rect x="9.5" y="3" width="5" height="5" rx="1.3" opacity=".55"/><rect x="16" y="3" width="5" height="5" rx="1.3"/><rect x="3" y="9.5" width="5" height="5" rx="1.3" opacity=".55"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.3"/><rect x="16" y="9.5" width="5" height="5" rx="1.3" opacity=".55"/><rect x="3" y="16" width="5" height="5" rx="1.3"/><rect x="9.5" y="16" width="5" height="5" rx="1.3" opacity=".55"/><rect x="16" y="16" width="5" height="5" rx="1.3"/></svg>',
+  art(){   /* 밤하늘 + 양피지 카드 + 우리 색 스도쿠 판 */
+    const s = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
+    const x0 = 40, y0 = 9, c = 82 / 9; let g = '';
+    g += `<rect x="${x0}" y="${y0 + 4 * c}" width="82" height="${c}" fill="#F3EDFF"/><rect x="${x0 + 6 * c}" y="${y0}" width="${c}" height="82" fill="#F3EDFF"/><rect x="${x0 + 6 * c}" y="${y0 + 4 * c}" width="${c}" height="${c}" fill="#FFE38A"/>`;
+    for(let i=0;i<81;i++) if(s[i] !== '0') g += `<text x="${x0 + (i % 9 + .5) * c}" y="${y0 + (Math.floor(i / 9) + .5) * c + 2.8}" text-anchor="middle" font-size="7.4" font-family="Jua,sans-serif" fill="${i % 7 === 3 ? '#6C3CE0' : '#2A1650'}">${s[i]}</text>`;
+    for(let k=1;k<9;k++){ const w = k % 3 ? .6 : 1.6, col = k % 3 ? '#D9CCF0' : '#2A1650'; g += `<path d="M${x0 + k * c} ${y0}v82M${x0} ${y0 + k * c}h82" stroke="${col}" stroke-width="${w}"/>`; }
+    const gid = 'aSud' + (ART._n = (ART._n || 0) + 1);
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4B30B0"/><stop offset="1" stop-color="#1E1260"/></linearGradient></defs>
+      <rect width="160" height="100" fill="url(#${gid})"/><circle cx="16" cy="12" r="1.4" fill="#fff" opacity=".8"/><circle cx="148" cy="44" r="1.2" fill="#fff" opacity=".7"/><circle cx="24" cy="94" r="1.1" fill="#fff" opacity=".6"/>
+      <rect x="${x0 - 6}" y="${y0 - 4}" width="94" height="94" rx="9" fill="#1A0F45"/><rect x="${x0 - 6}" y="${y0 - 6}" width="94" height="94" rx="9" fill="#FBEBCB" stroke="#2A1650" stroke-width="2.2"/><rect x="${x0 - 1}" y="${y0 - 1}" width="84" height="84" rx="2" fill="#2A1650"/><rect x="${x0}" y="${y0}" width="82" height="82" fill="#fff"/>${g}
+      <g font-family="Black Han Sans, Jua, sans-serif" font-size="15" text-anchor="middle"><circle cx="18" cy="30" r="12" fill="#fff" stroke="#2A1650" stroke-width="2.5"/><text x="18" y="35.5" fill="#6C3CE0">7</text><circle cx="142" cy="70" r="12" fill="#FFD04D" stroke="#2A1650" stroke-width="2.5"/><text x="142" y="75.5" fill="#2A1650">9</text></g></svg>`;
+  },
+  help:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 3×3 칸마다 1부터 9까지 한 번씩 넣어요.'],['메모로 예비 숫자','메모를 켜면 작은 예비 숫자를 적어둘 수 있어요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요. 힌트는 3번 쓸 수 있어요.'],['솔로의 새 규칙','솔로에서는 대각선·짝수 칸·창문·부등호 같은 규칙과 변주가 5판마다 하나씩 더해져요. 판 위 표시를 확인해요.']],
+  chapters:['숫자 정원','고요한 서재','수정 동굴','시계탑','천문대'],
+  starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수·힌트 없이',
+  levels:{ easy:{ givens:38, limit:420 }, normal:{ givens:30, limit:600 }, hard:{ givens:0, limit:900 } },
+  levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return c.givens ? '숫자 ' + c.givens + '개 제공' : '숫자 최소 제공'; },
+  stage:n => ({ givens:0, limit:sudPlan(n).limit }),   /* 개념 사이클 + 기술 판정으로 만든다(sudPlan) */
+  stageDesc:n => sudDesc(n),
+  init(cfg, rng){
+    const X = G.adv ? sudGenStage(G.adv) : null, p = X ? X.r : genSudoku(rng, cfg.givens);
+    const empty = p.puz.filter(v => !v).length;
+    Object.assign(G, { sol:p.sol, grid:p.puz.slice(), given:p.puz.map(v => v>0), notes:new Array(81).fill(0), wrong:new Array(81).fill(false),
+      sel:-1, memo:false, hints:3, hintUsed:0, undo:[], earned:0, earnedCells:{}, perCell:500/empty, scombo:0, done:false });
+    if(X) sudSxInit(X);
+    G.uDone = sudUnitsDone();
+  },
+  render:st => sudStage(st),
+  progress:() => Object.keys(G.earnedCells).length / Math.max(1, Math.round(500 / G.perCell)),
+  lossText(){ const empty = Math.round(500 / G.perCell); return `빈칸 ${Object.keys(G.earnedCells).length}/${empty}개를 채웠어요.`; },
+  score(){ const sec = elapsed(); return { base:Math.round(G.earned), time:Math.max(0, 350 - Math.floor(sec * 350 / G.limit)), extra:G.paws * 50,
+    rows:['칸 채우기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '칸 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '실수 ' + (3 - G.paws) + '번'] }; },
+  stars(){ const miss = (G.pawMax || 3) - G.paws; return miss === 0 && !G.hintUsed ? 3 : miss <= 1 ? 2 : 1; },
+  duelPace:[420,.68],
+  duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), lf:G.paws }) }
+};

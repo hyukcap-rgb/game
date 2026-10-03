@@ -1,0 +1,12 @@
+{
+  "id": "merge",
+  "name": "숫자 합치기",
+  "version": "1.0.0",
+  "summary": "밀어서 같은 숫자를 합치는 전략 퍼즐",
+  "js": [
+    "merge.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 10
+}

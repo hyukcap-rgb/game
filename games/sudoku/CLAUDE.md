@@ -1,0 +1,86 @@
+# 스도쿠 — 게임 프롬프트 (games/sudoku)
+
+> 이 파일은 이 게임의 **프롬프트**예요. 개발팀(Claude)은 이 게임을 고칠 때 항상 이 파일을 먼저 읽고 따릅니다.
+> 바라는 방향·하지 말 것·고칠 점을 아래 **사용자 지시**에 적어 두면 다음 작업부터 반영돼요.
+
+## 사용자 지시
+<!-- 여기에 자유롭게 적으세요. 위에 적은 것이 가장 최근 지시예요. 개발팀은 이 목록을 지우지 않고 지킵니다. -->
+- (아직 없음)
+
+## 한 줄 소개
+9×9 판에 1~9를 가로줄·세로줄·굵은 3×3 칸마다 한 번씩 넣는 숫자 퍼즐. 솔로에선 대각선·짝수 칸·창문·부등호 변형이 더해짐(`NG.sudoku`, 능력 '집중력', 약 10분, game.json order 2).
+
+## 규칙 (플레이어가 보는 것)
+- 칸을 골라 숫자판(1~9)으로 입력. 정답이면 고정, 오답이면 빨갛게 남고 실수 1번(`miss`). 실수 3번(외줄 타기는 2번)이면 실패.
+- 메모 켜기: 작은 예비 숫자(비트마스크 `notes`), 메모는 실수 아님. 정답을 넣으면 같은 무리(peers)의 그 숫자 메모가 자동으로 지워짐.
+- 고른 칸의 같은 숫자는 분홍 강조, 같은 무리는 옅은 강조. 9개 다 쓴 숫자는 숫자판에서 사라짐.
+- 힌트 3번(고른 칸, 없으면 아무 빈칸의 정답). 지우기·되돌리기(최대 200단계)·일시정지(대전에선 멈춤 없음).
+- 줄·칸(솔로는 대각선·창문도) 완성 시 물결 효과, 다 채우면 `sudWin` → `finish(true)`.
+
+## 모드별 동작
+**오늘의 문제·연습** — 기본 규칙만, 생성기 `genSudoku(rng, givens)`(완성 판을 줄·칸 섞기 + 숫자 바꾸기로 만들고, 답이 하나로 남는 동안 칸을 파냄; `givens` 개수까지만). 오늘의 문제는 씨앗 `'exam:'+날짜+':sudoku'`(모두 같은 문제), 요일 난이도(월·화 쉬움 · 수·목·금 보통 · 토·일 어려움), 배율 없음. 연습(embed)은 새 씨앗 + LEVELS 배율.
+
+| 난이도 | levels | 판 설명 | 시간 한도(limit, 초) | 연습 배율 |
+|---|---|---|---|---|
+| easy 쉬움 | `{ givens:38, limit:420 }` | 숫자 38개 제공 | 420 | 0.6 |
+| normal 보통 | `{ givens:30, limit:600 }` | 숫자 30개 제공 | 600 | 1.0 |
+| hard 어려움 | `{ givens:0, limit:900 }` | 숫자 최소 제공(답이 하나인 한 끝까지 파냄) | 900 | 1.4 |
+
+**솔로** — `stage(n)` = `{ givens:0, limit:sudPlan(n).limit }`, 실제 판은 `sudGenStage(n)` = `SX.gen(sudPlan(n), mulberry(seedFrom('adv:sudoku:'+n)))`. 배율 1. 기술 판정기 `SX.rate`가 사람 기술만으로(찍기 없이) 끝까지 풀리는지 보며 칸을 파냄 → 풀리면 답 하나.
+- 기술 단계: 1 네이키드 싱글 · 2 히든 싱글 · 3 잠긴 후보 · 4 페어 · 5 트리플·X-윙 (`SX_TECH` 설명: 기본 채우기 / 숨은 자리 찾기 / 후보 묶기 / 후보 묶기·짝 찾기 / 고급 기술).
+- `sudPlan(n)`: 허용 기술 `maxT` = k별 {1:1, 2:2, 3:2, 4:2, 5:4, 6:1, 7:2, 8:2, 9:1, 10:5}. 꼭 필요한 기술 `minT` = k5 → 3(챕터 3+ 4), k10 → 5(챕터 1이나 메모 없이면 4), k3·4·7·8 → 2(1-3 제외), 나머지 0.
+- 최소 숫자 수(바닥) `floor`: 챕터 기준 F = [36,33,31,29,27][c](리믹스 −1) + k별 {1:8, 2:4, 3:2, 4:0, 6:6, 7:3, 8:1, 9:8}; 챕터 1의 k1~3은 46/42/39; k5·k10은 15(규칙 없으면 17). 규칙마다 바닥 감소(대각선·창문 2, 짝수 칸 3, 부등호 5).
+- 짝수 칸 수 `ne` 16/13/9, 부등호 수 `ni` 26/20/13(쉬움/보통/어려움). 시간 한도 = {T1 420, T2 600, T4 900, T5 1200} + 규칙 수×60, 번개면 ×0.6.
+- 생성은 시도 횟수(`tries`)·판정 호출 수(`budget`)로 멈춤(시간으로 멈추지 않음) → 어느 폰에서나 같은 문제. 결과는 `hp:sxc`에 최근 6개 캐시(지문 `sudFp`, 버전 `SX_V`), 다음 스테이지는 Web Worker로 미리 만듦(`sudPrefetch`).
+
+개념 사이클 `CONCEPTS.sudoku` (k1 새 규칙 소개, k4·k10 이전 규칙과 섞음, k6 변주 소개, k6·7·8·10 변주 켜짐, 51부터 리믹스):
+
+| 스테이지 | 키 | 이름 | 하는 일 |
+|---|---|---|---|
+| 11 | diag | 대각선 | 두 대각선도 1~9 한 번씩(추가 구역, 파란 칸) |
+| 21 | parity | 짝수 칸 | 회색 동그라미 칸은 짝수만(`even`) |
+| 31 | window | 창문 | (1,1)(1,5)(5,1)(5,5)에서 시작하는 3×3 창문 4개도 1~9(초록 테두리) |
+| 41 | ineq | 부등호 | 이웃 두 칸 크기 비교(`ineq` = [큰 칸, 작은 칸], 뾰족한 쪽이 작음) |
+| 6 | flash | 번개 | 시간 한도 ×0.6 |
+| 16 | bare | 맨손 | 힌트 0개 |
+| 26 | tight | 외줄 타기 | 실수 2번째에 끝(`missCap=2`) |
+| 36 | nosame | 강조 없이 | 같은 숫자 분홍 강조 끔(`noSame`) |
+| 46 | nomemo | 메모 없이 | 메모 못 씀(`noMemo`) |
+
+- 별(`stars()`, 솔로): 실수 0·힌트 0 → ★★★, 실수 1 이하 → ★★, 그 외 ★.
+- 대전: 보통 판(숫자 30개, 600초), 같은 씨앗 동시 시작. `duelPace:[420,.68]`(AI 평균 420초·성공률 68%), `duelStat:{ unit:'칸', lfMax:3, get:() => ({ v:채운 칸 수, t:빈칸 수, lf:G.paws }) }`.
+
+## 점수
+`score()` → `calcScore()` = `round((base + time + extra) × G.L.mult)`
+- base = `G.earned` = 직접 맞힌 칸마다 `perCell = 500 / 빈칸 수`(힌트 칸 0점, 같은 칸 두 번 안 줌 — `earnedCells`)
+- time = `max(0, 350 − floor(경과초 × 350 / G.limit))`
+- extra = `G.paws × 50`(남은 기회; 실수할 때마다 −50)
+- mult: 오늘의 문제·솔로·대전 1, 연습 0.6/1.0/1.4.
+
+## 파일 지도
+| 파일 | 하는 일 | 주요 함수 |
+|---|---|---|
+| sudoku-maker.js | 오늘의 문제·대전용 기본 생성기 | `countSud`(답 세기), `genSudoku(rng, minGivens)` |
+| sudoku.js | 화면·조작·솔로 변형 엔진·게임 정의. 구간 표시 `SX-CORE` / `SX-PLAN` / `SX-CONCEPTS` | `sudStage`(판·숫자판·도구), `SX_MAKE`(model·fill·rate·dig·gen·count), `sudPlan`, `CONCEPTS.sudoku`, `sudGenStage`/`sudCache`/`sudPrefetch`, `sudSxInit`/`sudSxOverlay`/`sudSxChips`, `paintSud`, `sudInput`, `placeCorrect`, `sudHint`, `sudUndo`, `sudErase`, `miss`, `sudCelebrate`, `sudWin`, `togglePause`, `NG.sudoku` |
+| sudoku.css | 판·칸·숫자판·메모·변형 표시(대각선 `dg`, 창문 `wn`, 짝수 `ev`, 부등호 `iq`) 스타일 | — |
+
+G의 주요 값: `sol, grid, given, notes, wrong, sel, memo, hints, hintUsed, undo, earned, earnedCells, perCell, done, uDone`, 솔로는 `sx{P, rules, tw, ineq, even, xu, cls}`, `sxP`(81×81 무리 표), `missCap, noMemo, noSame`.
+
+## 고칠 때 지킬 것
+- **답은 언제나 하나.** 기본은 `countSud(...,2)===1`일 때만 파냄, 솔로는 `rate(...).ok`(기술만으로 끝까지 풀림)일 때만 파냄. 입력 판정이 `G.sol`과 비교하므로 답이 둘이면 맞는 수가 실수 처리됨.
+- **문제 내용은 씨앗 rng로만**(`Math.random` 금지 — 힌트 칸 고르기 같은 실행 중 선택만 예외). 같은 날짜 씨앗 = 전 국민 같은 문제.
+- 솔로 생성은 시간 대신 횟수로 멈춰야 기기마다 같은 판. `SX_MAKE`는 Worker에서 문자열로 다시 만들어지므로 바깥 함수(`shuffle` 인자 말고)를 쓰면 안 됨. 생성 방식을 바꾸면 `SX_V`를 올려 옛 캐시를 버림.
+- 오늘의 문제·대전에는 변형 규칙 금지(솔로 `G.adv`일 때만).
+- `NG.sudoku` 계약 필드 이름·모양 유지. `isPeer`·`boxOf`·`locked`·`togglePause`·`miss`는 전역 이름이라 다른 게임과 겹치지 않게 조심.
+- 그림·색·용어는 우리 것만. 특정 스도쿠 앱의 화면 배치·용어·수치를 따르지 않음(결정 135). 변형은 장르 공통(대각선/홀짝/창문/부등호)만.
+- 모바일: 숫자판 버튼 크기·탭 반응 유지, 색만으로 구분하지 않게(aria-label).
+- `core/`를 고치면 모든 게임과 모든 embed에 영향 → 꼭 필요할 때만.
+
+## 확인 방법
+- `node tools/build.js` (고친 뒤 매번: index.html 파일 목록, `embed/sudoku.html` 다시 만듦) → `index.html` 열어 스도쿠 플레이.
+- 모듈: `embed/sudoku.html?mode=daily` · `?mode=practice&level=hard` · `?mode=solo&stage=41&unlock=1` · `?mode=duel`.
+- `npm test -- sudoku` (사이트·모듈에서 모든 모드를 한 판씩 자동 점검, `tools/test.mjs`).
+- 전용 점검 도구는 아직 없음. 솔로 판은 브라우저 콘솔에서 `SX.gen(sudPlan(n), mulberry(seedFrom('adv:sudoku:'+n)))` 결과의 `max`(쓴 최고 기술)·`gv`(숫자 수)와 `SX.count(puz, SX.model(rules, even, ineq), 2) === 1`로 확인.
+
+## 바뀐 기록
+- 2026-10-03 게임별 폴더·게임 정의(NG.<id>)·붙여 쓰는 모듈(embed/<id>.html) 구조로 정리

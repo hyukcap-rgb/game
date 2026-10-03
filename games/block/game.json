@@ -1,0 +1,12 @@
+{
+  "id": "block",
+  "name": "블록 채우기",
+  "version": "1.0.0",
+  "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
+  "js": [
+    "block.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 8
+}

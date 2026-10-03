@@ -1,0 +1,14 @@
+{
+  "name": "haru-puzzle",
+  "version": "1.1.0",
+  "private": true,
+  "description": "하루퍼즐 리그 — 게임별 모듈(embed)과 사이트",
+  "scripts": {
+    "build": "node tools/build.js",
+    "test": "node tools/test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "playwright": "1.56.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "match",
+  "name": "동물 삼총사",
+  "version": "1.0.0",
+  "summary": "같은 동물 3마리를 맞추는 퍼즐",
+  "js": [
+    "match.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 6
+}

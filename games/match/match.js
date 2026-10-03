@@ -1297,3 +1297,7 @@ if(NG.match) NG.match.concepts = { fixed:[
   { at:26, key:'box2', name:'2겹 상자', desc:'두 번 깨야 사라지는 상자예요.' },
   { at:31, key:'ice2', name:'두꺼운 얼음', desc:'두 번 녹여야 하는 얼음이에요.' },
   { at:46, key:'box3', name:'3겹 상자', desc:'세 번 깨야 하는 가장 단단한 상자예요.' }] };
+
+
+/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+Object.assign(NG.match, { duelPace:[120,.62], duelStat:{ unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) }, duelHow:'20번 움직여 누가 더 높은 점수?' });

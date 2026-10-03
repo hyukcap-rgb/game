@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>하루퍼즐 게임 모듈</title>
+<meta name="description" content="하루퍼즐 게임을 다른 사이트·앱에 붙이는 모듈 미리 보기와 코드 만들기">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root{--bg:#F4F1FA; --card:#FFFFFF; --ink:#241A3A; --sub:#6E6485; --line:#E2DCEE; --pri:#6C3CE0; --pri2:#F0368A; --code:#1C1250}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 "Noto Sans KR",system-ui,sans-serif}
+.wrap{max-width:1080px; margin:0 auto; padding:24px 16px 60px}
+h1{font-family:Jua,sans-serif; font-weight:400; font-size:30px; margin:0}
+.lead{color:var(--sub); margin:4px 0 20px}
+.grid{display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:20px; align-items:start}
+@media (max-width:860px){ .grid{grid-template-columns:1fr} }
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px}
+.card h2{font-family:Jua,sans-serif; font-weight:400; font-size:19px; margin:0 0 10px}
+.games{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px}
+.games button{text-align:left; padding:10px 12px; border-radius:12px; border:2px solid var(--line); background:#fff; font:inherit; cursor:pointer; min-height:44px}
+.games button b{display:block; font-family:Jua,sans-serif; font-weight:400; font-size:16px}
+.games button small{color:var(--sub); font-size:12px}
+.games button[aria-pressed="true"]{border-color:var(--pri); background:#F1EBFF}
+.row{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin:12px 0}
+.row > span{min-width:72px; font-weight:700; color:var(--sub); font-size:13px}
+label{display:inline-flex; align-items:center; gap:6px; min-height:36px; cursor:pointer}
+select, input[type=text]{font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; min-height:38px}
+pre{margin:0; background:var(--code); color:#F3EEFF; padding:14px; border-radius:12px; overflow:auto; font:13px/1.55 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-all}
+.copy{margin-top:8px; padding:9px 14px; border-radius:10px; border:0; background:var(--pri); color:#fff; font:inherit; font-weight:700; cursor:pointer; min-height:40px}
+.tabs{display:flex; gap:6px; margin-bottom:8px}
+.tabs button{padding:7px 12px; border-radius:10px; border:1px solid var(--line); background:#fff; font:inherit; cursor:pointer; min-height:36px}
+.tabs button[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
+#log{height:180px; overflow:auto; font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; background:#FBFAFE; border:1px solid var(--line); border-radius:10px; padding:8px; margin:0}
+#log div{border-bottom:1px dashed var(--line); padding:2px 0}
+.stage{position:sticky; top:12px}
+.note{color:var(--sub); font-size:13px}
+a{color:var(--pri)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>하루퍼즐 게임 모듈</h1>
+  <p class="lead">게임을 골라 미리 해 보고, 아래 코드를 복사해 다른 사이트·앱에 붙이세요. 자세한 설명은 <a href="https://github.com/hyukcap-rgb/game/blob/main/embed/README.md">embed/README.md</a>.</p>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>1. 게임</h2>
+        <div class="games" id="games"></div>
+        <div class="row"><span>처음 화면</span>
+          <select id="mode"><option value="menu">첫 화면(모드 고르기)</option><option value="daily">오늘의 문제</option><option value="solo">솔로</option><option value="practice">연습</option><option value="duel">대전</option></select></div>
+        <div class="row" id="modes"><span>보일 모드</span></div>
+        <div class="row"><span>높이</span><select id="height"><option>720px</option><option>640px</option><option>800px</option><option value="auto">내용에 맞춤</option></select>
+          <label><input type="checkbox" id="sound" checked> 소리</label><label><input type="checkbox" id="close"> 나가기 버튼(앱)</label></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>2. 붙이는 코드</h2>
+        <div class="tabs" id="tabs"><button data-k="tag" aria-pressed="true">웹(두 줄)</button><button data-k="js" aria-pressed="false">웹(점수 받기)</button><button data-k="iframe" aria-pressed="false">iframe</button><button data-k="app" aria-pressed="false">앱 주소</button></div>
+        <pre id="code"></pre>
+        <button class="copy" id="copy">코드 복사</button>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>3. 들어온 이벤트</h2>
+        <p class="note">미리 보기에서 한 판 하면 모듈이 보내는 이벤트가 여기에 찍혀요.</p>
+        <div id="log"></div>
+      </div>
+    </div>
+    <div class="stage card"><h2>미리 보기</h2><div id="preview"></div></div>
+  </div>
+</div>
+<script src="haru-embed.js"></script>
+<script>
+const MODES = { daily:'오늘의 문제', solo:'솔로', practice:'연습', duel:'대전' };
+const S = { game:'ball', tab:'tag', list:[] };
+const $ = s => document.querySelector(s);
+const pageUrl = () => location.href.replace(/[^\/]*([?#].*)?$/, '');
+function opts(){
+  const modes = [...document.querySelectorAll('#modes input:checked')].map(x => x.value);
+  return { game:S.game, mode:$('#mode').value, modes:modes.length === 4 ? null : modes, height:$('#height').value, sound:$('#sound').checked, close:$('#close').checked };
+}
+function code(o){
+  const base = pageUrl();
+  const attrs = [`data-haru-game="${o.game}"`, o.mode !== 'menu' ? `data-mode="${o.mode}"` : '', o.modes ? `data-modes="${o.modes.join(',')}"` : '', o.height !== '720px' ? `data-height="${o.height}"` : '', !o.sound ? 'data-sound="0"' : '', o.close ? 'data-close="1"' : ''].filter(Boolean).join(' ');
+  const q = new URLSearchParams({ mode:o.mode }); if(o.modes) q.set('modes', o.modes.join(',')); if(!o.sound) q.set('sound', '0'); if(o.close) q.set('close', '1');
+  if(S.tab === 'tag') return `<div ${attrs}></div>\n<script src="${base}haru-embed.js" defer><\/script>`;
+  if(S.tab === 'iframe') return `<iframe src="${base}${o.game}.html?${q}"\n  style="width:100%;max-width:480px;height:${o.height === 'auto' ? '720px' : o.height};border:0;border-radius:18px"\n  allow="autoplay; vibrate"><\/iframe>`;
+  if(S.tab === 'app') return `${base}${o.game}.html?${q}&user=회원번호\n\n// 결과 받기: Android/Flutter 'HaruPuzzle', iOS 'haruPuzzle', React Native onMessage\n// 조종: HaruPuzzleEmbed.start('daily') · menu() · sound(false)`;
+  return `<div id="haru"></div>\n<script src="${base}haru-embed.js"><\/script>\n<script>\n  HaruPuzzle.mount('#haru', {\n    game: '${o.game}', mode: '${o.mode}',${o.modes ? `\n    modes: ${JSON.stringify(o.modes)},` : ''}\n    height: '${o.height}', user: '회원번호',\n    onFinish(e){ /* e.mode, e.win, e.score, e.stars, e.result */ },\n    onEvent(e){ if(e.type === 'progress'){ /* e.solo 저장 */ } }\n  });\n<\/script>`;
+}
+function log(e){
+  if(e.type === 'resize') return;
+  const d = document.createElement('div'), t = new Date().toTimeString().slice(0, 8);
+  const { source, game, ver, type, ...rest } = e;
+  d.textContent = `${t} ${game} ${type} ${Object.keys(rest).length ? JSON.stringify(rest) : ''}`;
+  $('#log').prepend(d);
+}
+function draw(){
+  document.querySelectorAll('#games button').forEach(b => b.setAttribute('aria-pressed', b.dataset.g === S.game));
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === S.tab));
+  const o = opts();
+  $('#code').textContent = code(o);
+  HaruPuzzle.list().forEach(x => x.destroy());
+  HaruPuzzle.mount('#preview', Object.assign({}, o, { ns:'demo', onEvent:log }));
+}
+for(const k in MODES) $('#modes').insertAdjacentHTML('beforeend', `<label><input type="checkbox" value="${k}" checked> ${MODES[k]}</label>`);
+['#mode', '#height', '#sound', '#close'].forEach(s => $(s).onchange = draw);
+$('#modes').onchange = draw;
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.k; document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.k === S.tab)); $('#code').textContent = code(opts()); });
+$('#copy').onclick = () => { navigator.clipboard.writeText($('#code').textContent).then(() => { $('#copy').textContent = '복사했어요'; setTimeout(() => $('#copy').textContent = '코드 복사', 1500); }); };
+fetch('games.json').then(r => r.json()).then(j => {
+  $('#games').innerHTML = j.games.map(g => `<button data-g="${g.id}"><b>${g.name}</b><small>${g.summary}</small></button>`).join('');
+  document.querySelectorAll('#games button').forEach(b => b.onclick = () => { S.game = b.dataset.g; draw(); });
+  draw();
+});
+</script>
+</body>
+</html>

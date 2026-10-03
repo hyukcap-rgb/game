@@ -3,7 +3,7 @@
    - 스테이지 1~70 판을 게임과 같은 씨앗으로 만들어: 예외 없음, 생성 시간, 답 하나, (숫자 규칙) 숫자 없이는 답 여러 개 확인
    - 사람처럼 풀어 본 난이도 점수(fxxRate)를 스테이지마다 출력(여러 씨앗 평균) → 톱니 모양(k5↑, k6·k9↓, k10 최고) 확인
    - 실제 화면: 솔로 판 시작·풀기·틀리기, 오늘의 문제(기본 판) 그대로인지 */
-import { chromium } from '/home/claude/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ const port = 8700 + Math.floor(Math.random() * 800);
 const srv = spawn('python3', ['-m', 'http.server', String(port)], { cwd:root, stdio:'ignore' });
 await new Promise(r => setTimeout(r, 700));
 let fail = 0;
-const browser = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath:process.env.PW_CHROMIUM } : {});
 try {
   const page = await browser.newPage({ viewport:{ width:390, height:844 }, deviceScaleFactor:2 });
   const errs = [];

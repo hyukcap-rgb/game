@@ -1,0 +1,29 @@
+# 게임·엔진을 고쳐 main에 올리면: 모듈(embed/<게임>.html)과 사이트 목록을 다시 만들고, 진짜 브라우저로 모든 게임을 점검한다.
+# 빌드 결과가 저장소와 다르면(빌드를 깜빡했으면) 자동으로 커밋해 GitHub Pages에 반영한다.
+name: 빌드·점검
+on:
+  push:
+    branches: [main]
+    paths: ['core/**', 'games/**', 'portal/**', 'embed/shell.*', 'embed/frame.html', 'embed/haru-embed.js', 'tools/build.js', 'tools/test.mjs', 'index.html', 'package.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: node tools/build.js
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - name: 빌드 결과 올리기(바뀐 경우만)
+        run: |
+          if [ -n "$(git status --porcelain embed index.html)" ]; then
+            git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+            git add embed index.html
+            git commit -m "모듈 다시 빌드 (자동)"
+            git push
+          fi

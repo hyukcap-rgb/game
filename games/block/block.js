@@ -843,3 +843,7 @@ body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
       s.tray = [mkPiece(6, 0, 1), mkPiece(4, 0, 2), mkPiece(4, 1, 3)]; s.dirty = true; if(s.slots) paintTray(false); lose(); return this._state(); }
   };
 })();
+
+
+/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+Object.assign(NG.block, { duelPace:[200,.66], duelStat:{ unit:'줄',             get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target }) } });

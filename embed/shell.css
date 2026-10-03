@@ -1,0 +1,27 @@
+/* 붙여 쓰는 모듈 첫 화면(게임 이름·모드 버튼). 게임 화면·결과 창은 사이트와 같은 스타일(core/*.css)을 쓴다 */
+html, body{min-height:100%}
+#menu{display:flex; flex-direction:column; gap:12px; padding-top:6px}
+#menu[hidden]{display:none}
+.em-card{display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:center; padding:8px}
+.em-card .g-art{margin:0; aspect-ratio:16/10}
+.em-nm b{display:block; font-family:var(--disp); font-weight:400; font-size:22px; line-height:1.2; color:var(--ink)}
+.em-nm small{display:block; margin-top:3px; font-size:13px; font-weight:700; color:var(--sub)}
+.em-list{display:flex; flex-direction:column; gap:10px}
+.em-go{width:100%; display:grid; grid-template-columns:44px 1fr 22px; gap:10px; align-items:center; padding:10px 12px; border-radius:18px; text-align:left; color:#fff;
+  --c1:#FF8AC0; --c2:#F0368A; --c3:#8E0F4F; background:linear-gradient(180deg,var(--c1),var(--c2)); border:2.5px solid var(--outline2);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.45), 0 4px 0 #0E0730; transition:transform .08s}
+.em-go:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.45), 0 1px 0 #0E0730}
+.em-go.solo{--c1:#8BF06A; --c2:#23A548; --c3:#0F5A23}
+.em-go.practice{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+.em-go.duel{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96}
+.em-go .em-i{width:44px; height:44px; border-radius:14px; display:grid; place-items:center; background:rgba(255,255,255,.22)}
+.em-go .em-i .ico{width:26px; height:26px}
+.em-go .em-t{min-width:0}
+.em-go b{display:block; font-family:var(--disp); font-weight:400; font-size:19px; line-height:1.2; text-shadow:0 2px 0 var(--c3)}
+.em-go small{display:block; margin-top:2px; font-size:12.5px; font-weight:700; color:rgba(255,255,255,.92); line-height:1.35}
+.em-go > .ico{width:22px; height:22px}
+.em-map{align-self:flex-end; margin:-4px 4px 0 0; display:inline-flex; align-items:center; gap:4px; height:34px; padding:0 12px; border-radius:12px; font-family:var(--disp); font-size:14px; color:#fff; background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.25)}
+.em-map .ico{width:16px; height:16px}
+.em-foot{display:flex; align-items:center; justify-content:center; gap:10px; margin-top:4px; color:#CFC5FF}
+.em-foot > .ico{width:18px; height:18px}
+.em-foot button{height:40px; padding:0 14px; border-radius:12px; font-family:var(--disp); font-size:15px; color:#fff; background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.2)}

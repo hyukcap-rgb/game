@@ -1,4 +1,21 @@
 /* 여우 자리 찾기: 화면·조작·솔로 난이도 */
+/* 구역 색 11가지(우리 팔레트): 파스텔이지만 또렷하게. 앞에서부터 쓰므로 작은 판일수록 서로 멀리 떨어진 색만 쓴다
+   (색각 차이가 있어도 밝기·색상이 갈리게 순서를 정함, 분홍 계열은 하나뿐) */
+const FOX_PAL = ['#FF8C9E','#FFD04D','#5ECF9C','#62AEFF','#B48BFF','#FF9E4F','#A3ADC6','#C6DC52','#D8A274','#2FA8A0','#E48AD8'];
+const FX_X = c => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/></svg>`;
+/* 틀린 이유: 이미 놓은 여우와 부딪히면 그 여우를 짚어줌 */
+function foxWhy(i){
+  const N = G.N, r = Math.floor(i/N), c = i%N;
+  for(let f=0; f<N*N; f++){
+    if(G.cells[f] !== 2) continue;
+    const fr = Math.floor(f/N), fc = f%N;
+    if(fr === r) return { f, text:'같은 가로줄에 여우가 있어요' };
+    if(fc === c) return { f, text:'같은 세로줄에 여우가 있어요' };
+    if(G.reg[f] === G.reg[i]) return { f, text:'같은 색 구역에 여우가 있어요' };
+    if(Math.abs(fr - r) <= 1 && Math.abs(fc - c) <= 1) return { f, text:'옆 여우와 붙어 있어요' };
+  }
+  return { f:-1, text:'여기는 여우 자리가 아니에요' };
+}
 function fxStamp(){
   const bd = $('#bd'); if(!bd) return;
   const d = document.createElement('div'); d.className = 'fxstamp'; d.textContent = '완성!'; bd.appendChild(d);
@@ -374,3 +391,49 @@ function foxAutoAdv(){
   }
   return marked;
 }
+
+
+/* ===================== 게임 정의(엔진이 이 게임을 부르는 창구) =====================
+   이름·색·도움말·썸네일·챕터·난이도·시작·점수·별을 엔진(core/engine.js)에 알려 준다. 규칙은 games/CLAUDE.md의 '게임 정의 계약' 참고. */
+NG.fox = {
+  name:'여우 자리 찾기', col:['#FFB36B','#FF7A1F','#9A3D00'], time:'약 2분', abil:'논리력',
+  icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 2.5L8.5 8h7l6-5.5-.8 9.3L12 21.5l-8.7-9.7z"/><path d="M5.5 12.2l6.5 7.3 6.5-7.3-3.4.4L12 15l-3.1-2.4z" fill="#fff" opacity=".92"/><circle cx="8.8" cy="11" r="1.2" fill="#2A1A10"/><circle cx="15.2" cy="11" r="1.2" fill="#2A1A10"/><circle cx="12" cy="17.3" r="1.1" fill="#2A1A10"/></svg>',
+  art(){   /* 밤하늘 + 연보라 종이 카드 + 우리 구역 색 + 기회 별 */
+    const reg = [0,0,1,1,1,2, 0,3,3,1,2,2, 4,4,3,5,5,2, 4,6,6,6,5,5], cols = ['#FF8C9E','#FFD04D','#5ECF9C','#62AEFF','#B48BFF','#FF9E4F','#3FC2C4'];
+    const marks = { 1:'x', 4:'x', 7:'fox', 11:'x', 13:'x', 16:'x', 20:'fox', 22:'x' };
+    let g = '';
+    reg.forEach((r, k) => { const x = 29 + (k % 6) * 17.5, y = 22 + Math.floor(k / 6) * 17.5;
+      g += `<rect x="${x}" y="${y}" width="15.5" height="15.5" rx="4" fill="${cols[r]}"/>`;
+      if(marks[k] === 'x') g += `<path d="M${x + 5} ${y + 5}l5.5 5.5M${x + 10.5} ${y + 5}l-5.5 5.5" stroke="#2A1650" stroke-opacity=".55" stroke-width="2.6" stroke-linecap="round"/>`;
+      if(marks[k] === 'fox') g += FOX_FACE.replace('<svg ', `<svg x="${x - 1}" y="${y - 1}" width="17.5" height="17.5" `);
+    });
+    const star = (x, y, on) => `<path transform="translate(${x} ${y}) scale(.42)" d="M12 1.9l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.2l-6 3.2 1.2-6.7L2.3 9l6.7-1z" fill="${on ? '#FFC93C' : '#8C7BC0'}" stroke="#2A1650" stroke-width="3" stroke-linejoin="round"/>`;
+    const gid = 'aFox' + (ART._n = (ART._n || 0) + 1);   /* 숨은 탭의 같은 id를 참조하면 그라데이션이 안 보여서 그릴 때마다 새 id */
+    return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4B30B0"/><stop offset="1" stop-color="#1E1260"/></linearGradient></defs>
+      <rect width="160" height="100" fill="url(#${gid})"/><circle cx="14" cy="18" r="1.4" fill="#fff" opacity=".8"/><circle cx="148" cy="30" r="1.2" fill="#fff" opacity=".7"/><circle cx="140" cy="10" r="1.6" fill="#FFF3A8"/><circle cx="10" cy="70" r="1.1" fill="#fff" opacity=".6"/>
+      <rect x="22" y="15" width="116" height="85" rx="13" fill="#1A0F45"/><rect x="22" y="12" width="116" height="83" rx="13" fill="#E9DDFF" stroke="#2A1650" stroke-width="2.5"/>${g}
+      ${star(3, 1, 1)}${star(14, 1, 1)}${star(25, 1, 0)}
+      ${FOX_FACE.replace('<svg ', '<svg x="122" y="60" width="40" height="38" ')}</svg>`;
+  },
+  help:[['색깔당 여우 1마리','같은 색 구역마다 여우를 1마리씩, 행과 열마다도 1마리씩 놓아요. 여우끼리는 대각선으로도 붙으면 안 돼요.'],['한 번 누르면 ✕, 두 번이면 여우','빈칸을 누르면 ✕, ✕를 한 번 더 누르면 여우예요. 손가락으로 끌면 ✕를 여러 칸에 칠해요.'],['틀리면 기회 별 1개','틀린 자리는 주황 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 별 3개를 다 잃으면 끝. 힌트·자동 ✕는 가진 개수에서 한 판에 1번씩만 써요.']],
+  chapters:['여우 마을','단풍 숲','달빛 언덕','눈꽃 계곡','별빛 성'],
+  starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수·힌트 없이',
+  levels:{ easy:{ N:8, limit:180 }, normal:{ N:9, limit:300 }, hard:{ N:10, limit:480 } },
+  levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return c.N + '×' + c.N + ' 판'; },
+  stage:n => foxStageCfg(n),   /* 난이도 v2: 5판마다 새 개념 */
+  stageDesc(n){ const c = foxStageCfg(n); return c.N + '×' + c.N + ' 판' + (c.k === 2 ? ' · 여우 ' + c.N * 2 + '마리' : ''); },
+  init(cfg, rng){
+    Object.assign(G, { N:cfg.N, rng, reg:null, cells:[], placed:0, earned:0, hints:FOX_ITEM_PER_GAME, autos:FOX_ITEM_PER_GAME, hist:[], hintUsed:0, combo:0 });
+    if(G.adv) foxAdvInit();
+  },
+  render:st => foxStage(st),
+  progress:() => G.placed / G.N,
+  lossText:() => `여우 ${G.placed}/${G.total || G.N}마리까지 놓았어요.`,
+  score(){ const sec = elapsed(); return { base:Math.round(G.earned), time:Math.max(0, 350 - Math.floor(sec * 350 / G.limit)), extra:G.paws * 50,
+    rows:['여우 찾기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '마리 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '남은 기회 별 ' + G.paws + '개'] }; },
+  stars(){ const miss = (G.pawMax || 3) - G.paws; return miss === 0 && !G.hintUsed ? 3 : miss <= 1 ? 2 : 1; },
+  helpExtra:() => foxHelpExtra(),
+  bodyClass:'fxmode', noConfetti:true,
+  duelPace:[150,.72],
+  duelStat:{ unit:'마리', lfMax:3,  get:() => ({ v:G.placed || 0, t:G.N, lf:G.paws }) }
+};
