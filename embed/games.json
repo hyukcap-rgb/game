@@ -8,8 +8,8 @@
       "summary": "색깔 구역마다 여우를 한 마리씩 놓는 논리 퍼즐",
       "duel": true,
       "file": "fox.html",
-      "bytes": 225105,
-      "gzip": 74758
+      "bytes": 225797,
+      "gzip": 75048
     },
     {
       "id": "sudoku",
@@ -18,8 +18,8 @@
       "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
       "duel": true,
       "file": "sudoku.html",
-      "bytes": 219430,
-      "gzip": 72544
+      "bytes": 220122,
+      "gzip": 72828
     },
     {
       "id": "ball",
@@ -28,8 +28,8 @@
       "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
       "duel": true,
       "file": "ball.html",
-      "bytes": 222541,
-      "gzip": 73453
+      "bytes": 223233,
+      "gzip": 73720
     },
     {
       "id": "tower",
@@ -38,8 +38,8 @@
       "summary": "씨앗 카드로 식물을 심어 도토리 창고를 지키는 길목 방어",
       "duel": true,
       "file": "tower.html",
-      "bytes": 245311,
-      "gzip": 81897
+      "bytes": 246003,
+      "gzip": 82181
     },
     {
       "id": "fleet",
@@ -48,8 +48,8 @@
       "summary": "함대를 숨기고 번갈아 포격하는 해전 추리(실시간 1:1·AI)",
       "duel": true,
       "file": "fleet.html",
-      "bytes": 251848,
-      "gzip": 83115
+      "bytes": 252540,
+      "gzip": 83411
     },
     {
       "id": "match",
@@ -58,8 +58,8 @@
       "summary": "같은 동물 3마리를 맞추는 퍼즐",
       "duel": true,
       "file": "match.html",
-      "bytes": 258975,
-      "gzip": 86485
+      "bytes": 259667,
+      "gzip": 86773
     },
     {
       "id": "nono",
@@ -68,8 +68,8 @@
       "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
       "duel": true,
       "file": "nono.html",
-      "bytes": 240703,
-      "gzip": 79896
+      "bytes": 241395,
+      "gzip": 80179
     },
     {
       "id": "block",
@@ -78,8 +78,8 @@
       "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
       "duel": true,
       "file": "block.html",
-      "bytes": 232002,
-      "gzip": 78341
+      "bytes": 232694,
+      "gzip": 78621
     },
     {
       "id": "memory",
@@ -88,8 +88,8 @@
       "summary": "보여 준 카드를 기억해 짝을 찾는 집중력 게임",
       "duel": true,
       "file": "memory.html",
-      "bytes": 228749,
-      "gzip": 76054
+      "bytes": 229441,
+      "gzip": 76334
     },
     {
       "id": "merge",
@@ -98,8 +98,8 @@
       "summary": "밀어서 같은 숫자를 합치는 전략 퍼즐",
       "duel": true,
       "file": "merge.html",
-      "bytes": 226931,
-      "gzip": 75935
+      "bytes": 227623,
+      "gzip": 76208
     },
     {
       "id": "link",
@@ -108,8 +108,8 @@
       "summary": "같은 그림 타일을 두 번까지 꺾이는 길로 이어 지우는 공간지각 게임",
       "duel": true,
       "file": "link.html",
-      "bytes": 226397,
-      "gzip": 75657
+      "bytes": 227089,
+      "gzip": 75936
     }
   ]
 }
