@@ -91,4 +91,5 @@
 - 시뮬레이터(헤드리스): `node tools/memory-bot.js [판수=400] [from=1] [to=70] [--calib] [--file index.html]` — 기억 용량 제한 봇으로 스테이지별 첫 도전 클리어율. `--calib`이면 판마다 제한 시간·허용 실수를 이분 탐색하고 `MT` 추천값(A·alpha·alpha3·kTime·mjTime·twTime·tjTime)을 JSON 한 줄로 낸다.
 
 ## 바뀐 기록
+- 2026-10-03 짝을 맞히면 카드 위로 하트·반짝이가 떠오름. 움직이는 배경(꽃잎·하트)(보이기만 함 — 규칙·점수·대전 그대로)
 - 2026-10-03 게임별 폴더·게임 정의(NG.<id>)·붙여 쓰는 모듈(embed/<id>.html) 구조로 정리

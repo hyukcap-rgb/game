@@ -936,3 +936,5 @@ NG.tower = {
   duelPace:[280,.62],
   duelStat:{ unit:'무리', lfMax:10, lfIcon:() => FS_ICO.acorn.replace('<svg ', '<svg class="ico" '), get:() => ({ v:G.cleared || 0, t:G.waves.length, lf:G.lives }) }
 };
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.tower.scene = { kind:'forest', colors:['#8BD16E','#E9B44C','#F28C38','#6FB85A'], density:.9 };

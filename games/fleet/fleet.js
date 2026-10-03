@@ -682,7 +682,10 @@ function flBoom(el, big, small){
   fxRing(p.x, p.y, '#FF6A2B', p.w * (big ? 4.2 : 2.8) * k, .75, 6);
   fxBurst(p.x, p.y, ['#FFD84A', '#FF7A1A', '#FF3B30', '#FFFFFF', '#555A60'], (big ? 30 : 20) * k | 0, { speed:(big ? 360 : 260) * k, size:(big ? 6 : 4.6) * k, kinds:['star', 'dot', 'rect'], g:420, up:110 });
   fxBurst(p.x, p.y, ['#FFE9A0', '#FFB347'], (big ? 14 : 8) * k | 0, { speed:(big ? 420 : 300) * k, size:3.5 * k, kinds:['spark'], g:300, up:60, glow:true, dur:.55 });
-  fxBurst(p.x, p.y - p.h * .3, ['rgba(60,60,70,.55)', 'rgba(90,90,100,.45)'], big ? 6 : 3, { speed:40, size:(big ? 14 : 10) * k, kinds:['dot'], g:-60, up:40, drag:1, dur:1.2 });
+  /* 이펙트 v2: 피어오르며 커지는 연기 + 불빛, 격침은 화면이 따뜻하게 번쩍 */
+  fxEmit(p.x, p.y - p.h * .2, { quantity:big ? 9 : 5, speed:{ min:14, max:46 }, angle:{ min:235, max:305 }, lifespan:{ min:900, max:1500 }, kind:'smoke', tint:['#4E525C', '#6B6F7A', '#3E414A'], scale:{ start:(big ? 9 : 7) * k, end:(big ? 26 : 18) * k, ease:'cubic.out' }, alpha:{ start:.55, end:0, ease:'quad.in' }, gravityY:-30, drag:.6 });
+  fxEmit(p.x, p.y, { quantity:1, speed:0, lifespan:300, kind:'glow', tint:['#FFB347'], scale:{ start:(big ? 16 : 11) * k, end:(big ? 26 : 18) * k, ease:'expo.out' }, alpha:{ start:.9, end:0, ease:'quad.out' } });
+  if(big) fxFlash('#FF9A3C', .2, 320);
   flSound(big ? 'sink' : 'boom', panX(p.x));
 }
 function flSunkInfo(cells, kIdx){
@@ -1053,3 +1056,5 @@ NG.fleet = {
   /* 함대는 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 바로 포격전 */
   duelLaunch(){ const lv = duelLive() ? 'pvp' : 'normal'; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : 'AI 함장' } } }); }
 };
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.fleet.scene = { kind:'sea', colors:['#BFF4FF'], density:1 };

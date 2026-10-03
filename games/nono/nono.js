@@ -1026,3 +1026,5 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.nono, { duelPace:[220,.72], duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:G.found, t:G.total, lf:Math.max(0, 3 - (G.miss || 0)) }) } });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.nono.scene = { kind:'shapes', colors:['#8E6BD1','#5B8DEF','#F0368A'], density:1, alpha:.9 };

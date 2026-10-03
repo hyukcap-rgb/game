@@ -392,7 +392,9 @@ NG.merge = (() => {
     const p = cellXY(big.cell);
     if(M.lastF) M.lastF.remove();   /* 빠르게 밀어도 '+N'이 쌓이지 않게 하나만 */
     M.lastF = fxFloat(p.x, p.y - p.w * .35, '+' + fmt(res.pts), 'mgf' + (big.v >= 128 ? ' hi' : ''));
-    if(big.v >= 256){ fxShake(M.board, big.v >= 512 ? 7 : 5); sfx('mergeBig', { v:big.v }); }
+    if(big.v >= 256){ fxShake(M.board, big.v >= 512 ? 7 : 5); sfx('mergeBig', { v:big.v });
+      /* 이펙트 v2: 큰 수가 생기면 빛 알갱이가 그 칸으로 빨려 들어간 뒤 번쩍 */
+      try{ const q = cellXY(big.cell); if(q && typeof fxEmit === 'function'){ fxEmit(q.x, q.y, { quantity:18, x:{ min:-q.w * 1.6, max:q.w * 1.6 }, y:{ min:-q.w * 1.6, max:q.w * 1.6 }, speed:{ min:0, max:20 }, lifespan:{ min:420, max:560 }, kind:'glow', tint:['#FFE27A', '#FFFFFF'], scale:{ start:2.6, end:.6 }, alpha:{ start:1, end:0 }, well:{ x:q.x, y:q.y, power:big.v >= 512 ? 2.2 : 1.5 } }); if(big.v >= 512) setTimeout(() => fxFlash('#FFE9A8', .2, 280), 380); } }catch(_){} }
     if(res.merges.length >= 2) combo(res.merges.length);
   }
   function combo(n){
@@ -732,3 +734,5 @@ body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.merge, { duelPace:[240,.62], duelStat:{ unit:'', tile:true,    get:() => ({ v:G.M.best, t:G.M.target }) } });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.merge.scene = { kind:'motes', colors:['#FFD27A','#FF9AC0','#FFFFFF'], density:1 };

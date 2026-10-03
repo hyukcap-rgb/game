@@ -619,6 +619,10 @@ NG.block = (function(){
     fxFloat(br.left + cx * c, br.top + cy * c, '+' + fmt(gain), 'bkf' + (k >= 2 ? ' big' : ''));
     if(k >= 2){ const m = s.boardEl.querySelector('.bk-multi'); if(m) m.remove(); const d = document.createElement('div'); d.className = 'bk-multi m' + Math.min(k, 5); d.textContent = MULTI[Math.min(k, 5)]; s.boardEl.appendChild(d); later(() => d.remove(), 1100); }
     if(k >= 3) fxShake(s.boardEl, 7 + k); else if(k === 2) fxShake(s.boardEl, 3);
+    /* 이펙트 v2: 지워진 줄을 따라 반짝이가 훑고 지나감, 3줄 이상이면 화면이 살짝 번쩍 */
+    try{ if(typeof fxEmit === 'function'){ lines.forEach(([isRow, v], li) => { for(let j = 0; j < N; j++){ const x = isRow ? j : v, y = isRow ? v : j, d = Math.abs((isRow ? x + .5 - fcx : y + .5 - fcy)) * 34 + li * 40;
+      later(() => fxEmit(br.left + (x + .5) * c, br.top + (y + .5) * c, { quantity:2, speed:{ min:20, max:90 }, lifespan:{ min:380, max:620 }, kind:'twinkle', tint:['#FFFFFF', '#FFF3B0'], scale:{ start:4.2, end:0, ease:'quad.in' }, glow:true }), d); } });
+      if(k >= 3) later(() => fxFlash('#FFF3B0', .22, 300), 60); } }catch(_){}
     if(k >= 2){ const pc = fxCenter(s.cv); fxRing(br.left + cx * c, br.top + cy * c, '#FFE27A', pc.w * .55, .55, 10); }
     if(cmb >= 2) later(() => fxCombo(cmb), 120);
     const bar = document.getElementById('bkFill'); if(bar && bar.animate) bar.animate([{ filter:'brightness(1.8)' }, { filter:'brightness(1)' }], { duration:500 });
@@ -847,3 +851,5 @@ body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.block, { duelPace:[200,.66], duelStat:{ unit:'줄',             get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target }) } });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.block.scene = { kind:'shapes', colors:['#FFFFFF','#FFD24C','#62AEFF','#FF7A9E'], density:1.1, alpha:1.2 };

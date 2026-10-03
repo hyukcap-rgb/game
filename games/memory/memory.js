@@ -318,6 +318,8 @@ NG.memory = (() => {
       const p = fxCenter(el);
       fxRing(p.x, p.y, '#FFE27A', p.w * .9, .45, 7);
       fxBurst(p.x, p.y, [col, '#FFE27A', '#FFFFFF'], 10, { speed:230, size:4.5, kinds:['star','dot','spark'], up:110, g:460, glow:k === list.length - 1, dur:.7 });
+      /* 이펙트 v2: 짝을 맞힌 카드 위로 작은 하트·반짝이가 떠오름 */
+      try{ fxEmit(p.x, p.y - p.h * .2, { quantity:3, x:{ min:-p.w * .3, max:p.w * .3 }, speed:{ min:30, max:70 }, angle:{ min:250, max:290 }, lifespan:{ min:700, max:1000 }, kind:k % 2 ? 'twinkle' : 'heart', tint:['#FFFFFF', '#FFB3D1'], scale:{ start:4.5, end:2 }, alpha:{ start:1, end:0 }, gravityY:-30, wob:30, delay:120 }); }catch(_){}
     });
   }
   function afterMatch(){
@@ -677,3 +679,5 @@ body[data-mode="memory"]{background:
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.memory, { duelPace:[70,.74], duelStat:{ unit:'쌍',             get:() => ({ v:G.m.found, t:G.m.pairs }) } });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.memory.scene = { kind:'petals', colors:['#FFFFFF','#FFC2DA','#FFE3A3'], density:1 };

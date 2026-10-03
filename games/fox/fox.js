@@ -437,3 +437,5 @@ NG.fox = {
   duelPace:[150,.72],
   duelStat:{ unit:'마리', lfMax:3,  get:() => ({ v:G.placed || 0, t:G.N, lf:G.paws }) }
 };
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.fox.scene = { kind:'stars', colors:['#FFFFFF','#FFE3B0','#CFC5FF'], density:.8 };

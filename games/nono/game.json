@@ -1,7 +1,7 @@
 {
   "id": "nono",
   "name": "네모 그림",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
   "js": [
     "nono.js"

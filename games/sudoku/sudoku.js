@@ -520,3 +520,5 @@ NG.sudoku = {
   duelPace:[420,.68],
   duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), lf:G.paws }) }
 };
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.sudoku.scene = { kind:'stars', colors:['#FFFFFF','#BFD4FF','#CFC5FF'], density:.6, alpha:.8 };

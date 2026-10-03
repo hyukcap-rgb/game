@@ -145,9 +145,10 @@ const hi = (cls = '') => `<span class="hi ${cls}" aria-hidden="true">${HEART_G}<
 /* ===== 공용 캐릭터(디자인팀 v3): 3D 비닐 장난감 질감. 사이트 전체의 동물은 모두 이 그림을 쓴다 =====
    평면 도형을 SVG 조명 필터(확산광+반사광)로 부풀려 광택·그늘을 만든다. 외곽선 없음, 색 하나 + 실루엣.
    종류: fox octopus whale chick frog owl panda rabbit bear cat dog tiger (모두 직접 그린 오리지널)
-   HTML에는 toyImg(kind), SVG 안에는 toyImage(kind,x,y,w,h), 주소만 필요하면 toySrc(kind) */
+   HTML에는 toyImg(kind, cls, mood), SVG 안에는 toyImage(kind,x,y,w,h,mood), 주소만 필요하면 toySrc(kind, mood)
+   v4(2026-10-03): 뒤쪽 테두리빛(림 라이트) + 표정 mood: '' 기본 · 'joy' 기쁨 · 'sad' 아쉬움 · 'wow' 놀람 */
 const TOY = (() => {
-  const PUFF = (id, blur, scale, spec) => `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+  const PUFF = (id, blur, scale, spec, rim) => `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
     <feGaussianBlur in="SourceAlpha" stdDeviation="${blur}" result="h"/>
     <feDiffuseLighting in="h" surfaceScale="${scale}" diffuseConstant="1" lighting-color="#fff" result="d0"><feDistantLight azimuth="250" elevation="62"/></feDiffuseLighting>
     <feGaussianBlur in="d0" stdDeviation=".9" result="d"/>
@@ -155,39 +156,63 @@ const TOY = (() => {
     <feSpecularLighting in="h" surfaceScale="${scale}" specularConstant="${spec}" specularExponent="10" lighting-color="#fff" result="s0"><feDistantLight azimuth="240" elevation="66"/></feSpecularLighting>
     <feGaussianBlur in="s0" stdDeviation="1.4" result="s"/>
     <feComposite in="s" in2="SourceAlpha" operator="in" result="sm"/>
-    <feComposite in="sh" in2="sm" operator="arithmetic" k2="1" k3=".42" result="o"/>
-    <feComposite in="o" in2="SourceAlpha" operator="in"/>
+    <feComposite in="sh" in2="sm" operator="arithmetic" k2="1" k3=".42" result="o"/>${rim ? `
+    <feOffset in="SourceAlpha" dx="-${rim}" dy="-${rim * 1.15}" result="rf"/>
+    <feComposite in="SourceAlpha" in2="rf" operator="out" result="r0"/>
+    <feGaussianBlur in="r0" stdDeviation="${rim * .5}" result="r1"/>
+    <feFlood flood-color="#E6F2FF" flood-opacity=".5"/>
+    <feComposite in2="r1" operator="in" result="r2"/>
+    <feMerge result="o2"><feMergeNode in="o"/><feMergeNode in="r2"/></feMerge>
+    <feComposite in="o2" in2="SourceAlpha" operator="in"/>` : `
+    <feComposite in="o" in2="SourceAlpha" operator="in"/>`}
   </filter>`;
-  const DEFS = PUFF('pb', 7, 4.2, .8) + PUFF('pm', 3.6, 3.2, .7) + PUFF('ps', 1.6, 3, 1)
+  const DEFS = PUFF('pb', 7, 4.2, .8, 2.4) + PUFF('pm', 3.6, 3.2, .7, 1.4) + PUFF('ps', 1.6, 3, 1)   /* v4: 큰 몸통·중간 부분에 뒤쪽 테두리빛(림 라이트) */
     + `<radialGradient id="gl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101845" stop-opacity=".35"/><stop offset="1" stop-color="#101845" stop-opacity="0"/></radialGradient>`;
-  const EYE = (x, y, r = 5.2) => `<g filter="url(#ps)"><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.2}" fill="#231A2E"/></g><ellipse cx="${x - r * .32}" cy="${y - r * .45}" rx="${r * .38}" ry="${r * .42}" fill="#fff"/><circle cx="${x + r * .35}" cy="${y + r * .4}" r="${r * .16}" fill="#fff" opacity=".85"/>`;
+  /* v4 표정: 결과·대전 같은 순간에만 쓴다(계속 움직이지 않음). '' 기본 · joy 기쁨 · sad 아쉬움 · wow 놀람 */
+  let MOOD = '', EYEN = 0;
+  const EYE = (x, y, r = 5.2) => {
+    const n = EYEN++;
+    if(MOOD === 'joy') return `<path d="M${x - r * 1.05} ${y + r * .35}Q${x} ${y - r * 1.25} ${x + r * 1.05} ${y + r * .35}" fill="none" stroke="#231A2E" stroke-width="${(r * .62).toFixed(2)}" stroke-linecap="round"/>`;
+    if(MOOD === 'wow') return EYE0(x, y, r * 1.18);
+    if(MOOD === 'sad'){ const L = n % 2 === 0, bx = L ? 1 : -1;
+      return EYE0(x, y + r * .15, r * .92) + `<path d="M${x - r * 1.1 * bx} ${y - r * 1.55}L${x + r * .9 * bx} ${y - r * 2.05}" stroke="#231A2E" stroke-width="${(r * .38).toFixed(2)}" stroke-linecap="round" opacity=".8"/>`
+        + (L ? `<path d="M${x - r * .7} ${y + r * 1.3}q-${r * .55} ${r * 1} 0 ${r * 1.5}q${r * .55} -${r * .5} 0 -${r * 1.5}z" fill="#7FD0FF" opacity=".9"/>` : ''); }
+    return EYE0(x, y, r);
+  };
+  const MO = (x, y, w, c, def) => {   /* 입: 기본 그림(def) 또는 표정 입 */
+    if(MOOD === 'joy') return `<path d="M${x - w * 1.2} ${y - w * .25}Q${x} ${y + w * 1.9} ${x + w * 1.2} ${y - w * .25}z" fill="#5A1E2E"/><path d="M${x - w * .6} ${y + w * .75}q${w * .6} -${w * .5} ${w * 1.2} 0q-${w * .6} ${w * .55} -${w * 1.2} 0z" fill="#FF7A92"/>`;
+    if(MOOD === 'sad') return `<path d="M${x - w * .9} ${y + w * .55}Q${x} ${y - w * .45} ${x + w * .9} ${y + w * .55}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`;
+    if(MOOD === 'wow') return `<ellipse cx="${x}" cy="${y + w * .3}" rx="${w * .5}" ry="${w * .7}" fill="#5A1E2E"/>`;
+    return def;
+  };
+  const EYE0 = (x, y, r = 5.2) => `<g filter="url(#ps)"><ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 1.2}" fill="#231A2E"/></g><ellipse cx="${x - r * .32}" cy="${y - r * .45}" rx="${r * .38}" ry="${r * .42}" fill="#fff"/><circle cx="${x + r * .35}" cy="${y + r * .4}" r="${r * .16}" fill="#fff" opacity=".85"/>`;
   const CHEEK = (x, y, c) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="3.8" fill="${c}" opacity=".55"/>`;
   const GL = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="url(#gl)"/>`;
   const SH = `<ellipse cx="50" cy="92" rx="30" ry="6" fill="url(#gs)"/>`;
   const A = {
     octopus:() => SH + `<g filter="url(#pb)"><path d="M18 52C18 27 32 13 50 13S82 27 82 52c0 8 4 14 9 19-5 6-12 4-16-1-2 9-10 12-15 5-4 7-16 7-20 0-5 7-13 4-15-5-4 5-11 7-16 1 5-5 9-11 9-19z" fill="#F0364A"/></g>${GL(36, 28, 14, 8)}
       <g filter="url(#ps)"><circle cx="35" cy="27" r="4" fill="#FF8C98"/><circle cx="64" cy="24" r="3" fill="#FF8C98"/></g>
-      ${EYE(40, 47)}${EYE(60, 47)}${CHEEK(30, 57, '#FF9AA8')}${CHEEK(70, 57, '#FF9AA8')}<path d="M45 58q5 5 10 0" fill="none" stroke="#7A0F1E" stroke-width="2.6" stroke-linecap="round"/>`,
+      ${EYE(40, 47)}${EYE(60, 47)}${CHEEK(30, 57, '#FF9AA8')}${CHEEK(70, 57, '#FF9AA8')}${MO(50, 59, 5, '#7A0F1E', '<path d="M45 58q5 5 10 0" fill="none" stroke="#7A0F1E" stroke-width="2.6" stroke-linecap="round"/>')}`,
     whale:() => SH + `<g filter="url(#pm)"><path d="M50 30c0-8-1-13-1-16" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M49 18c-4-8-12-9-16-4M51 18c4-8 12-9 16-4" stroke="#6CC3FF" stroke-width="5" stroke-linecap="round" fill="none"/></g>
       <g filter="url(#pb)"><path d="M12 60c0-21 16-32 38-32s38 11 38 30c0 18-15 28-38 28S12 79 12 60z" fill="#1F74E0"/></g>${GL(34, 40, 15, 7)}
       <g filter="url(#pm)"><path d="M24 74c9 6 43 6 52 0-5 8-14 12-26 12s-21-4-26-12z" fill="#8FC8FF"/></g>
-      ${EYE(37, 54)}${EYE(63, 54)}${CHEEK(27, 63, '#7FB6FF')}${CHEEK(73, 63, '#7FB6FF')}<path d="M45 62q5 4.5 10 0" fill="none" stroke="#0B3F86" stroke-width="2.6" stroke-linecap="round"/>`,
+      ${EYE(37, 54)}${EYE(63, 54)}${CHEEK(27, 63, '#7FB6FF')}${CHEEK(73, 63, '#7FB6FF')}${MO(50, 63, 5, '#0B3F86', '<path d="M45 62q5 4.5 10 0" fill="none" stroke="#0B3F86" stroke-width="2.6" stroke-linecap="round"/>')}`,
     chick:() => SH + `<g filter="url(#pm)"><path d="M45 26c-4-9 3-15 7-8 4-8 12-3 6 8z" fill="#FFB300"/><path d="M17 60c-9 1-10 13 1 13zM83 60c9 1 10 13-1 13z" fill="#FFB300"/></g>
       <g filter="url(#pb)"><circle cx="50" cy="56" r="33" fill="#FFC40D"/></g>${GL(38, 36, 14, 8)}
       ${EYE(39, 50)}${EYE(61, 50)}${CHEEK(29, 61, '#FF9C5A')}${CHEEK(71, 61, '#FF9C5A')}<g filter="url(#ps)"><path d="M42 58l8-6 8 6-8 7z" fill="#FF6A1A"/></g>`,
     frog:() => SH + `<g filter="url(#pb)"><circle cx="30" cy="35" r="14" fill="#27AE3B"/><circle cx="70" cy="35" r="14" fill="#27AE3B"/><path d="M11 63c0-18 17-28 39-28s39 10 39 28c0 16-17 25-39 25S11 79 11 63z" fill="#27AE3B"/></g>${GL(26, 27, 7, 4)}${GL(66, 27, 7, 4)}${GL(40, 46, 14, 5, -10)}
       <g filter="url(#pm)"><ellipse cx="50" cy="75" rx="22" ry="9" fill="#C6F09A"/></g>
-      ${EYE(30, 35, 5.6)}${EYE(70, 35, 5.6)}${CHEEK(24, 60, '#8BE06A')}${CHEEK(76, 60, '#8BE06A')}<path d="M36 59q14 10 28 0" fill="none" stroke="#0E5A17" stroke-width="2.8" stroke-linecap="round"/>`,
+      ${EYE(30, 35, 5.6)}${EYE(70, 35, 5.6)}${CHEEK(24, 60, '#8BE06A')}${CHEEK(76, 60, '#8BE06A')}${MO(50, 61, 9, '#0E5A17', '<path d="M36 59q14 10 28 0" fill="none" stroke="#0E5A17" stroke-width="2.8" stroke-linecap="round"/>')}`,
     owl:() => SH + `<g filter="url(#pb)"><path d="M24 34L18 10l21 13zM76 34l6-24-21 13z" fill="#8A3FEA"/><path d="M50 17c22 0 35 16 35 38 0 21-15 33-35 33S15 76 15 55c0-22 13-38 35-38z" fill="#8A3FEA"/></g>${GL(36, 28, 13, 7)}
       <g filter="url(#pm)"><circle cx="37" cy="48" r="12.5" fill="#EBDDFF"/><circle cx="63" cy="48" r="12.5" fill="#EBDDFF"/><ellipse cx="50" cy="75" rx="17" ry="10" fill="#B58CFF"/></g>
       ${EYE(37, 48, 5.8)}${EYE(63, 48, 5.8)}<g filter="url(#ps)"><path d="M45 57h10l-5 7z" fill="#FFA000"/></g>`,
     fox:() => SH + `<g filter="url(#pb)"><path d="M22 46L15 9l29 20zM78 46l7-37-29 20z" fill="#FF7A12"/><path d="M12 54c0-19 17-28 38-28s38 9 38 28c0 19-17 32-38 33-21-1-38-14-38-33z" fill="#FF7A12"/></g>${GL(36, 36, 14, 7)}
       <g filter="url(#pm)"><path d="M23 33l-3-15 13 10zM77 33l3-15-13 10z" fill="#FFD2A6"/><path d="M25 64c8-7 18-6 25 1 7-7 17-8 25-1-4 14-14 21-25 21s-21-7-25-21z" fill="#FFF3E4"/></g>
-      ${EYE(37, 52)}${EYE(63, 52)}${CHEEK(27, 62, '#FF7E6B')}${CHEEK(73, 62, '#FF7E6B')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="4.2" ry="3.2" fill="#231A2E"/></g><path d="M50 68v2.5M46 71.5q4 3 8 0" fill="none" stroke="#5A3A2A" stroke-width="2" stroke-linecap="round"/>`,
+      ${EYE(37, 52)}${EYE(63, 52)}${CHEEK(27, 62, '#FF7E6B')}${CHEEK(73, 62, '#FF7E6B')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="4.2" ry="3.2" fill="#231A2E"/></g>${MO(50, 72, 4.5, '#5A3A2A', '<path d="M50 68v2.5M46 71.5q4 3 8 0" fill="none" stroke="#5A3A2A" stroke-width="2" stroke-linecap="round"/>')}`,
     panda:() => SH + `<g filter="url(#pb)"><circle cx="25" cy="30" r="12" fill="#2C2838"/><circle cx="75" cy="30" r="12" fill="#2C2838"/></g>
       <g filter="url(#pb)"><ellipse cx="50" cy="57" rx="37" ry="32" fill="#F6F7FB"/></g>${GL(36, 38, 14, 7)}
       <g filter="url(#pm)"><ellipse cx="36" cy="53" rx="9" ry="11" transform="rotate(-28 36 53)" fill="#2C2838"/><ellipse cx="64" cy="53" rx="9" ry="11" transform="rotate(28 64 53)" fill="#2C2838"/></g>
-      <circle cx="37" cy="52" r="3.4" fill="#fff"/><circle cx="63" cy="52" r="3.4" fill="#fff"/>${CHEEK(25, 67, '#FFB0C0')}${CHEEK(75, 67, '#FFB0C0')}<g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.2" ry="3.2" fill="#2C2838"/></g>`
+      <circle cx="37" cy="52" r="3.4" fill="#fff"/><circle cx="63" cy="52" r="3.4" fill="#fff"/>${CHEEK(25, 67, '#FFB0C0')}${CHEEK(75, 67, '#FFB0C0')}<g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.2" ry="3.2" fill="#2C2838"/></g>${MO(50, 71, 4.5, '#2C2838', '')}`
   };
   
   Object.assign(A, {
@@ -195,36 +220,42 @@ const TOY = (() => {
       <g filter="url(#pm)"><ellipse cx="36" cy="24" rx="4" ry="13" transform="rotate(-10 36 24)" fill="#FFE0EC"/><ellipse cx="64" cy="24" rx="4" ry="13" transform="rotate(10 64 24)" fill="#FFE0EC"/></g>
       <g filter="url(#pb)"><ellipse cx="50" cy="60" rx="34" ry="29" fill="#FF9EC2"/></g>${GL(38, 44, 13, 6)}
       <g filter="url(#pm)"><ellipse cx="50" cy="69" rx="14" ry="10" fill="#FFF1F6"/></g>
-      ${EYE(38, 56)}${EYE(62, 56)}${CHEEK(27, 66, '#FF6FA0')}${CHEEK(73, 66, '#FF6FA0')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="3.6" ry="2.8" fill="#E0457F"/></g><path d="M50 67v3M46 71q4 3 8 0" fill="none" stroke="#8A2A4E" stroke-width="2.2" stroke-linecap="round"/>`,
+      ${EYE(38, 56)}${EYE(62, 56)}${CHEEK(27, 66, '#FF6FA0')}${CHEEK(73, 66, '#FF6FA0')}<g filter="url(#ps)"><ellipse cx="50" cy="65" rx="3.6" ry="2.8" fill="#E0457F"/></g>${MO(50, 72, 4.5, '#8A2A4E', '<path d="M50 67v3M46 71q4 3 8 0" fill="none" stroke="#8A2A4E" stroke-width="2.2" stroke-linecap="round"/>')}`,
     bear:() => SH + `<g filter="url(#pb)"><circle cx="24" cy="30" r="12" fill="#B06A30"/><circle cx="76" cy="30" r="12" fill="#B06A30"/></g>
       <g filter="url(#pm)"><circle cx="24" cy="30" r="6" fill="#E9B27A"/><circle cx="76" cy="30" r="6" fill="#E9B27A"/></g>
       <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="36" ry="31" fill="#B06A30"/></g>${GL(36, 40, 14, 7)}
       <g filter="url(#pm)"><ellipse cx="50" cy="68" rx="15" ry="11" fill="#F0C995"/></g>
-      ${EYE(36, 54)}${EYE(64, 54)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5" ry="3.8" fill="#2A1B14"/></g><path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>`,
+      ${EYE(36, 54)}${EYE(64, 54)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5" ry="3.8" fill="#2A1B14"/></g>${MO(50, 72, 5, '#4A2A14', '<path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>')}`,
     cat:() => SH + `<g filter="url(#pb)"><path d="M18 46L20 12l24 18zM82 46L80 12 56 30z" fill="#8E98B5"/></g>
       <g filter="url(#pm)"><path d="M24 34l1-14 11 9zM76 34l-1-14-11 9z" fill="#FFC6D6"/></g>
       <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="37" ry="30" fill="#8E98B5"/></g>${GL(36, 40, 14, 7)}
       <g filter="url(#pm)"><path d="M50 30v10M42 31l2 9M58 31l-2 9" stroke="#6C7593" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="50" cy="69" rx="13" ry="9" fill="#EEF1F8"/></g>
-      ${EYE(36, 55)}${EYE(64, 55)}${CHEEK(26, 65, '#FF9DB6')}${CHEEK(74, 65, '#FF9DB6')}<g filter="url(#ps)"><path d="M46.5 63h7L50 67z" fill="#FF7EA2"/></g><path d="M50 67q-3 4-6 1M50 67q3 4 6 1" fill="none" stroke="#3E4560" stroke-width="2" stroke-linecap="round"/>
+      ${EYE(36, 55)}${EYE(64, 55)}${CHEEK(26, 65, '#FF9DB6')}${CHEEK(74, 65, '#FF9DB6')}<g filter="url(#ps)"><path d="M46.5 63h7L50 67z" fill="#FF7EA2"/></g>${MO(50, 69, 5, '#3E4560', '<path d="M50 67q-3 4-6 1M50 67q3 4 6 1" fill="none" stroke="#3E4560" stroke-width="2" stroke-linecap="round"/>')}
       <path d="M14 64l12-1M15 70l11-3M86 64l-12-1M85 70l-11-3" stroke="#3E4560" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`,
     dog:() => SH + `<g filter="url(#pb)"><ellipse cx="50" cy="56" rx="34" ry="31" fill="#E9B46E"/></g>${GL(38, 38, 13, 7)}
       <g filter="url(#pb)"><path d="M20 30c-10 4-12 26-4 32 7-2 10-14 10-26z" fill="#8A5226"/><path d="M80 30c10 4 12 26 4 32-7-2-10-14-10-26z" fill="#8A5226"/></g>
       <g filter="url(#pm)"><ellipse cx="50" cy="69" rx="16" ry="11" fill="#FFF3E2"/><ellipse cx="64" cy="48" rx="8" ry="7" fill="#C98A48"/></g>
-      ${EYE(38, 52)}${EYE(62, 52)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5.2" ry="3.8" fill="#2A1B14"/></g><path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/><g filter="url(#ps)"><path d="M47 73q3 7 6 0z" fill="#FF6E8A"/></g>`,
+      ${EYE(38, 52)}${EYE(62, 52)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="5.2" ry="3.8" fill="#2A1B14"/></g>${MO(50, 72, 5, '#4A2A14', '<path d="M50 67v3M45 71q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/><g filter="url(#ps)"><path d="M47 73q3 7 6 0z" fill="#FF6E8A"/></g>')}`,
     tiger:() => SH + `<g filter="url(#pb)"><circle cx="24" cy="30" r="11" fill="#FF9420"/><circle cx="76" cy="30" r="11" fill="#FF9420"/></g>
       <g filter="url(#pm)"><circle cx="24" cy="30" r="5" fill="#FFE4C4"/><circle cx="76" cy="30" r="5" fill="#FFE4C4"/></g>
       <g filter="url(#pb)"><ellipse cx="50" cy="58" rx="37" ry="31" fill="#FF9420"/></g>
       <g filter="url(#pm)"><path d="M50 28v9M42 30l2 7M58 30l-2 7M14 52l10 3M15 62l9 0M86 52l-10 3M85 62l-9 0" stroke="#3A2414" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="50" cy="69" rx="17" ry="11" fill="#FFF4E6"/></g>${GL(36, 40, 13, 6)}
-      ${EYE(36, 53)}${EYE(64, 53)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="4.6" ry="3.4" fill="#E0457F"/></g><path d="M50 66v3M45 70q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>`
+      ${EYE(36, 53)}${EYE(64, 53)}<g filter="url(#ps)"><ellipse cx="50" cy="63" rx="4.6" ry="3.4" fill="#E0457F"/></g>${MO(50, 71, 5, '#4A2A14', '<path d="M50 66v3M45 70q5 3.5 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/>')}`
   });
   
   const src = {};
-  const toySrc = k => src[k] || (src[k] = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${DEFS}</defs>${(A[k] || A.fox)()}</svg>`).replace(/'/g, '%27'));
-  return { PUFF, DEFS, EYE, CHEEK, GL, SH, A, toySrc };
+  const toySrc = (k, mood = '') => { const key = k + ':' + mood; if(src[key]) return src[key];
+    let body; MOOD = mood; EYEN = 0; try{ body = (A[k] || A.fox)(); } finally { MOOD = ''; EYEN = 0; }
+    return src[key] = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>${DEFS}</defs>${body}</svg>`).replace(/'/g, '%27'); };
+  return { PUFF, DEFS, EYE, CHEEK, GL, SH, A, MO, toySrc };
 })();
-const toySrc = k => TOY.toySrc(k);
-const toyImg = (k, cls = '') => `<img class="toy ${cls}" src="${toySrc(k)}" alt="" aria-hidden="true" draggable="false">`;
-const toyImage = (k, x, y, w, h) => `<image href="${toySrc(k)}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+const toySrc = (k, mood) => TOY.toySrc(k, mood || '');
+const toyImg = (k, cls = '', mood) => `<img class="toy ${cls}" src="${toySrc(k, mood)}" alt="" aria-hidden="true" draggable="false">`;
+const toyImage = (k, x, y, w, h, mood) => `<image href="${toySrc(k, mood)}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+/* 결과 창 제목 옆 마스코트(성공 기쁨 · 실패 아쉬움) */
+const resFace = mood => toyImg('fox', 'resface', mood);
+/* 이미 그려진 캐릭터 그림(img.toy)의 표정만 바꾸기: 결과 창처럼 그린 뒤에 기쁨·아쉬움을 입힐 때 */
+function toyMood(root, mood){ try{ (root || document).querySelectorAll('img.toy').forEach(im => { const m = /data:image\/svg\+xml,/.test(im.src) && Object.keys(TOY.A).find(k => im.src === toySrc(k)); if(m){ im.src = toySrc(m, mood); im.classList.add('mood-' + mood); } }); }catch(_){} }
 /* 친구 얼굴(토끼·곰·고양이·강아지·판다·호랑이) */
 const FACE_KIND = ['rabbit','bear','cat','dog','panda','tiger'];
 const FACE_BG = ['#FFD6E6','#FFE7A8','#CFE9FF','#D8F5C8','#E6DAFF','#FFE0C4'];
@@ -346,7 +377,7 @@ function finish(win){
   HOST.finish(win);
 }
 /* 게임 화면 정리(다른 화면으로 나가기 전에) */
-function leavePlay(){ ambStop(); duelClose(); if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; } bodyModeSet(null); delete document.body.dataset.mode; clearInterval(tick); if(G && G.raf) cancelAnimationFrame(G.raf); }
+function leavePlay(){ ambStop(); try{ sceneStart(null); }catch(_){} duelClose(); if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; } bodyModeSet(null); delete document.body.dataset.mode; clearInterval(tick); if(G && G.raf) cancelAnimationFrame(G.raf); }
 function bodyModeSet(cls){ GAME_IDS.forEach(g => { const c = NG[g].bodyClass; if(c) document.body.classList.toggle(c, c === cls); }); }
 
 function renderPaws(){
@@ -382,6 +413,7 @@ function startGame(id, lv = 'normal', o = {}){
   clearInterval(tick);
   tick = setInterval(updateClock, 250); updateClock();
   ambStart(ambFor(id));
+  try{ m.scene ? sceneStart(m.scene) : sceneStop(); }catch(_){}   /* 움직이는 배경(보이기만 함) */
   window.scrollTo(0,0);
 }
 

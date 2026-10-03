@@ -693,6 +693,8 @@ NG.match = (() => {
       fxRing(o.x, o.y, '#FFE27A', M.s * (1.8 + big), .5, 12); fxRing(o.x, o.y, '#FF7A3D', M.s * (1.2 + big), .38, 8);
       fxBurst(o.x, o.y, ['#FFE27A', '#FF9A1F', '#FFFFFF', '#FF5C8A'], 22 * big, { speed:360 * big, size:6, kinds:['star','spark','dot'], up:80, glow:true, dur:.8 });
       fxShake(bd, 7 + big * 3);
+      /* 이펙트 v2: 폭발 뒤 피어오르는 연기, 큰 폭발은 화면이 따뜻하게 번쩍 */
+      try{ fxEmit(o.x, o.y, { quantity:6 + big * 3, speed:{ min:30, max:90 * big }, lifespan:{ min:600, max:1000 }, kind:'smoke', tint:['#FFD9A8', '#FFE9C9', '#FFFFFF'], scale:{ start:M.s * .25, end:M.s * .7, ease:'cubic.out' }, alpha:{ start:.5, end:0 }, gravityY:-40, drag:1.5 }); if(big > 1) fxFlash('#FFD27A', .2, 260); }catch(_){}
       const fl = document.createElement('div'); fl.className = 'mt-flash'; M.grid.appendChild(fl); setTimeout(() => fl.remove(), 380);
     } else {
       sfx('matchRainbow'); fxBuzz([20, 30, 20]);
@@ -706,6 +708,8 @@ NG.match = (() => {
       fxRing(o.x, o.y, '#FFFFFF', M.s * 4, .6, 10);
       fxBurst(o.x, o.y, ['#FF5C8A','#FFB020','#FFE45C','#5BE08A','#43A6FF','#A57BFF'], 30, { speed:320, size:5.5, kinds:['star','dot'], up:60, glow:true, dur:.9 });
       fxShake(bd, 5);
+      /* 이펙트 v2: 무지개 번개가 닿은 칸마다 반짝 */
+      try{ act.cells.forEach((j, n) => { if(j === act.i) return; const q = cellXY(j); fxEmit(q.x, q.y, { quantity:2, speed:{ min:10, max:60 }, lifespan:{ min:400, max:600 }, kind:'twinkle', tint:['#FFFFFF', ['#FF5C8A','#FFB020','#FFE45C','#5BE08A','#43A6FF','#A57BFF'][n % 6]], scale:{ start:4, end:0 }, glow:true, delay:n * 18 + 60 }); }); }catch(_){}
     }
   }
   function popView(v, delay, k, s, many){
@@ -1301,3 +1305,5 @@ if(NG.match) NG.match.concepts = { fixed:[
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.match, { duelPace:[120,.62], duelStat:{ unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) }, duelHow:'20번 움직여 누가 더 높은 점수?' });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.match.scene = { kind:'bubbles', colors:['#FFFFFF','#9FD3FF','#FFD1E8'], density:1 };

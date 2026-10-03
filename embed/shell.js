@@ -127,11 +127,11 @@ function embPlayFinish(win){
   const again = () => daily ? startGame(id, embDailyLv()) : embStart('practice', { level:G.lv });
   let html;
   if(win){
-    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${m.winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
+    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${m.winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
       <p class="note">${daily ? (G.attempt === 1 ? '오늘의 문제 첫 기록이에요' : `오늘 최고 ${fmt(rec.best)}점`) : '연습 · ' + G.L.name}</p>
       <details class="brk"><summary>점수 자세히</summary><div><span>${q.l1}</span><b>${q.base}</b></div><div><span>${q.l2}</span><b>${q.time}</b></div><div><span>${q.l3}</span><b>${q.paw}</b></div>${G.L.mult !== 1 ? `<div><span>난이도 배율</span><b>×${G.L.mult}</b></div>` : ''}</details>`;
   } else {
-    html = `<h3 class="bad">${m.loseTitle || '이번 판은 실패'}</h3><p class="lose">${daily && part ? '부분 점수 ' + fmt(part) + '점' : '아쉬워요!'}</p><p class="note">${lossProgress()} ${daily ? '같은 문제로 다시 해 볼 수 있어요.' : '다시 도전해 봐요.'}</p>`;
+    html = `<h3 class="bad">${resFace('sad')}${m.loseTitle || '이번 판은 실패'}</h3><p class="lose">${daily && part ? '부분 점수 ' + fmt(part) + '점' : '아쉬워요!'}</p><p class="note">${lossProgress()} ${daily ? '같은 문제로 다시 해 볼 수 있어요.' : '다시 도전해 봐요.'}</p>`;
   }
   const pri = [daily ? '같은 문제 다시' : '다시 하기', again], sc = ['처음으로', embMenu];
   html += embButtons(pri, sc);
@@ -154,12 +154,12 @@ function embSoloFinish(win){
   const chBox = `<div class="chprog" style="--gc:${GCOL[id][1]}"><div class="h">${chName(id, c)} <small>챕터 ${c} · 별 ${chStars(id, c)}/30</small></div><div class="chdots">${dots}</div></div>`;
   let html;
   if(win){
-    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">스테이지 ${n} 클리어!</h3>
+    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}스테이지 ${n} 클리어!</h3>
       <div class="bigstars" aria-label="별 ${st}개">${[1, 2, 3].map(i => `<span class="s${i <= st ? '' : ' off'}" style="animation-delay:${(0.1 + i * 0.22).toFixed(2)}s">${STAR_G}</span>`).join('')}</div>
       ${first ? '<span class="pill new">첫 클리어!</span>' : better ? '<span class="pill new">별 기록 경신!</span>' : `<p class="note">최고 기록 별 ${p.stars[n]}개는 그대로예요</p>`}
       ${chBox}<p class="note">${st === 3 ? '완벽해요! 별 3개 달성' : '다시 하면 별을 더 모을 수 있어요 · ' + ADV_RULE[id].split(' · ')[st]}</p>`;
   } else {
-    html = `<h3 class="bad">아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 몇 번이든 다시 할 수 있어요.</p>${chBox}`;
+    html = `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 몇 번이든 다시 할 수 있어요.</p>${chBox}`;
   }
   const pri = win ? ['다음 스테이지 ▶', () => startGame(id, null, { adv:n + 1 })] : ['다시 도전', () => startGame(id, null, { adv:n })];
   const sc = ['스테이지 맵', () => { embMenu(); openAdvMap(id, win ? n + 1 : n); }];
@@ -188,6 +188,7 @@ function embDuelResult(r, a, b){
   setTimeout(() => {
     openModal(html + embButtons(pri, sc)); embBind(pri, sc);
     if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
+    try{ const mm = r === 'w' ? ['joy', 'sad'] : r === 'l' ? ['sad', 'joy'] : ['wow', 'wow']; document.querySelectorAll('#modal .dr-side').forEach((e, i) => toyMood(e, mm[i])); }catch(_){}   /* 이긴 쪽 기쁨 · 진 쪽 아쉬움 */
     const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);
   }, $('#veil').classList.contains('on') ? 0 : (win ? 500 : 250));
 }

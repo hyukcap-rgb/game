@@ -11,10 +11,10 @@
 | 폴더 | 무엇 | 고치면 영향 |
 |---|---|---|
 | `games/<id>/` | 게임 하나(규칙·화면·난이도·점수·그림). `game.json`(파일 목록), `CLAUDE.md`(게임 프롬프트) | **그 게임만** |
-| `core/` | 공용 플레이 엔진: 시작·시계·도움말·그만하기·결과 계산(`engine.js`), 대전(`duel.js`), 대전 서버 연결(`net.js`), 효과·소리(`effects-sound.js`), 공용 화면 스타일 | **모든 게임 · 사이트 · 모든 모듈** |
+| `core/` | 공용 플레이 엔진: 시작·시계·도움말·그만하기·결과 계산(`engine.js`), 대전(`duel.js`), 대전 서버 연결(`net.js`), 효과·소리(`effects-sound.js`), 움직이는 배경(`scene.js`), 공용 화면 스타일 | **모든 게임 · 사이트 · 모든 모듈** |
 | `portal/` | 하루퍼즐 리그 사이트(오늘의 시험지·하트·리그·친구·솔로 레벨·공유) | 사이트(index.html)만 |
 | `embed/` | 다른 사이트·앱에 붙이는 게임 모듈. `shell.*`(모듈 첫 화면·결과·이벤트), `haru-embed.js`(붙이는 쪽 스크립트), `<id>.html`(**빌드 결과물**) | 모듈만 |
-| `tools/` | 빌드(`build.js`)·점검(`test.mjs`)·난이도 도구 | — |
+| `tools/` | 빌드(`build.js`)·점검(`test.mjs`)·실시간 대전 점검(`duel-test.mjs`)·난이도 도구 | — |
 | `server/` | 실시간 대전 중계 서버(Railway 함수 `battle`) | 대전 |
 
 규칙
@@ -23,9 +23,10 @@
 3. 문제 내용은 **씨앗 난수(rng)** 로만 만든다(`Math.random` 금지). 같은 날짜 씨앗 = 사이트·모든 모듈에서 전 국민 같은 문제.
 4. 그림·이름·규칙은 **직접 만든 오리지널**만(상용 게임 이름·그림·고유 규칙 베끼기 금지, `docs/13_법무검토_IP.md`).
 5. `embed/<id>.html`, `embed/games.json`, `index.html`의 `@build` 구역은 **손으로 고치지 않는다** — `node tools/build.js`가 만든다.
+6. **실시간 대전이 핵심이다.** 효과·배경·캐릭터 같은 꾸밈은 보이기만 한다: 게임 상태(`G`)·문제 씨앗·시계·대전 통신(`duel.js`·`net.js`·`server/`)을 건드리지 않고, 눌림을 막지 않고(`pointer-events:none`), 오류가 나도 판이 멈추지 않게 감싼다. 무거우면 스스로 줄어들게 만든다.
 
 ## 작업 순서(모든 수정)
-1. 해당 게임 `CLAUDE.md` 읽기 → 2. 고치기 → 3. `node tools/build.js` → 4. `npm test`(필요하면 `npm test -- <게임>`) → 5. 게임 `CLAUDE.md`의 **바뀐 기록**에 한 줄 → 6. 커밋·푸시(main에 올리면 GitHub Pages에 바로 반영, GitHub Actions도 빌드를 다시 확인).
+1. 해당 게임 `CLAUDE.md` 읽기 → 2. 고치기 → 3. `node tools/build.js` → 4. `npm test`(필요하면 `npm test -- <게임>`). core·효과·배경·대전을 건드렸으면 `npm run test:duel`(브라우저 두 대로 진짜 1:1 대전, 느린 폰 흉내는 `-- <게임들> --stress`)도 → 5. 게임 `CLAUDE.md`의 **바뀐 기록**에 한 줄 → 6. 커밋·푸시(main에 올리면 GitHub Pages에 바로 반영, GitHub Actions도 빌드를 다시 확인).
 - 처음 한 번: `npm install` (esbuild·playwright), 브라우저가 없으면 `npx playwright install chromium`.
 - 화면을 바꿨으면 휴대폰 폭(390px)에서 직접 열어 확인한다: 사이트 `index.html`, 모듈 `embed/<id>.html?mode=menu`.
 

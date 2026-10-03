@@ -19,7 +19,7 @@ let esbuild = null; try{ esbuild = require('esbuild'); }catch(_){ console.warn('
 /* 엔진·사이트 파일(순서 중요) */
 const CORE_CSS = ['core/base.css', 'core/effects.css'];
 const PLAY_CSS = ['core/play.css'];
-const CORE_JS = ['core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/net.js', 'core/duel.js'];
+const CORE_JS = ['core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/scene.js', 'core/net.js', 'core/duel.js'];
 const PORTAL_CSS = ['portal/portal.css'];
 const PORTAL_JS = ['portal/portal.js', 'portal/viral.js', 'portal/start.js'];
 const EMBED_CSS = ['embed/shell.css'], EMBED_JS = ['embed/shell.js'];

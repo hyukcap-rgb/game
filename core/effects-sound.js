@@ -7,53 +7,129 @@ const FX_ICON = {
   auto:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#fff" stroke-linecap="round"><rect x="2.5" y="2.5" width="19" height="19" rx="4.5" stroke-width="2.2"/><path d="M12 2.5v19M2.5 12h19" stroke-width="1.6" opacity=".7"/><path d="M5.2 5.2l3.6 3.6M8.8 5.2L5.2 8.8M15.2 15.2l3.6 3.6M18.8 15.2l-3.6 3.6M15.2 5.2l3.6 3.6M18.8 5.2l-3.6 3.6" stroke-width="2.3"/></svg>',
   undo:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>'
 };
-/* ---------- 여우 게임 효과(효과팀·기획팀): 조각·충격파·날아가기·점수 떠오름·연속 배지·틀림 연출·효과음 ---------- */
-const FXR = { cv:null, ctx:null, parts:[], rings:[], raf:0, reduce:false };
+/* ===================== 이펙트 엔진 v2 (효과팀, 2026-10-03) =====================
+   Phaser 파티클·트윈·카메라, PixiJS 파티클 컨테이너의 방식을 이 엔진에 맞게 가볍게 옮긴 것.
+   · 파티클: 수명 동안 크기·투명도·색이 시작→끝으로 바뀜(완화 곡선), 발광(더하기 합성)은 미리 그린 빛 텍스처로 그려 빠름
+   · 묶음 관리: 한 캔버스·한 루프·개수 상한. 화면이 버벅이면(프레임이 길어지면) 새 효과 양을 자동으로 줄임
+   · 카메라: 흔들기(fxShake)·번쩍임(fxFlash)·줌 펀치(fxPunch) — 판(요소)에만, 게임 상태는 건드리지 않음
+   · 안전: 효과는 보이기만 한다(게임 상태·문제 씨앗 rng를 쓰지 않음, 눌림을 막지 않음). 효과 코드에서 오류가 나도 지우고 끝낸다 */
+const FXR = { cv:null, ctx:null, parts:[], rings:[], raf:0, reduce:false, q:1, ema:16, good:0, tex:{}, CAP:620 };
 try{ FXR.reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(_){}
+/* 완화 곡선(Phaser 이름과 같게) */
+const FX_EASE = {
+  linear:k => k, 'quad.out':k => 1 - (1 - k) * (1 - k), 'quad.in':k => k * k, 'cubic.out':k => 1 - Math.pow(1 - k, 3), 'cubic.in':k => k * k * k,
+  'expo.out':k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k), 'sine.inout':k => -(Math.cos(Math.PI * k) - 1) / 2,
+  'back.out':k => { const c = 1.70158; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); }
+};
+const fxEase = n => FX_EASE[n] || FX_EASE.linear;
 function fxCanvas(){
-  if(FXR.cv) return;
-  const cv = document.createElement('canvas'); cv.className = 'fxfx'; document.body.appendChild(cv);
+  if(FXR.cv && FXR.cv.isConnected) return;
+  const cv = document.createElement('canvas'); cv.className = 'fxfx'; cv.setAttribute('aria-hidden', 'true'); document.body.appendChild(cv);
   FXR.cv = cv; FXR.ctx = cv.getContext('2d');
   const size = () => { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; FXR.ctx.setTransform(d, 0, 0, d, 0, 0); };
   size(); addEventListener('resize', size);
 }
+/* 빛 텍스처: 색마다 한 번 그려 두고 drawImage로 찍는다(그라데이션을 매번 만들지 않음) */
+function fxTex(c){
+  let t = FXR.tex[c]; if(t) return t;
+  t = document.createElement('canvas'); t.width = t.height = 64; const x = t.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, '#FFFFFF'); g.addColorStop(.18, c); g.addColorStop(.5, fxRgba(c, .35)); g.addColorStop(1, fxRgba(c, 0));
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return FXR.tex[c] = t;
+}
+function fxRgb(c){ const h = String(c).replace('#', ''); const n = parseInt(h.length === 3 ? h.split('').map(s => s + s).join('') : h.slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function fxRgba(c, a){ if(!/^#/.test(c)) return c; const [r, g, b] = fxRgb(c); return `rgba(${r},${g},${b},${a})`; }
+function fxMix(c1, c2, k){ const a = fxRgb(c1), b = fxRgb(c2); return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`; }
+function fxDraw(ctx, p, k){
+  const s = p.s * (p.s1 == null ? 1 : 1 + (p.s1 - 1) * p.se(k));
+  const al = p.a1 === 0 ? p.a0 * (k < .6 ? 1 : 1 - p.ae((k - .6) / .4)) : p.a0 + (p.a1 - p.a0) * p.ae(k);   /* 사라지는 효과는 60%까지 또렷하게 */
+  if(al <= .01 || s <= .05) return;
+  ctx.globalAlpha = Math.min(1, al);
+  const col = p.c2 ? fxMix(p.c, p.c2, k) : p.c;
+  if(p.kind === 'glow'){   /* 빛 알갱이: 텍스처를 더하기로 */
+    ctx.globalCompositeOperation = 'lighter'; const d = s * 4; ctx.drawImage(fxTex(p.c), p.x - d / 2, p.y - d / 2, d, d); ctx.globalCompositeOperation = 'source-over'; return;
+  }
+  if(p.kind === 'smoke'){ ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, s, 0, Math.PI * 2); ctx.fill(); return; }
+  if(p.glow && FXR.q > .6){ ctx.globalCompositeOperation = 'lighter'; const d = s * 3.2; ctx.globalAlpha = Math.min(1, al) * .55; ctx.drawImage(fxTex(p.c), p.x - d / 2, p.y - d / 2, d, d); ctx.globalAlpha = Math.min(1, al); }
+  ctx.save(); ctx.translate(p.x, p.y);
+  ctx.rotate(p.kind === 'spark' ? Math.atan2(p.vy, p.vx) : p.rot);
+  if(p.flip) ctx.scale(1, Math.cos(p.rot * 1.7));   /* 종이가 뒤집히며 펄럭임 */
+  ctx.fillStyle = col;
+  if(p.kind === 'star'){ ctx.beginPath(); for(let i = 0; i < 10; i++){ const a = i * Math.PI / 5, rr = i % 2 ? s * .45 : s; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
+  else if(p.kind === 'twinkle'){ const r = s * (1 + .35 * Math.sin(p.t * 22)); ctx.beginPath(); ctx.moveTo(0, -r * 1.6); ctx.quadraticCurveTo(0, 0, r * 1.6, 0); ctx.quadraticCurveTo(0, 0, 0, r * 1.6); ctx.quadraticCurveTo(0, 0, -r * 1.6, 0); ctx.quadraticCurveTo(0, 0, 0, -r * 1.6); ctx.fill(); }
+  else if(p.kind === 'dot'){ ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill(); }
+  else if(p.kind === 'spark'){ const l = Math.min(s * 5, 6 + Math.hypot(p.vx, p.vy) * .03); ctx.beginPath(); ctx.moveTo(-l, 0); ctx.lineTo(0, -s * .35); ctx.lineTo(s * .8, 0); ctx.lineTo(0, s * .35); ctx.closePath(); ctx.fill(); }
+  else if(p.kind === 'shard'){ ctx.beginPath(); ctx.moveTo(-s, -s * .7); ctx.lineTo(s * 1.1, -s * .2); ctx.lineTo(-s * .3, s * .9); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.moveTo(-s, -s * .7); ctx.lineTo(s * 1.1, -s * .2); ctx.lineTo(0, -s * .1); ctx.closePath(); ctx.fill(); }
+  else if(p.kind === 'heart'){ ctx.beginPath(); ctx.moveTo(0, s * .9); ctx.bezierCurveTo(-s * 1.6, -s * .2, -s * .7, -s * 1.3, 0, -s * .45); ctx.bezierCurveTo(s * .7, -s * 1.3, s * 1.6, -s * .2, 0, s * .9); ctx.fill(); }
+  else if(p.kind === 'ring'){ ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, s * .35); ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.stroke(); }
+  else if(p.kind === 'ribbon'){ ctx.fillRect(-s * .35, -s * 1.6, s * .7, s * 3.2); }
+  else ctx.fillRect(-s, -s * .45, s * 2, s * .9);
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+}
 function fxLoop(){
-  const ctx = FXR.ctx, now = performance.now(), dt = Math.min(0.05, (now - (FXR.lt || now)) / 1000); FXR.lt = now;
-  ctx.clearRect(0, 0, innerWidth, innerHeight);
-  for(const r of FXR.rings){
-    r.t += dt; const k = r.t / r.dur; if(k >= 1) continue;
-    ctx.globalAlpha = (1 - k) * r.a; ctx.strokeStyle = r.c; ctx.lineWidth = r.w * (1 - k) + 1;
-    ctx.beginPath(); ctx.arc(r.x, r.y, r.r0 + (r.r1 - r.r0) * (1 - Math.pow(1 - k, 3)), 0, Math.PI*2); ctx.stroke();
-  }
-  for(const p of FXR.parts){
-    p.t += dt; if(p.t < 0) continue; const k = p.t / p.dur; if(k >= 1) continue;
-    p.vy += p.g * dt; p.vx *= (1 - p.drag * dt); p.vy *= (1 - p.drag * dt); p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
-    ctx.globalAlpha = k < .7 ? 1 : (1 - k) / .3;
-    if(p.glow) ctx.globalCompositeOperation = 'lighter';
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.kind === 'spark' ? Math.atan2(p.vy, p.vx) : p.rot); ctx.fillStyle = p.c;
-    const s = p.s * (p.shrink ? 1 - k * .6 : 1);
-    if(p.kind === 'star'){ ctx.beginPath(); for(let i=0;i<10;i++){ const a = i * Math.PI / 5, rr = i % 2 ? s * .45 : s; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
-    else if(p.kind === 'dot'){ ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI*2); ctx.fill(); }
-    else if(p.kind === 'spark'){ const l = Math.min(s * 5, 6 + Math.hypot(p.vx, p.vy) * .03); ctx.beginPath(); ctx.moveTo(-l, 0); ctx.lineTo(0, -s * .35); ctx.lineTo(s * .8, 0); ctx.lineTo(0, s * .35); ctx.closePath(); ctx.fill(); }
-    else if(p.kind === 'heart'){ ctx.beginPath(); ctx.moveTo(0, s * .9); ctx.bezierCurveTo(-s * 1.6, -s * .2, -s * .7, -s * 1.3, 0, -s * .45); ctx.bezierCurveTo(s * .7, -s * 1.3, s * 1.6, -s * .2, 0, s * .9); ctx.fill(); }
-    else if(p.kind === 'ring'){ ctx.strokeStyle = p.c; ctx.lineWidth = Math.max(1, s * .35); ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI*2); ctx.stroke(); }
-    else ctx.fillRect(-s, -s * .45, s * 2, s * .9);
-    ctx.restore();
-    if(p.glow) ctx.globalCompositeOperation = 'source-over';
-  }
-  ctx.globalAlpha = 1;
+  const now = performance.now(), raw = now - (FXR.lt || now), dt = Math.min(0.05, raw / 1000); FXR.lt = now;
+  /* 버벅임 감지: 프레임 시간이 길면 품질을 낮추고, 2초 넘게 부드러우면 되돌림 */
+  if(raw > 0){ FXR.ema = FXR.ema * .9 + Math.min(100, raw) * .1; if(FXR.ema > 30){ FXR.q = .5; FXR.good = 0; } else if(FXR.ema < 20 && FXR.q < 1 && (FXR.good += raw) > 2000) FXR.q = 1; }
+  try{
+    const ctx = FXR.ctx;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for(const r of FXR.rings){
+      r.t += dt; const k = r.t / r.dur; if(k >= 1 || r.t < 0) continue;
+      const rad = r.r0 + (r.r1 - r.r0) * (1 - Math.pow(1 - k, 3));
+      ctx.strokeStyle = r.c;
+      if(FXR.q > .6){ ctx.globalAlpha = (1 - k) * r.a * .35; ctx.lineWidth = (r.w * (1 - k) + 1) * 3; ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke(); }   /* 바깥 번짐 */
+      ctx.globalAlpha = (1 - k) * r.a; ctx.lineWidth = r.w * (1 - k) + 1;
+      ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
+    }
+    for(const p of FXR.parts){
+      p.t += dt; if(p.t < 0) continue; const k = p.t / p.dur; if(k >= 1) continue;
+      if(p.well){ const dx = p.well.x - p.x, dy = p.well.y - p.y, d2 = Math.max(400, dx * dx + dy * dy), f = p.well.power * 9e5 / d2; p.vx += dx / Math.sqrt(d2) * f * dt; p.vy += dy / Math.sqrt(d2) * f * dt; }
+      p.vy += p.g * dt; p.vx *= (1 - p.drag * dt); p.vy *= (1 - p.drag * dt); p.x += p.vx * dt + (p.wob ? Math.sin(p.t * 6 + p.ph) * p.wob * dt : 0); p.y += p.vy * dt; p.rot += p.vr * dt;
+      fxDraw(ctx, p, k);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }catch(_){ FXR.parts = []; FXR.rings = []; try{ FXR.ctx.setTransform(1, 0, 0, 1, 0, 0); FXR.ctx.clearRect(0, 0, FXR.cv.width, FXR.cv.height); const d = Math.min(2, devicePixelRatio || 1); FXR.ctx.setTransform(d, 0, 0, d, 0, 0); }catch(__){} }
   FXR.parts = FXR.parts.filter(p => p.t < p.dur); FXR.rings = FXR.rings.filter(r => r.t < r.dur);
   if(FXR.parts.length || FXR.rings.length) FXR.raf = requestAnimationFrame(fxLoop); else { FXR.raf = 0; FXR.lt = 0; }
 }
 function fxKick(){ if(!FXR.raf){ FXR.lt = 0; FXR.raf = requestAnimationFrame(fxLoop); } }
-function fxRing(x, y, c, r1, dur, w){ if(FXR.reduce) return; fxCanvas(); FXR.rings.push({ x, y, c, r0:4, r1, dur, w:w || 8, a:1, t:0 }); fxKick(); }
+/* 상한을 넘으면 오래된 것부터 버림(PixiJS 파티클 컨테이너처럼 한 묶음만 관리) */
+function fxAdd(p){ FXR.parts.push(p); if(FXR.parts.length > FXR.CAP) FXR.parts.splice(0, FXR.parts.length - FXR.CAP); }
+const fxN = n => Math.max(1, Math.round(n * FXR.q * (typeof G !== 'undefined' && G && G.duel && !G.over ? .75 : 1)));
+function fxRing(x, y, c, r1, dur, w){ if(FXR.reduce) return; fxCanvas(); FXR.rings.push({ x, y, c, r0:4, r1, dur, w:w || 8, a:1, t:0 }); if(FXR.rings.length > 40) FXR.rings.shift(); fxKick(); }
+const fxRange = (v, d) => v == null ? d : typeof v === 'number' ? v : Array.isArray(v) ? v[Math.floor(Math.random() * v.length)] : v.min + Math.random() * (v.max - v.min);
+/* 예전 방식(그대로 둠): 한 점에서 n개 터뜨리기 */
 function fxBurst(x, y, colors, n, o = {}){
   if(FXR.reduce) return; fxCanvas();
-  if(FXR.parts.length > 700) n = Math.min(n, 6);
-  for(let i=0;i<n;i++){
+  n = fxN(n);
+  if(FXR.parts.length > 500) n = Math.min(n, 6);
+  for(let i = 0; i < n; i++){
     const a = o.dir != null ? o.dir + (Math.random() - .5) * (o.spread ?? 1.2) : Math.random() * Math.PI * 2, sp = (o.speed || 260) * (0.45 + Math.random() * 0.8);
-    FXR.parts.push({ x, y, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp - (o.up ?? 90), g:o.g ?? 520, drag:o.drag ?? 2.2, rot:Math.random() * 6, vr:(Math.random() - .5) * 14, glow:!!o.glow,
-      s:(o.size || 5) * (0.6 + Math.random() * 0.8), c:colors[i % colors.length], kind:o.kinds ? o.kinds[i % o.kinds.length] : 'star', t:-(o.delay || 0) * Math.random(), dur:(o.dur || 0.8) * (0.8 + Math.random() * 0.4), shrink:true });
+    fxAdd({ x, y, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp - (o.up ?? 90), g:o.g ?? 520, drag:o.drag ?? 2.2, rot:Math.random() * 6, vr:(Math.random() - .5) * 14, glow:!!o.glow,
+      s:(o.size || 5) * (0.6 + Math.random() * 0.8), s1:.4, se:fxEase('quad.in'), a0:1, a1:0, ae:fxEase('linear'), c:colors[i % colors.length], kind:o.kinds ? o.kinds[i % o.kinds.length] : 'star',
+      t:-(o.delay || 0) * Math.random(), dur:(o.dur || 0.8) * (0.8 + Math.random() * 0.4) });
+  }
+  /* 발광 효과는 가운데에 짧은 빛 덩어리 + 반짝이 몇 개를 곁들임 */
+  if(o.glow && FXR.q > .6){
+    fxAdd({ x, y, vx:0, vy:0, g:0, drag:0, rot:0, vr:0, s:(o.size || 5) * 5, s1:1.8, se:fxEase('expo.out'), a0:.9, a1:0, ae:fxEase('quad.out'), c:colors[0], kind:'glow', t:0, dur:.35 });
+    for(let i = 0; i < 3; i++){ const a = Math.random() * 6.28, d = 10 + Math.random() * 26;
+      fxAdd({ x:x + Math.cos(a) * d, y:y + Math.sin(a) * d, vx:0, vy:-20, g:0, drag:0, rot:0, vr:0, s:(o.size || 5) * .9, s1:0, se:fxEase('quad.in'), a0:1, a1:0, ae:fxEase('linear'), c:'#FFFFFF', kind:'twinkle', t:-Math.random() * .2, dur:.55 }); }
+  }
+  fxKick();
+}
+/* Phaser 방식 설정으로 뿜기: fxEmit(x, y, { quantity, speed:{min,max}, angle:{min,max}(도), lifespan:{min,max}(ms),
+   scale:{start,end,ease}, alpha:{start,end,ease}, color:[시작, 끝], tint:[색들], gravityY, drag, kind, glow, rotate, wob, flip, well:{x,y,power} }) */
+function fxEmit(x, y, c = {}){
+  if(FXR.reduce) return; fxCanvas();
+  const n = fxN(c.quantity || 12), sc = c.scale || {}, al = c.alpha || {}, tint = c.tint || (c.color ? [c.color[0]] : ['#FFFFFF']);
+  for(let i = 0; i < n; i++){
+    const ang = fxRange(c.angle, Math.random() * 360) * Math.PI / 180, sp = fxRange(c.speed, 200), life = fxRange(c.lifespan, 800) / 1000;
+    const s0 = sc.start ?? fxRange(c.size, 5);
+    fxAdd({ x:x + fxRange(c.x, 0), y:y + fxRange(c.y, 0), vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, g:c.gravityY ?? 0, drag:c.drag ?? 0, rot:Math.random() * 6, vr:fxRange(c.rotate, (Math.random() - .5) * 8),
+      s:s0 * (sc.random ? .6 + Math.random() * .8 : 1), s1:sc.end == null ? null : sc.end / (s0 || 1), se:fxEase(sc.ease), a0:al.start ?? 1, a1:al.end ?? 0, ae:fxEase(al.ease),
+      c:tint[i % tint.length], c2:c.color && c.color[1], kind:c.kind || 'dot', glow:!!c.glow, wob:c.wob || 0, ph:Math.random() * 6, flip:!!c.flip, well:c.well || null,
+      t:-fxRange(c.delay, 0) / 1000, dur:life });
   }
   fxKick();
 }
@@ -65,18 +141,27 @@ function fxPop(el, kind){
   else if(kind === 'coin'){ fxBurst(p.x, p.y, ['#FFC93C','#FFE98E','#FFFFFF'], 14, { speed:240, size:5, kinds:['dot','star'], up:200, g:700, dur:.8 }); }
   else { fxRing(p.x, p.y, '#FFFFFF', Math.max(40, p.w * .7), .4, 6); fxBurst(p.x, p.y, ['#FFFFFF','#FFE27A','#CFC5FF'], 12, { speed:220, size:4, kinds:['spark','dot'], up:60, glow:true, dur:.6 }); }
 }
-function fxShake(el, px){ if(!el || FXR.reduce || !el.animate) return; const a = px || 6; el.animate([{ transform:'translate(0,0)' }, { transform:`translate(${-a}px,${a * .4}px)` }, { transform:`translate(${a * .8}px,${-a * .3}px)` }, { transform:`translate(${-a * .5}px,${a * .2}px)` }, { transform:'translate(0,0)' }], { duration:360, easing:'ease-out' }); }
-function fxConfetti(){   /* 완성: 화면 위에서 색종이 */
+/* 카메라: 흔들기(조금 회전 섞음)·줌 펀치·번쩍임. 모두 transform/opacity만 바꿔 배치(layout)는 그대로 */
+function fxShake(el, px){ if(!el || FXR.reduce || !el.animate) return; const a = px || 6, r = Math.min(1.2, a * .12);
+  el.animate([{ transform:'translate(0,0)' }, { transform:`translate(${-a}px,${a * .4}px) rotate(${-r}deg)` }, { transform:`translate(${a * .8}px,${-a * .3}px) rotate(${r * .7}deg)` }, { transform:`translate(${-a * .5}px,${a * .2}px) rotate(${-r * .3}deg)` }, { transform:`translate(${a * .2}px,0)` }, { transform:'translate(0,0)' }], { duration:380, easing:'ease-out' }); }
+function fxPunch(el, s){ if(!el || FXR.reduce || !el.animate) return; el.animate([{ transform:'scale(1)' }, { transform:`scale(${s || 1.04})`, offset:.3 }, { transform:'scale(1)' }], { duration:320, easing:'cubic-bezier(.2,1.6,.4,1)' }); }
+function fxFlash(color, alpha, ms){
+  if(FXR.reduce) return;
+  const d = document.createElement('div'); d.className = 'fxflash'; d.style.background = color || '#fff'; document.body.appendChild(d);
+  const an = d.animate([{ opacity:alpha ?? .35 }, { opacity:0 }], { duration:ms || 260, easing:'ease-out' }); an.onfinish = () => d.remove(); setTimeout(() => d.remove(), (ms || 260) + 200);
+}
+function fxConfetti(){   /* 완성: 화면 위에서 색종이(펄럭임) + 양옆 대포 + 반짝이 */
   if(FXR.reduce) return; fxCanvas();
-  const cols = ['#FF9E4F','#FFD04D','#FF8C9E','#62AEFF','#5ECF9C','#B48BFF','#fff'];
-  for(let i=0;i<110;i++) FXR.parts.push({ x:Math.random() * innerWidth, y:-20 - Math.random() * 120, vx:(Math.random() - .5) * 120, vy:120 + Math.random() * 220, g:260, drag:.6,
-    rot:Math.random() * 6, vr:(Math.random() - .5) * 10, s:5 + Math.random() * 5, c:cols[i % cols.length], kind:i % 5 ? 'rect' : 'star', t:-Math.random() * .6, dur:2.4, shrink:false });
-  /* 양옆 아래에서 쏘아 올리는 색종이 대포 */
-  for(const side of [0, 1]) for(let i=0;i<45;i++){
+  const cols = ['#FF9E4F','#FFD04D','#FF8C9E','#62AEFF','#5ECF9C','#B48BFF','#fff'], k = FXR.q;
+  for(let i = 0; i < 110 * k; i++) fxAdd({ x:Math.random() * innerWidth, y:-20 - Math.random() * 120, vx:(Math.random() - .5) * 120, vy:120 + Math.random() * 220, g:240, drag:.7, wob:60, ph:Math.random() * 6, flip:true,
+    rot:Math.random() * 6, vr:(Math.random() - .5) * 10, s:5 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[i % cols.length], kind:i % 7 === 0 ? 'star' : i % 4 === 0 ? 'ribbon' : 'rect', t:-Math.random() * .6, dur:2.6 });
+  for(const side of [0, 1]) for(let i = 0; i < 45 * k; i++){
     const a = side ? -Math.PI * (.62 + Math.random() * .16) : -Math.PI * (.22 + Math.random() * .16), sp = 700 + Math.random() * 520;
-    FXR.parts.push({ x:side ? innerWidth + 10 : -10, y:innerHeight * .78, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, g:900, drag:1.6,
-      rot:Math.random() * 6, vr:(Math.random() - .5) * 16, s:4 + Math.random() * 5, c:cols[(i + side) % cols.length], kind:i % 6 ? 'rect' : 'star', t:-Math.random() * .25, dur:2.2, shrink:false });
+    fxAdd({ x:side ? innerWidth + 10 : -10, y:innerHeight * .78, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, g:900, drag:1.6, wob:40, ph:Math.random() * 6, flip:true,
+      rot:Math.random() * 6, vr:(Math.random() - .5) * 16, s:4 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[(i + side) % cols.length], kind:i % 6 ? 'rect' : 'star', t:-Math.random() * .25, dur:2.3 });
   }
+  /* 화면 가운데 위쪽에서 반짝이 */
+  if(k > .6) fxEmit(innerWidth / 2, innerHeight * .3, { quantity:22, speed:{ min:60, max:260 }, lifespan:{ min:700, max:1300 }, kind:'twinkle', tint:['#FFFFFF','#FFF2B0','#FFD6F0'], scale:{ start:5, end:0, ease:'quad.in' }, gravityY:60, drag:1.5, glow:true });
   fxKick();
 }
 function fxCenter(el){ const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2, w:r.width, h:r.height }; }

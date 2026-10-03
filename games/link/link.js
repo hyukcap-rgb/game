@@ -266,6 +266,21 @@ NG.link = (() => {
     T(() => g.remove(), cls === 'hint' ? 1700 : 520);
   }
 
+  /* 이펙트 v2: 이은 선을 따라 빛 알갱이가 달려감(보이기만 함) */
+  function pathSpark(pts, col){
+    try{
+      const bd = $('#bd'); if(!bd || typeof fxEmit !== 'function' || FXR.reduce) return;
+      const r = bd.getBoundingClientRect(), ox = r.left + bd.clientLeft, oy = r.top + bd.clientTop;
+      const P = pts.map(([x, y]) => { const q = px(x, y); return [ox + q[0], oy + q[1]]; });
+      let acc = 0;
+      for(let s = 1; s < P.length; s++){
+        const [x0, y0] = P[s - 1], [x1, y1] = P[s], L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.round(L / 16));
+        for(let j = 0; j < n; j++){ const t = j / n;
+          fxEmit(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, { quantity:1, speed:{ min:4, max:26 }, lifespan:{ min:320, max:460 }, kind:'glow', tint:[col], scale:{ start:3.4, end:.4 }, alpha:{ start:1, end:0 }, delay:acc * .9 });
+          acc += 16; }
+      }
+    }catch(_){}
+  }
   function setSel(i, on){ const el = cellEl(i); if(el) el.classList.toggle('sel', on); }
   function tap(i){
     const m = S();
@@ -297,6 +312,7 @@ NG.link = (() => {
     const m = S(), k = m.b[a], col = symCol(k);
     m.lock = true; m.found++; m.combo++; m.best = Math.max(m.best, m.combo);
     drawPath(p, col);
+    pathSpark(p, col);
     [a, b].forEach((j, n) => {
       const el = cellEl(j); if(!el) return; el.classList.add('gone');
       const q = fxCenter(el);
@@ -642,3 +658,5 @@ body[data-mode="link"]{background:
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
 Object.assign(NG.link, { duelPace:[140,.72], duelStat:{ unit:"짝", lfMax:3, get:() => ({ v:G.m.found, t:G.m.pairs, lf:Math.max(0, G.m.lives - G.m.misses) }) } });
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.link.scene = { kind:'motes', colors:['#FFFFFF','#B8F0D0','#FFF3B0'], density:1 };

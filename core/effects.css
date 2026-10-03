@@ -41,3 +41,8 @@
 .fx-lost{position:fixed; z-index:19; pointer-events:none; width:26px; height:26px}
 .fx-lost svg{width:100%; height:100%}
 @media (prefers-reduced-motion: reduce){ .fxfloat,.fxcombo{animation-duration:.01s} }
+/* ===== 이펙트 v2: 번쩍임·떠오르는 점수·연속 배지 빛 ===== */
+.fxflash{position:fixed; inset:0; pointer-events:none; z-index:18; mix-blend-mode:screen}
+.fxfloat{filter:drop-shadow(0 4px 6px rgba(26,15,69,.35)) drop-shadow(0 0 10px rgba(255,236,170,.45))}
+.fxfloat[class="fxfloat "]{color:#FFF6CC}
+.fxcombo{filter:drop-shadow(0 0 12px rgba(255,214,120,.75))}

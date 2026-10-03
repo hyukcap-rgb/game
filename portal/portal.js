@@ -488,13 +488,13 @@ function advFinish(win){
   let html;
   if(win){
     const tip = st === 3 ? '완벽해요! 별 3개 달성' : '다시 하면 별을 더 모을 수 있어요 · ' + ADV_RULE[id].split(' · ')[st];
-    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">스테이지 ${n} 클리어!</h3>
+    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}스테이지 ${n} 클리어!</h3>
       <div class="bigstars" aria-label="별 ${st}개">${[1,2,3].map(i => `<span class="s${i <= st ? '' : ' off'}" style="animation-delay:${(0.1 + i * 0.22).toFixed(2)}s">${STAR_G}</span>`).join('')}</div>
       ${first ? '<span class="pill new">첫 클리어!</span>' : better ? '<span class="pill new">별 기록 경신!</span>' : `<p class="note">최고 기록 별 ${p.stars[n]}개는 그대로예요</p>`}
       <div>${soloPill}${attPill}</div>${!first ? '<p class="note">솔로 점수는 새 스테이지를 처음 깰 때만 받아요.</p>' : ''}
       ${chBox}<p class="note">${tip}</p>`;
   } else {
-    html = `<h3 class="bad">아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 솔로는 하트 없이 몇 번이든 다시 할 수 있어요.</p>${attPill ? '<div>' + attPill + '</div>' : ''}${chBox}`;
+    html = `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 솔로는 하트 없이 몇 번이든 다시 할 수 있어요.</p>${attPill ? '<div>' + attPill + '</div>' : ''}${chBox}`;
   }
   const toMap = sel => () => { goHome(); TAB = 'adv'; renderHome(); openAdvMap(id, sel); };
   const pri = win ? ['다음 스테이지 ▶', () => startGame(id, null, { adv:n + 1 })] : ['다시 도전', () => startGame(id, null, { adv:n })];
@@ -695,7 +695,7 @@ function examFinish(win){
     const passed = r1.b.filter(x => !x.me && x.score < meScore(r1.b)).map(x => x.name).filter(n => !before.includes(n));
     const tl2 = myTL();
     const rank = r1.pos < r0.pos ? `<span class="pill good">${r0.pos}위 → ${r1.pos}위 ▲${r0.pos - r1.pos}</span>` : `<span class="pill info">지금 친구 ${r1.n}명 중 ${r1.pos}위</span>`;
-    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${NG[id].winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
+    html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${NG[id].winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
       ${isBest ? '<p class="note">공식 답안으로 기록됐어요</p>' : `<p class="note">연습 판이에요 · 공식 기록 ${fmt(prev)}점은 그대로예요</p>`}<div>${gradePill(score)}</div>
       <div>${gritPill()}${rank}${passed.length ? `<span class="pill good">${passed.join(', ')}님을 제쳤어요 · 알림을 보냈어요</span>` : ''}</div>
       <details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(5과목 공식 기록 합)</span><b>${fmt(tl2.score)}점</b></div></details>
@@ -704,7 +704,7 @@ function examFinish(win){
   } else {
     const best = d.best[id], part = official ? Math.round(examProgress() * 300) : 0;
     if(official){ d.best[id] = part; d.offDone = d.offDone || {}; d.offDone[id] = 1; saveDay(d); score = part; }
-    html = `<h3 class="bad">${NG[id].loseTitle || '이번 판은 실패'}</h3><p class="lose">${official ? '부분 점수 ' + fmt(part) + '점을 공식 기록했어요' : best ? '연습 판이에요 · 공식 기록 ' + fmt(best) + '점은 그대로예요' : '연습 판이에요'}</p>
+    html = `<h3 class="bad">${resFace('sad')}${NG[id].loseTitle || '이번 판은 실패'}</h3><p class="lose">${official ? '부분 점수 ' + fmt(part) + '점을 공식 기록했어요' : best ? '연습 판이에요 · 공식 기록 ' + fmt(best) + '점은 그대로예요' : '연습 판이에요'}</p>
       <p class="note">${lossProgress()} ${official ? '진행한 만큼(최대 300점) 인정돼요. 같은 문제로 연습할 수 있어요.' : '같은 문제로 다시 연습할 수 있어요.'}</p>${official && part ? `<div>${gradePill(part)}</div>` : ''}
       ${firstToday ? `<div>${gritPill()}</div><p class="note">실패해도 끝까지 한 판은 출석으로 인정돼요.</p>` : ''}${chalBox(0)}`;
   }
@@ -785,6 +785,7 @@ function portalDuelResult(r, a, b){
     const stepN = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
       if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };
     requestAnimationFrame(stepN);
+    try{ const mm = r === 'w' ? ['joy', 'sad'] : r === 'l' ? ['sad', 'joy'] : ['wow', 'wow']; document.querySelectorAll('#modal .dr-side').forEach((e, i) => toyMood(e, mm[i])); }catch(_){}   /* 이긴 쪽 기쁨 · 진 쪽 아쉬움 */
     const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);
   }, $('#veil').classList.contains('on') ? 0 : (win ? 500 : 250));
 }

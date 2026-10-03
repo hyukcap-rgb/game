@@ -83,4 +83,5 @@ G의 주요 값: `sol, grid, given, notes, wrong, sel, memo, hints, hintUsed, un
 - 전용 점검 도구는 아직 없음. 솔로 판은 브라우저 콘솔에서 `SX.gen(sudPlan(n), mulberry(seedFrom('adv:sudoku:'+n)))` 결과의 `max`(쓴 최고 기술)·`gv`(숫자 수)와 `SX.count(puz, SX.model(rules, even, ineq), 2) === 1`로 확인.
 
 ## 바뀐 기록
+- 2026-10-03 이펙트 v2 적용, 움직이는 배경(옅은 별빛) 추가(보이기만 함 — 규칙·점수·대전 그대로)
 - 2026-10-03 게임별 폴더·게임 정의(NG.<id>)·붙여 쓰는 모듈(embed/<id>.html) 구조로 정리

@@ -655,3 +655,5 @@ NG.ball = {
   duelPace:[170,.66],
   duelStat:{ unit:'개',             get:() => ({ v:G.broken, t:G.total }) }
 };
+/* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
+NG.ball.scene = { kind:'stars', colors:['#FFFFFF','#E3C8FF','#9FD8FF'], density:1.1 };

@@ -32,6 +32,11 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 
 게임 코드는 끝날 때 `finish(true|false)`를 부른다. 엔진 도구: `G`, `elapsed()`, `openModal/closeModal`, `openHelp`, `confirmQuit`, `gPause/gResume`, `sfx(이름)`, `fx*` 효과, `store`, `toast`, `planOf/conceptInfo`, `toyImg/toyImage`(공용 캐릭터).
 
+효과(이펙트 v2, `core/effects-sound.js`): 예전 `fxBurst/fxRing/fxPop/fxShake/fxConfetti/fxFloat`는 그대로 쓰고, 새로
+`fxEmit(x, y, { quantity, speed, angle, lifespan, scale:{start,end,ease}, alpha:{start,end}, color:[시작,끝], tint:[…], gravityY, drag, kind:'dot'|'glow'|'smoke'|'twinkle'|'shard'|'heart'|'star'|'spark', glow, wob, flip, well:{x,y,power}, delay })`(Phaser 파티클식 설정),
+`fxFlash(색, 세기, ms)`(화면 번쩍), `fxPunch(요소, 배율)`(줌 펀치)가 있다. 효과는 **보이기만** 한다: 게임 상태·rng를 바꾸지 않고, 효과 코드는 `try{}catch(_){}`로 감싸 오류가 나도 판이 멈추지 않게 한다.
+캐릭터 v4: `toyImg(종류, cls, 표정)`·`toySrc(종류, 표정)` 표정은 `''`·`'joy'`·`'sad'`·`'wow'`. 표정은 결과·대전 같은 순간 연출에만 쓰고 계속 움직이게 하지 않는다.
+
 ## 게임 정의 (선택)
 | 칸 | 쓰는 곳 |
 |---|---|
@@ -47,6 +52,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelStat:{ unit, lfMax?, score?, tile?, lfIcon?, get:() => ({ v, t, lf }) }` | 대전 막대에 보이는 수치 |
 | `duelHow` `duelLaunch()` | 대전 설명 문구, 자기 방식 대전(함대) |
 | `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임) |
+| `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 
 ## 새 게임 추가
 1. `games/<id>/` 만들기: `<id>.js`(마지막에 `NG.<id> = {…}`), 필요하면 `<id>.css`, `game.json`(`order`는 마지막 번호), `CLAUDE.md`(다른 게임 것을 본떠 같은 제목 순서로).
