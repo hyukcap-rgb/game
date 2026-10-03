@@ -32,6 +32,8 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 
 게임 코드는 끝날 때 `finish(true|false)`를 부른다. 엔진 도구: `G`, `elapsed()`, `openModal/closeModal`, `openHelp`, `confirmQuit`, `gPause/gResume`, `sfx(이름)`, `fx*` 효과, `store`, `toast`, `planOf/conceptInfo`, `toyImg/toyImage`(공용 캐릭터).
 
+자기 방식 대전(`duelLaunch` + `duel:{ fleet:true }`)은 끝내기 전에 `G.duel.r`('w'·'l'·'d' 무승부), `G.duel.a`/`G.duel.b`(`{ sc }` 결과 창 점수), `G.duel.why`(판정 문구)를 정해 두면 엔진이 그대로 쓴다(없으면 승/패만).
+
 효과(이펙트 v2, `core/effects-sound.js`): 예전 `fxBurst/fxRing/fxPop/fxShake/fxConfetti/fxFloat`는 그대로 쓰고, 새로
 `fxEmit(x, y, { quantity, speed, angle, lifespan, scale:{start,end,ease}, alpha:{start,end}, color:[시작,끝], tint:[…], gravityY, drag, kind:'dot'|'glow'|'smoke'|'twinkle'|'shard'|'heart'|'star'|'spark', glow, wob, flip, well:{x,y,power}, delay })`(Phaser 파티클식 설정),
 `fxFlash(색, 세기, ms)`(화면 번쩍), `fxPunch(요소, 배율)`(줌 펀치)가 있다. 효과는 **보이기만** 한다: 게임 상태·rng를 바꾸지 않고, 효과 코드는 `try{}catch(_){}`로 감싸 오류가 나도 판이 멈추지 않게 한다.
@@ -51,6 +53,8 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelPace:[평균 초, 성공률]` | 대전 AI 상대 속도 |
 | `duelStat:{ unit, lfMax?, score?, tile?, lfIcon?, get:() => ({ v, t, lf }) }` | 대전 막대에 보이는 수치 |
 | `duelHow` `duelLaunch()` | 대전 설명 문구, 자기 방식 대전(함대) |
+| `modes:['solo','duel']` | 이 게임에 있는 모드만(붙여 쓰는 모듈 첫 화면·명령에 반영). 없으면 오늘의 문제·솔로·연습·대전 모두. 사이트 오늘의 시험지는 `SUBJ`로 따로 정함 |
+| `age:19` | 이용 연령 표시 정보(고스톱). 표시·확인 화면은 게임이 직접 |
 | `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임) |
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 

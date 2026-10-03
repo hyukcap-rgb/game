@@ -407,7 +407,7 @@ function startGame(id, lv = 'normal', o = {}){
   G.cfg = L[id]; m.init(L[id], rng, lv);
   HOST.showPlay();
   const ex = m.titleExtra ? m.titleExtra() : '';
-  $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : 'AI 함장') : 'VS ' + esc(duel.opp.nick) + (duel.mode === 'ai' ? ' (AI)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
+  $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || 'AI')) : 'VS ' + esc(duel.opp.nick) + (duel.mode === 'ai' ? ' (AI)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();
   duelBarInit();

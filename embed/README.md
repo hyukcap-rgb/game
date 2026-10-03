@@ -15,6 +15,7 @@
 | 카드 짝 맞추기 | `…/embed/memory.html` |
 | 숫자 합치기 | `…/embed/merge.html` |
 | 짝 잇기 | `…/embed/link.html` |
+| 고스톱 (19세 이상) | `…/embed/gostop.html` — 솔로·대전만(오늘의 문제·연습 없음) |
 
 - 모듈 하나에는 **그 게임과 공용 엔진만** 들어 있어요(다른 게임 코드 없음). 전송 크기는 게임마다 약 65~80KB예요.
 - iframe 안에서 돌아서 붙이는 사이트의 디자인·코드와 섞이지 않아요.
@@ -31,7 +32,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 
 | 속성 | 값 | 기본 |
 |---|---|---|
-| `data-haru-game` | fox sudoku ball tower fleet match nono block memory merge link | (필수) |
+| `data-haru-game` | fox sudoku ball tower fleet match nono block memory merge link gostop | (필수) |
 | `data-mode` | `menu`(첫 화면) `daily`(오늘의 문제) `solo` `practice`(연습) `duel`(대전) | menu |
 | `data-modes` | 첫 화면에 보일 모드, 쉼표로: `daily,solo` | 모두 |
 | `data-level` | 연습 난이도 `easy` `normal` `hard` | 고르게 함 |
@@ -106,6 +107,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 
 ## 5. 알아 둘 점
 - **오늘의 문제**는 하루퍼즐 리그 사이트와 모든 모듈에서 같은 날 같은 문제예요(요일 난이도: 월·화 쉬움, 수~금 보통, 토·일 어려움). 사이트끼리 점수를 비교할 수 있어요.
+- 게임에 없는 모드는 `modes`에 넣어도 빠져요(고스톱은 솔로·대전만). 없는 모드로 `start`하면 첫 번째 모드로 시작해요.
 - **대전**은 같은 대전 서버를 써서, 다른 사이트에 붙은 같은 게임끼리도 상대가 될 수 있어요. 상대가 없으면 AI와 겨뤄요. 대전을 빼려면 `modes`에서 `duel`을 빼세요(그러면 서버에 연결하지 않아요).
 - 기록은 그 기기의 브라우저에 저장돼요. 회원별로 오래 보관하려면 `progress`/`finish` 이벤트를 받아 붙인 쪽 서버에 저장하고 `restore`로 되돌려 주세요.
 - 하트·광고·리그는 모듈에 없어요(붙인 곳이 정해요). 사이트(index.html)에만 있어요.

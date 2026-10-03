@@ -86,7 +86,7 @@ function embMenu(){
   el.innerHTML = `<div class="em-card panel"><span class="g-art">${ART[id]()}</span><div class="em-nm"><b>${m.name}</b><small>${m.abil} · ${m.time}</small></div></div>
     <div class="em-list">
       ${embHas('daily') ? row('daily', ic('clock'), '오늘의 문제', `${EMB_WD[new Date().getDay()]}요일 · ${LEVELS[lv].name} · 모두 같은 문제${r.tries ? ' · 오늘 최고 ' + fmt(r.best) + '점' : ''}`) : ''}
-      ${embHas('solo') ? row('solo', ic('map'), '솔로 · 스테이지 ' + p.max, `${chName(id, chOf(p.max))} · 별 ${advStarsOf(id)}개 · 5판마다 새 규칙`) + `<button class="em-map" id="emMap">${ic('map')} 스테이지 맵</button>` : ''}
+      ${embHas('solo') ? row('solo', ic('map'), '솔로 · 스테이지 ' + p.max, `${chName(id, chOf(p.max))} · 별 ${advStarsOf(id)}개${conceptsOf(id) ? ' · 5판마다 새 규칙' : ''}`) + `<button class="em-map" id="emMap">${ic('map')} 스테이지 맵</button>` : ''}
       ${embHas('practice') ? row('practice', ic('play'), '연습', m.levelSheet ? '상대와 난이도를 골라요' : '쉬움 · 보통 · 어려움 중 골라 새 문제로') : ''}
       ${embHas('duel') ? row('duel', ic('duel'), '1:1 대전', `${m.duelHow || '같은 문제 · 점수가 높으면 승리'}${R.w + R.d + R.l ? ` · ${R.w}승 ${R.d}무 ${R.l}패` : ''}`) : ''}
     </div>
@@ -237,6 +237,8 @@ window.addEventListener('message', e => {
 
 /* ---- 시작 ---- */
 registerGames([EMB.id]);
+/* 게임 정의의 modes가 있으면 그 모드만(예: 오늘의 문제·연습이 없는 게임) */
+if(Array.isArray(NG[EMB.id].modes)){ const ok = EMB.modes.filter(x => NG[EMB.id].modes.includes(x)); EMB.modes = ok.length ? ok : NG[EMB.id].modes.filter(x => ['daily', 'solo', 'practice', 'duel'].includes(x)); }
 playChromeInit();
 if(embHas('duel')) netStart(); else ROOM_STATE = 'none';   /* 대전을 켠 곳에서만 대전 서버에 연결 */
 if(new URLSearchParams(location.search).get('sound') === '0') sndSetOn(false);

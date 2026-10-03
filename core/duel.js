@@ -544,7 +544,7 @@ function duelWaitText(){
 /* ---- 대전 끝 ---- */
 function duelFinish(win){
   const D = G.duel, id = G.id;
-  if(D.fleet){ duelResult(win ? 'w' : 'l', null, null); return; }
+  if(D.fleet){ duelResult(D.r || (win ? 'w' : 'l'), D.a || null, D.b || null); return; }   /* 대전을 직접 진행하는 게임은 D.r(무승부 'd' 포함)·D.a·D.b를 정해 둘 수 있음 */
   D.meStat = duelStatNow();
   D.me = { sc: win ? calcScore().score : 0, pg: win ? 1 : gameProg() };
   duelRender();
@@ -591,6 +591,7 @@ function duelSidesHtml(r, a, b){
 }
 function duelWhy(r, a, b){
   const D = G.duel, win = r === 'w';
+  if(D.why) return D.why;   /* 게임이 정한 판정 이유 */
   return D.fleet ? (win ? (G.forfeit ? '상대가 떠나 기권승이에요' : '적 함대를 모두 격침했어요') : '우리 함대가 먼저 침몰했어요')
     : D.cut === 'done' && b && b.sc ? '상대가 먼저 끝내서 판이 끝났어요'
     : D.cut === 'done' && b && !b.sc ? '상대가 실패해서 판이 끝났어요 · 진행도로 판정했어요'
