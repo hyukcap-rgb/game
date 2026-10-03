@@ -328,56 +328,7 @@ NG.gostop = (() => {
     return n >= 3 && opS <= (me.go ? 2 : 3) && me.go < 3 && S.deck.length > 4;
   }
 
-  /* ---------- 그림(오리지널 SVG, 40×60) ---------- */
-  const O = (w = .9) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
-  const FRAME = (bg = '#FFF8EA') => `<rect x=".8" y=".8" width="38.4" height="58.4" rx="4.2" fill="${bg}" stroke="${INK}" stroke-width="1.5"/>`;
-  const NUM = m => `<circle cx="7.2" cy="7.2" r="5.2" fill="#fff" ${O(.9)}/><text x="7.2" y="9.6" font-size="${m > 9 ? 5.6 : 6.6}" font-weight="900" text-anchor="middle" fill="${INK}" font-family="system-ui,sans-serif">${m}</text>`;
-  const TAG = (txt, bg, fg = '#fff') => { const w = txt.length > 1 ? 15 : 9.5; return `<rect x="${38.2 - w}" y="49.6" width="${w}" height="8.6" rx="2.6" fill="${bg}" ${O(.8)}/><text x="${38.2 - w / 2}" y="56.3" font-size="6.3" font-weight="900" text-anchor="middle" fill="${fg}" font-family="system-ui,sans-serif">${txt}</text>`; };
-  const GW = `<circle cx="32" cy="8" r="6" fill="#D7263D" ${O(.9)}/><text x="32" y="10.6" font-size="7" font-weight="900" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">광</text>`;
-  const RIB = (col, t1, t2) => `<path d="M14.5 8.5h11v24l-5.5-3.6-5.5 3.6z" fill="${col}" ${O(.9)}/>${t1 ? `<text x="20" y="16.6" font-size="5.6" font-weight="900" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${t1}</text><text x="20" y="23" font-size="5.6" font-weight="900" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${t2}</text>` : '<path d="M17 13v13M23 13v13" stroke="#fff" stroke-width="1" opacity=".55"/>'}`;
-  const pine = (x = 0) => `<g transform="translate(${x} 0)"><path d="M20 59c0-9-3-15-1-27" fill="none" stroke="#6B3E1F" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="12" cy="41" rx="10" ry="5" fill="#2F7D3A" ${O(.8)}/><ellipse cx="28" cy="35" rx="10" ry="5" fill="#3E9A48" ${O(.8)}/><ellipse cx="17" cy="28" rx="9" ry="4.4" fill="#2F7D3A" ${O(.8)}/><path d="M6 41h12M22 35h12M11 28h11" stroke="#BFE6B0" stroke-width=".8" opacity=".7"/></g>`;
-  const plum = `<path d="M3 52C12 44 18 34 34 22" fill="none" stroke="#4A2A18" stroke-width="2.6" stroke-linecap="round"/><path d="M18 38c4 1 8 4 10 9" fill="none" stroke="#4A2A18" stroke-width="1.8" stroke-linecap="round"/>${[[9, 47], [17, 39], [26, 30], [33, 23], [27, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.6" fill="#E8476A" ${O(.7)}/><circle cx="${x}" cy="${y}" r="1.1" fill="#FFE27A"/>`).join('')}`;
-  const sakura = `${[[10, 20], [22, 15], [31, 26], [14, 32], [26, 38], [9, 45], [31, 47]].map(([x, y]) => `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-3" rx="2.4" ry="3" transform="rotate(${a})" fill="#FFC2D3" stroke="#D9577C" stroke-width=".6"/>`).join('')}<circle r="1.2" fill="#E8476A"/></g>`).join('')}`;
-  const wisteria = `<path d="M4 3h33" stroke="#4A2A18" stroke-width="2.2"/>${[8, 15, 22, 29, 35].map((x, i) => `<path d="M${x} 4v${22 + (i % 2) * 8}" stroke="#3A2A22" stroke-width="1"/>${[...Array(5)].map((_, k) => `<ellipse cx="${x + (k % 2 ? 1.8 : -1.8)}" cy="${8 + k * 4.4}" rx="1.9" ry="2.6" fill="#2B1B12"/>`).join('')}`).join('')}`;
-  const iris = `${[[8, 58, 5, 26], [14, 58, 14, 22], [24, 58, 26, 24], [32, 58, 36, 28]].map(([x1, y1, x2, y2]) => `<path d="M${x1} ${y1}Q${(x1 + x2) / 2 - 3} ${(y1 + y2) / 2} ${x2} ${y2}" fill="none" stroke="#2E8B57" stroke-width="2.4" stroke-linecap="round"/>`).join('')}${[[11, 24], [27, 21]].map(([x, y]) => `<g transform="translate(${x} ${y})"><path d="M0 0c-5-1-6-6-3-8 1 3 3 4 3 8zM0 0c5-1 6-6 3-8-1 3-3 4-3 8zM0 0c-2-4 0-9 0-10 0 1 2 6 0 10z" fill="#7B4FC9" ${O(.6)}/></g>`).join('')}`;
-  const peony = `<path d="M6 54c4-8 10-12 14-12M34 54c-3-7-8-11-14-12" fill="none" stroke="#2E8B57" stroke-width="2.2"/><ellipse cx="9" cy="48" rx="6" ry="3" transform="rotate(-30 9 48)" fill="#3E9A48" ${O(.6)}/><ellipse cx="31" cy="48" rx="6" ry="3" transform="rotate(30 31 48)" fill="#3E9A48" ${O(.6)}/><circle cx="20" cy="33" r="10" fill="#E8335A" ${O(.9)}/><circle cx="20" cy="33" r="6.5" fill="#FF6E8E"/><circle cx="20" cy="33" r="3" fill="#FFD84A"/><path d="M12 28c2-3 5-4 8-4" fill="none" stroke="#fff" stroke-width="1" opacity=".6"/>`;
-  const clover = `${[[4, 56, 22, 14], [14, 58, 34, 20], [24, 58, 38, 34]].map(([x1, y1, x2, y2]) => `<path d="M${x1} ${y1}Q${x1 + 2} ${y2 + 6} ${x2} ${y2}" fill="none" stroke="#5B3A1E" stroke-width="1.2"/>`).join('')}${[[18, 17], [23, 15], [28, 19], [31, 23], [35, 28], [30, 31], [36, 36], [20, 24], [12, 30], [16, 36], [25, 40], [9, 42]].map(([x, y], i) => i % 3 ? `<circle cx="${x}" cy="${y}" r="1.8" fill="#D7263D"/>` : `<ellipse cx="${x}" cy="${y}" rx="2.4" ry="1.3" transform="rotate(30 ${x} ${y})" fill="#3E9A48"/>`).join('')}`;
-  const hill = (sky) => `${sky ? `<rect x="1.6" y="1.6" width="36.8" height="40" rx="3.4" fill="${sky}"/>` : ''}<path d="M1.6 40Q20 18 38.4 40V57A2.6 2.6 0 0 1 35.8 58.4H4.2A2.6 2.6 0 0 1 1.6 57z" fill="#33251D"/><path d="M5 44q3-4 5 0M14 40q3-4 5 0M24 41q3-4 5 0M31 45q3-4 5 0" fill="none" stroke="#8A7A6A" stroke-width=".9"/>`;
-  const mum = `<path d="M20 58V36" stroke="#2E8B57" stroke-width="2"/><ellipse cx="13" cy="48" rx="6" ry="3" transform="rotate(-25 13 48)" fill="#3E9A48" ${O(.6)}/><ellipse cx="27" cy="45" rx="6" ry="3" transform="rotate(25 27 45)" fill="#3E9A48" ${O(.6)}/><g transform="translate(20 28)">${[...Array(14)].map((_, i) => `<ellipse cx="0" cy="-7" rx="1.9" ry="5" transform="rotate(${i * 360 / 14})" fill="#F2B705" stroke="#B07A00" stroke-width=".5"/>`).join('')}<circle r="3.4" fill="#E08A00"/></g>`;
-  const leafM = (x, y, s, r, col) => `<path transform="translate(${x} ${y}) rotate(${r}) scale(${s})" d="M0-8l2 4 4-2-1 4 4 1-4 2 2 4-4-1-3 4-3-4-4 1 2-4-4-2 4-1-1-4 4 2z" fill="${col}" ${O(.5)}/>`;
-  const maple = `<path d="M6 4c6 12 10 24 26 34" fill="none" stroke="#5B3A1E" stroke-width="1.4"/>${leafM(10, 13, 1, 10, '#E8401C')}${leafM(20, 23, 1.1, -15, '#D7263D')}${leafM(30, 33, 1, 20, '#F07A1A')}${leafM(14, 40, .9, -5, '#D7263D')}${leafM(28, 13, .8, 0, '#F07A1A')}`;
-  const paulow = (tint) => `<path d="M20 58V40" stroke="#4A2A18" stroke-width="2"/>${[[11, 46, -30], [29, 46, 30], [20, 40, 0]].map(([x, y, r]) => `<path transform="translate(${x} ${y}) rotate(${r})" d="M0 0c-8-2-9-12-1-15 1 4 4 4 1 0 8 3 7 13 0 15z" fill="${tint ? '#C9B23A' : '#2F5D3A'}" ${O(.7)}/>`).join('')}<path d="M20 34v-14" stroke="#4A2A18" stroke-width="1.2"/>${[0, 1, 2, 3].map(k => `<circle cx="${18 + (k % 2) * 4}" cy="${20 + k * 3.4}" r="1.9" fill="#9B6BD6"/>`).join('')}`;
-  const rain = `${[[6, 4], [14, 2], [24, 6], [32, 3], [10, 20], [30, 18]].map(([x, y]) => `<path d="M${x} ${y}l-3 9" stroke="#6E8FB8" stroke-width="1" stroke-linecap="round"/>`).join('')}`;
-  const willow = `<path d="M38 2C28 8 22 20 20 58" fill="none" stroke="#4A2A18" stroke-width="1.6"/>${[[30, 6], [26, 14], [23, 24], [21, 34]].map(([x, y]) => `<path d="M${x} ${y}c-4 6-5 14-6 20" fill="none" stroke="#3E9A48" stroke-width="1.2"/>`).join('')}`;
-  const bird = (x, y, s, body, head) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-9 1l-5 3 5 0z" fill="${INK}"/><ellipse cx="0" cy="0" rx="9" ry="5.2" fill="${body}" ${O(.8)}/><circle cx="7" cy="-3.6" r="3.6" fill="${head || body}" ${O(.8)}/><path d="M10.4 -3.6l3 .8-3 1z" fill="#F2A900"/><circle cx="8" cy="-4.2" r=".9" fill="${INK}"/><path d="M-4-1c2-3 6-3 8 0" fill="none" stroke="${INK}" stroke-width=".8"/></g>`;
-  const crane = `<g transform="translate(22 36)"><path d="M-10 4l-6 4 6-1z" fill="${INK}"/><ellipse cx="0" cy="2" rx="10" ry="6" fill="#fff" ${O(.9)}/><path d="M8 0c3-6 3-12 0-16" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><path d="M8 0c3-6 3-12 0-16" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="-16" r="2.6" fill="#fff" ${O(.8)}/><circle cx="8" cy="-17.4" r="1.2" fill="#D7263D"/><path d="M10 -16l5 1" stroke="${INK}" stroke-width="1"/><path d="M-6 2c3-2 7-2 9 1" fill="none" stroke="#999" stroke-width=".8"/></g>`;
-  const ART = {
-    1:k => k === 0 ? `<circle cx="27" cy="16" r="8" fill="#E23B3B" ${O(.8)}/>${pine()}${crane}` : k === 1 ? `${pine()}${RIB('#D7263D', '홍', '단')}` : pine(k === 3 ? 2 : 0),
-    2:k => k === 0 ? `${plum}${bird(20, 22, .9, '#B5C83A', '#9DB52A')}` : k === 1 ? `${plum}${RIB('#D7263D', '홍', '단')}` : plum,
-    3:k => k === 0 ? `${sakura}<rect x="5" y="34" width="30" height="18" fill="#fff" ${O(.8)}/>${[0, 1, 2, 3, 4].map(i => `<rect x="${5 + i * 6}" y="34" width="3" height="18" fill="#D7263D"/>`).join('')}<path d="M3 34h34" stroke="${INK}" stroke-width="2"/>` : k === 1 ? `${sakura}${RIB('#D7263D', '홍', '단')}` : sakura,
-    4:k => k === 0 ? `${wisteria}${bird(20, 40, .95, '#5A4A6A', '#3A2A4A')}` : k === 1 ? `${wisteria}${RIB('#D7263D')}` : wisteria,
-    5:k => k === 0 ? `${iris}<path d="M3 44l10-4 14 4 10-4" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M3 44l10-4 14 4 10-4" fill="none" stroke="#C98A3A" stroke-width="3" stroke-linejoin="round"/>` : k === 1 ? `${iris}${RIB('#D7263D')}` : iris,
-    6:k => k === 0 ? `${peony}${[[11, 14, '#FFD84A'], [27, 12, '#7CC8FF']].map(([x, y, cl]) => `<g transform="translate(${x} ${y})"><ellipse cx="-3" cy="-2" rx="3.2" ry="4.4" fill="${cl}" ${O(.6)}/><ellipse cx="3" cy="-2" rx="3.2" ry="4.4" fill="${cl}" ${O(.6)}/><ellipse cx="-2.4" cy="3" rx="2" ry="2.6" fill="${cl}" ${O(.6)}/><ellipse cx="2.4" cy="3" rx="2" ry="2.6" fill="${cl}" ${O(.6)}/><path d="M0-5v10" stroke="${INK}" stroke-width="1.2"/></g>`).join('')}` : k === 1 ? `${peony}${RIB('#2D6CDF', '청', '단')}` : peony,
-    7:k => k === 0 ? `${clover}<g transform="translate(20 44)"><ellipse cx="0" cy="0" rx="11" ry="7" fill="#8A5A2B" ${O(.9)}/><path d="M9-3l6 2-5 3z" fill="#6B4220" ${O(.6)}/><circle cx="8" cy="-2" r=".9" fill="${INK}"/><path d="M-7 6v5M-2 7v4M4 7v4M8 5v5" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/><path d="M-8-5c4-3 9-3 12 0" fill="none" stroke="#5A3A1A" stroke-width="1"/></g>` : k === 1 ? `${clover}${RIB('#D7263D')}` : clover,
-    8:k => k === 0 ? `${hill('#E8553A')}<circle cx="20" cy="20" r="11" fill="#FFF3C4" ${O(.9)}/>` : k === 1 ? `${hill('#F6E4C8')}${[[12, 12], [21, 9], [29, 15]].map(([x, y]) => `<path d="M${x - 5} ${y}l5 3 5-3" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}` : hill(k === 2 ? '#F6E4C8' : '#E9DCC6'),
-    9:k => k === 0 ? `${mum}<g transform="translate(26 12)"><path d="M-8-4h16l-3 10h-10z" fill="#D7263D" ${O(.8)}/><path d="M-8-4h16" stroke="#F2B705" stroke-width="1.6"/><circle cx="0" cy="1" r="2" fill="#F2B705"/></g>` : k === 1 ? `${mum}${RIB('#2D6CDF', '청', '단')}` : mum,
-    10:k => k === 0 ? `${maple}<g transform="translate(20 46)"><ellipse cx="0" cy="0" rx="9" ry="5" fill="#B8742E" ${O(.8)}/><circle cx="8" cy="-6" r="3" fill="#B8742E" ${O(.7)}/><path d="M7-9l-2-5M9-9l2-5" stroke="#6B4220" stroke-width="1"/><path d="M-6 4v6M-2 5v5M3 5v5M6 4v6" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/><circle cx="-2" cy="-1" r=".9" fill="#fff"/><circle cx="2" cy="1" r=".9" fill="#fff"/></g>` : k === 1 ? `${maple}${RIB('#2D6CDF', '청', '단')}` : maple,
-    11:k => k === 0 ? `${paulow()}<g transform="translate(18 18)"><path d="M6 2c8 4 14 10 16 18-6-4-12-6-18-8z" fill="#2D9C6A" ${O(.7)}/><path d="M4 4c4 8 6 14 6 22-4-6-6-12-8-20z" fill="#2D6CDF" ${O(.7)}/><ellipse cx="0" cy="0" rx="8" ry="5" fill="#D7263D" ${O(.8)}/><circle cx="-6" cy="-4" r="3.2" fill="#F2B705" ${O(.7)}/><circle cx="-6.6" cy="-4.6" r=".8" fill="${INK}"/></g>` : paulow(k === 1),
-    12:k => k === 0 ? `${rain}${willow}<path d="M6 28a12 9 0 0 1 24 0z" fill="#D7263D" ${O(.9)}/><path d="M18 28v14" stroke="${INK}" stroke-width="1.4"/><circle cx="14" cy="36" r="3" fill="#F6D3B0" ${O(.7)}/><path d="M10 54l3-14h4l2 14z" fill="#2D3A6A" ${O(.7)}/>` :
-      k === 1 ? `${rain}${willow}<g transform="translate(18 30)"><path d="M-12 6l6-6-2 8zM-12 0l6 2" fill="${INK}"/><ellipse cx="0" cy="2" rx="8" ry="4" fill="#24334E" ${O(.8)}/><path d="M-4 0c4-8 10-10 16-8-4 2-8 6-10 10z" fill="#24334E" ${O(.7)}/><circle cx="6" cy="1" r="2.6" fill="#D7263D"/></g>` :
-      k === 2 ? `${rain}${willow}<path d="M12 8.5h11v24l-5.5-3.6-5.5 3.6z" fill="#D7263D" ${O(.9)}/><path d="M14 14l3 3 3-3 3 3M14 21l3 3 3-3 3 3" fill="none" stroke="#fff" stroke-width=".9"/>` :
-      `<rect x="1.6" y="1.6" width="36.8" height="56.8" rx="3.4" fill="#4B4B5E"/>${rain}<circle cx="20" cy="30" r="10" fill="#D7263D" ${O(1)}/><circle cx="20" cy="30" r="6.4" fill="#F2B705" ${O(.8)}/>${[0, 120, 240].map(a => `<path transform="rotate(${a} 20 30)" d="M20 30c0-4 3-5 5-3" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`).join('')}`
-  };
-  function tagOf(c){
-    if(c.g) return TAG('광', '#F2B705', INK);
-    if(c.y) return TAG(c.kj ? '열·쌍' : '열', '#F08A24');
-    if(c.tt === 'hong') return TAG('홍단', '#D7263D');
-    if(c.tt === 'cheong') return TAG('청단', '#2D6CDF');
-    if(c.tt === 'cho') return TAG('초단', '#2E9B57');
-    if(c.tt) return TAG('띠', '#D7263D');
-    if(c.pv === 2) return TAG('쌍피', '#7B4FC9');
-    return TAG('피', '#A0968C');
-  }
+  /* ---------- 그림: gostop-art.js(GSART) ---------- */
   const SVGC = {}, INNER = {};
   function cardSvg(id){
     if(SVGC[id]) return SVGC[id];
@@ -389,100 +340,135 @@ NG.gostop = (() => {
   const BACK = `<svg viewBox="${GSART.VB}" aria-hidden="true">${GSART.back}</svg>`;
   const BADGE19 = '<span class="gs19" aria-label="19세 이상 이용">19</span>';
 
-  /* ---------- 화면 ---------- */
+  /* ---------- 화면: 한게임 맞고식 가로 판(기준 1630×923, 화면에 맞춰 확대·축소, 세로 화면이면 90° 돌림) ---------- */
+  const BW = 1630, BH = 923, MAINW = 1262;
+  const CW = { hand:[142, 232], floor:[84, 137], cap:[44, 72], deck:[92, 150] };
   const GS = () => G && G.gs;
   const myTurn = () => { const g = GS(); return g && g.S && !g.S.over && g.S.turn === g.me && g.S.pendingGS < 0; };
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  function setMsg(html, cls){ const m = $('#gsMsg'); if(m){ m.className = 'gs-msg' + (cls ? ' ' + cls : ''); m.innerHTML = html; } }
+  const px = (x, y, w, h) => `left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(w)}px;height:${Math.round(h)}px`;
+  function setMsg(html, cls){ const m = $('#gsMsg'); if(m){ m.className = 'gs-msg' + (cls ? ' ' + cls : ''); m.innerHTML = '<span>' + html + '</span>'; } }
+  /* 판 크기 맞추기 */
+  function fit(){
+    const g = GS(), b = $('#gsb'); if(!g || !b) return;
+    const vw = window.innerWidth, vh = window.innerHeight, rot = vh > vw * 1.05;
+    const S = rot ? Math.min(vh / BW, vw / BH) : Math.min(vw / BW, vh / BH);
+    g.rot = rot; g.sc = S;
+    b.style.transform = `translate(-50%,-50%) rotate(${rot ? 90 : 0}deg) scale(${S})`;
+  }
   function capGroups(cap){
     const g = { g:[], y:[], t:[], p:[] };
     cap.forEach(id => g[kindOf(id)].push(id));
     g.p.sort((a, b) => (C[a].pv || 0) - (C[b].pv || 0));
     return g;
   }
-  function capHtml(cap, cw){
-    const g = capGroups(cap), s = scoreOf(cap);
-    const cnt = { g:s.gN, y:s.yN, t:s.tN, p:s.piV };
-    const lab = { g:'광', y:'열', t:'띠', p:'피' };
-    const u = Math.max(240, (cw || 330) - 18), W = { g:u * .18, y:u * .23, t:u * .23, p:u * .36 };   /* 줄 폭에 맞춰 나눔(넘치지 않게) */
-    return ['g', 'y', 't', 'p'].map(k => { const n = g[k].length, st = n > 1 ? Math.min(14, (W[k] - 22) / (n - 1)) : 14;
-      return `<div class="gs-cg k-${k}${n ? '' : ' none'}" style="--w:${W[k].toFixed(1)}px;--st:${st.toFixed(1)}px"><span class="gs-cl">${lab[k]}<b>${cnt[k]}</b></span><div class="gs-cs">${g[k].map(id => `<div class="gs-c mini" data-cid="${id}">${cardSvg(id)}</div>`).join('')}</div></div>`; }).join('');
+  /* 먹은 패 줄: 광 · 열끗 · 띠 · 피 묶음(겹쳐 놓기), 묶음마다 장수 */
+  function capHtml(cap, y){
+    const g = capGroups(cap), s = scoreOf(cap), cnt = { g:s.gN, y:s.yN, t:s.tN, p:s.piV };
+    const [w, h] = CW.cap, step = { g:20, y:16, t:16, p:11 };
+    let x = 170, out = '';
+    for(const k of ['g', 'y', 't', 'p']){
+      const L = g[k]; if(!L.length) continue;
+      L.forEach((id, i) => { out += `<div class="gs-c mini" data-cid="${id}" style="${px(x + i * step[k], y, w, h)};z-index:${i + 1}">${cardSvg(id)}</div>`; });
+      const gw = w + (L.length - 1) * step[k];
+      out += `<span class="gs-cnt" style="left:${Math.round(x + gw - 14)}px;top:${y + h - 22}px">${cnt[k]}</span>`;
+      x += gw + 30;
+    }
+    return out;
   }
-  function infoHtml(p, view){
-    const g = GS(), S = g.S, P = S.P[p], sc = scoreOf(view.c[p]).total, me = p === g.me;
-    const name = me ? '나' : esc(g.oppNick);
-    const av = me ? avatar({ me:true }) : oppAv(g.oppNick);
-    const chips = [P.go ? `<span class="gs-chip go">${P.go}고</span>` : '', P.shake ? `<span class="gs-chip sh">흔들 ${P.shake}</span>` : '', P.ppuk ? `<span class="gs-chip pp">뻑 ${P.ppuk}</span>` : ''].join('');
-    const turnOn = !S.over && S.turn === p;
-    return `<div class="gs-who${turnOn ? ' on' : ''}">${av}<span class="gs-nm"><b>${name}</b>${(S.first === p) ? '<i>선</i>' : ''}</span></div><div class="gs-sc"><b class="num">${sc}</b><small>점</small></div><div class="gs-chips">${chips}</div>${me ? '<div class="gs-timer" id="gsTimer"><i></i></div>' : `<div class="gs-oh" id="gsOH">${view.h[p].map((_, i) => `<div class="gs-c back tiny" data-cid="o${i}">${BACK}</div>`).join('')}<b>${view.h[p].length}</b></div>`}`;
+  function profHtml(p, view){
+    const g = GS(), S = g.S, P = S.P[p], me = p === g.me;
+    const name = me ? '나' : esc(g.oppNick), av = me ? avatar({ me:true }) : oppAv(g.oppNick);
+    const st = [P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
+    return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
+      <div class="gs-pl" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 · 스테이지 ' + G.adv : g.mode === 'pvp' ? '실시간 대전' : 'AI 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
+      <div class="gs-ps">${st}</div><span class="gs-pav">${av}</span>`;
   }
+  /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
+  const SLOT = [...Array(13)].map((_, m) => { const a = (180 + (m - 1) * 30) * Math.PI / 180; return [630 + Math.cos(a) * 425, 334 + Math.sin(a) * 152]; });
   function floorHtml(view){
     const by = {}; view.f.forEach(id => { const m = C[id].m; (by[m] = by[m] || []).push(id); });
-    const sel = GS().sel, selM = sel != null && C[sel] && !C[sel].bonus ? C[sel].m : 0;
-    const can = new Set(GS().S.P[GS().me].hand.map(id => C[id] && C[id].m).filter(Boolean));
-    let h = '';
+    const [w, h] = CW.floor;
+    let out = '';
     for(let m = 1; m <= 12; m++){
-      const L = by[m] || [];
-      h += `<div class="gs-slot${L.length ? '' : ' empty'}${selM === m ? ' hit' : ''}${L.length && can.has(m) && myTurn() ? ' can' : ''}${view.ppuk && view.ppuk[m] != null ? ' ppuk' : ''}" data-m="${m}"><span class="gs-sm">${m}</span>${L.map((id, i) => `<div class="gs-c fl${view.hi.includes(id) ? ' glow' : ''}" data-cid="${id}" style="--i:${i}">${cardSvg(id)}</div>`).join('')}</div>`;
+      const L = by[m] || []; if(!L.length) continue;
+      const [cx, cy] = SLOT[m], n = L.length;
+      L.forEach((id, i) => { out += `<div class="gs-c fl${view.hi.includes(id) ? ' glow' : ''}" data-cid="${id}" style="${px(cx - w / 2 + (i - (n - 1) / 2) * 18, cy - h / 2 + (i - (n - 1) / 2) * 7, w, h)};z-index:${i + 2}">${cardSvg(id)}</div>`; });
+      if(view.ppuk && view.ppuk[m] != null) out += `<span class="gs-ppk" style="left:${Math.round(cx + w / 2 + 6)}px;top:${Math.round(cy - h / 2 - 8)}px">뻑</span>`;
     }
-    return h;
+    return out;
   }
   function handHtml(view){
     const g = GS(), hand = view.h[g.me].slice().sort((a, b) => ((C[a] && C[a].m) || 99) - ((C[b] && C[b].m) || 99) || a - b);
-    const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy;
-    return hand.map(id => { const c = C[id], hit = c && !c.bonus && fm.has(c.m), bon = (c && c.bonus) || isDummy(id);
-      return `<button class="gs-c hd${g.sel === id ? ' sel' : ''}${mt && (hit || bon) ? ' match' : ''}${mt ? '' : ' off'}" data-cid="${id}" data-h="${id}" aria-label="${cardName(id)}${hit ? ', 바닥에 같은 월 있음' : ''}">${cardSvg(id)}</button>`; }).join('');
+    const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy, [w, h] = CW.hand, n = hand.length;
+    const step = n > 1 ? Math.min(152, (1452 - w) / (n - 1)) : 0;
+    return hand.map((id, i) => { const c = C[id], hit = c && !c.bonus && fm.has(c.m), bon = (c && c.bonus) || isDummy(id);
+      return `<button class="gs-c hd${mt && (hit || bon) ? ' match' : ''}${mt ? '' : ' off'}" data-cid="${id}" data-h="${id}" style="${px(12 + i * step, 683, w, h)};z-index:${i + 1}" aria-label="${cardName(id)}${hit ? ', 바닥에 같은 월 있음' : ''}">${cardSvg(id)}</button>`; }).join('');
   }
   function liveView(){ const S = GS().S; return Object.assign(snap(S), { ppuk:S.ppuk }); }
+  function infoHtml(view){
+    const g = GS(), S = g.S, s = scoreOf(view.c[g.me]), P = S.P[g.me];
+    const mul = [P.shake ? '흔들 ×' + Math.pow(2, P.shake) : '', P.go >= 3 ? P.go + '고 ×' + Math.pow(2, P.go - 2) : '', s.yN >= 7 ? '멍따 ×2' : ''].filter(Boolean);
+    return `<div class="gs-ih">내 패</div><div class="gs-ir"><span>광 <b>${s.gN}</b></span><span>열 <b>${s.yN}</b></span><span>띠 <b>${s.tN}</b></span><span>피 <b>${s.piV}</b></span></div>
+      <div class="gs-ir2">${mul.length ? mul.join(' · ') : (s.birds === 3 ? '고도리!' : s.hong === 3 || s.cheong === 3 || s.cho === 3 ? '단 완성!' : '7점 나면 고 · 스톱')}</div>
+      <div class="gs-timer" id="gsTimer"><i></i></div>`;
+  }
   function draw(view){
-    const g = GS(); if(!g || !$('#gsg')) return;
+    const g = GS(); if(!g || !$('#gsb')) return;
     const op = 1 - g.me;
-    $('#gsOpp').innerHTML = infoHtml(op, view);
-    const cw = $('#gsCapMe').clientWidth;
-    $('#gsCapOp').innerHTML = capHtml(view.c[op], cw);
+    $('#gsCapOp').innerHTML = capHtml(view.c[op], 14);
+    $('#gsCapMe').innerHTML = capHtml(view.c[g.me], 584);
+    $('#gsPtsOp').innerHTML = `<b>${scoreOf(view.c[op]).total}</b> 점`;
+    $('#gsPtsMe').innerHTML = `<b>${scoreOf(view.c[g.me]).total}</b> 점`;
     $('#gsFloor').innerHTML = floorHtml(view);
-    $('#gsDeck').innerHTML = view.d ? `<div class="gs-c back" data-cid="deck">${BACK}</div><b class="num">${view.d}</b>` : '<span class="gs-dk0">더미 끝</span>';
-    $('#gsCapMe').innerHTML = capHtml(view.c[g.me], cw);
-    $('#gsMe').innerHTML = infoHtml(g.me, view);
+    const [dw, dh] = CW.deck;
+    $('#gsDeck').innerHTML = view.d ? `${view.d > 1 ? `<div class="gs-c back" style="${px(630 - dw / 2 + 7, 334 - dh / 2 + 7, dw, dh)}">${BACK}</div>` : ''}<div class="gs-c back" data-cid="deck" style="${px(630 - dw / 2, 334 - dh / 2, dw, dh)}">${BACK}</div><span class="gs-dn" style="left:${630 - 40}px;top:${334 + dh / 2 + 14}px">${view.d}</span>` : `<span class="gs-dn" style="left:${630 - 90}px;top:325px;width:180px">더미 끝</span>`;
+    $('#gsOpp').innerHTML = profHtml(op, view);
+    $('#gsMe').innerHTML = profHtml(g.me, view);
+    $('#gsOpp').classList.toggle('on', !g.S.over && g.S.turn === op);
+    $('#gsMe').classList.toggle('on', !g.S.over && g.S.turn === g.me);
+    $('#gsInfo').innerHTML = infoHtml(view);
     $('#gsHand').innerHTML = handHtml(view);
     $('#gsHand').querySelectorAll('[data-h]').forEach(b => b.onclick = () => onHand(+b.dataset.h));
-    $('#gsFloor').querySelectorAll('.gs-slot').forEach(s => s.onclick = () => { if(g.sel != null && s.classList.contains('hit')) onHand(g.sel); });
+    const au = $('#gsAuto'); if(au) au.disabled = !(myTurn() && !g.busy);
   }
-  /* 장면 바꾸기: 카드가 예전 자리에서 새 자리로 날아가게(FLIP) */
+  /* 장면 바꾸기: 카드가 예전 자리에서 새 자리로 날아가게(FLIP). 판이 돌려져 있으면 화면 좌표를 판 좌표로 바꿔 계산 */
   function flipTo(view, prev, dur){
-    const root = $('#gsg'); if(!root) return;
+    const root = $('#gsb'), g = GS(); if(!root || !g) return;
+    const org = r => g.rot ? [r.right, r.top] : [r.left, r.top];
     const old = {};
     root.querySelectorAll('[data-cid]').forEach(el => { old[el.dataset.cid] = el.getBoundingClientRect(); });
-    const oh = $('#gsOH'), ohR = oh ? oh.getBoundingClientRect() : null, dk = root.querySelector('[data-cid="deck"]'), dkR = dk ? dk.getBoundingClientRect() : null;
+    const oh = $('#gsOpp .gs-pav'), ohR = oh ? oh.getBoundingClientRect() : null, dk = root.querySelector('[data-cid="deck"]'), dkR = dk ? dk.getBoundingClientRect() : null;
     draw(view);
     if(FXR.reduce) return;
-    const g = GS(), op = 1 - g.me;
+    const op = 1 - g.me;
     root.querySelectorAll('[data-cid]').forEach(el => {
-      const cid = el.dataset.cid; if(cid[0] === 'o' || cid === 'deck') return;
+      const cid = el.dataset.cid; if(cid === 'deck') return;
       let o = old[cid];
       if(!o){ const id = +cid; o = prev && prev.h[op].includes(id) ? ohR : dkR; }
       if(!o || !o.width) return;
       const n = el.getBoundingClientRect(); if(!n.width) return;
-      const dx = o.left - n.left, dy = o.top - n.top, s = o.width / n.width;
+      const [ox, oy] = org(o), [nx, ny] = org(n), sx = ox - nx, sy = oy - ny;
+      const dx = g.rot ? sy / g.sc : sx / g.sc, dy = g.rot ? -sx / g.sc : sy / g.sc, s = Math.max(o.width, o.height) / Math.max(n.width, n.height);
       if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < .02) return;
-      try{ el.animate([{ transform:`translate(${dx}px,${dy}px) scale(${s})`, zIndex:30 }, { transform:'none', zIndex:30 }], { duration:dur || 340, easing:'cubic-bezier(.25,.9,.3,1)' }); }catch(_){}
+      try{ el.animate([{ transform:`translate(${dx}px,${dy}px) scale(${s})`, zIndex:60 }, { transform:'none', zIndex:60 }], { duration:dur || 360, easing:'cubic-bezier(.25,.9,.3,1)' }); }catch(_){}
     });
   }
   function banner(txt, kind){
     const b = $('#gsBan'); if(!b) return;
     b.innerHTML = `<b class="${kind || ''}">${txt}</b>`; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
-    try{ const r = b.getBoundingClientRect(); fxEmit(r.left + r.width / 2, r.top + r.height / 2, { quantity:18, speed:[160, 320], lifespan:700, scale:{ start:1.2, end:0 }, color:kind === 'bad' ? ['#FF8A8F', '#FFFFFF'] : ['#FFE27A', '#FFFFFF'], kind:'spark', glow:true }); }catch(_){}
+    try{ const r = b.getBoundingClientRect(); fxEmit(r.left + r.width / 2, r.top + r.height / 2, { quantity:22, speed:[180, 360], lifespan:750, scale:{ start:1.3, end:0 }, color:kind === 'bad' ? ['#FF8A8F', '#FFFFFF'] : ['#FFE27A', '#FFFFFF'], kind:'spark', glow:true }); }catch(_){}
   }
   async function playScenes(prev, scenes){
     let pv = prev;
     for(const sc of scenes){
       if(!GS() || G.over) return;
-      flipTo(sc, pv, 340);
+      flipTo(sc, pv, 360);
       sfx(sc.flip != null ? 'gsFlip' : 'gsSlap');
-      let w = 420;
+      let w = 440;
       if(sc.lab && sc.lab.length){
         const big = sc.lab.find(l => /[!]$/.test(l));
-        if(big){ banner(sc.lab.filter(l => /!$/.test(l)).join(' '), /뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'bad' : ''); sfx(/뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'gsBad' : 'gsBig'); fxBuzz([20, 30, 20]); w = 760; }
+        if(big){ banner(sc.lab.filter(l => /!$/.test(l)).join(' '), /뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'bad' : ''); sfx(/뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'gsBad' : 'gsBig'); fxBuzz([20, 30, 20]); w = 780; }
         const st = sc.lab.find(l => /^피 /.test(l)); if(st){ setTimeout(() => { try{ toast(st); }catch(_){} }, 200); }
       }
       if(sc.c && pv && (sc.c[0].length > pv.c[0].length || sc.c[1].length > pv.c[1].length)) setTimeout(() => sfx('gsCap'), 260);
@@ -497,7 +483,7 @@ NG.gostop = (() => {
     g.S = gsDeal(seed); g.S.first = 0;
     g.rnd = mulberry(seedFrom(seed + ':ai'));
     g.sel = null; g.busy = false; g.began = true;
-    $('#gsBody').hidden = false;
+    $('#gsBody').hidden = false; fit();
     const gate = $('#gsGate'); if(gate) gate.remove();
     draw(liveView());
     /* 패 돌리기 연출 */
@@ -514,7 +500,7 @@ NG.gostop = (() => {
     draw(liveView());
     clearTimeout(g.turnT); g.turnAt = Date.now();
     if(S.turn === g.me){
-      setMsg(`<b>내 차례</b> · ${S.P[g.me].hand.some(id => C[id] && C[id].bonus) ? '보너스패를 먼저 내도 돼요' : '낼 패를 누르고, 한 번 더 누르면 내요'}`, 'me');
+      setMsg(`<b>내 차례</b> · ${S.P[g.me].hand.some(id => C[id] && C[id].bonus) ? '보너스패를 먼저 내도 돼요' : '낼 패를 누르세요'}`, 'me');
       sfx('gsTurn');
       if(g.mode === 'pvp') timerRun(TURN_SEC, () => autoPlay());
     } else {
@@ -537,13 +523,13 @@ NG.gostop = (() => {
   function timerStop(){ const g = GS(); if(!g) return; clearInterval(g.tIv); g.tCb = null; const t = $('#gsTimer'); if(t) t.classList.remove('on', 'hurry'); }
   function onHand(id){
     const g = GS(); if(!g || g.busy || !myTurn()) return;
-    if(g.sel === id){ myPlay(id); return; }
-    g.sel = id; sfx('gsPick', { off:false });
-    draw(liveView());
-    const c = C[id];
-    if(isDummy(id)) setMsg('빈 패예요 · 한 번 더 누르면 더미만 뒤집어요', 'me');
-    else if(c.bonus) setMsg('보너스패 · 한 번 더 누르면 먹고 한 장 더 받아요', 'me');
-    else { const n = floorOf(g.S, c.m).length; setMsg(n ? `바닥에 ${c.m}월 ${n}장 · 한 번 더 누르면 내요` : `바닥에 ${c.m}월이 없어요 · 그냥 내려놓아요`, 'me'); }
+    sfx('gsPick', { off:false });
+    myPlay(id);   /* 한 번 누르면 바로 냄 */
+  }
+  function autoHand(){
+    const g = GS(); if(!g || g.busy || !myTurn()) return;
+    g.busy = true; timerStop();
+    commit(g.me, aiPick(g.S, g.me, 'normal', g.rnd));   /* 자동 치기: 보통 AI가 대신 골라 냄 */
   }
   /* 고르기 창(게임 화면 안). pvp에선 시간이 다 되면 기본값 */
   function ask(title, opts, defIdx, cards){
@@ -813,6 +799,8 @@ NG.gostop = (() => {
     const nr = g.nr; g.nr = null;
     if(nr) setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1200);
     lobbyClear();
+    if(g.onRs){ removeEventListener('resize', g.onRs); removeEventListener('orientationchange', g.onRs); }
+    document.body.classList.remove('gs-full');
   }
 
   /* ----- 시작 ----- */
@@ -827,21 +815,36 @@ NG.gostop = (() => {
   }
   const AI_NAME = { easy:'AI 새내기', normal:'AI 고수', hard:'AI 타짜' };
   function render(st){
-    st.innerHTML = `<div class="gsg" id="gsg">
-      <div class="gs-ban" id="gsBan" aria-live="polite"></div>
+    st.innerHTML = `<div class="gsg" id="gsg"><div class="gsb" id="gsb">
       <div id="gsBody" hidden>
-        <div class="gs-info op" id="gsOpp"></div>
-        <div class="gs-cap op" id="gsCapOp"></div>
-        <div class="gs-table"><div class="gs-floor" id="gsFloor"></div><div class="gs-deck" id="gsDeck"></div></div>
-        <div class="gs-msg" id="gsMsg"></div>
-        <div class="gs-cap me" id="gsCapMe"></div>
-        <div class="gs-info me" id="gsMe"></div>
-        <div class="gs-hand" id="gsHand"></div>
+        <div class="gs-main"></div><div class="gs-line"></div>
+        <div class="gs-tag">${BADGE19}<span>고스톱</span></div>
+        <div id="gsCapOp"></div>
+        <div class="gs-pts op" id="gsPtsOp"></div>
+        <div id="gsFloor"></div><div id="gsDeck"></div>
+        <div class="gs-pts me" id="gsPtsMe"></div>
+        <div id="gsCapMe"></div>
+        <div class="gs-side">
+          <div class="gs-prof op" id="gsOpp"></div>
+          <div class="gs-info" id="gsInfo"></div>
+          <div class="gs-btns"><button id="gsHelpB" aria-label="게임 방법">?</button><button class="out" id="gsOut">나가기</button></div>
+          <div class="gs-prof me" id="gsMe"></div>
+          <div class="gs-msg" id="gsMsg"></div>
+        </div>
+        <div id="gsHand"></div>
+        <button class="gs-auto" id="gsAuto">자동<br>치기</button>
       </div>
+      <div class="gs-ban" id="gsBan" aria-live="polite"></div>
       <div class="gs-search" id="gsSearch" hidden></div>
       <div class="gs-ask" id="gsAsk" hidden></div>
       ${ageOk() ? '' : gateHtml()}
-    </div>`;
+    </div></div>`;
+    document.body.classList.add('gs-full');
+    const g0 = GS(); if(g0){ g0.onRs = () => fit(); addEventListener('resize', g0.onRs); addEventListener('orientationchange', g0.onRs); }
+    fit();
+    $('#gsHelpB').onclick = () => openHelp(ID);
+    $('#gsOut').onclick = () => confirmQuit();
+    $('#gsAuto').onclick = () => autoHand();
     const go = () => {
       const g = GS(); if(!g || G.over) return;
       const gate = $('#gsGate'); if(gate) gate.remove();
@@ -875,9 +878,10 @@ NG.gostop = (() => {
       const u = 'gsA' + (++SVG_UID);
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><radialGradient id="${u}" cx=".5" cy=".35" r=".9"><stop offset="0" stop-color="#2E9A62"/><stop offset="1" stop-color="#0F4A2E"/></radialGradient></defs>
         <rect width="160" height="100" fill="url(#${u})"/><circle cx="80" cy="56" r="44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8"/>
-        <g transform="translate(38 34) rotate(-15) scale(.42)">${cardInner(0)}</g><g transform="translate(60 25) rotate(-1) scale(.42)">${cardInner(28)}</g><g transform="translate(83 29) rotate(13) scale(.42)">${cardInner(44)}</g>
+        ${[[0, 36, 32, -15], [28, 60, 23, -1], [44, 84, 28, 13]].map(([id, x, y, a], k) => `<clipPath id="${u}c${k}"><rect width="176" height="287" rx="11"/></clipPath><g transform="translate(${x} ${y}) rotate(${a}) scale(.22)"><g clip-path="url(#${u}c${k})">${cardInner(id)}</g></g>`).join('')}
         <g transform="translate(112 19)"><circle r="14" fill="#fff" stroke="#D7263D" stroke-width="4"/><text y="5.5" font-size="15" font-weight="900" text-anchor="middle" fill="#1A0F45" font-family="system-ui,sans-serif">19</text></g></svg>`;
     },
+    helpExtra:() => [['그림 출처', '화투 그림: Marcus Richert(Louie Mantia, Jr.의 Hanafuda 그래픽 기반), Wikimedia Commons, CC BY-SA 4.0 라이선스.']],
     help:[
       ['같은 월끼리 먹어요', '내 패 한 장을 내고 더미에서 한 장을 뒤집어요. 바닥에 같은 월(왼쪽 위 숫자)이 있으면 둘 다 가져와요. 패를 누르면 들리고, 한 번 더 누르면 내요.'],
       ['7점 나면 고? 스톱?', '광 3장 3점(비광 끼면 2점)·4장 4점·5장 15점 · 열끗 5장 1점(고도리 5점) · 띠 5장 1점(홍단·청단·초단 3점) · 피 10장 1점. 7점이 나면 스톱해서 이기거나, 고를 불러 점수를 더 키워요(1고 +1, 2고 +2, 3고부터 2배씩). 고를 했는데 상대가 먼저 나면 고박!'],
