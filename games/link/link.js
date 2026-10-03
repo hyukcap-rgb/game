@@ -57,6 +57,8 @@ NG.link = (() => {
   const symName = k => k === STONE ? '돌' : k === CLOCK ? '시계' : (k.endsWith(ALT) ? '점 찍힌 ' : '') + SYM[baseOf(k)][0];
   const symCol = k => k === CLOCK ? '#5BD08A' : k === STONE ? '#8E8AA6' : SYM[baseOf(k)][1];
 
+  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
+  const LIVES = 3;   /* 기본 기회 3번: 세 번째 실수에서 끝 */
   const ICO = {
     pair:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="14" y="9" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><path d="M6 5V2h12v7" fill="none" stroke="#FF9A1F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
@@ -77,22 +79,22 @@ NG.link = (() => {
     twInfo:{
       flash:{ name:'번개', desc:'타일은 조금 적지만 제한 시간이 아주 짧아요. 빠르게 훑어보세요!' },
       bare:{ name:'맨손', desc:'힌트와 섞기 없이 오직 눈으로 찾아요. (짝이 하나도 없을 때만 저절로 섞여요)' },
-      tight:{ name:'외줄 타기', desc:'길이 없는 짝을 고르면 실수예요. 실수 칸을 다 쓰고 또 틀리면 끝나요.' },
+      tight:{ name:'외줄 타기', desc:'기회가 딱 한 번! 다른 그림을 고르거나 막힌 짝을 고르면 바로 끝나요.' },
       turn1:{ name:'한 번 꺾기', desc:'이번 판은 길이 한 번까지만 꺾일 수 있어요. 대신 시간은 넉넉해요.' },
       tick:{ name:'째깍 벌칙', desc:'길이 없는 짝을 고를 때마다 남은 시간이 3초씩 줄어요.' }
     }
   };
-  const RULE_TIP = { stone:'돌은 피해서', twins:'색·점까지 똑같이', clock:'시계 짝 = +' + CLOCK_SEC + '초', slide:'지우면 위 타일이 내려와요', flash:'시간이 짧아요', bare:'힌트·섞기 없음', tight:'실수 횟수 제한', turn1:'한 번만 꺾기', tick:'틀리면 −3초' };
+  const RULE_TIP = { stone:'돌은 피해서', twins:'색·점까지 똑같이', clock:'시계 짝 = +' + CLOCK_SEC + '초', slide:'지우면 위 타일이 내려와요', flash:'시간이 짧아요', bare:'힌트·섞기 없음', tight:'한 번 틀리면 끝', turn1:'한 번만 꺾기', tick:'틀리면 −3초' };
 
   /* ----- 솔로 난이도 표 -----
      짝 수 = 챕터 1은 LT.ch1[k−1], 챕터 2~는 LT.base[c] + LT.kOff[k] (변주 배수). 판 크기는 gridOf(타일 + 돌).
      제한 시간 = 짝 × LT.spp[c] × kTime[k] × 규칙·변주 배수 (사람 기준 한 짝 약 3~4초 + 여유) */
   const LT = {
-    ch1:[8, 10, 12, 12, 16, 10, 14, 16, 12, 18],
-    base:[0, 0, 18, 20, 22, 24, 26],
+    ch1:[16, 18, 20, 18, 24, 16, 20, 22, 18, 26],
+    base:[0, 0, 22, 24, 26, 28, 30],
     kOff:[0, -4, -2, 0, 0, 4, -2, 0, 2, -4, 4],
-    spp:[0, 6.4, 6.0, 5.7, 5.5, 5.3, 5.1],
-    kTime:[0, 1.25, 1.1, 1.05, 1.0, 0.9, 1.2, 1.05, 1.0, 1.15, 0.85],
+    spp:[0, 5.6, 5.4, 5.2, 5.0, 4.9, 4.8],
+    kTime:[0, 1.15, 1.05, 1.0, 1.0, 0.9, 1.1, 1.0, 1.0, 1.1, 0.85],
     mjTime:{ stone:1.12, twins:1.15, clock:0.9, slide:1.1 },
     twPairs:{ flash:0.8, turn1:0.8 }, twTime:{ flash:0.7, bare:1.1, tight:1.05, turn1:1.25, tick:1.1 }
   };
@@ -109,22 +111,22 @@ NG.link = (() => {
     const p = planOf('link', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x);
     let pairs = c === 1 ? LT.ch1[k - 1] : LT.base[Math.min(c, LT.base.length - 1)] + LT.kOff[k];
     if(tw) pairs *= LT.twPairs[tw] || 1;
-    pairs = Math.max(6, Math.min(40, Math.round(pairs)));
+    pairs = Math.max(12, Math.min(42, Math.round(pairs)));
     const stones = has('stone') ? Math.min(8, 2 + Math.round(pairs / 6) + (p.boss ? 1 : 0)) : 0;
     const clocks = has('clock') ? (k === 5 || k === 10 ? 2 : 1) : 0;
     const twins = has('twins') ? Math.max(1, Math.min(4, Math.round(pairs / 7))) : 0;
     const turns = tw === 'turn1' ? 1 : 2;
     /* 빈칸 여유: 돌이 있거나 한 번 꺾기면 판에 빈칸을 더 둔다(길이 생기게) */
-    const room = turns === 1 ? Math.round(pairs * 2 * .45) : stones ? Math.ceil(stones / 2) + 1 : 0;
+    const room = turns === 1 ? Math.round(pairs * 2 * .45) : stones ? Math.ceil(stones / 2) + 2 : 2;
     const [cols, rows] = gridOf(pairs * 2 + stones + room);
     let limit = pairs * LT.spp[Math.min(c, LT.spp.length - 1)] * LT.kTime[k];
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(30, Math.round(limit / 5) * 5);
     const hints = tw === 'bare' ? 0 : p.boss ? 2 : 3, mixes = tw === 'bare' ? 0 : 2;
-    const missCap = tw === 'tight' ? Math.max(2, Math.round(pairs / 8)) : 0;
+    const lives = tw === 'tight' ? 1 : LIVES;
     return { cols, rows, pairs, stones, clocks, twins, slide:has('slide'), turns, tick:tw === 'tick' ? 3 : 0,
-      limit, hints, mixes, missCap, boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
+      limit, hints, mixes, lives, boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
   }
 
   /* ===== 길 찾기: 판 바깥 한 줄(테두리)까지 쓰는 확장 좌표에서, 꺾는 횟수 ≤ maxT 인 직선 길 =====
@@ -188,10 +190,18 @@ NG.link = (() => {
       for(const k of order){
         const empt = byDepth(b.map((v, i) => v == null ? i : -1).filter(i => i >= 0));
         let placed = false;
-        for(const a of empt){
-          const reach = byDepth(search(b, cols, rows, a, turns, null).filter(j => j !== a));
+        /* 같은 그림이 바로 옆에 붙는 칸은 피한다(먼저 엄격하게, 안 되면 너그럽게) */
+        const nbSame = i => { const x = i % cols, y = Math.floor(i / cols); return (x > 0 && b[i - 1] === k) || (x < cols - 1 && b[i + 1] === k) || (y > 0 && b[i - cols] === k) || (y < rows - 1 && b[i + cols] === k); };
+        const near = (i, j) => Math.abs(i % cols - j % cols) + Math.abs(Math.floor(i / cols) - Math.floor(j / cols)) === 1;
+        const tryA = empt.filter(i => !nbSame(i)).concat(empt.filter(i => nbSame(i)));
+        for(const a of tryA){
+          const all = search(b, cols, rows, a, turns, null).filter(j => j !== a), good = all.filter(j => !nbSame(j) && !near(a, j));
+          const reach = good.length ? good : all;
           if(!reach.length) continue;
-          const bb = reach[Math.floor(rng() * Math.min(reach.length, 3))];
+          /* 짝은 멀리 떨어뜨린다(바로 붙은 짝·한눈에 보이는 짝을 줄여 난이도↑): 거리 + 안쪽 + 약간의 운 */
+          const ax = a % cols, ay = Math.floor(a / cols);
+          const sc = j => Math.abs(j % cols - ax) + Math.abs(Math.floor(j / cols) - ay) + depth(j) * .6 + rng() * 2.5;
+          const bb = reach.map(j => [sc(j), j]).sort((p, q) => q[0] - p[0])[0][1];
           b[a] = k; b[bb] = k; placed = true; break;
         }
         if(!placed){ ok = false; break; }
@@ -214,7 +224,7 @@ NG.link = (() => {
     const f = $('#lkFound'); if(f) f.textContent = m.found;
     const h = $('#lkHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const x = $('#lkMix'); if(x){ x.querySelector('b').textContent = m.mixLeft; x.disabled = m.mixLeft <= 0; }
-    const mc = $('#lkMiss'); if(mc && m.missCap){ const left = Math.max(0, m.missCap - m.misses); mc.innerHTML = `실수 <b>${left}</b>번 남음`; mc.classList.toggle('low', left <= 1); }
+    const lv = $('#lkLives'); if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="lk-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#lkMsg'); if(!e) return; e.className = 'lk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
@@ -265,19 +275,22 @@ NG.link = (() => {
     if(m.sel == null){ m.sel = i; setSel(i, true); sfx('linkPick'); return; }
     if(m.sel === i){ setSel(i, false); m.sel = null; sfx('linkPick', { off:1 }); return; }
     const a = m.sel;
-    if(m.b[a] !== k){ setSel(a, false); m.sel = i; setSel(i, true); sfx('linkPick'); return; }   /* 다른 그림: 고른 타일만 바꾼다(벌칙 없음) */
-    const p = findPath(m, a, i);
+    const diff = m.b[a] !== k;
+    const p = diff ? null : findPath(m, a, i);
     if(p){ setSel(a, false); m.sel = null; clear(a, i, p); return; }
-    /* 같은 그림인데 길이 없음 = 실수 */
+    /* 실수(마구 누르기 막기): 다른 그림을 고르거나, 같은 그림인데 길이 없으면 기회 하나를 잃는다. 기회를 다 쓰면 끝 */
     m.misses++; m.combo = 0;
+    const left = Math.max(0, m.lives - m.misses);
     [a, i].forEach(j => { const el = cellEl(j); if(el){ el.classList.add('bad'); fxShake(el, 4); } });
     setSel(a, false); m.sel = null;
     sfx('linkMiss'); fxBuzz(25);
-    msg('<b class="bad">길이 막혔어요</b><span>' + (m.turns === 1 ? '한 번까지만' : '두 번까지만') + ' 꺾을 수 있어요</span>', 'lk-pop');
+    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
+    const hs = document.querySelectorAll('.ng-link .lk-heart'), lost = hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
     if(m.tick){ m.pen += m.tick; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }
     hud();
     T(() => { [a, i].forEach(j => { const el = cellEl(j); if(el) el.classList.remove('bad'); }); if(m.phase === 'play') msg(playMsg()); }, 700);
-    if(m.missCap && m.misses > m.missCap) failMiss();
+    G.paws = left;
+    if(!left) failMiss();
   }
 
   function clear(a, b, p){
@@ -398,7 +411,7 @@ NG.link = (() => {
     T(() => finish(false), 1400);
   }
   function timeUp(){ const e = $('#lkTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요', 'time'); }
-  function failMiss(){ lose('실수를 다 썼어요', 'miss'); }
+  function failMiss(){ lose('기회를 다 썼어요', 'miss'); }
 
   function cellHtml(i){
     const m = S(), k = m.b[i], x = i % m.cols, y = Math.floor(i / m.cols);
@@ -444,31 +457,32 @@ NG.link = (() => {
         <path d="${starPath(18, 50, 6, 2.6)}" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
     },
     help:[
-      ['같은 그림 두 개를 골라요', '같은 그림 타일 두 개를 차례로 누르면 길로 이어져 함께 사라져요. 다른 그림을 누르면 고른 타일이 바뀌어요.'],
-      ['길은 두 번까지만 꺾여요', '길은 빈칸과 판 바깥 테두리로만 지나갈 수 있고, 꺾이는 곳은 두 번까지예요. 막힌 짝을 고르면 실수예요.'],
+      ['같은 그림 두 개를 골라요', '같은 그림 타일 두 개를 차례로 누르면 길로 이어져 함께 사라져요. 고른 타일을 다시 누르면 취소돼요.'],
+      ['길은 두 번까지만 꺾여요', '길은 빈칸과 판 바깥 테두리로만 지나갈 수 있고, 꺾이는 곳은 두 번까지예요.'],
+      ['기회는 3번', '다른 그림을 고르거나 길이 막힌 짝을 고르면 기회 하나(♥)를 잃어요. 세 번 틀리면 게임이 끝나요. 마구 누르지 말고 잘 보고 골라요!'],
       ['시간 안에 판을 비워요', '제한 시간 안에 모든 짝을 지우면 성공! 막히면 💡힌트나 섞기를 쓸 수 있지만 점수가 조금 줄어요. 지울 짝이 하나도 없으면 저절로 섞여요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 돌 타일·닮은꼴·시계 타일·미끄럼 같은 새 규칙과 번개·한 번 꺾기 같은 변주가 5판마다 하나씩 나와요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 돌 타일·닮은꼴·시계 타일·미끄럼 같은 새 규칙과 번개·외줄 타기·한 번 꺾기 같은 변주가 5판마다 하나씩 나와요.']
     ],
     helpExtra(){ const m = G && G.id === 'link' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['꽃밭 산책','과일 장터','별빛 정원','바닷가 마을','눈꽃 궁전'],
-    starRule:'★ 클리어 · ★★ 힌트·섞기 1번 이하 · ★★★ 힌트·섞기 없이, 실수 2번 이하',
+    starRule:'★ 클리어 · ★★ 힌트·섞기·실수 1번 이하 · ★★★ 힌트·섞기·실수 없이',
     levels:{
-      easy:{ cols:6, rows:8, pairs:24, limit:180, hints:3, mixes:2 },
-      normal:{ cols:7, rows:10, pairs:34, limit:240, hints:3, mixes:2 },
-      hard:{ cols:8, rows:11, pairs:43, limit:270, hints:3, mixes:2 }
+      easy:{ cols:7, rows:8, pairs:27, limit:170, hints:3, mixes:2 },
+      normal:{ cols:7, rows:10, pairs:33, limit:210, hints:3, mixes:2 },
+      hard:{ cols:8, rows:11, pairs:42, limit:250, hints:3, mixes:2 }
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return `${c.cols}×${c.rows} · ${c.pairs}짝 · ${mmss(c.limit)}${c.missCap ? ' · 실수 ' + c.missCap + '번까지' : ''}`; },
+    stageDesc(n){ const c = stageCfg(n); return `${c.cols}×${c.rows} · ${c.pairs}짝 · ${mmss(c.limit)}${c.lives === 1 ? ' · 기회 1번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.cols}×${c.rows} · ${c.pairs}짝`; },
     init(cfg, rng){
       const d = deal(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { cols:cfg.cols, rows:cfg.rows, pairs:cfg.pairs, b:d.b, id:d.b.map((k, i) => k != null && k !== STONE ? i : null), turns:cfg.turns || 2, slide:!!cfg.slide, tick:cfg.tick || 0,
         sel:null, lock:false, found:0, combo:0, best:0, misses:0, hints:0, mixes:0, manualMix:0, autoMix:0, pen:0, bonus:0,
-        hintLeft:cfg.hints == null ? 3 : cfg.hints, mixLeft:cfg.mixes == null ? 2 : cfg.mixes, missCap:cfg.missCap || 0,
+        hintLeft:cfg.hints == null ? 3 : cfg.hints, mixLeft:cfg.mixes == null ? 2 : cfg.mixes, lives:cfg.lives || LIVES,
         phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, rng, lastSec:-1, sec:0, fail:null, timers:new Set(), geo:{ cw:40, ch:48, gap:3, pad:12 } };
-      G.limit = cfg.limit;
+      G.limit = cfg.limit; G.paws = G.m.lives;
       const m = G.m;
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
@@ -498,9 +512,9 @@ NG.link = (() => {
           <button class="lk-pill lk-btn" id="lkHint" aria-label="힌트"><span class="lk-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
           <button class="lk-pill lk-btn" id="lkMix" aria-label="섞기"><span class="lk-ic">${ICO.mix}</span><b>${m.mixLeft}</b></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="lk-chip miss" id="lkMiss"></span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="lk-barw" id="lkBarWrap"><i id="lkBar"></i></div>
-        <div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div>
+        <div class="lk-row"><div class="lk-lives" id="lkLives" role="img"></div><div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
         <div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div>
       </div>`;
       build(); wire(); hud();
@@ -511,14 +525,14 @@ NG.link = (() => {
       G.raf = requestAnimationFrame(loop);
     },
     progress(){ const m = G && G.m; return m ? m.found / m.pairs : 0; },
-    lossText(){ const m = G.m; return (m.fail === 'miss' ? '허용 실수를 넘었어요. ' : '') + `짝 ${m.found}/${m.pairs}개를 지웠어요.`; },
+    lossText(){ const m = G.m; return (m.fail === 'miss' ? '기회를 다 썼어요. ' : '') + `짝 ${m.found}/${m.pairs}개를 지웠어요.`; },
     score(){
       const m = G.m, sec = Math.max(0, Math.min(G.limit, (m.sec || elapsed()) + (m.pen || 0)));
       const time = Math.max(0, 350 - Math.floor(sec * 350 / G.limit));
-      const extra = Math.max(0, 150 - 40 * m.hints - 25 * m.manualMix - 15 * m.misses);
+      const extra = Math.max(0, 150 - 40 * m.hints - 25 * m.manualMix - 25 * m.misses);
       return { base:500, time, extra, rows:['판 모두 비우기', '시간 보너스 (' + mmss(sec) + ')', `힌트 ${m.hints} · 섞기 ${m.manualMix} · 실수 ${m.misses}`] };
     },
-    stars(){ const m = G.m, help = m.hints + m.manualMix; return help === 0 && m.misses <= 2 ? 3 : help <= 1 ? 2 : 1; },
+    stars(){ const m = G.m, help = m.hints + m.manualMix; return help === 0 && m.misses === 0 ? 3 : help <= 1 && m.misses <= 1 ? 2 : 1; },
     css:`
 body[data-mode="link"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.6), rgba(255,255,255,0) 70%),
@@ -542,7 +556,16 @@ body[data-mode="link"]{background:
 .ng-link .lk-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-link .lk-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0B8,#27B86A); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-link .lk-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
-.ng-link .lk-msg{height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#1E5A3D; white-space:nowrap}
+.ng-link .lk-row{display:flex; align-items:center; gap:8px; width:100%; height:38px}
+.ng-link .lk-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
+.ng-link .lk-heart{display:block; width:19px; height:19px; color:#FF4D6D}
+.ng-link .lk-heart svg{width:100%; height:100%; display:block}
+.ng-link .lk-heart.off{color:#DCD6E6}
+.ng-link .lk-heart.lost{animation:link-lost .5s ease-out}
+.ng-link .lk-lives.last{background:#FFE3E3; animation:link-last 1s ease-in-out infinite alternate}
+@keyframes link-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
+@keyframes link-last{to{box-shadow:0 2px 0 #1A0F45, 0 0 10px 3px rgba(255,77,109,.6)}}
+.ng-link .lk-msg{flex:1; min-width:0; overflow:hidden; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#1E5A3D; white-space:nowrap}
 .ng-link .lk-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-link .lk-msg b.boss{color:#FFE27A}
 .ng-link .lk-msg b.bad{color:#FF8A8F}
@@ -618,4 +641,4 @@ body[data-mode="link"]{background:
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.link, { duelPace:[150,.74], duelStat:{ unit:'짝', get:() => ({ v:G.m.found, t:G.m.pairs }) } });
+Object.assign(NG.link, { duelPace:[140,.72], duelStat:{ unit:"짝", lfMax:3, get:() => ({ v:G.m.found, t:G.m.pairs, lf:Math.max(0, G.m.lives - G.m.misses) }) } });
