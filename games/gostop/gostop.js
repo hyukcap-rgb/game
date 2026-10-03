@@ -381,18 +381,12 @@ NG.gostop = (() => {
   const SVGC = {}, INNER = {};
   function cardSvg(id){
     if(SVGC[id]) return SVGC[id];
-    let s;
-    if(isDummy(id)) s = `${FRAME('#E9E4EE')}<circle cx="20" cy="31" r="9" fill="#3A2F4A" ${O(1)}/><path d="M25 23l4-5" stroke="${INK}" stroke-width="1.6"/><circle cx="30" cy="17" r="2" fill="#FF8A1F"/><text x="20" y="53" font-size="6.6" font-weight="900" text-anchor="middle" fill="#5A4E6A" font-family="system-ui,sans-serif">넘기기</text>`;
-    else {
-      const c = C[id];
-      if(c.bonus) s = `<rect x=".8" y=".8" width="38.4" height="58.4" rx="4.2" fill="#FFE27A" stroke="${INK}" stroke-width="1.5"/><path d="M20 12l3.6 7.4 8.1 1.2-5.9 5.7 1.4 8.1L20 30.6l-7.2 3.8 1.4-8.1-5.9-5.7 8.1-1.2z" fill="#FFB020" ${O(1)}/><text x="20" y="45" font-size="7" font-weight="900" text-anchor="middle" fill="${INK}" font-family="system-ui,sans-serif">보너스</text>${TAG('+' + c.pv, '#7B4FC9')}`;
-      else s = FRAME(c.m === 11 && c.k === 1 ? '#FFF1B8' : '#FFF8EA') + ART[c.m](c.k) + (c.g ? GW : '') + NUM(c.m) + tagOf(c);
-    }
+    const s = isDummy(id) ? GSART.dummy : GSART.face(C[id]);
     INNER[id] = s;
-    return SVGC[id] = `<svg viewBox="0 0 40 60" aria-hidden="true">${s}</svg>`;
+    return SVGC[id] = `<svg viewBox="${GSART.VB}" aria-hidden="true">${s}</svg>`;
   }
   const cardInner = id => (cardSvg(id), INNER[id]);
-  const BACK = `<svg viewBox="0 0 40 60" aria-hidden="true"><rect x=".8" y=".8" width="38.4" height="58.4" rx="4.2" fill="#B3122E" stroke="${INK}" stroke-width="1.5"/><rect x="4" y="4" width="32" height="52" rx="3" fill="none" stroke="#E8566E" stroke-width="1"/><circle cx="20" cy="30" r="9" fill="#8E0E24" stroke="#E8566E" stroke-width="1"/><path d="M20 23l2 5 5 .6-4 3.4 1.2 5L20 34.4 15.8 37l1.2-5-4-3.4 5-.6z" fill="#F2B705"/></svg>`;
+  const BACK = `<svg viewBox="${GSART.VB}" aria-hidden="true">${GSART.back}</svg>`;
   const BADGE19 = '<span class="gs19" aria-label="19세 이상 이용">19</span>';
 
   /* ---------- 화면 ---------- */
@@ -881,7 +875,7 @@ NG.gostop = (() => {
       const u = 'gsA' + (++SVG_UID);
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><radialGradient id="${u}" cx=".5" cy=".35" r=".9"><stop offset="0" stop-color="#2E9A62"/><stop offset="1" stop-color="#0F4A2E"/></radialGradient></defs>
         <rect width="160" height="100" fill="url(#${u})"/><circle cx="80" cy="56" r="44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8"/>
-        <g transform="translate(40 34) rotate(-15)">${cardInner(0)}</g><g transform="translate(60 26) rotate(-1)">${cardInner(28)}</g><g transform="translate(82 30) rotate(13)">${cardInner(44)}</g>
+        <g transform="translate(38 34) rotate(-15) scale(.42)">${cardInner(0)}</g><g transform="translate(60 25) rotate(-1) scale(.42)">${cardInner(28)}</g><g transform="translate(83 29) rotate(13) scale(.42)">${cardInner(44)}</g>
         <g transform="translate(112 19)"><circle r="14" fill="#fff" stroke="#D7263D" stroke-width="4"/><text y="5.5" font-size="15" font-weight="900" text-anchor="middle" fill="#1A0F45" font-family="system-ui,sans-serif">19</text></g></svg>`;
     },
     help:[
@@ -930,7 +924,8 @@ NG.gostop = (() => {
     },
     gate:{ gsSlap:40, gsPick:30, gsFlip:40, gsCap:60 },
     /* 점검·도구용(화면에는 안 씀) */
-    _rules:{ C, gsDeal, gsApply, gsGoStop, scoreOf, tally, aiPick, aiGo, cloneS }
+    _rules:{ C, gsDeal, gsApply, gsGoStop, scoreOf, tally, aiPick, aiGo, cloneS },
+    _card:id => cardSvg(id), _back:BACK
   };
 })();
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
