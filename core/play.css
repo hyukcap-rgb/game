@@ -130,14 +130,14 @@ body.duel-ready .duelbar{visibility:hidden}
 .dg-n{font-family:var(--heavy); font-weight:400; font-size:120px; line-height:1; color:#FFD35C; -webkit-text-stroke:10px var(--outline2); paint-order:stroke fill; text-shadow:0 7px 0 var(--outline2)}
 .dg-n.go{font-size:76px; color:#FF6FAE}
 .dg-n.wait{font-family:var(--disp); font-size:40px; color:#fff; -webkit-text-stroke:6px var(--outline2)}
-.dg-n.pop{animation:dgPop .9s cubic-bezier(.2,1.6,.4,1) both}
+.dg-n.pop{animation:dgPop .48s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes dgPop{0%{transform:scale(1.9); opacity:0} 22%{transform:scale(1); opacity:1} 80%{transform:scale(1); opacity:1} 100%{transform:scale(.7); opacity:0}}
 .dg-n.go.pop{animation:dgGo .6s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes dgGo{0%{transform:scale(.4) rotate(-8deg); opacity:0} 45%{transform:scale(1.12) rotate(2deg); opacity:1} 100%{transform:scale(1)}}
 .dg-ring{position:absolute; width:176px; height:176px; left:50%; top:50%; margin:-88px 0 0 -88px; transform:rotate(-90deg)}
 .dg-ring circle{fill:none; stroke-width:8}
 .dg-ring .bg{stroke:rgba(255,255,255,.14)}
-.dg-ring .fg{stroke:#FFD35C; stroke-linecap:round; stroke-dasharray:515; stroke-dashoffset:0; transition:stroke-dashoffset 1s linear}
+.dg-ring .fg{stroke:#FFD35C; stroke-linecap:round; stroke-dasharray:515; stroke-dashoffset:0; transition:stroke-dashoffset .5s linear}
 .dg-status{position:relative; margin:0; min-height:20px; font-size:13.5px; font-weight:700; color:#CFE3FF; text-align:center}
 .dg-status i{display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:50%; background:#3DDC84; box-shadow:0 0 0 3px rgba(61,220,132,.3); vertical-align:1px}
 @media (max-height:700px){ .duelgo{gap:8px} .dg-count{height:150px} .dg-side .av{width:48px; height:48px} .dg-title{font-size:22px} .dg-n{font-size:96px} .dg-ring{width:140px; height:140px; margin:-70px 0 0 -70px} .dg-rules li{font-size:14.5px} }

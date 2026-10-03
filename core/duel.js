@@ -93,7 +93,7 @@ async function duelMatch(S, opp){
       const myId = String((meP && meP.peer) || S.myPeer || '');
       if(myId && myId < String(o.peer)){
         const fresh = !store.get('hp:help:' + S.id, false) || !!(o.presence && o.presence.nw);
-        const srv = netNow() + (fresh ? 6000 : 4000);
+        const srv = netNow() + (fresh ? 4000 : 2500);   /* 준비 1초(처음 하는 게임이면 2.5초) + 3·2·1 각 0.5초 */
         duel.startAt = duelLocalStart(srv); nr.presence({ go:srv }).catch(() => {});
       }
       duelSearchStop(); closeModal(); startGame(S.id, 'normal', { duel });
@@ -103,7 +103,7 @@ async function duelMatch(S, opp){
 function duelGoAI(S){
   if(DS !== S || S.phase === 'join') return;
   const id = S.id, nick = duelNick(), seed = 'ai:' + id + ':' + Date.now() + ':' + Math.random();
-  const duel = { mode:'ai', seed, myNick:S.nick, startAt:Date.now() + (store.get('hp:help:' + id, false) ? 3000 : 5000), opp:{ nick, pg:0, dn:0, sc:0 }, ai:duelAiPlan(id, mulberry(seedFrom(seed + 'p'))), me:null };
+  const duel = { mode:'ai', seed, myNick:S.nick, startAt:Date.now() + (store.get('hp:help:' + id, false) ? 2000 : 3500), opp:{ nick, pg:0, dn:0, sc:0 }, ai:duelAiPlan(id, mulberry(seedFrom(seed + 'p'))), me:null };
   duelSearchStop(); closeModal(); startGame(id, 'normal', { duel });
 }
 /* AI 상대: 게임별 평균 시간·성공률로 결과를 미리 정하고, 경과 시간에 맞춰 진행도를 보여 준다 */
@@ -180,10 +180,10 @@ function duelGoOpen(){
     /* 실시간: 시작 시각은 방장이 서버 시각으로 정해 presence(go)로 알림. 못 받으면 6초 뒤 내 시계로 시작 */
     if(D.startAt == null && D.mode === 'pvp'){
       duelReadOpp();
-      if(D.startAt == null && Date.now() - opened > 6000) D.startAt = Date.now() + 2500;
+      if(D.startAt == null && Date.now() - opened > 3000) D.startAt = Date.now() + 1600;
     }
     const left = D.startAt == null ? 99999 : D.startAt - Date.now();
-    const k = left > 3000 ? 'wait' : left > 0 ? String(Math.ceil(left / 1000)) : 'go';
+    const k = left > 1500 ? 'wait' : left > 0 ? String(Math.ceil(left / 500)) : 'go';   /* 3·2·1을 0.5초씩 */
     if(k !== shown){
       shown = k;
       if(k === 'wait'){ n.className = 'dg-n wait'; n.textContent = '준비'; }
