@@ -10,7 +10,7 @@ const NICK_A = ['꾸준한','성실한','느긋한','번뜩이는','차분한','
 const cleanNick = v => String(v || '').replace(/[<>&"'`\\\n\r\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
 function myNick(){ let n = cleanNick(store.get('hp:nick', '')); if(!n){ n = NICK_A[Math.random() * 8 | 0] + ' ' + NICK_B[Math.random() * 8 | 0]; store.set('hp:nick', n); } return n; }
 const escH = v => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-function linkOf(q){ const u = new URL(siteUrl()); u.searchParams.set('n', myNick()); for(const k in q) u.searchParams.set(k, q[k]); return u.toString(); }
+function linkOf(q){ const u = new URL(siteUrl()); u.searchParams.set('n', myNick()); if(typeof frCode === 'function' && frCode()) u.searchParams.set('f', frCode()); for(const k in q) u.searchParams.set(k, q[k]); return u.toString(); }
 const mdTxt = k => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 function canChal(){ return !!G && !G.adv && !G.duel && G.over; }   /* v9: 시험지는 누구나 같은 문제 */
 
@@ -132,9 +132,10 @@ function linkFriendAdd(n){
 }
 function readLink(){
   let p; try{ p = new URLSearchParams(location.search); }catch(_){ return null; }
-  const n = cleanNick(p.get('n')), c = p.get('c');
-  if(!n && !c) return null;
+  const n = cleanNick(p.get('n')), c = p.get('c'), f = String(p.get('f') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if(!n && !c && !f) return null;
   const o = { n, g: GAME_IDS.includes(c) ? c : null, d: /^\d{4}-\d{2}-\d{2}$/.test(p.get('d') || '') ? p.get('d') : '', s: Math.max(0, Math.min(99999, parseInt(p.get('s'), 10) || 0)), lv: ['easy','normal','hard'].includes(p.get('lv')) ? p.get('lv') : 'normal', inv: p.get('i') === '1' };
+  o.f = f.length === 6 ? f : '';
   try{ history.replaceState(null, '', location.pathname + location.hash); }catch(_){}
   return o;
 }
@@ -159,7 +160,7 @@ function showChallenge(o){
 }
 function onArrive(o){
   if(!o) return false;
-  const added = linkFriendAdd(o.n);
+  const added = o.f && typeof frApi === 'function' && frApi() ? true : linkFriendAdd(o.n);   /* 친구 코드가 있으면 진짜 친구로(frStart가 맺음) */
   let gift = false;
   if(o.n && !store.get('hp:invGift', 0)){ store.set('hp:invGift', 1); addHearts(2); gift = true; }
   store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0)));

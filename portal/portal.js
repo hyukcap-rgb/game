@@ -44,6 +44,7 @@ function friendScore(f){
   return Math.round(full * (p === 0 ? 0 : 0.45 + 0.55*p) / 10) * 10;
 }
 function giftsToday(){
+  if(typeof frReal === 'function' && frReal()) return [];
   const rng = mulberry(seedFrom('gift' + dayKey()));
   return shuffle(FRIENDS.map(f=>f.name), rng).slice(0, 2 + Math.floor(rng()*2));
 }
@@ -170,7 +171,8 @@ function tierBadge(t){
 
 function board(d){
   const pack = (tl, o) => ({ ...o, tl, streak: tl.streak, att: tl.today.st === 'att', pct: tl.today.pct, score: tl.score });
-  const list = FRIENDS.map(f => pack(timeline(friendDay(f)), f));
+  const real = typeof frBoardFriends === 'function' ? frBoardFriends() : null;   /* 진짜 친구가 있으면 진짜만(친구 v1) */
+  const list = real || FRIENDS.map(f => pack(timeline(friendDay(f)), { ...f, sample:true }));
   list.push(pack(myTL(), { name:'나', av:'🦊', me:true }));
   list.sort((a,b) => b.score - a.score || (a.me ? 1 : b.me ? -1 : 0));
   return list;
@@ -300,8 +302,9 @@ function renderHome(){
   const dot = $('#advDot'); if(dot) dot.style.display = store.get('hp:advSeen', 0) ? 'none' : '';
   const tl = myTL(), P = myPos(d);
   renderToday(d, tl, P, lv); renderAdv(lv); renderDuel(d); renderLeague(d, P); renderMe(d, tl, P, lv);
-  const pending = giftsToday().filter(n => !d.claimed.includes(n)).length;
+  const pending = giftsToday().filter(n => !d.claimed.includes(n)).length + (typeof frInboxCount === 'function' ? frInboxCount() : 0);
   $('#badge').textContent = pending; $('#badge').style.display = pending ? '' : 'none';
+  if(typeof frSyncScore === 'function') frSyncScore();
 }
 
 function renderToday(d, tl, P, lv){
@@ -365,21 +368,25 @@ function renderLeague(d, P){
     const sub = x.me ? d.set.map(k => `<span class="mini${d.best[k] ? ' on' : ''}" style="--gc:${GCOL[k][1]}">${ic(k)}</span>`).join('') + stk
       : (stk ? stk + (x.att ? '' : '&nbsp;· 오늘 아직') : (x.att ? '오늘 플레이함' : '아직 안 했어요'));
     const posHtml = !x.score ? '<span class="pnum none">–</span>' : i < 3 ? medal(i + 1, false) : `<span class="pnum">${i + 1}</span>`;
-    row.innerHTML = `<div class="pos">${posHtml}</div>${avatar(x)}<div class="who"><b>${x.me ? '나' : x.name}</b><small>${sub}</small></div><div class="sc num">${fmt(x.score)}</div><div></div>`;
+    row.innerHTML = `<div class="pos">${posHtml}</div>${pAvatar(x)}<div class="who"><b>${x.me ? '나' : escH(x.name)}${x.sample ? ' <i class="samp">예시</i>' : ''}</b><small>${sub}</small></div><div class="sc num">${fmt(x.score)}</div><div></div>`;
     if(!x.me){
       const btn = document.createElement('button'); btn.className = 'send';
-      const sent = !!d.sent[x.name];
+      const key = x.fid || x.name, sent = !!d.sent[key];
       btn.innerHTML = ic(sent ? 'check' : 'heart'); btn.disabled = sent;
       btn.setAttribute('aria-label', sent ? x.name + '님에게 오늘 하트를 보냈어요' : x.name + '님에게 하트 보내기');
-      btn.onclick = () => { fxPop(btn, 'heart'); sfx('heartSend'); fxBuzz(15); const dd = dayState(); dd.sent[x.name] = true; saveDay(dd); toast(x.name + '님에게 하트를 보냈어요'); renderHome(); };
+      btn.onclick = e => { e.stopPropagation(); frSendHeart(x, btn); };
       row.lastElementChild.appendChild(btn);
+      if(x.fid){ row.classList.add('tap'); row.onclick = () => frFriendSheet(x); }
     }
     r.appendChild(row);
   });
-  const inv = document.createElement('button'); inv.className = 'invrow'; inv.id = 'invBtn';
-  inv.innerHTML = `<span class="ii">${ic('share')}</span><span><b>친구 초대하기</b><small>링크로 들어온 친구는 친구 리그에 바로 들어와요 · 친구에게 하트 2개 선물</small></span>`;
-  inv.onclick = () => viralShare(cardInvite(), closeModal);
+  if(!(typeof frReal === 'function' && frReal())) r.insertAdjacentHTML('afterbegin', `<div class="sampnote">지금은 <b>예시 친구</b>예요. 친구를 초대하면 진짜 친구 리그가 돼요.</div>`);
+  const inv = document.createElement('div'); inv.className = 'frbar';
+  inv.innerHTML = `<button class="invrow" id="invBtn"><span class="ii">${ic('share')}</span><span><b>친구 초대하기</b><small>링크로 들어오면 바로 친구가 돼요 · 친구에게 하트 2개 선물</small></span></button>
+    <button class="invrow mng" id="frMng"><span class="ii">${ic('user')}</span><span><b>친구 관리</b><small>${frCode() ? '내 코드 ' + frCode() + ' · ' : ''}코드로 추가 · 삭제</small></span></button>`;
   r.appendChild(inv);
+  $('#invBtn').onclick = () => viralShare(cardInvite(), closeModal);
+  $('#frMng').onclick = frManage;
 }
 const rivalAv = x => { const i = seedFrom(x.name) % 6; return `<span class="av" style="--avbg:${FACE_BG[i]}">${animalFace(FACE_KIND[i])}</span>`; };
 function renderWeek(d, r){
@@ -657,13 +664,14 @@ function runAd(){
   }, 1000);
 }
 function openInbox(){
-  const d = dayState(), gifts = giftsToday();
+  const d = dayState(), gifts = giftsToday(), frh = typeof frInboxHtml === 'function' ? frInboxHtml() : '';
   const rows = gifts.map(n => { const i = FRIENDS.findIndex(x => x.name === n), got = d.claimed.includes(n);
     return `<div class="gift${got ? ' got' : ''}">${avatar(FRIENDS[i])}<span><b>${n}</b>님이 하트를 보냈어요${got ? ' · 받음' : ''}</span>${hi()}</div>`; }).join('');
   const pending = gifts.filter(n => !d.claimed.includes(n));
-  openModal(`<h3>받은 하트</h3><div style="margin:10px 0">${rows}</div><p class="note">받은 하트는 5개를 넘겨서도 쌓여요.</p>
+  openModal(`<h3>알림함</h3><div style="margin:10px 0">${frh}${rows}</div>${frh || rows ? '' : '<p class="note">새 알림이 없어요. 친구에게 "같이 하자"를 보내 보세요.</p>'}<p class="note">받은 하트는 5개를 넘겨서도 쌓여요.</p>
     <div class="mbtns${pending.length ? '' : ' one'}"><button class="b2" id="mClose">닫기</button>${pending.length ? `<button class="b1" id="mClaim">모두 받기 · ${ic('heart')} ${pending.length}</button>` : ''}</div>`);
   $('#mClose').onclick = closeModal;
+  if(typeof frInboxBind === 'function') frInboxBind(openInbox);
   if(pending.length) $('#mClaim').onclick = () => { fxPop($('#mClaim'), 'heart'); sfx('heartGet'); const dd = dayState(); dd.claimed.push(...pending); saveDay(dd); addHearts(pending.length); closeModal(); toast('하트 ' + pending.length + '개를 받았어요'); renderHome(); };
 }
 function welcome(){
@@ -827,7 +835,7 @@ function checkOvertake(){
   if(ABOVE){ const nw = above.filter(n => !ABOVE.includes(n)); if(nw.length) toast(nw[0] + '님이 당신을 제쳤어요! 가만있을 거예요? 🦊'); }
   ABOVE = above;
 }
-function homeSig(){ const d = dayState(), h = heartState(); return [dayKey(), h.n, d.ads, d.att ? 1 : 0, RANK_MODE, TAB === 'duel' ? duelWaiting() + ':' + ROOM_STATE : '', FRIENDS.map(friendScore).join(',')].join('|'); }
+function homeSig(){ const d = dayState(), h = heartState(); return [dayKey(), h.n, d.ads, d.att ? 1 : 0, RANK_MODE, TAB === 'duel' ? duelWaiting() + ':' + ROOM_STATE : '', FRIENDS.map(friendScore).join(','), typeof frSig === 'function' ? frSig() : ''].join('|'); }
 function tickHome(){
   const h = heartState();
   const ht = $('#hsT'); if(ht) ht.textContent = heartLeft(h);
@@ -846,7 +854,7 @@ $('#strip').onclick = () => setTab('me');
 $('#pool').onclick = () => { RANK_MODE = 'week'; setTab('league'); };
 $('#devWeek').onclick = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
 $('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
-$('#meSound').onclick = () => openSoundSheet(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
+$('#meSound').onclick = () => openSoundSheet(); $('#meFriends').onclick = () => frManage(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
 if(!store.get('hp:advLv', 0)) store.set('hp:advLv', lvInfo().L);
 $('#devAdv').onclick = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };
 $('#devLvUp').onclick = () => { const L = lvInfo().L + 1; showCelebrations([{ kind:'level', L, from:L - 1, hearts:1 }], () => {}); };

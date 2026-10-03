@@ -327,3 +327,50 @@ body[data-mode] .dock{display:none}
 #duelList{margin-top:14px}
 .duelrow .drec{color:var(--gc, var(--ink))!important; font-family:var(--disp); font-weight:400!important; font-size:12.5px!important}
 .gr-go.duel{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
+
+/* ===== 친구 v1 ===== */
+.frbar{display:flex; flex-direction:column; gap:8px; margin-top:10px}
+.frbar .invrow{margin-top:0}
+.invrow.mng{border-style:solid; border-color:#CDBBFA; background:#FFF}
+.invrow.mng .ii{background:var(--sky)}
+.sampnote{font-size:13.5px; color:#7B6A93; background:#FFF6DC; border:2px dashed #EAC56B; border-radius:12px; padding:8px 12px; margin:0 0 8px; text-align:center}
+.row .samp{font-style:normal; font:11px/1 var(--disp); color:#9C7A1F; background:#FFF0C2; border-radius:6px; padding:2px 5px; vertical-align:2px}
+.row.tap{cursor:pointer}
+.row.tap:active{transform:scale(.99)}
+.frhead{display:flex; align-items:center; gap:12px; text-align:left; margin:4px 0 10px}
+.frhead .av{width:56px; height:56px; flex:none}
+.frhead b{display:block; font-family:var(--disp); font-size:22px; color:var(--ink)}
+.frhead small{display:flex; align-items:center; gap:3px; font-size:13.5px; color:var(--sub)}
+.frhead small svg{width:14px; height:14px; color:var(--grit)}
+.frscore{display:flex; justify-content:space-between; align-items:baseline; background:#FFF; border:2px solid var(--paper-line); border-radius:14px; padding:10px 14px; color:var(--sub); font-size:14px}
+.frscore b{font-family:var(--heavy); font-size:26px; color:var(--ink)}
+.frgrades{display:flex; gap:6px; justify-content:center; margin:10px 0 4px; flex-wrap:wrap}
+.frg{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:48px; padding:6px 4px; border-radius:12px; background:var(--gcol); color:#fff; font-family:var(--heavy); font-size:22px; border:2.5px solid var(--outline)}
+.frg i{font-style:normal; font:12px/1 var(--disp); opacity:.95}
+.frbtns{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 0 4px}
+.frbtns .btn{margin:0; padding-left:6px; padding-right:6px; font-size:15px; min-height:48px}
+.frbtns .btn svg{width:18px; height:18px}
+.frcode{display:flex; align-items:center; gap:10px; justify-content:center; background:#FFF; border:2.5px solid var(--outline); border-radius:16px; padding:10px 14px; margin:6px 0 10px}
+.frcode small{color:var(--sub); font-size:13px}
+.frcode b{font-family:var(--heavy); font-size:28px; letter-spacing:3px; color:var(--primary)}
+.frcode .btn{margin:0}
+.fradd{display:flex; gap:8px; margin:10px 0 6px}
+.fradd input{flex:1; min-width:0; font:inherit; font-family:var(--heavy); font-size:20px; letter-spacing:3px; text-transform:uppercase; text-align:center; color:var(--ink); border:2.5px solid var(--paper-line); border-radius:14px; padding:8px 10px; background:#fff}
+.fradd input:focus{outline:none; border-color:var(--primary)}
+.fradd .btn{margin:0; min-width:72px}
+.frlist{max-height:42vh; overflow:auto; margin:8px 0 2px; text-align:left}
+.frrow{display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:2px dashed var(--paper-line)}
+.frrow:last-child{border-bottom:0}
+.frrow .av{width:40px; height:40px; flex:none}
+.frrow .frn{flex:1; min-width:0}
+.frrow .frn b{display:block; font-family:var(--disp); font-size:16px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.frrow .frn small{font-size:12.5px; color:var(--sub)}
+.frx{flex:none; width:44px; height:44px; border-radius:12px; border:2px solid var(--paper-line); background:#fff; color:var(--ink); display:grid; place-items:center; font:16px/1 var(--disp); cursor:pointer}
+.frx svg{width:18px; height:18px}
+.frx.del{color:#C2334A; border-color:#F2C2CB}
+.frpick{display:flex; flex-direction:column; gap:8px; margin:10px 0}
+.frpick .btn{margin:0; justify-content:flex-start}
+.frpick .subj{display:inline-block; font:12px/1 var(--disp); color:#fff; background:var(--primary); border-radius:7px; padding:3px 6px; margin-right:6px}
+.gift.fr .btn{margin:0 0 0 auto; flex:none}
+.gift.fr .av{width:36px; height:36px; flex:none}
+.gift.fr{grid-template-columns:36px 1fr auto}
