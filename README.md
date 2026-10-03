@@ -26,6 +26,7 @@
 | 블록 채우기 | 공간지각 |
 | 카드 짝 맞추기 | 집중력 |
 | 숫자 합치기 | 전략력 |
+| 짝 잇기 (두 번 꺾어 잇기) | 공간지각 |
 
 ## 실행
 `index.html`을 브라우저로 열면 바로 플레이할 수 있습니다. 기록은 브라우저 저장소(localStorage)에만 남습니다.
@@ -52,6 +53,7 @@
 | 블록 채우기 | `games/block` | `embed/block.html` |
 | 카드 짝 맞추기 | `games/memory` | `embed/memory.html` |
 | 숫자 합치기 | `games/merge` | `embed/merge.html` |
+| 짝 잇기 | `games/link` | `embed/link.html` |
 
 ### 게임마다 프롬프트 달기
 각 게임 폴더의 `CLAUDE.md`가 그 게임의 프롬프트예요. 맨 위 **사용자 지시**에 바라는 점을 적어 두면, 개발팀(Claude)이 그 게임을 고칠 때마다 먼저 읽고 따라요. 개발팀 공통 규칙은 루트 `CLAUDE.md`, 게임 정의 규칙은 `games/CLAUDE.md`에 있어요.

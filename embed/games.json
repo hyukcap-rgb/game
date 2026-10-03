@@ -100,6 +100,16 @@
       "file": "merge.html",
       "bytes": 208311,
       "gzip": 69627
+    },
+    {
+      "id": "link",
+      "name": "짝 잇기",
+      "version": "1.0.0",
+      "summary": "같은 그림 타일을 두 번까지 꺾이는 길로 이어 지우는 공간지각 게임",
+      "duel": true,
+      "file": "link.html",
+      "bytes": 205670,
+      "gzip": 68475
     }
   ]
 }

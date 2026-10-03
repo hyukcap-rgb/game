@@ -6,7 +6,7 @@
  *
  *  코드로:
  *    const g = HaruPuzzle.mount('#box', {
- *      game:'fleet',                 // fox sudoku ball tower fleet match nono block memory merge
+ *      game:'fleet',                 // fox sudoku ball tower fleet match nono block memory merge link
  *      mode:'menu',                  // menu(첫 화면) | daily(오늘의 문제) | solo | practice | duel
  *      modes:['daily','solo'],       // 첫 화면에 보일 모드(생략하면 모두)
  *      level:'normal', stage:1,      // 연습 난이도 · 솔로 시작 스테이지
@@ -23,7 +23,7 @@
 (function(){
   'use strict';
   var me = document.currentScript, BASE = (me && me.src) ? me.src.replace(/[^\/]*$/, '') : 'https://hyukcap-rgb.github.io/game/embed/';
-  var GAMES = ['fox', 'sudoku', 'ball', 'tower', 'fleet', 'match', 'nono', 'block', 'memory', 'merge'];
+  var GAMES = ['fox', 'sudoku', 'ball', 'tower', 'fleet', 'match', 'nono', 'block', 'memory', 'merge', 'link'];
   var list = [];
 
   function el(t){ return typeof t === 'string' ? document.querySelector(t) : t; }

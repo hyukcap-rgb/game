@@ -14,6 +14,7 @@
 | 블록 채우기 | `…/embed/block.html` |
 | 카드 짝 맞추기 | `…/embed/memory.html` |
 | 숫자 합치기 | `…/embed/merge.html` |
+| 짝 잇기 | `…/embed/link.html` |
 
 - 모듈 하나에는 **그 게임과 공용 엔진만** 들어 있어요(다른 게임 코드 없음). 전송 크기는 게임마다 약 65~80KB예요.
 - iframe 안에서 돌아서 붙이는 사이트의 디자인·코드와 섞이지 않아요.
@@ -30,7 +31,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 
 | 속성 | 값 | 기본 |
 |---|---|---|
-| `data-haru-game` | fox sudoku ball tower fleet match nono block memory merge | (필수) |
+| `data-haru-game` | fox sudoku ball tower fleet match nono block memory merge link | (필수) |
 | `data-mode` | `menu`(첫 화면) `daily`(오늘의 문제) `solo` `practice`(연습) `duel`(대전) | menu |
 | `data-modes` | 첫 화면에 보일 모드, 쉼표로: `daily,solo` | 모두 |
 | `data-level` | 연습 난이도 `easy` `normal` `hard` | 고르게 함 |

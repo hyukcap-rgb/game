@@ -1,5 +1,5 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
-registerGames(['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge']);   /* 사이트에 보일 게임과 순서 */
+registerGames(['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge','link']);   /* 사이트에 보일 게임과 순서 */
 const MAX_H = 5, REGEN_MS = 10*60*1000, AD_LIMIT = 5;
 const FRIENDS = [
   { name:'민지', av:'🐰' }, { name:'준호', av:'🐻' }, { name:'서연', av:'🐱' },
