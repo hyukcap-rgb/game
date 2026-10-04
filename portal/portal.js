@@ -312,7 +312,7 @@ function renderToday(d, tl, P, lv){
   const tt = tl.today, ls = leagueState(), lb = leagueBoard(undefined, ls.tier, tl), lpos = lb.findIndex(x => x.me) + 1;
   const pctNow = tt.st === 'att' ? tt.pct : bonusPct(tl.streak + 1);
   const ndone = d.set.filter(g => examDone(d, g) || d.tries[g] > 0).length;
-  $('#strip').innerHTML = `<span class="md">${medal(tl.score ? pos : 0, false)}</span><span><b class="num">오늘 ${fmt(tl.score)}점 <small>시험지 ${ndone}/${DAILY_N} · ${d.set.map(g => gradeOf(examTop(g, d.best[g]))).join(' ')}</small></b><span class="s2"><span>${tl.score ? '친구 중 ' + pos + '위' : '오늘 첫 판 전'}</span>${tl.streak ? `<span class="hot">${ic('flame')}연속 ${tl.streak}일</span>` : ''}<span>${ic('trophy')}${TIERS[ls.tier][0]} ${lb[lpos - 1].score ? lpos + '위' : ''}</span><span>${ic('clock')}<span class="num" id="closing">${closingText()}</span></span></span></span><span class="go">${ic('chev')}</span>`;
+  $('#strip').innerHTML = `<span class="md">${medal(tl.score ? pos : 0, false)}</span><span><b class="num">오늘 ${fmt(tl.score)}점 <small>시험지 ${ndone}/${DAILY_N} · ${d.set.map(g => gradeOf(examTop(g, d.best[g]))).join(' ')}</small></b><span class="s2"><span>${tl.score ? '친구 중 ' + pos + '위' : ndone ? '시험 중 · ' + ndone + '과목 제출' : '오늘 첫 판 전'}</span>${tl.streak ? `<span class="hot">${ic('flame')}연속 ${tl.streak}일</span>` : ''}<span>${ic('trophy')}${TIERS[ls.tier][0]} ${lb[lpos - 1].score ? lpos + '위' : ''}</span><span>${ic('clock')}<span class="num" id="closing">${closingText()}</span></span></span></span><span class="go">${ic('chev')}</span>`;
   $('#pool').innerHTML = `${ic('coin')}<span class="pt"><small>이번 주 모두의 기부</small><b class="num" id="poolAmt">${fmt(prizePool())}원</b></span><span class="pr">광고 1번 = +12원<br>매달 좋은 곳에 기부해요</span>`;
   const now = new Date();
   $('#dayNote').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${examLabel()} · 전 국민 같은 문제 · 첫 판이 공식 답안(무료)`;
@@ -506,8 +506,11 @@ function advFinish(win){
   const toMap = sel => () => { goHome(); TAB = 'adv'; renderHome(); openAdvMap(id, sel); };
   const pri = win ? ['다음 스테이지 ▶', () => startGame(id, null, { adv:n + 1 })] : ['다시 도전', () => startGame(id, null, { adv:n })];
   const sec = ['맵', toMap(win ? n + 1 : n)];
-  html += `<div class="mbtns"><button class="b2" id="mSec">${ic('map')} ${sec[0]}</button><button class="b1" id="mPri">${pri[0]}</button></div><button class="btn ghost" id="mGh">홈으로</button>`;
   const go = fn => () => { closeModal(); showCelebrations(cel.slice(), fn); cel.length = 0; };
+  /* 결과 창 버튼 위계(공용): 주 버튼 1개 · 글자 버튼 줄 */
+  const RB = { pri:{ id:'mPri', label:pri[0], sub:win ? `스테이지 ${n + 1}` : `스테이지 ${n} · 무료`, fn:go(pri[1]) },
+    links:[{ id:'mSec', label:`${ic('map')}스테이지 ${sec[0]}`, fn:go(sec[1]) }, { id:'mGh', label:'홈으로', fn:go(() => { goHome(); setTab('adv'); }) }] };
+  html += resBtns(RB);
   setTimeout(() => {
     openModal(html);
     if(win){
@@ -519,9 +522,7 @@ function advFinish(win){
       }, (0.1 + (k + 1) * 0.22) * 1000 + 180));
       if(first || better) setTimeout(() => { const pl = $('#modal .pill.new'); if(pl){ sfx('newRecord'); fxPop(pl, 'spark'); } }, 1150);
     } else sfx('lose');
-    $('#mPri').onclick = go(pri[1]);
-    $('#mSec').onclick = go(sec[1]);
-    $('#mGh').onclick = go(() => { goHome(); setTab('adv'); });
+    resBind(RB);
     setTimeout(() => { const x = $('#advXp'); if(x){ x.style.width = xpTo + '%'; if(xpTo > xpFrom) sfx('xp'); } }, 250);
   }, win ? 500 : 250);
 }
@@ -632,7 +633,7 @@ function shareText(){
   const d = dayState(), tl = myTL(), ab = abilities(), top = brainType(ab), dt = new Date();
   const ls = leagueState(), lb = leagueBoard(undefined, ls.tier, tl), lpos = lb.findIndex(x => x.me) + 1, ws = worldStat(tl.score);
   const card = d.set.map(g => subjOf(g) + ' ' + gradeOf(examTop(g, d.best[g]))).join(' · ');
-  return `하루퍼즐 ${dt.getMonth() + 1}/${dt.getDate()}(${WD_KO[dt.getDay()]}) 시험지 · ${LV_KO[examLv()]}\n${card}\n오늘 ${fmt(tl.score)}점${ws.top != null && ws.top <= 50 ? ` · 전국 상위 ${ws.top}%` : ''}${tl.streak ? ` · 🔥${tl.streak}일` : ''}\n🏆 ${TIERS[ls.tier][0]} 리그 ${lb[lpos - 1].score ? lpos + '위' : ''}${top ? ` · 나는 '${BTYPE[top][0]}'` : ''}\n같은 문제, 다른 점수. 너는 몇 점?`;
+  return `하루퍼즐 ${dt.getMonth() + 1}/${dt.getDate()}(${WD_KO[dt.getDay()]}) 시험지 · ${LV_KO[examLv()]}\n${card}\n오늘 ${fmt(tl.score)}점${ws.top != null && ws.top <= 50 ? ` · 전국 상위 ${ws.top}%` : ''}${tl.streak ? ` · 🔥${tl.streak}일` : ''}${typeof frReal === 'function' && frReal() ? `\n🏆 ${TIERS[ls.tier][0]} 리그 ${lb[lpos - 1].score ? lpos + '위' : ''}` : ''}${top ? `\n나는 '${BTYPE[top][0]}'` : ''}\n같은 문제, 다른 점수. 너는 몇 점?`;
 }
 function openShare(back, opt){ viralShare(opt || cardToday(), back); }
 
@@ -685,63 +686,65 @@ function welcome(){
   $('#wLater').onclick = () => { done(); closeModal(); };
   $('#wGo').onclick = () => { done(); closeModal(); quickStart(pickNext()); };
 }
-/* 오늘의 시험지 한 판 결과(공식 답안·연습) */
+/* 오늘의 시험지 한 판 결과(공식 답안·다시 풀기)
+   UI 검수(2026-10-04): 요약 카드 1장(성적 · 출석 · 진짜 친구 순위) + 버튼 위계(주: 다음 과목 · 반반: 다시 풀기 ♥1 / 도전장 · 글자: 결과 카드 공유 / 홈으로).
+   예시 친구 순위·추월 알림은 진짜 친구가 있을 때만 보인다. */
 function examFinish(win){
-  const id = G.id, sec = elapsed(), lim = G.limit, L = G.L;
-  const d = dayState(), r0 = myPos(d), before = r0.b.filter(x => !x.me && x.score < meScore(r0.b)).map(x => x.name);
+  const id = G.id;
+  const d = dayState(), realFr = typeof frReal === 'function' && !!frReal(), r0 = myPos(d), before = r0.b.filter(x => !x.me && x.score < meScore(r0.b)).map(x => x.name);
   const firstToday = !d.att; if(firstToday){ d.att = true; saveDay(d); }
   const official = G.attempt === 1;   /* v9: 그날 첫 판만 공식 기록 */
-  let gp = null; const gritPill = () => firstToday ? (gp = gp || attPillHtml()) : '';
-  const gradePill = sc => { const t = examTop(id, sc); return t == null ? '' : `<span class="pill ${official ? 'new' : 'info'}">${subjOf(id)} ${gradeOf(t)} · 같은 문제 푼 사람 중 상위 ${t}%${official ? '' : ' (연습 기준)'}</span>`; };
-  let html, score = 0, newRec = false;
+  if(official) runClear();            /* 진행 중 판 표시 지우기(끝까지 했으니 자동 제출 필요 없음) */
+  const attTxt = firstToday ? attPillHtml().replace(/<[^>]+>/g, '').trim() : '';   /* 출석 선물 처리 + 문구 */
+  const gradeLine = sc => { const t = examTop(id, sc); return t == null ? '' : `${subjOf(id)} ${gradeOf(t)} · 예상 상위 ${Math.max(1, Math.round(t))}%${official ? '' : ' (다시 풀기 기준)'}`; };
+  const sumCard = (main, bits) => main || bits.length ? `<div class="rsum">${main ? `<b class="${official ? 'new' : ''}">${main}</b>` : ''}<span>${bits.filter(Boolean).join(' · ')}</span></div>` : '';
+  let html, score = 0, newRec = false, brk = '';
   if(win){
     const q = calcScore(); const { base, time, paw, l1, l2, l3 } = q; score = q.score;
-    const prev = d.best[id], isBest = official;
+    const prev = d.best[id];
     if(official){ d.best[id] = score; saveDay(d); newRec = true; }
-    if(!d.itemDone && d.set && d.set.every(g => d.best[g] > 0)){ d.itemDone = 1; saveDay(d); itemReward([['foxAuto', 1]], '오늘의 문제 5게임 완주'); }
-    const d2 = dayState(), r1 = myPos(d2);
-    const passed = r1.b.filter(x => !x.me && x.score < meScore(r1.b)).map(x => x.name).filter(n => !before.includes(n));
-    const tl2 = myTL();
-    const rank = r1.pos < r0.pos ? `<span class="pill good">${r0.pos}위 → ${r1.pos}위 ▲${r0.pos - r1.pos}</span>` : `<span class="pill info">지금 친구 ${r1.n}명 중 ${r1.pos}위</span>`;
+    if(!d.itemDone && d.set && d.set.every(g => d.best[g] > 0)){ d.itemDone = 1; saveDay(d); itemReward([['foxAuto', 1]], '오늘의 시험지 5과목 완주'); }
+    const d2 = dayState(), r1 = myPos(d2), tl2 = myTL();
+    const passed = realFr ? r1.b.filter(x => !x.me && x.score < meScore(r1.b)).map(x => x.name).filter(n => !before.includes(n)) : [];
+    const bits = [attTxt, firstToday && STREAK_MS.includes(tl2.streak) ? `연속 ${tl2.streak}일 달성!` : '',
+      realFr ? (r1.pos < r0.pos ? `친구 순위 ${r0.pos}위 → ${r1.pos}위` : `친구 ${r1.n}명 중 ${r1.pos}위`) : '',
+      passed.length ? `${passed.map(esc).join(', ')}님을 제쳤어요` : '',
+      d2.set.every(g => d2.tries[g] > 0) && worldStat(tl2.score).top != null ? `오늘 시험지 예상 상위 ${Math.max(1, Math.round(worldStat(tl2.score).top))}%` : ''];
+    brk = `<details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(5과목 공식 답안 합)</span><b>${fmt(tl2.score)}점</b></div></details>`;
     html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${NG[id].winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
-      ${isBest ? '<p class="note">공식 답안으로 기록됐어요</p>' : `<p class="note">연습 판이에요 · 공식 기록 ${fmt(prev)}점은 그대로예요</p>`}<div>${gradePill(score)}</div>
-      <div>${gritPill()}${rank}${passed.length ? `<span class="pill good">${passed.join(', ')}님을 제쳤어요 · 알림을 보냈어요</span>` : ''}</div>
-      <details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(5과목 공식 기록 합)</span><b>${fmt(tl2.score)}점</b></div></details>
-      <div>${d2.set.every(g => d2.tries[g] > 0) ? `<span class="pill info">${ic('globe')} 오늘 시험지 전국 ${topTxt(worldStat(tl2.score).top)}</span>` : ''}${firstToday && STREAK_MS.includes(tl2.streak) ? `<span class="pill fire">${ic('flame')} 연속 ${tl2.streak}일 달성!</span>` : ''}</div>${chalBox(score)}
-      <div class="shrow">${canChal() ? `<button class="btn small primary" id="mChal">${ic('duel')} ${G.chal && G.chal.n ? '되갚기 도전장' : '친구에게 도전장'}</button>` : ''}<button class="btn small gold" id="mShareR">${ic('share')} ${firstToday && STREAK_MS.includes(tl2.streak) ? '연속 ' + tl2.streak + '일 자랑하기' : '결과 카드 공유'}</button></div>`;
+      <p class="note">${official ? '공식 답안으로 기록됐어요' : `다시 풀기 판이에요 · 공식 기록 ${fmt(prev)}점은 그대로예요`}</p>
+      ${sumCard(gradeLine(score), bits)}${brk}${chalBox(score)}`;
   } else {
     const best = d.best[id], part = official ? Math.round(examProgress() * 300) : 0;
     if(official){ d.best[id] = part; d.offDone = d.offDone || {}; d.offDone[id] = 1; saveDay(d); score = part; }
-    html = `<h3 class="bad">${resFace('sad')}${NG[id].loseTitle || '이번 판은 실패'}</h3><p class="lose">${official ? '부분 점수 ' + fmt(part) + '점을 공식 기록했어요' : best ? '연습 판이에요 · 공식 기록 ' + fmt(best) + '점은 그대로예요' : '연습 판이에요'}</p>
-      <p class="note">${lossProgress()} ${official ? '진행한 만큼(최대 300점) 인정돼요. 같은 문제로 연습할 수 있어요.' : '같은 문제로 다시 연습할 수 있어요.'}</p>${official && part ? `<div>${gradePill(part)}</div>` : ''}
-      ${firstToday ? `<div>${gritPill()}</div><p class="note">실패해도 끝까지 한 판은 출석으로 인정돼요.</p>` : ''}${chalBox(0)}`;
+    html = `<h3 class="bad">${resFace('sad')}${NG[id].loseTitle || '이번 판은 실패'}</h3><p class="lose">${official ? '부분 점수 ' + fmt(part) + '점을 공식 기록했어요' : best ? '다시 풀기 판이에요 · 공식 기록 ' + fmt(best) + '점은 그대로예요' : '다시 풀기 판이에요'}</p>
+      <p class="note">${lossProgress()} ${official ? '진행한 만큼(최대 300점) 인정돼요.' : ''}</p>
+      ${sumCard(official && part ? gradeLine(part) : '', [attTxt, firstToday ? '끝까지 한 판은 출석으로 인정돼요' : ''])}${chalBox(0)}`;
   }
-  const other = nextUnplayed(id), againLbl = '같은 문제 연습';
-  const nextLv = G.lv;
-  let pri, sec2, gh = null;
-  if(win && other){ pri = ['다음 게임: ' + GAMES[other].name, () => { goHome(); quickStart(other); }]; sec2 = [againLbl + ' ' + costTag(), () => startGame(id, nextLv)]; gh = ['홈으로', goHome]; }
-  else { pri = [againLbl + ' ' + costTag(), () => startGame(id, nextLv)]; sec2 = ['홈으로', goHome]; }
-  html += `<div class="mbtns"><button class="b2" id="mSec">${sec2[0]}</button><button class="b1" id="mPri">${pri[0]}</button></div>${gh ? `<button class="btn ghost" id="mGh">${gh[0]}</button>` : ''}`;
+  const other = nextUnplayed(id), nextLv = G.lv, chalScore = dayState().best[id] || score;
+  const reopen = () => { openModal(html); const b2 = $('#bigScore'); if(b2) b2.textContent = fmt(score); resBind(R); };
+  const tl3 = myTL(), brag = win && firstToday && STREAK_MS.includes(tl3.streak);
+  const R = {
+    pri: other ? { id:'mPri', label:'다음 과목 풀기', sub:`${subjOf(other)} · ${GAMES[other].name}`, fn:() => { goHome(); quickStart(other); } }
+               : { id:'mPri', label:'오늘 성적표 보기', sub:'오늘 시험지를 모두 풀었어요', fn:() => { goHome(); openShare(closeModal); } },
+    pair:[ { id:'mSec', label:'다시 풀기 ' + costTag(), cls:'b2', fn:() => startGame(id, nextLv) },
+      canChal() && chalScore > 0 ? { id:'mChal', label:`${ic('duel')} ${G.chal && G.chal.n ? '되갚기 도전장' : '친구에게 도전장'}`, cls:'gold', keep:true, fn:() => viralShare(cardChal(id, dayState().best[id] || score, nextLv), reopen) } : null ],
+    links:[ { id:'mShareR', label:`${ic('share')}${brag ? '연속 ' + tl3.streak + '일 자랑하기' : '결과 카드 공유'}`, keep:true, fn:() => openShare(reopen) },
+      { id:'mGh', label:'홈으로', fn:goHome } ]
+  };
+  html += resBtns(R);
   setTimeout(() => {
-    const bindRes = () => {
-      $('#mPri').onclick = () => { closeModal(); pri[1](); };
-      $('#mSec').onclick = () => { closeModal(); sec2[1](); };
-      if(gh) $('#mGh').onclick = () => { closeModal(); gh[1](); };
-      const reopen = () => { openModal(html); const b2 = $('#bigScore'); if(b2) b2.textContent = fmt(score); bindRes(); };
-      const shr = $('#mShareR'); if(shr) shr.onclick = () => openShare(reopen);
-      const chb = $('#mChal'); if(chb) chb.onclick = () => viralShare(cardChal(id, dayState().best[id] || score, G.lv), reopen);
-    };
     openModal(html);
     if(win && !NG[id].noConfetti) fxConfetti();
     if(win) sfx('result'); else sfx('lose');
-    bindRes();
+    resBind(R);
     const el = $('#bigScore');
     if(el){ const t0 = performance.now(), dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900; let lastTk = 0;
       /* 점수가 올라가는 동안 '틱' 소리가 점점 높아지고, 다 오르면 '딩' + 금빛 폭죽 */
       const step = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1, e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(Math.round(score * e));
         if(k < 1){ if(t - lastTk > 55){ lastTk = t; sfx('tick', { p:e }); } requestAnimationFrame(step); }
         else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); fxBuzz(20);
-          if(newRec) setTimeout(() => { const pl = $('#modal .pill.new'); if(pl){ sfx('newRecord'); fxPop(pl, 'spark'); } }, 380); } };
+          if(newRec) setTimeout(() => { const pl = $('#modal .rsum b.new'); if(pl){ sfx('newRecord'); fxPop(pl, 'spark'); } }, 380); } };
       requestAnimationFrame(step); }
   }, win ? 500 : 250);
 }
@@ -780,15 +783,16 @@ function portalDuelResult(r, a, b){
     ${duelSidesHtml(r, a, b)}
     ${why ? `<p class="note">${why}</p>` : ''}
     <p class="dr-lb">대전 포인트</p><div class="big" id="bigScore">+0</div>
-    <div><span class="pill info">오늘 대전 ${d.dw}승 ${d.dd}무 ${d.dl}패 · 대전 포인트 ${fmt(d.duel)}</span>${firstToday ? attPillHtml() : ''}</div>
+    <div class="rsum"><b>오늘 대전 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><span>${['오늘 대전 포인트 ' + fmt(d.duel), firstToday ? attPillHtml().replace(/<[^>]+>/g, '').trim() : ''].filter(Boolean).join(' · ')}</span></div>
     <p class="note">${r === 'l' ? '져도 대전 포인트를 받아요. ' : ''}대전 포인트는 대전 기록에 쌓이고, 오늘 점수(시험지)와는 따로예요.</p>
-    ${duelContinueHtml()}<div class="mbtns"><button class="b2" id="mSec">대전 목록</button><button class="b1" id="mPri">다시 대전 ${costTag()}</button></div><button class="btn ghost" id="mGh">홈으로</button>`;
+    ${duelContinueHtml()}`;
+  const RB = { pri:{ id:'mPri', label:'다시 대전 ' + costTag(), sub:GAMES[id].name, fn:() => { goHome(); duelStart(id); } },
+    links:[{ id:'mSec', label:'대전 목록', fn:() => { goHome(); setTab('duel'); } }, { id:'mGh', label:'홈으로', fn:() => { goHome(); setTab('today'); } }] };
+  html += resBtns(RB);
   setTimeout(() => {
     openModal(html);
     if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
-    $('#mPri').onclick = () => { closeModal(); goHome(); duelStart(id); };
-    $('#mSec').onclick = () => { closeModal(); goHome(); setTab('duel'); };
-    $('#mGh').onclick = () => { closeModal(); goHome(); setTab('today'); };
+    resBind(RB);
     duelContinueBind();
     const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800;
     const stepN = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
@@ -811,21 +815,59 @@ Object.assign(HOST, {
     if(!adv && !freeRun) sfx('heartUse');
     let attempt = 0;
     if(!adv && !duel){ const d = dayState(); d.tries[id]++; saveDay(d); attempt = d.tries[id]; }
+    if(attempt === 1) runMark(id);   /* 공식 답안 시작: 진행 중 판 표시(새로고침·앱 종료 때 부분 점수로 제출) */
     return { attempt };
   },
   showPlay(){ $('#home').style.display = 'none'; $('#play').style.display = 'block'; },
-  subtitle:(L, attempt, ex) => `${L.name}${ex} · 오늘 ${attempt}번째 판 · 친구와 같은 문제`,
+  subtitle:(L, attempt, ex) => attempt === 1 ? `${subjOf(G.id) ? subjOf(G.id) + ' · ' : ''}${L.name}${ex} · 공식 답안` : `다시 풀기 · 기록 안 됨 · ${L.name}${ex}`,
   quitInfo:() => ({
     note:G.attempt === 1 ? '지금 나가면 여기까지 진행한 만큼(최대 300점)만 공식 점수로 기록돼요. 오늘 이 문제의 공식 답안은 한 번뿐이에요.' : '연습 판이라 나가도 공식 기록은 그대로예요.',
     label:G.attempt === 1 ? '여기서 제출하기' : '연습 그만하기',
-    onQuit(){ if(G.attempt === 1){ const d = dayState(), part = Math.round(examProgress() * 300); d.best[G.id] = part; d.offDone = d.offDone || {}; d.offDone[G.id] = 1; if(!d.att) d.att = true; saveDay(d); toast(GAMES[G.id].name + ' 부분 점수 ' + fmt(part) + '점을 기록했어요'); } }
+    onQuit(){ if(G.attempt === 1){ runClear(); const d = dayState(), part = Math.round(examProgress() * 300); d.best[G.id] = part; d.offDone = d.offDone || {}; d.offDone[G.id] = 1; if(!d.att) d.att = true; saveDay(d); toast(GAMES[G.id].name + ' 부분 점수 ' + fmt(part) + '점을 기록했어요'); } }
   }),
   finish(win){ if(G.adv) advFinish(win); else examFinish(win); },
   exit(){ goHome(); },
   canDuel(){ if(heartState().n < 1){ openHeartSheet('empty'); return false; } return true; },
   duelRewardHtml:() => `<div class="dh-rw sm"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span></div>`,
-  duelResult:(r, a, b) => portalDuelResult(r, a, b)
+  duelResult:(r, a, b) => portalDuelResult(r, a, b),
+  historyGuard:true,   /* 뒤로가기: 창 닫기 → 그만하기 확인 → 오늘 탭 → 두 번 눌러 나가기 */
+  back(){ if(TAB !== 'today'){ setTab('today'); return true; } return false; }
 });
+
+/* ===== 공식 답안 보호(UI 검수 P0, 2026-10-04) =====
+   공식 답안(그날 첫 판)은 시작하는 순간 기회를 쓰므로, 진행 중 판을 'hp:run'에 적어 두고
+   화면이 숨겨지거나 닫힐 때(pagehide · visibilitychange hidden) 그 순간의 부분 점수(진행률 × 300, 결정 151)를 공식 기록으로 저장한다.
+   판을 계속하면 끝날 때 결과가 덮어쓴다. 다시 열었을 때 표시가 남아 있으면 마지막 부분 점수로 제출하고 안내한다.
+   (이어 풀기는 게임마다 상태 저장이 필요해서 이번엔 하지 않음) */
+function runMark(id){ store.set('hp:run', { day:dayKey(), id, t0:Date.now(), part:0 }); }
+function runClear(){ store.set('hp:run', null); }
+function runLive(){ const r = store.get('hp:run', null); return r && G && !G.over && !G.adv && !G.duel && G.attempt === 1 && G.id === r.id ? r : null; }
+function runSave(r, part){   /* 그날 기록에 부분 점수를 공식 기록으로 넣기(날짜가 바뀌었으면 그날 기록에) */
+  const key = 'hp:day:' + r.day, d = r.day === dayKey() ? dayState() : store.get(key, null);
+  if(!d || !d.best) return;
+  d.best[r.id] = Math.max(0, part); d.offDone = d.offDone || {}; d.offDone[r.id] = 1;
+  store.set(key, d);
+}
+function runSnap(){ const r = runLive(); if(!r) return; try{ r.part = Math.round(examProgress() * 300); r.at = Date.now(); store.set('hp:run', r); runSave(r, r.part); }catch(_){} }
+addEventListener('pagehide', runSnap);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') runSnap(); });
+setInterval(() => { const r = runLive(); if(!r) return; try{ const p = Math.round(examProgress() * 300); if(p !== r.part){ r.part = p; store.set('hp:run', r); } }catch(_){} }, 2000);   /* 갑자기 꺼져도 최근 진행률이 남게 */
+/* 다시 열었을 때: 끝나지 않은 공식 답안이 있으면 마지막 부분 점수로 제출 */
+const RUN_LEFT = (() => {
+  const r = store.get('hp:run', null); if(!r || !r.id || !GAMES[r.id]) { if(r) runClear(); return null; }
+  runSave(r, r.part || 0); runClear();
+  return r;
+})();
+function runNotice(){
+  const r = RUN_LEFT; if(!r) return;
+  const msg = `지난번 ${GAMES[r.id].name} 판은 부분 점수 ${fmt(r.part || 0)}점으로 제출됐어요`;
+  if($('#veil').classList.contains('on') || (G && !G.over)){ toast(msg); return; }
+  openModal(`<h3>공식 답안 제출 안내</h3><div class="runsub"><b>${GAMES[r.id].name} · 부분 점수 ${fmt(r.part || 0)}점</b><span>지난번 판이 끝나기 전에 화면이 닫혀서, 그때까지 진행한 만큼(최대 300점)을 공식 답안으로 제출했어요.</span></div>
+    <p class="note">같은 문제는 다시 풀기(♥1)로 더 풀 수 있지만 기록은 바뀌지 않아요.</p><div class="mbtns one"><button class="b1" id="mClose">확인</button></div>`);
+  $('#mClose').onclick = closeModal;
+}
+setTimeout(runNotice, 1200);
+navInit();
 
 let lastSig = '', ABOVE = null;
 /* 추월 알림: 친구가 나를 제치면 여우가 알려줌 */

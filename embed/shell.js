@@ -108,14 +108,12 @@ function embCount(score, prefix){
     else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); fxBuzz(20); } };
   requestAnimationFrame(step);
 }
-function embButtons(pri, sec){
-  return `<div class="mbtns"><button class="b2" id="mSec">${sec[0]}</button><button class="b1" id="mPri">${pri[0]}</button></div>`;
+/* 결과 창 버튼: 사이트와 같은 위계(주 버튼 1개 · 글자 버튼 줄). 버튼 id(#mPri·#mSec·#mGh)와 이벤트는 그대로 */
+function embRes(pri, sec, extra){
+  return { pri:{ id:'mPri', label:pri[0], sub:pri[2], fn:pri[1] }, links:[{ id:'mSec', label:sec[0], fn:sec[1] }].concat(extra || []) };
 }
-function embBind(pri, sec, extra){
-  $('#mPri').onclick = () => { closeModal(); pri[1](); };
-  $('#mSec').onclick = () => { closeModal(); sec[1](); };
-  if(extra) for(const k in extra){ const b = $(k); if(b) b.onclick = () => { closeModal(); extra[k](); }; }
-}
+function embButtons(pri, sec, extra){ return resBtns(embRes(pri, sec, extra)); }
+function embBind(pri, sec, extra){ resBind(embRes(pri, sec, extra)); }
 /* 오늘의 문제 · 연습 */
 function embPlayFinish(win){
   const id = G.id, m = NG[id], daily = EMB.cur === 'daily', sec = Math.round(elapsed());
@@ -133,7 +131,7 @@ function embPlayFinish(win){
   } else {
     html = `<h3 class="bad">${resFace('sad')}${m.loseTitle || '이번 판은 실패'}</h3><p class="lose">${daily && part ? '부분 점수 ' + fmt(part) + '점' : '아쉬워요!'}</p><p class="note">${lossProgress()} ${daily ? '같은 문제로 다시 해 볼 수 있어요.' : '다시 도전해 봐요.'}</p>`;
   }
-  const pri = [daily ? '같은 문제 다시' : '다시 하기', again], sc = ['처음으로', embMenu];
+  const pri = [daily ? '같은 문제 다시 풀기' : '새 문제로 한 판 더', again, daily ? (G.attempt === 1 ? '첫 기록은 그대로 남아요' : '오늘 최고 기록만 남아요') : '난이도 ' + G.L.name], sc = ['처음으로', embMenu];
   html += embButtons(pri, sc);
   setTimeout(() => {
     openModal(html); embBind(pri, sc);
@@ -162,10 +160,10 @@ function embSoloFinish(win){
     html = `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 몇 번이든 다시 할 수 있어요.</p>${chBox}`;
   }
   const pri = win ? ['다음 스테이지 ▶', () => startGame(id, null, { adv:n + 1 })] : ['다시 도전', () => startGame(id, null, { adv:n })];
-  const sc = ['스테이지 맵', () => { embMenu(); openAdvMap(id, win ? n + 1 : n); }];
-  html += embButtons(pri, sc) + '<button class="btn ghost" id="mGh">처음으로</button>';
+  const sc = [`${ic('map')}스테이지 맵`, () => { embMenu(); openAdvMap(id, win ? n + 1 : n); }], gh = [{ id:'mGh', label:'처음으로', fn:embMenu }];
+  html += embButtons(pri, sc, gh);
   setTimeout(() => {
-    openModal(html); embBind(pri, sc, { '#mGh':embMenu });
+    openModal(html); embBind(pri, sc, gh);
     if(win){
       fxConfetti(); sfx('result');
       document.querySelectorAll('#modal .bigstars .s').forEach((s, k) => setTimeout(() => {
@@ -205,7 +203,7 @@ Object.assign(HOST, {
     return { attempt };
   },
   showPlay(){ $('#menu').hidden = true; $('#play').style.display = 'block'; },
-  subtitle:(L, attempt, ex) => EMB.cur === 'daily' ? `오늘의 문제 · ${L.name}${ex} · ${attempt}번째 판` : `연습 · ${L.name}${ex}`,
+  subtitle:(L, attempt, ex) => EMB.cur === 'daily' ? `오늘의 문제 · ${L.name}${ex} · ${attempt === 1 ? '첫 기록' : '다시 풀기'}` : `연습 · ${L.name}${ex} · 새 문제`,
   quitInfo:() => ({ note:EMB.cur === 'daily' ? '지금 나가면 이번 판은 기록되지 않아요. 같은 문제는 다시 할 수 있어요.' : '지금 나가면 이번 판은 기록되지 않아요.', label:'그만하기' }),
   finish(win){ if(G.adv) embSoloFinish(win); else embPlayFinish(win); },
   exit(){ embEmit('quit', { mode:EMB.cur }); embMenu(); },
@@ -240,6 +238,8 @@ registerGames([EMB.id]);
 /* 게임 정의의 modes가 있으면 그 모드만(예: 오늘의 문제·연습이 없는 게임) */
 if(Array.isArray(NG[EMB.id].modes)){ const ok = EMB.modes.filter(x => NG[EMB.id].modes.includes(x)); EMB.modes = ok.length ? ok : NG[EMB.id].modes.filter(x => ['daily', 'solo', 'practice', 'duel'].includes(x)); }
 playChromeInit();
+/* 뒤로가기 처리는 붙인 사이트의 방문 기록을 건드리므로 주소 옵션 ?back=1일 때만(앱 WebView 등) */
+if(new URLSearchParams(location.search).get('back') === '1'){ HOST.historyGuard = true; navInit(); }
 if(embHas('duel')) netStart(); else ROOM_STATE = 'none';   /* 대전을 켠 곳에서만 대전 서버에 연결 */
 if(new URLSearchParams(location.search).get('sound') === '0') sndSetOn(false);
 embEmit('ready', { name:NG[EMB.id].name, modes:EMB.modes });
