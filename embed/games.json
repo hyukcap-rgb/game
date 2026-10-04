@@ -204,12 +204,12 @@
     {
       "id": "snowball",
       "name": "스노우볼",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "summary": "말랑볼을 굴려 먹고 커져서, 작은 상대를 꿀꺽하는 3분 육성 대결 — 솔로(별 3개)와 30명 배틀로열 대전",
       "duel": true,
       "file": "snowball.html",
-      "bytes": 236226,
-      "gzip": 78409
+      "bytes": 244976,
+      "gzip": 81173
     },
     {
       "id": "flag",
