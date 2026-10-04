@@ -381,7 +381,7 @@ NG.gostop = (() => {
     const name = me ? '나' : esc(g.oppNick), av = me ? avatar({ me:true }) : oppAv(g.oppNick);
     const st = [P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
     return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
-      <div class="gs-pl" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 · 스테이지 ' + G.adv : g.mode === 'pvp' ? '실시간 대전' : 'AI 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
+      <div class="gs-pl" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 ' + G.adv + '판' : g.mode === 'pvp' ? '실시간 대전' : 'AI 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
       <div class="gs-ps">${st}</div><span class="gs-pav">${av}</span>`;
   }
   /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
@@ -418,8 +418,8 @@ NG.gostop = (() => {
     const op = 1 - g.me;
     $('#gsCapOp').innerHTML = capHtml(view.c[op], 14);
     $('#gsCapMe').innerHTML = capHtml(view.c[g.me], 584);
-    $('#gsPtsOp').innerHTML = `<b>${scoreOf(view.c[op]).total}</b> 점`;
-    $('#gsPtsMe').innerHTML = `<b>${scoreOf(view.c[g.me]).total}</b> 점`;
+    $('#gsPtsOp').innerHTML = `<b>${scoreOf(view.c[op]).total}</b><small>점</small>`;
+    $('#gsPtsMe').innerHTML = `<b>${scoreOf(view.c[g.me]).total}</b><small>점</small>`;
     $('#gsFloor').innerHTML = floorHtml(view);
     const [dw, dh] = CW.deck;
     $('#gsDeck').innerHTML = view.d ? `${view.d > 1 ? `<div class="gs-c back" style="${px(630 - dw / 2 + 7, 334 - dh / 2 + 7, dw, dh)}">${BACK}</div>` : ''}<div class="gs-c back" data-cid="deck" style="${px(630 - dw / 2, 334 - dh / 2, dw, dh)}">${BACK}</div><span class="gs-dn" style="left:${630 - 40}px;top:${334 + dh / 2 + 14}px">${view.d}</span>` : `<span class="gs-dn" style="left:${630 - 90}px;top:325px;width:180px">더미 끝</span>`;
@@ -817,7 +817,7 @@ NG.gostop = (() => {
   function render(st){
     st.innerHTML = `<div class="gsg" id="gsg"><div class="gsb" id="gsb">
       <div id="gsBody" hidden>
-        <div class="gs-main"></div><div class="gs-line"></div>
+        <div class="gs-mat"></div><div class="gs-tray op"></div><div class="gs-tray me"></div>
         <div class="gs-tag">${BADGE19}<span>고스톱</span></div>
         <div id="gsCapOp"></div>
         <div class="gs-pts op" id="gsPtsOp"></div>
@@ -881,7 +881,7 @@ NG.gostop = (() => {
         ${[[0, 36, 32, -15], [28, 60, 23, -1], [44, 84, 28, 13]].map(([id, x, y, a], k) => `<clipPath id="${u}c${k}"><rect width="176" height="287" rx="11"/></clipPath><g transform="translate(${x} ${y}) rotate(${a}) scale(.22)"><g clip-path="url(#${u}c${k})">${cardInner(id)}</g></g>`).join('')}
         <g transform="translate(112 19)"><circle r="14" fill="#fff" stroke="#D7263D" stroke-width="4"/><text y="5.5" font-size="15" font-weight="900" text-anchor="middle" fill="#1A0F45" font-family="system-ui,sans-serif">19</text></g></svg>`;
     },
-    helpExtra:() => [['그림 출처', '화투 그림: Marcus Richert(Louie Mantia, Jr.의 Hanafuda 그래픽 기반), Wikimedia Commons, CC BY-SA 4.0 라이선스.']],
+    helpExtra:() => [['그림 출처', '화투 그림: Marcus Richert(Louie Mantia, Jr.의 Hanafuda 그래픽 기반), Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스. 48장을 한 장 그림판으로 합쳐 씀.']],
     help:[
       ['같은 월끼리 먹어요', '내 패 한 장을 내고 더미에서 한 장을 뒤집어요. 바닥에 같은 월(왼쪽 위 숫자)이 있으면 둘 다 가져와요. 패를 누르면 들리고, 한 번 더 누르면 내요.'],
       ['7점 나면 고? 스톱?', '광 3장 3점(비광 끼면 2점)·4장 4점·5장 15점 · 열끗 5장 1점(고도리 5점) · 띠 5장 1점(홍단·청단·초단 3점) · 피 10장 1점. 7점이 나면 스톱해서 이기거나, 고를 불러 점수를 더 키워요(1고 +1, 2고 +2, 3고부터 2배씩). 고를 했는데 상대가 먼저 나면 고박!'],
