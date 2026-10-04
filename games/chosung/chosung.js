@@ -153,7 +153,6 @@ NG.chosung = (() => {
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
     skip:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5v13l8-6.5zM12 5.5v13l8-6.5z" fill="#7CCBFF" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/></svg>'
   };
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
 
   function hud(){
     const m = S(); if(!m) return;
@@ -161,7 +160,7 @@ NG.chosung = (() => {
     const h = $('#csHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || !canHint(); }
     const k = $('#csSkip'); if(k){ k.querySelector('b').textContent = m.skipLeft; k.disabled = m.skipLeft <= 0; }
     const lv = $('#csLives');
-    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="cs-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
+    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
     const dots = $('#csDots');
     if(dots) dots.innerHTML = m.qs.map((p, n) => `<i class="${p.res === 'ok' ? 'ok' : p.res === 'skip' ? 'sk' : n === m.i ? 'now' : ''}"></i>`).join('');
   }
@@ -182,7 +181,7 @@ NG.chosung = (() => {
     const words = p.w.split(' ');
     /* 칸 크기: 한 줄(약 330px)에 들어가게, 너무 작아지면(34px 미만) 띄어쓰기 단위로 줄바꿈 */
     const n = p.n.length, gaps = (n - words.length) * 5 + (words.length - 1) * 14;
-    const sz = Math.max(34, Math.min(62, Math.floor((330 - gaps) / n)));
+    const sz = Math.max(34, Math.min(70, Math.floor((330 - gaps) / n)));
     let idx = 0;
     return `<div class="cs-tiles ${cls || ''}" style="--ts:${sz}px">${words.map(wd => `<span class="cs-wd">${Array.from(wd).map(() => {
       const i = idx++, open = show != null || p.open.has(i), ch = show != null ? show[i] : p.n[i];
@@ -292,7 +291,7 @@ NG.chosung = (() => {
     if(sec !== m.lastSec){
       m.lastSec = sec;
       const e = $('#csTime'); if(e) e.textContent = mmss(sec);
-      const tp = $('#csTimeP'); if(tp) tp.classList.toggle('hurry', sec <= 10);
+      const tp = $('#csTimeP'); if(tp) tp.classList.toggle('warn', sec <= 10);
       const bw = $('#csBarW'); if(bw) bw.classList.toggle('hurry', sec <= 10);
       if(sec <= 10 && sec > 0) sfx('chosungTick', { hi:sec <= 5 });
     }
@@ -316,8 +315,24 @@ NG.chosung = (() => {
     T(() => finish(false), 1400);
   }
 
+  /* 화면 맞춤(보이기만): 카드·입력 묶음을 남은 높이의 가운데~아래에 둔다. 화면 키보드가 올라오면(보이는 높이가 줄면) 빈칸을 없애 입력칸·카드가 보이게 */
+  function fit(){
+    try{
+      const root = document.querySelector('.ng-chosung'); if(!root) return;
+      const vv = window.visualViewport, vh = vv ? vv.height : innerHeight;
+      const kb = vv && innerHeight - vv.height > 140;
+      root.classList.toggle('kb', !!kb);
+      const top = root.getBoundingClientRect().top + (window.scrollY || 0);
+      root.style.minHeight = kb ? '' : Math.max(0, Math.floor(innerHeight - top - 20)) + 'px';
+    }catch(_){}
+  }
   function wire(){
     const m = S(), inp = $('#csIn');
+    try{
+      const on = () => { if(G && G.m === m) fit(); };
+      const vv = window.visualViewport; if(vv) vv.addEventListener('resize', on); addEventListener('resize', on);
+      const prev = G.cleanup; G.cleanup = () => { try{ if(vv) vv.removeEventListener('resize', on); removeEventListener('resize', on); }catch(_){} if(prev) prev(); };
+    }catch(_){}
     if(inp){
       /* 한글 조합 중 Enter는 조합을 끝내는 키 → 바로 내지 않고, 조합이 끝난 뒤에 낸다 */
       inp.addEventListener('compositionstart', () => { m.composing = true; });
@@ -404,22 +419,25 @@ NG.chosung = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-chosung">
-        <div class="cs-hud">
-          <div class="cs-pill" aria-label="문제"><span class="cs-ic">${ICO.q}</span><b id="csNo">1</b><small>/${m.q}</small></div>
-          <div class="cs-pill cs-time" id="csTimeP" aria-label="남은 시간"><span class="cs-ic">${ICO.clock}</span><b id="csTime">${mmss(G.limit)}</b></div>
-          <button class="cs-pill cs-btn" id="csHint" aria-label="힌트: 한 글자 열기"><span class="cs-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
-          <button class="cs-pill cs-btn sk" id="csSkip" aria-label="건너뛰기"><span class="cs-ic">${ICO.skip}</span><b>${m.skipLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="문제"><span class="hv">${ICO.q}<b id="csNo">1</b><small>/${m.q}</small></span><em>문제</em></div>
+          <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
+          <button class="hchip skip" id="csSkip" aria-label="건너뛰기"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="cs-barw" id="csBarW"><i id="csBar"></i></div>
         <div class="cs-dots" id="csDots" aria-hidden="true"></div>
+        <div class="cs-play" id="csPlay">
         <div class="cs-card" id="csCard" aria-live="polite"></div>
-        <div class="cs-row"><div class="cs-lives" id="csLives" role="img" hidden></div><div class="cs-msg" id="csMsg"></div></div>
+        <div class="cs-row"><div class="hlives" id="csLives" role="img" hidden></div><div class="cs-msg" id="csMsg"></div></div>
         <form class="cs-form" id="csForm" autocomplete="off" onsubmit="return false">
           <input class="cs-in" id="csIn" type="text" inputmode="text" lang="ko" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="24" placeholder="낱말을 써요" aria-label="답 쓰기">
           <button type="button" class="cs-go" id="csGo">확인</button>
         </form>
+        </div>
       </div>`;
+      fit();
       showQ(); wire(); hud();
       if(!matchMedia('(pointer:coarse)').matches){ const i = $('#csIn'); if(i) setTimeout(() => { if(G && G.m === m && !$('#veil').classList.contains('on')) i.focus(); }, 120); }
       if(G.raf) cancelAnimationFrame(G.raf);
@@ -441,21 +459,10 @@ body[data-mode="chosung"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.25) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#F1ECFF 0%,#D6CBFF 55%,#B9A6FF 100%) fixed}
 .ng-chosung{position:relative; display:flex; flex-direction:column; align-items:center; width:100%}
-.ng-chosung .cs-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-chosung .cs-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#F2EEFF); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(90,60,180,.14), 0 3px 0 #1A0F45; color:#33256E; white-space:nowrap}
-.ng-chosung .cs-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-chosung .cs-pill small{font-family:var(--disp); font-size:14px; color:#7A6CB0}
-.ng-chosung .cs-ic{width:22px; height:22px; flex:none; display:block}
-.ng-chosung .cs-ic svg{width:100%; height:100%; display:block}
-.ng-chosung .cs-time{flex:1.3 1 0}
-.ng-chosung .cs-time b{font-size:23px}
-.ng-chosung .cs-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-chosung .cs-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-chosung .cs-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-chosung .cs-btn.sk{background:linear-gradient(180deg,#E3F4FF,#B5E0FF)}
-.ng-chosung .cs-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(90,60,180,.14), 0 1px 0 #1A0F45}
-.ng-chosung .cs-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
+.ng-chosung .cs-play{flex:1 0 auto; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 0 5%}
+.ng-chosung.kb .cs-play{justify-content:flex-start; padding:0}
+.ng-chosung .hud-row{margin:0}
+.ng-chosung .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
 .ng-chosung .cs-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
 .ng-chosung .cs-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#33256E; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
 .ng-chosung .cs-chip.mj{background:#EEE8FF; color:#4B2FB0}
@@ -469,9 +476,9 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-dots i.now{background:#FFE27A; border-color:#1A0F45; transform:scale(1.25)}
 .ng-chosung .cs-dots i.ok{background:#5BD08A; border-color:#1A0F45}
 .ng-chosung .cs-dots i.sk{background:#B5B0CC; border-color:#1A0F45}
-.ng-chosung .cs-card{position:relative; width:100%; margin:10px 0 0; padding:12px 10px 16px; border-radius:22px; cursor:text;
+.ng-chosung .cs-card{position:relative; width:100%; margin:10px 0 0; padding:16px 10px 20px; border-radius:22px; cursor:text;
   background:radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EFEAFF 100%); border:3px solid #1A0F45;
-  box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,140,.2); display:flex; flex-direction:column; align-items:center; gap:12px; min-height:150px; justify-content:center}
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,140,.2); display:flex; flex-direction:column; align-items:center; gap:12px; min-height:180px; justify-content:center}
 .ng-chosung .cs-card.in{animation:chosung-in .4s cubic-bezier(.2,1.5,.4,1)}
 .ng-chosung .cs-card.bad{background:radial-gradient(circle at 50% 30%, #FFF6F6 0%, #FFE0E2 100%)}
 .ng-chosung .cs-card.ok{background:radial-gradient(circle at 50% 30%, #F4FFF7 0%, #D3F5DF 100%)}
@@ -487,7 +494,7 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-wd{display:flex; gap:5px; flex-wrap:nowrap}
 .ng-chosung .cs-t{width:var(--ts); height:calc(var(--ts) * 1.08); display:grid; place-items:center; border-radius:calc(var(--ts) * .24); border:2.5px solid #1A0F45;
   background:linear-gradient(180deg,#FFFFFB 0%,#FFF3D6 100%); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 #B9A6FF, 0 5px 0 #1A0F45;
-  font-family:var(--heavy); font-weight:400; font-size:calc(var(--ts) * .56); line-height:1; color:#3E2A9A; margin-bottom:5px}
+  font-family:var(--disp); font-weight:400; font-size:calc(var(--ts) * .6); line-height:1; color:#2E1F7A; margin-bottom:5px}   /* 초성은 Jua(둥근 글꼴): 굵은 제목 글꼴은 ㅌ이 E, ㄴ이 L처럼 보임 */
 .ng-chosung .cs-t.open{background:linear-gradient(180deg,#FFFBE0,#FFE38A); color:#1A0F45}
 .ng-chosung .cs-t.blank{background:repeating-linear-gradient(135deg,#EEE8FF 0 6px,#DCD2FF 6px 12px); color:#A08AE8}
 .ng-chosung .cs-t.pop{animation:chosung-pop .45s cubic-bezier(.2,1.6,.4,1)}
@@ -497,11 +504,8 @@ body[data-mode="chosung"]{background:
 @keyframes chosung-pop{0%{transform:scale(.5) rotate(-8deg)} 100%{transform:none}}
 @keyframes chosung-flip{0%{transform:rotateX(90deg) scale(.8)} 100%{transform:none}}
 .ng-chosung .cs-row{display:flex; align-items:center; gap:8px; width:100%; height:40px; margin-top:4px}
-.ng-chosung .cs-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-chosung .cs-lives[hidden]{display:none}
-.ng-chosung .cs-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-chosung .cs-heart svg{width:100%; height:100%; display:block}
-.ng-chosung .cs-heart.off{color:#DCD6E6}
+.ng-chosung .hlives[hidden]{display:none}
+.ng-chosung .hlives{flex:none}
 .ng-chosung .cs-msg{flex:1; min-width:0; overflow:hidden; height:40px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#3E2A9A; white-space:nowrap}
 .ng-chosung .cs-msg span{overflow:hidden; text-overflow:ellipsis}
 .ng-chosung .cs-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; flex:none}
@@ -521,7 +525,7 @@ body[data-mode="chosung"]{background:
   background:linear-gradient(180deg,#B9A6FF,#7B5CE6); color:#fff; font-family:var(--heavy); font-weight:400; font-size:20px; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill;
   box-shadow:inset 0 3px 0 rgba(255,255,255,.45), 0 4px 0 #1A0F45}
 .ng-chosung .cs-go:active{transform:translateY(3px); box-shadow:inset 0 3px 0 rgba(255,255,255,.45), 0 1px 0 #1A0F45}
-@media (max-width:370px){ .ng-chosung .cs-pill b{font-size:18px} .ng-chosung .cs-time b{font-size:20px} .ng-chosung .cs-pill small{font-size:12px} .ng-chosung .cs-hud{gap:5px} .ng-chosung .cs-pill{padding:0 5px} .ng-chosung .cs-msg b{font-size:18px} .ng-chosung .cs-go{width:74px} }
+@media (max-width:370px){ .ng-chosung .cs-msg b{font-size:18px} .ng-chosung .cs-go{width:74px} }
 @media (prefers-reduced-motion: reduce){ .ng-chosung .cs-card.in, .ng-chosung .cs-tiles.flip .cs-t, .ng-chosung .cs-t.pop{animation:none} }
 `,
     sounds:{

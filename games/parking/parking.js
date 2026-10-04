@@ -205,15 +205,17 @@ NG.parking = (() => {
   }
   function layout(){
     const m = S(), lot = $('#pkLot'), root = document.querySelector('.ng-parking'); if(!lot || !root) return;
-    const W = Math.min(root.clientWidth || 360, 470) - 26 - 6;   /* 출구 표시가 판 밖으로 나오는 자리 + 테두리 */
+    const W = Math.min((root.clientWidth || 360) + 16, 486) - 26 - 6;   /* 양옆 여백 8px씩 더 씀(.pk-lotw 음수 여백) − 출구 표시가 판 밖으로 나오는 자리 − 테두리 */
     const top = lot.getBoundingClientRect().top + (window.scrollY || 0);
-    const Hh = Math.max(260, (innerHeight || 740) - top - 92);   /* 아래 단추 줄 */
+    const Hh = Math.max(260, (innerHeight || 740) - top - 100);   /* 아래 단추 줄 */
     const pad = m.W >= 7 ? 10 : 12;
     let cs = Math.floor(Math.min((W - pad * 2) / m.W, (Hh - pad * 2) / m.H, 68));
     cs = Math.max(34, cs);
     m.geo = { cs, pad };
     lot.style.width = (cs * m.W + pad * 2) + 'px'; lot.style.height = (cs * m.H + pad * 2) + 'px';
     lot.style.setProperty('--cs', cs + 'px'); lot.style.setProperty('--pad', pad + 'px');
+    /* 화면 높이 채우기(보이기만): 주차장은 가운데, 되돌리기·처음부터·힌트 줄은 엄지 자리(아래)로 */
+    try{ const rt = root.getBoundingClientRect().top + (window.scrollY || 0); root.style.minHeight = Math.max(0, Math.floor((innerHeight || 740) - rt - 20)) + 'px'; }catch(_){}
     placeAll();
   }
   const xy = (m, i, v) => { const k = m.P.cars[i], g = m.geo; return [g.pad + (k.h ? v : k.c) * g.cs, g.pad + (k.h ? k.r : v) * g.cs]; };
@@ -540,11 +542,10 @@ NG.parking = (() => {
     _make:makeBoard, _stage:stageCfg,
     render(st){
       const m = S();
-      const capTxt = m.capMax ? `/최대 ${m.capMax}` : `/최단 ${m.opt}`;
       st.innerHTML = `<div class="ng-parking">
-        <div class="pk-hud">
-          <div class="pk-pill pk-moves" id="pkMovesP" aria-label="움직인 수"><span class="pk-ic">${ICO.move}</span><b id="pkMoves">0</b><small>${capTxt}수</small></div>
-          <div class="pk-pill pk-time" id="pkTimeP" aria-label="남은 시간"><span class="pk-ic">${ICO.clock}</span><b id="pkTime">${mmss(G.limit)}</b></div>
+        <div class="hud-row">
+          <div class="hchip pk-moves" id="pkMovesP" aria-label="움직인 수"><span class="hv">${ICO.move}<b id="pkMoves">0</b><small>/${m.capMax || m.opt}수</small></span><em>${m.capMax ? '움직인 수 / 최대' : '움직인 수 / 최단'}</em></div>
+          <div class="hchip time" id="pkTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="pkTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="pk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="pk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="pk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="pk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="pk-barw" id="pkBarWrap"><i id="pkBar"></i></div>
@@ -554,10 +555,10 @@ NG.parking = (() => {
           ${m.P.walls.map(w => `<span class="pk-pillar" data-w="${w}" aria-hidden="true">${PILLAR}</span>`).join('')}
           ${m.P.cars.map((_, i) => carHtml(m, i)).join('')}
         </div></div>
-        <div class="pk-ctl">
-          <button class="pk-btn" id="pkUndo" aria-label="되돌리기"><span class="pk-ic">${ICO.undo}</span><span>되돌리기</span></button>
-          <button class="pk-btn" id="pkReset" aria-label="처음부터"><span class="pk-ic">${ICO.reset}</span><span>처음부터</span></button>
-          <button class="pk-btn hint" id="pkHint" aria-label="힌트"><span class="pk-ic">${ICO.hint}</span><span>힌트</span><b>${m.hintLeft}</b></button>
+        <div class="tools-row pk-ctl">
+          <button class="tool" id="pkUndo" aria-label="되돌리기">${ICO.undo}<span>되돌리기</span></button>
+          <button class="tool" id="pkReset" aria-label="처음부터">${ICO.reset}<span>처음부터</span></button>
+          <button class="tool item" id="pkHint" aria-label="힌트">${ICO.hint}<span>힌트</span><b class="cnt">${m.hintLeft}</b></button>
         </div>
       </div>`;
       layout(); wire(); hud();
@@ -582,16 +583,9 @@ body[data-mode="parking"]{background:
   repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 14px, transparent 14px 28px),
   linear-gradient(180deg,#EEEAFF 0%,#D2C9FF 55%,#B5A8F5 100%) fixed}
 .ng-parking{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-parking .pk-hud{display:flex; gap:8px; width:100%}
-.ng-parking .pk-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px; height:44px; padding:0 10px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#F1EEFF); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(80,60,160,.14), 0 3px 0 #1A0F45; color:#2B2160; white-space:nowrap}
-.ng-parking .pk-pill b{font-family:var(--heavy); font-size:22px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-parking .pk-pill small{font-family:var(--disp); font-size:14px; color:#6A5FA8}
-.ng-parking .pk-moves.over b{color:#E5484D}
-.ng-parking .pk-ic{width:22px; height:22px; flex:none; display:block}
-.ng-parking .pk-ic svg{width:100%; height:100%; display:block}
-.ng-parking .pk-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-parking .pk-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
+.ng-parking .hud-row{margin:0}
+.ng-parking .hchip.pk-moves.over b{color:#E5484D}
+.ng-parking .hchip.time.hurry{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)} .ng-parking .hchip.time.hurry b{color:#E5484D}
 .ng-parking .pk-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-parking .pk-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#B9A8FF,#6A4BE0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-parking .pk-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
@@ -602,7 +596,7 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-msg.pk-pop, .ng-parking .pk-msg.pk-win{animation:parking-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-parking .pk-msg.pk-win b{font-size:24px; color:#FFE27A}
 @keyframes parking-in{from{transform:scale(.6); opacity:0}}
-.ng-parking .pk-lotw{padding:2px 13px 10px; display:flex; justify-content:center}
+.ng-parking .pk-lotw{padding:2px 13px 10px; margin:auto -8px; display:flex; justify-content:center}
 .ng-parking .pk-lot{position:relative; box-sizing:content-box; border-radius:18px; touch-action:none;
   background:repeating-linear-gradient(45deg,#D4CCF5 0 10px,#C6BDEE 10px 20px); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 5px 0 #1A0F45, 0 14px 22px rgba(40,20,110,.25)}
@@ -617,9 +611,9 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-goal.exit i{font-style:normal; font-family:var(--heavy); font-size:calc(var(--cs) * .42); line-height:1; color:#FFD23F; -webkit-text-stroke:3px #1A0F45; paint-order:stroke fill; animation:parking-go 1s ease-in-out infinite alternate}
 .ng-parking .pk-goal.exit.yel i{color:#FFF3A8}
 .ng-parking .pk-goal.exit.red i{color:#FF7A86}
-.ng-parking .pk-goal.exit span{position:absolute; font-family:var(--disp); font-size:11px; line-height:1; padding:3px 5px; border-radius:6px; background:#FF4D5E; color:#fff; border:2px solid #1A0F45; white-space:nowrap}
+.ng-parking .pk-goal.exit span{position:absolute; font-family:var(--disp); font-size:13px; line-height:1; padding:3px 5px; border-radius:7px; background:#FF4D5E; color:#fff; border:2px solid #1A0F45; white-space:nowrap}
 .ng-parking .pk-goal.exit.yel span{background:#FFD23F; color:#1A0F45}
-.ng-parking .pk-goal.exit.h span{top:-22px}
+.ng-parking .pk-goal.exit.h span{top:-24px}
 .ng-parking .pk-goal.exit.v span{left:calc(100% + 3px)}
 @keyframes parking-go{from{transform:translate(0,0)} to{transform:translate(3px,0)}}
 .ng-parking .pk-goal.exit.v i{animation-name:parking-gov}
@@ -664,14 +658,10 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-chip.mj{background:#FFE3E6; color:#B3122E}
 .ng-parking .pk-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-parking .pk-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-.ng-parking .pk-ctl{display:flex; gap:8px; width:100%; margin-top:4px}
-.ng-parking .pk-btn{flex:1 1 0; min-width:0; height:50px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 6px; border-radius:16px; font-family:var(--disp); font-size:15px; color:#2B2160; cursor:pointer;
-  background:linear-gradient(180deg,#FFFFFF,#ECE8FF); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(80,60,160,.16), 0 4px 0 #1A0F45; -webkit-tap-highlight-color:transparent; white-space:nowrap}
-.ng-parking .pk-btn.hint{background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-parking .pk-btn b{font-family:var(--heavy); font-weight:400; font-size:17px; min-width:20px; height:20px; line-height:20px; border-radius:99px; background:#1A0F45; color:#fff; font-size:13px}
-.ng-parking .pk-btn:active{transform:translateY(3px); box-shadow:inset 0 -3px 0 rgba(80,60,160,.16), 0 1px 0 #1A0F45}
-.ng-parking .pk-btn:disabled{opacity:.45; cursor:default; transform:none}
-@media (max-width:370px){ .ng-parking .pk-pill b{font-size:19px} .ng-parking .pk-pill small{font-size:12px} .ng-parking .pk-btn{font-size:13px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:12px; padding:4px 7px} }
+.ng-parking .pk-ctl{margin-top:8px}
+.ng-parking .pk-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
+.ng-parking .pk-ctl .tool .cnt{font-style:normal}
+@media (max-width:370px){ .ng-parking .pk-ctl .tool{font-size:14px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-parking .pk-car.glide{transition:none} .ng-parking .pk-lot.in .pk-car, .ng-parking .pk-goal.exit i, .ng-parking .pk-ghost, .ng-parking .pk-car.hint svg{animation:none} }
 `,
     sounds:{

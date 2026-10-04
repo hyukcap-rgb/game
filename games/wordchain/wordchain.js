@@ -198,6 +198,7 @@ NG.wordchain = (() => {
   function logAdd(x){
     const log = $('#wcLog'); if(!log) return null;
     const t = log.querySelector('.wc-typing'); if(t) t.remove();
+    const gd = log.querySelector('.wc-guide'); if(gd) gd.remove();
     log.insertAdjacentHTML('beforeend', bubble(x, S().chain.length - 1));
     const el = log.lastElementChild; el.classList.add('pop');
     log.scrollTop = log.scrollHeight;
@@ -226,6 +227,22 @@ NG.wordchain = (() => {
     const inp = $('#wcInput');
     if(inp) inp.placeholder = m.turn === 'me' ? (m.rule.rev ? `‘${lastW(m)[0]}’(으)로 끝나는 낱말` : `‘${needTxt(m)}’(으)로 시작하는 낱말`) : m.turn === 'op' || m.turn === 'ai' ? '상대 차례예요…' : '';
     const st = $('#wcStage'); if(st) st.dataset.turn = m.turn || '';
+    fresh();
+  }
+  /* 처음(시작 낱말만 있을 때): 빈 기록 칸 대신 가운데에 시작 낱말과 안내를 크게 보여 준다(보이기만) */
+  function fresh(){
+    try{
+      const m = S(), log = $('#wcLog'); if(!log) return;
+      const on = m.chain.length === 1 && m.phase !== 'done';
+      log.classList.toggle('fresh', on);
+      let g = log.querySelector('.wc-guide');
+      if(!on){ if(g) g.remove(); return; }
+      const txt = m.turn === 'me' ? (m.rule.rev ? `<b>‘${lastW(m)[0]}’</b>(으)로 <b>끝나는</b> 낱말을 넣어요` : `<b>‘${needTxt(m)}’</b>(으)로 시작하는 낱말을 넣어요`) : m.turn ? '상대가 먼저 이어요' : '곧 시작해요';
+      const goal = m.duelOn ? `${m.dTurns}개씩 이으면 글자 점수로 승부` : `${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 한방 승리`;
+      const html = `<p class="wc-gt">${txt}</p><p class="wc-gs">${goal}</p>`;
+      if(!g){ log.insertAdjacentHTML('beforeend', `<div class="wc-guide">${html}</div>`); }
+      else if(g.innerHTML !== html){ g.innerHTML = html; log.appendChild(g); }
+    }catch(_){}
   }
   /* 휴대폰 화면 키보드가 올라와도 입력 칸과 마지막 낱말이 보이게: 기록 칸 높이를 보이는 화면에 맞춘다 */
   function fit(){
@@ -233,8 +250,8 @@ NG.wordchain = (() => {
       const log = $('#wcLog'), form = $('#wcForm'); if(!log || !form) return;
       const vv = window.visualViewport, bottom = vv ? vv.offsetTop + vv.height : innerHeight;
       const top = log.getBoundingClientRect().top, below = form.offsetHeight + ($('#wcMsg') ? $('#wcMsg').offsetHeight : 0) + 18;
-      const h = Math.max(150, Math.min(460, Math.floor(bottom - Math.max(0, top) - below)));
-      log.style.height = h + 'px';
+      const h = Math.max(150, Math.min(640, Math.floor(bottom - Math.max(0, top) - below - 8)));
+      log.style.height = h + 'px'; log.classList.toggle('short', h < 300);   /* 키보드가 올라와 낮아지면 처음 안내를 작게 */
       log.scrollTop = log.scrollHeight;
     }catch(_){}
   }
@@ -264,7 +281,7 @@ NG.wordchain = (() => {
       if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / m.tLim)})`;
       if(sec !== m.lastSec){
         m.lastSec = sec; if(te) te.textContent = sec;
-        const hurry = sec <= 5; if(tp) tp.classList.toggle('hurry', hurry); const bw = $('#wcBarW'); if(bw) bw.classList.toggle('hurry', hurry);
+        const hurry = sec <= 5; if(tp) tp.classList.toggle('warn', hurry); const bw = $('#wcBarW'); if(bw) bw.classList.toggle('hurry', hurry);
         if(hurry && sec > 0){ sfx('wcTick', { hi:sec <= 3 }); try{ if(tp && !FXR.reduce && tp.animate) tp.animate([{ transform:'scale(1)' }, { transform:'scale(1.12)' }, { transform:'scale(1)' }], { duration:280 }); }catch(_){} }
       }
       if(rem <= 0) lose('time');
@@ -663,12 +680,12 @@ NG.wordchain = (() => {
       const m = S(), duel = m.duelOn;
       const chips = (G.adv && (m.mj.length || m.tw || m.boss)) ? `<div class="wc-rules">${m.boss ? '<span class="wc-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="wc-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="wc-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.rule.ban.length ? `<span class="wc-chip ban">✕ ${m.rule.ban.join('·')}</span>` : ''}${m.rule.gold.length ? `<span class="wc-chip gold" id="wcGold"></span>` : ''}${m.rule.tight ? '<span class="wc-chip tw" id="wcMiss"></span>' : ''}</div>` : '';
       st.innerHTML = `<div class="ng-wc" id="wcStage">
-        <div class="wc-hud">
-          <div class="wc-pill" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="wc-ic">${duel ? toyImg('fox', 'wc-hav') : ICO.word}</span><b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></div>
-          <div class="wc-pill wc-time" id="wcTimeP" aria-label="남은 시간"><span class="wc-ic">${ICO.clock}</span><b id="wcTime">${m.cfg.limit}</b><small>초</small></div>
-          ${duel ? `<div class="wc-pill" aria-label="상대가 이은 낱말"><span class="wc-ic" id="wcOppAv">${toyImg('owl', 'wc-hav')}</span><b id="wcOpp">0</b><small>/${m.dTurns}</small></div>`
-            : `<button class="wc-pill wc-btn" id="wcHint" aria-label="힌트"><span class="wc-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>`}
-          <button class="wc-pill wc-btn give" id="wcGive" aria-label="포기"><span class="wc-ic">${ICO.flag}</span></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="hv">${duel ? toyImg('fox', 'wc-hav') : ICO.word}<b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></span><em>${duel ? '내 낱말' : '이은 낱말'}</em></div>
+          <div class="hchip time" id="wcTimeP" aria-label="내 차례 남은 시간"><span class="hv">${ICO.clock}<b id="wcTime">${m.cfg.limit}</b><small>초</small></span><em>차례 시간</em></div>
+          ${duel ? `<div class="hchip" aria-label="상대가 이은 낱말"><span class="hv"><span id="wcOppAv">${toyImg('owl', 'wc-hav')}</span><b id="wcOpp">0</b><small>/${m.dTurns}</small></span><em>상대 낱말</em></div>`
+            : `<button class="hchip item" id="wcHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>`}
+          <button class="hchip skip wc-give" id="wcGive" aria-label="포기(두 번 누르기)"><span class="hv">${ICO.flag}</span><em>포기</em></button>
         </div>
         <div class="wc-barw" id="wcBarW"><i id="wcBar"></i></div>
         ${chips}
@@ -719,23 +736,15 @@ body[data-mode="wordchain"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.28) 0 3px, transparent 3.5px) 0 0/46px 46px,
   linear-gradient(180deg,#E2FAF6 0%,#B9EEE6 55%,#8FDCD2 100%) fixed}
 .ng-wc{position:relative; display:flex; flex-direction:column; align-items:stretch; width:100%; max-width:520px; margin:0 auto}
-.ng-wc .wc-hud{display:flex; gap:7px; width:100%}
-.ng-wc .wc-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#EEFBF8); border:2.5px solid ${OL}; box-shadow:inset 0 -3px 0 rgba(20,120,110,.14), 0 3px 0 ${OL}; color:#0E4F4B; white-space:nowrap}
-.ng-wc .wc-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-wc .wc-pill small{font-family:var(--disp); font-size:14px; color:#4E8A84}
+.ng-wc .hud-row{margin:0}
 .ng-wc .wc-ic{width:22px; height:22px; flex:none; display:block}
 .ng-wc .wc-ic svg{width:100%; height:100%; display:block}
-.ng-wc .wc-ic .toy, .ng-wc .wc-hav{width:24px; height:24px; display:block}
-.ng-wc .wc-time{flex:1.25 1 0}
-.ng-wc .wc-time b{font-size:23px}
-.ng-wc .wc-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-wc .wc-time.hurry small{color:#FFE3E3}
-.ng-wc .wc-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-wc .wc-btn.give{flex:.62 1 0; background:linear-gradient(180deg,#FFFFFF,#E9E4F5)}
-.ng-wc .wc-btn.give.arm{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
-.ng-wc .wc-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(20,120,110,.14), 0 1px 0 ${OL}}
-.ng-wc .wc-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
+.ng-wc .hchip .wc-hav, .ng-wc .hchip #wcOppAv{width:20px; height:20px; display:block; flex:none}
+.ng-wc .hchip #wcOppAv .wc-hav{width:20px; height:20px}
+.ng-wc .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
+.ng-wc .wc-give{flex:.8 1 0}
+.ng-wc .wc-give.arm{background:linear-gradient(180deg,#FF9A9E,#E5484D)} .ng-wc .wc-give.arm em{color:#fff}
+.ng-wc .wc-dline .wc-hav{width:24px; height:24px}
 .ng-wc .wc-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid ${OL}; overflow:hidden}
 .ng-wc .wc-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0E2,#14A3A0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-wc .wc-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
@@ -757,7 +766,21 @@ body[data-mode="wordchain"]{background:
   border:3px solid ${OL}; box-shadow:inset 0 0 0 3px rgba(255,255,255,.8), 0 5px 0 ${OL}, 0 14px 22px rgba(10,90,85,.2); display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth}
 .ng-wc .wc-body.wait .wc-log{visibility:hidden}
 .ng-wc .wc-start{align-self:center; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 16px 10px; border-radius:16px; background:#fff; border:2.5px dashed #14A3A0}
-.ng-wc .wc-start small{font-family:var(--disp); font-size:12.5px; color:#4E8A84}
+.ng-wc .wc-start small{font-family:var(--disp); font-size:13px; color:#3F7A74}
+.ng-wc .wc-log.fresh{justify-content:center; gap:16px}
+.ng-wc .wc-log.fresh .wc-start{padding:14px 22px 16px; border-width:3px; gap:8px}
+.ng-wc .wc-log.fresh .wc-start small{font-size:16px}
+.ng-wc .wc-log.fresh .wc-start .wc-ws{gap:6px; padding:9px 12px}
+.ng-wc .wc-log.fresh .wc-start .wc-t{width:56px; height:60px; border-radius:14px; font-size:34px}
+.ng-wc .wc-log.fresh .wc-start .wc-t.to{-webkit-text-stroke:5px ${OL}}
+.ng-wc .wc-guide{align-self:center; text-align:center; animation:wc-pop .38s cubic-bezier(.2,1.5,.4,1) both}
+.ng-wc .wc-gt{margin:0; font-family:var(--disp); font-size:19px; color:#0E4F4B; line-height:1.4}
+.ng-wc .wc-gt b{font-family:var(--heavy); font-weight:400; color:#E06A10}
+.ng-wc .wc-gs{margin:6px 0 0; font-size:14px; color:#3F6B67}
+.ng-wc .wc-log.fresh.short{gap:8px}
+.ng-wc .wc-log.fresh.short .wc-start{padding:8px 16px 10px}
+.ng-wc .wc-log.fresh.short .wc-start .wc-t{width:42px; height:45px; font-size:26px}
+.ng-wc .wc-log.fresh.short .wc-gs{display:none}
 .ng-wc .wc-b{display:flex; align-items:flex-end; gap:7px; max-width:92%}
 .ng-wc .wc-b.me{align-self:flex-end; flex-direction:row-reverse}
 .ng-wc .wc-b.ai{align-self:flex-start}
@@ -767,7 +790,7 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-avimg{width:34px; height:34px; display:block}
 .ng-wc .wc-bw{display:flex; flex-direction:column; gap:3px; min-width:0}
 .ng-wc .wc-b.me .wc-bw{align-items:flex-end}
-.ng-wc .wc-bw small{font-family:var(--disp); font-size:12px; color:#4E8A84; padding:0 4px}
+.ng-wc .wc-bw small{font-family:var(--disp); font-size:13px; color:#3F7A74; padding:0 4px}
 .ng-wc .wc-bw small .kill{font-family:var(--heavy); font-weight:400; color:#E5484D}
 .ng-wc .wc-ws{display:flex; gap:4px; padding:7px 9px; border-radius:16px; background:#fff; border:2.2px solid ${OL}; box-shadow:0 3px 0 ${OL}}
 .ng-wc .wc-b.me .wc-ws{background:linear-gradient(180deg,#FFF3E2,#FFE1BF); border-bottom-right-radius:5px}
@@ -815,7 +838,7 @@ body[data-mode="wordchain"]{background:
 @keyframes wc-rad{0%{transform:scale(.4); opacity:.9} 100%{transform:scale(1.15); opacity:0}}
 .ng-wc .wc-scav{width:64px; height:64px; position:relative}
 .ng-wc .wc-cta{height:46px; padding:0 22px; border-radius:999px; border:2.5px solid ${OL}; background:linear-gradient(180deg,#FFE27A,#FFB020); font-family:var(--heavy); font-size:17px; color:${OL}; box-shadow:0 3px 0 ${OL}; cursor:pointer}
-@media (max-width:370px){ .ng-wc .wc-pill b{font-size:18px} .ng-wc .wc-time b{font-size:20px} .ng-wc .wc-pill small{font-size:12px} .ng-wc .wc-hud{gap:5px} .ng-wc .wc-pill{padding:0 5px} .ng-wc .wc-t{width:30px; height:33px; font-size:19px} .ng-wc .wc-go{padding:0 10px 0 8px; font-size:16px} }
+@media (max-width:370px){ .ng-wc .wc-t{width:30px; height:33px; font-size:19px} .ng-wc .wc-go{padding:0 10px 0 8px; font-size:16px} }
 @media (prefers-reduced-motion: reduce){ .ng-wc .pop, .ng-wc .wc-msg.pop, .ng-wc .wc-msg.win{animation:none} .ng-wc .wc-log{scroll-behavior:auto} }
 `,
     sounds:{
