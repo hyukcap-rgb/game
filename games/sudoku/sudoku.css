@@ -20,19 +20,17 @@
 .sud .cell.same{background:#FFF4C2}
 /* ===== 스도쿠: 밤하늘 + 양피지 카드 + 우리 색(자체 화면 설계) =====
    판 선 남보라 · 선택 칸 금색 · 같은 줄·칸 연보라 · 같은 숫자 연분홍 · 내가 넣은 숫자 보라 · 틀린 숫자 빨강 */
-.shead{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) 48px; align-items:center; gap:6px; min-height:56px; padding:5px 6px 5px 10px; margin:0 0 12px; border-radius:18px; color:var(--ink); white-space:nowrap;
-  background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 4px 0 var(--outline2)}
-.sch{display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; min-width:0}
-.sch small{font-size:12.5px; font-weight:700; color:var(--sub)}
-.sch b{font-family:var(--heavy); font-weight:400; font-size:20px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:var(--ink)}
-.smis{display:flex; gap:5px; height:24px; align-items:center}
-.smis i{width:15px; height:15px; border-radius:50%; background:#fff; border:2.5px solid rgba(42,22,80,.35); box-sizing:border-box; transition:background .2s, border-color .2s, transform .2s}
-.smis i.on{background:#E5484D; border-color:#8E1C26; transform:scale(1.12); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+/* 위 정보줄: 공용 .hud-row/.hchip(core/play.css) + 오른쪽 일시정지 44px. 기회는 공용 별(.hlives)을 칩 안에 */
+.sud-root{display:flex; flex-direction:column; min-height:calc(100dvh - 128px - env(safe-area-inset-bottom,0px))}
+.sud-hud{margin-bottom:10px}
+.hud-row > .hpause{flex:none; width:44px; height:48px; border-radius:16px; display:grid; place-items:center; color:#fff; background:linear-gradient(180deg,#A98BFF,#6C3CE0); border:2.5px solid #1A0F45; box-shadow:inset 0 2px 0 rgba(255,255,255,.4), 0 3px 0 #1A0F45}
+.hud-row > .hpause svg{width:20px; height:20px; display:block}
+.hud-row > .hpause:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+.hchip .hlives{height:auto; padding:0; gap:2px; border:0; background:none}
+.hchip .hlives i{transition:color .2s, transform .2s}
+.hchip .hlives i.off{transform:scale(.9)}
 #sclock{font-variant-numeric:tabular-nums}
-#spause{width:44px; height:44px; border-radius:14px; display:grid; place-items:center; color:#fff; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:2.5px solid #3B1D96; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 #3B1D96}
-#spause svg{width:20px; height:20px; display:block}
-#spause:active{transform:translateY(2px); box-shadow:0 1px 0 #3B1D96}
-.swrap{position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
+.swrap{width:min(100%, calc(100dvh - 350px)); min-width:260px; align-self:center; position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
 .board.s9{border:2.5px solid #2A1650; border-radius:8px; background:#2A1650; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr)}
 .s9 .cell{background:#FFFFFF; color:#2A1650; font-family:var(--disp); font-size:clamp(20px,6.4vw,30px); font-weight:400; transition:background .12s}
 .s9 .cell.user{color:#6C3CE0}
@@ -47,38 +45,31 @@
 .sxo .iq{position:absolute; width:14px; height:16px; margin:-8px 0 0 -7px; border-radius:5px; background:#fff; display:grid; place-items:center}
 .sxo .iq svg{width:12px; height:14px; display:block}
 .sxchips{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:-4px 0 10px}
-.sxc{font-size:12.5px; font-weight:700; line-height:1.2; padding:4px 11px; border-radius:999px; border:2px solid var(--outline); background:#DCEAFF; color:#1B3C86}
+.sxc{font-size:13px; font-weight:700; line-height:1.2; padding:4px 11px; border-radius:999px; border:2px solid var(--outline); background:#DCEAFF; color:#1B3C86}
 .sxc.t{background:#FFE7B8; color:#7A4300}
 .s9 .cell.hl{background:#F3EDFF}
 .s9 .cell.same{background:#FFD6E8}
 .s9 .cell.sel{background:#FFE38A}
 .s9 .cell.wrong{color:#E5484D; background:#FFE1E3}
 .s9 .cell.wrong.sel{background:#FFC7A8}
-.nt{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; font-family:var(--font); font-weight:700; font-size:clamp(8px,2.4vw,12px); color:#8B7BAE; line-height:1}
+.nt{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; font-family:var(--font); font-weight:700; font-size:clamp(11px,3.1vw,13px); color:#7A6A9E; line-height:1}
 .nt span{display:grid; place-items:center}
 .pcover{position:absolute; inset:8px; background:linear-gradient(180deg,#F6F0FF,#E6DAFF); border:2.5px solid #2A1650; border-radius:10px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#2A1650; font-family:var(--disp); font-size:22px}
 .pcover.on{display:flex}
 .pcover .pc-ico{width:64px; height:64px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(180deg,#C8B0FF,#7B52E6); border:3px solid #3B1D96; box-shadow:0 4px 0 #3B1D96}
 .pcover .pc-ico svg{width:28px; height:28px}
 .pcover button{padding:12px 22px; border-radius:16px; font-weight:700; font-size:15px}
-.tools{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin-top:16px}
-.tools button{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96; position:relative; overflow:hidden; isolation:isolate; min-height:60px; padding:5px 2px; border-radius:15px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  font-family:var(--disp); font-size:14.5px; line-height:1.1; color:#fff; text-shadow:0 2px 0 var(--c3); white-space:nowrap; background:linear-gradient(180deg,var(--c1),var(--c2)); border:2.5px solid var(--c3);
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 var(--c3), 0 7px 12px rgba(20,5,40,.25); transition:transform .08s, box-shadow .08s}
-.tools button::before{content:""; position:absolute; z-index:-1; left:5px; right:5px; top:3px; height:40%; border-radius:11px 11px 16px 16px; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0))}
-.tools button:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
-.tools .tc{display:inline-flex; align-items:center; gap:4px}
-.tools .tc svg{width:22px; height:22px; display:block; filter:drop-shadow(0 1.5px 0 var(--c3))}
-.tools #tErase{--c1:#FFA8CF; --c2:#F0368A; --c3:#8E0F4F}
-.tools #tMemo{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
-.tools #tMemo.on{--c1:#8BF06A; --c2:#23A548; --c3:#0F5A23}
-.tools #tHint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
-.tools #tHint .tc svg{filter:none}
-.tools button.used{filter:grayscale(.8); opacity:.55}
-.tb{min-width:22px; height:20px; padding:0 5px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-style:normal; font-weight:400; font-size:12px; line-height:1; color:var(--c3); background:rgba(255,255,255,.92); text-shadow:none}
-.tb.off{color:#5B6789}
-.pad9{display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; margin-top:14px}
-.pad9 button{min-height:54px; border-radius:12px; padding:0; font-family:var(--disp); font-size:clamp(22px,7vw,30px); line-height:1; color:#6C3CE0; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:2.5px solid var(--outline); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 var(--outline2)}
+/* 아래 조작(도구 + 숫자판): 엄지 자리로 내림. 도구는 공용 .tool 3종(보통·켜고 끄기·아이템) */
+.sud-ctl{margin-top:auto; padding-top:clamp(12px,3dvh,28px)}
+.sud-tools{gap:7px}
+.sud-tools .tool{padding:6px 2px; white-space:nowrap}
+.sud-tools .tool > span{display:inline-flex; align-items:center; gap:4px}
+.sud-tools .tool.used{opacity:.45}
+.tb{min-width:30px; height:18px; padding:0 5px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-style:normal; font-weight:400; font-size:12px; line-height:1; color:#fff; background:#6C3CE0}
+.tb.off{color:#5B4E73; background:#E6DDF5}
+.tool.toggle[aria-pressed="true"] .tb{color:#3A1A8F; background:#fff}
+.pad9{display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; margin-top:10px}
+.pad9 button{min-height:min(64px,9dvh); border-radius:12px; padding:0; font-family:var(--disp); font-size:clamp(24px,8vw,32px); line-height:1; color:#6C3CE0; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:2.5px solid var(--outline); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 var(--outline2)}
 .pad9 button:active{background:#F3EDFF; transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
 .pad9 button.gone{visibility:hidden}
 .pad{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:12px}
@@ -86,8 +77,6 @@
 .pad button:active{background:var(--lemon); color:#26215C}
 .pad button.done{opacity:.3}
 /* 게임 화면 보정(가독성) */
-#spause{width:44px; height:44px}
-.shead{font-size:13px}
 .board{border-width:2px; border-radius:16px}
 /* 스도쿠: 맞힘 반짝, 줄·칸 완성 물결, 완성 파도 */
 .s9 .cell.pop{animation:spop .42s cubic-bezier(.2,1.7,.4,1), sok .7s ease-out}

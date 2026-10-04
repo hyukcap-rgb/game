@@ -3,25 +3,22 @@
    상단은 공용 막대(← 제목 ?), 그 아래 한 줄(기회 별 · 여우 · 시간 · 점수), 판 카드, 사탕 도구 버튼 3개 */
 body[data-mode="fox"]{background:var(--night)}
 body[data-mode="fox"] .scene{display:block}
-body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 70px)}
+body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 66px)}
 .fxg{--ink:#2A1650; color:var(--ink); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
-.fx-stats{display:grid; grid-template-columns:auto repeat(3,minmax(0,1fr)); align-items:center; gap:4px; min-height:56px; padding:6px 10px 6px 8px; margin:0 0 14px; border-radius:18px;
-  background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 4px 0 var(--outline2)}
-.fx-st{display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; min-width:0}
-.fx-st small{font-size:12.5px; font-weight:700; color:var(--sub); white-space:nowrap}
-.fx-st b{font-family:var(--heavy); font-weight:400; font-size:20px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:var(--ink); white-space:nowrap}
-.fx-st b.bump{animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
-.fx-lives{display:flex; align-items:center; gap:1px; padding:4px 8px 4px 2px; margin-right:2px; border-right:2px dashed var(--paper-line); border-radius:0}
-.fx-star{width:25px; height:25px; display:block; transition:opacity .25s, filter .25s}
-.fx-star svg{width:100%; height:100%; display:block; overflow:visible}
-.fx-star.off{opacity:.32; filter:grayscale(1)}
+/* 위 정보줄: 공용 .hud-row/.hchip(core/play.css). 기회는 공용 별(.hlives)을 칩 안에 */
+.fxg{display:flex; flex-direction:column; min-height:calc(100dvh - 128px - env(safe-area-inset-bottom,0px))}
+.fx-hud{margin-bottom:12px}
+.fx-hud .hchip{padding:0 6px}
+.fx-hud b.bump{animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
+.hchip .hlives{height:auto; padding:0; gap:2px; border:0; background:none}
+.fx-star{display:block; transition:color .25s}
 .fx-star.lost{animation:starlost .5s}
 @keyframes starlost{0%{transform:scale(1.35)}30%{transform:translateX(-4px) rotate(-14deg)}60%{transform:translateX(4px) rotate(14deg)}}
 .fx-star.last{animation:starlast 1s ease-in-out infinite}
 @keyframes starlast{50%{transform:scale(1.28); filter:drop-shadow(0 0 5px rgba(255,70,80,.95))}}
 .fx-lives.hurt{animation:hurt .5s}
-@keyframes hurt{30%{background:#FFE1E3; transform:scale(1.06)}}
-.fx-card{position:relative; padding:9px; border-radius:24px; background:linear-gradient(180deg,#F1E8FF 0%,#DDCDFB 100%); border:3px solid var(--outline);
+@keyframes hurt{30%{transform:scale(1.15)}}
+.fx-card{width:min(100%, calc(100dvh - 360px)); min-width:260px; align-self:center; box-sizing:border-box; position:relative; padding:9px; border-radius:24px; background:linear-gradient(180deg,#F1E8FF 0%,#DDCDFB 100%); border:3px solid var(--outline);
   box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), inset 0 -4px 0 rgba(108,60,224,.10), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35); transition:box-shadow .3s}
 .fx-card.danger{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 0 0 4px #FF5A64, 0 0 28px 8px rgba(255,70,90,.5)}
 .fx-board{--n:9; position:relative; display:grid; grid-template-columns:repeat(var(--n),minmax(0,1fr)); grid-template-rows:repeat(var(--n),minmax(0,1fr)); gap:calc(24px / var(--n)); aspect-ratio:1; touch-action:none}
@@ -38,24 +35,18 @@ body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .fxc.dance svg{animation:foxdance .5s ease-in-out both}
 @keyframes foxdance{40%{transform:translateY(-22%) scale(1.15)}}
 .fx-board.shake{animation:shake .35s}
-.fx-tools{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:18px 0 4px}
-.fx-tool{position:relative; overflow:hidden; isolation:isolate; min-height:62px; padding:6px 4px; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  font-family:var(--disp); font-size:15.5px; line-height:1.1; color:#fff; text-shadow:0 2px 0 var(--c3); background:linear-gradient(180deg,var(--c1) 0%,var(--c2) 100%); border:2.5px solid var(--c3);
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 var(--c3), 0 7px 12px rgba(20,5,40,.25); transition:transform .08s, box-shadow .08s}
-.fx-tool::before{content:""; position:absolute; z-index:-1; left:6px; right:6px; top:3px; height:40%; border-radius:12px 12px 18px 18px; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0))}
-.fx-tool .ico{width:24px; height:24px; vertical-align:0; filter:drop-shadow(0 1.5px 0 var(--c3))}
+/* 아래 조작: 엄지 자리로. 도구는 공용 .tool(되돌리기) · .tool.item(힌트·자동 ✕, 개수 배지) */
+.fx-ctl{margin-top:auto; padding-top:clamp(12px,3dvh,28px)}
+.fx-tools{gap:10px}
+.fx-tool{font-size:15px}
 .fx-tool span{display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
-.fx-tool b{min-width:22px; height:22px; padding:0 6px; border-radius:999px; display:inline-grid; place-items:center; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; color:var(--c3); background:rgba(255,255,255,.92); text-shadow:none; box-shadow:inset 0 -2px 0 rgba(0,0,0,.08)}
-.fx-tool.hint{--c1:#FFE98E; --c2:#FFB020; --c3:#8A4E00; color:#4A2A00; text-shadow:0 1px 0 rgba(255,255,255,.55)}
-.fx-tool.hint .ico{filter:none}
-.fx-tool.auto{--c1:#86D6FF; --c2:#2E8FE8; --c3:#124F92}
-.fx-tool.empty{filter:grayscale(.7); opacity:.7}   /* 가진 개수 0: 누르면 얻는 방법 안내 */
-.fx-tool.undo{--c1:#C8B0FF; --c2:#7B52E6; --c3:#3B1D96}
-.fx-tool:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 var(--c3)}
-.fx-tool:disabled{filter:grayscale(.8); opacity:.55}
-.fx-tip{text-align:center; font-size:14px; line-height:1.45; color:#E4DCFF; margin:12px 4px 0; text-shadow:0 1px 0 var(--outline2)}
+.fx-tool .ico{width:24px; height:24px}
+.fx-tool.auto svg, .fx-tool.auto svg *{stroke:#5A3300}
+.fx-tool.undo svg, .fx-tool.undo svg *{stroke:#3A2261}
+.fx-tool.empty .cnt{background:#9A8FB0}   /* 가진 개수 0: 누르면 얻는 방법 안내 */
+.fx-tip{text-align:center; font-size:14px; line-height:1.45; color:#E4DCFF; margin:0 4px 10px; text-shadow:0 1px 0 var(--outline2)}
 /* 솔로 난이도 v2: 이번 판 규칙 칩 · 바위 칸 · 여우 굴 숫자 */
-.fx-rules{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:-6px 0 10px}
+.fx-rules{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:-4px 0 10px}
 .fx-rule{display:inline-flex; align-items:center; gap:4px; font-size:13.5px; font-weight:800; line-height:1; padding:6px 11px; border-radius:999px; color:#3B1D96; background:#EFE7FF; border:2px solid var(--outline); box-shadow:0 2px 0 var(--outline2)}
 .fx-rule.tw{color:#7A3300; background:#FFE3C2}
 .fx-rule b{font-family:var(--heavy); font-weight:400; font-size:13px}

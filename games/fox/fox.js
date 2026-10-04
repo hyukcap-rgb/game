@@ -24,19 +24,20 @@ function fxStamp(){
 
 function foxStage(st){
   st.innerHTML = `<div class="fxg" id="fxg">
-    <div class="fx-stats">
-      <div class="fx-lives" id="fxLives" role="img" aria-label="남은 기회"></div>
-      <div class="fx-st"><small>여우</small><b id="fxCnt" class="num">0/${G.total || G.N}</b></div>
-      <div class="fx-st"><small>시간</small><b id="sclock" class="num">00:00</b></div>
-      <div class="fx-st"><small>점수</small><b id="fxScore" class="num">0</b></div>
+    <div class="hud-row fx-hud">
+      <span class="hchip"><span class="hv"><b id="fxCnt" class="num">0/${G.total || G.N}</b></span><em>여우</em></span>
+      <span class="hchip time"><span class="hv"><b id="sclock" class="num">00:00</b></span><em>시간</em></span>
+      <span class="hchip"><span class="hv"><b id="fxScore" class="num">0</b></span><em>점수</em></span>
+      <span class="hchip"><span class="hv"><span class="hlives fx-lives" id="fxLives" role="img" aria-label="남은 기회"></span></span><em>기회</em></span>
     </div>${foxRuleChips()}
     <div class="fx-card" id="fxCard"><div class="fx-board" id="bd" role="grid" aria-label="여우 자리 찾기 판"><div class="fx-wait">문제를 만드는 중…</div></div></div>
-    <div class="fx-tools">
-      <button class="fx-tool hint" id="fxHint" aria-label="힌트"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트 <b id="fxHintN">${itemN('foxHint')}</b></span></button>
-      <button class="fx-tool auto" id="fxAuto" aria-label="자동 ✕"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕ <b id="fxAutoN">${itemN('foxAuto')}</b></span></button>
-      <button class="fx-tool undo" id="fxUndo" aria-label="되돌리기"><span class="ico" aria-hidden="true">${FX_ICON.undo}</span><span>되돌리기</span></button>
-    </div>
+    <div class="fx-ctl">
     <p class="fx-tip">한 번 누르면 ✕, 한 번 더 누르면 여우. 끌면 ✕를 여러 칸에 칠해요.</p>
+    <div class="tools-row fx-tools">
+      <button class="tool item fx-tool hint" id="fxHint" aria-label="힌트"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트</span><b class="cnt" id="fxHintN">${itemN('foxHint')}</b></button>
+      <button class="tool item fx-tool auto" id="fxAuto" aria-label="자동 ✕"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕</span><b class="cnt" id="fxAutoN">${itemN('foxAuto')}</b></button>
+      <button class="tool fx-tool undo" id="fxUndo" aria-label="되돌리기"><span class="ico" aria-hidden="true">${FX_ICON.undo}</span><span>되돌리기</span></button>
+    </div></div>
   </div>`;
   $('#fxHint').onclick = foxHint; $('#fxAuto').onclick = foxAuto; $('#fxUndo').onclick = foxUndo;
   foxLives();
@@ -94,7 +95,7 @@ function foxBuild(intro){
 function foxLives(){
   const el = $('#fxLives'); if(!el) return;
   const prev = +(el.dataset.n || 3);
-  el.innerHTML = [...Array(G.pawMax || 3).keys()].map(k => `<span class="fx-star${k >= G.paws ? ' off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}">${FX_ICON.star}</span>`).join('');
+  el.innerHTML = [...Array(G.pawMax || 3).keys()].map(k => `<i class="fx-star${k >= G.paws ? ' off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}">★</i>`).join('');
   el.dataset.n = G.paws; el.setAttribute('aria-label', '남은 기회 ' + G.paws + '번');
   if(G.paws === 1){ const last = el.querySelector('.fx-star:not(.off)'); if(last) last.classList.add('last'); }
   const card = $('#fxCard');

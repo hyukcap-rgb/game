@@ -375,17 +375,17 @@ function fsBurst(x, y, n, col){
 function tdStage(st){
   const S = G;
   st.innerHTML = `<div class="fsw" id="fsw">
-    <div class="fstop">
-      <span class="fchip" id="fsLv" aria-label="남은 도토리">${FS_ICO.acorn}<b id="fsLives">${S.lives}</b><small>/10</small></span>
-      <span class="fchip" aria-label="무리"><small>무리</small><b id="fsWave">0</b><small>/${S.waves.length}</small></span>
-      <span class="fsun" aria-label="햇살 게이지">${FS_ICO.sun}<span class="fsunbar"><i id="fsSun"></i></span></span>
+    <div class="hud-row fstop">
+      <span class="hchip" aria-label="무리"><span class="hv"><b id="fsWave">0</b><small>/${S.waves.length}</small></span><em>무리</em></span>
+      <span class="hchip" id="fsLv" aria-label="남은 도토리"><span class="hv">${FS_ICO.acorn}<b id="fsLives">${S.lives}</b><small>/10</small></span><em>도토리</em></span>
+      <span class="hchip fsun" aria-label="햇살 게이지"><span class="hv">${FS_ICO.sun}<span class="fsunbar"><i id="fsSun"></i></span></span><em>햇살 카드</em></span>
     </div>
     <div class="fsbox" id="fsbox"><canvas class="fscv" id="fscv" aria-label="숲 지킴이 판"></canvas></div>
     <div class="fshand" id="fsHand" role="group" aria-label="씨앗 카드"></div>
     <div class="fsctl">
-      ${['rain', 'vine', 'wind'].map(k => `<button class="fitm" data-it="${k}" aria-label="${FS_ITEMS[k].name}: ${FS_ITEMS[k].tip}">${FS_ICO[k]}<b>0</b></button>`).join('')}
-      <button class="fspd" id="fsSpd" aria-label="빠르기">×1</button>
-      <button class="fsgo" id="fsGo">시작 ▶</button>
+      ${['rain', 'vine', 'wind'].map(k => `<button class="tool item fitm" data-it="${k}" aria-label="${FS_ITEMS[k].name}: ${FS_ITEMS[k].tip}">${FS_ICO[k]}<span>${FS_ITEMS[k].name.split(' ')[0]}</span><b class="cnt">0</b></button>`).join('')}
+      <button class="tool toggle fspd" id="fsSpd" aria-label="빠르기" aria-pressed="false"><b id="fsSpdV">×1</b><span>빠르기</span></button>
+      <button class="btn primary fsgo" id="fsGo">시작 ▶</button>
     </div></div>`;
   const cv = $('#fscv'), box = $('#fsbox'); S.cv = cv; S.ctx = cv.getContext('2d');
   const size = () => {
@@ -471,7 +471,7 @@ function fsHud(){
     $('#fsLives').textContent = S.lives; $('#fsWave').textContent = S.wave;
     $('#fsSun').style.width = Math.round(S.sun / FS_SUN * 100) + '%';
     const go = $('#fsGo'); go.textContent = goTxt; go.disabled = !canCall; go.classList.toggle('pulse', S.phase === 'ready' && !S.result);
-    const sp = $('#fsSpd'); sp.textContent = '×' + S.spd; sp.classList.toggle('on', S.spd > 1);
+    const sp = $('#fsSpd'); $('#fsSpdV').textContent = '×' + S.spd; sp.classList.toggle('on', S.spd > 1); sp.setAttribute('aria-pressed', S.spd > 1);
     document.querySelectorAll('.fitm').forEach(b => { const k = b.dataset.it; b.querySelector('b').textContent = S.items[k]; b.disabled = !S.items[k] || !!S.result; b.classList.toggle('on', S.itemSel === k); });
   }
   const hk = S.hand.join(',') + '|' + S.sel;
