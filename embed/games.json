@@ -114,12 +114,12 @@
     {
       "id": "gostop",
       "name": "고스톱",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 787650,
-      "gzip": 495533
+      "bytes": 787493,
+      "gzip": 495509
     },
     {
       "id": "crossword",
