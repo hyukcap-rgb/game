@@ -137,18 +137,18 @@ function frFriendSheet(x){
   const f = FR.friends.find(q => q.fid === x.fid) || x, d = dayState(), name = escH(f.nick || f.name);
   const gr = f.detail && f.detail.gr ? Object.entries(f.detail.gr).map(([s, v]) => `<span class="frg" style="--gcol:${GRADE_COL[v] || '#DDD3C0'}"><i>${s}</i>${v}</span>`).join('') : '';
   const sent = !!d.sent[f.fid];
-  openModal(`<div class="frhead">${rivalAv({ name:f.fid })}<div><b>${name}</b><small>친구 코드 ${f.code || ''}${f.streak ? ` · ${ic('flame')}연속 ${f.streak}일` : ''}</small></div></div>
+  openModal(`<div class="frhead">${rivalAv({ name:f.fid })}<div><b>${name}</b><small>${(() => { const st = frStatus(f); return st.txt ? `<span class="frst${st.on ? ' on' : ''}">${st.on ? '<i class="ondot"></i>' : ''}${escH(st.txt)}</span><br>` : ''; })()}친구 코드 ${f.code || ''}${f.streak ? ` · ${ic('flame')}연속 ${f.streak}일` : ''}</small></div></div>
     <div class="frscore"><span>오늘 점수</span><b class="num">${fmt(f.score || 0)}점</b></div>
     ${gr ? `<div class="frgrades">${gr}</div>` : `<p class="note">${f.played ? '' : '아직 오늘의 시험지를 안 풀었어요'}</p>`}
     <div class="frbtns">
-      <button class="btn primary" id="frPlay">${ic('duel')} 같이 하자</button>
+      <button class="btn primary" id="frPlay">${ic('duel')} 같이 하기</button>
       <button class="btn gold" id="frChal">${ic('trophy')} 도전장</button>
       <button class="btn secondary" id="frHeart" ${sent ? 'disabled' : ''}>${ic(sent ? 'check' : 'heart')} ${sent ? '하트 보냄' : '하트'}</button>
     </div>
-    <div class="mbtns"><button class="b2" id="frDel">친구 삭제</button><button class="b1" id="frOk">닫기</button></div>`);
-  $('#frOk').onclick = closeModal;
+    <div class="mbtns"><button class="b2" id="frDel">친구 삭제</button><button class="b1" id="frOk">친구 목록</button></div>`);
+  $('#frOk').onclick = frHub;
   $('#frDel').onclick = () => frRemove(f);
-  $('#frPlay').onclick = () => frInvitePlay(f);
+  $('#frPlay').onclick = () => frTogether(f);
   $('#frChal').onclick = () => frChallenge(f);
   $('#frHeart').onclick = () => { frSendHeart(f, $('#frHeart')); closeModal(); };
 }
@@ -164,8 +164,8 @@ function frManage(){
     <div class="fradd"><input id="frIn" maxlength="6" placeholder="친구 코드 6자리" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="친구 코드"><button class="btn small primary" id="frGo">추가</button></div>
     ${!api ? '<p class="note">친구 서버를 준비하고 있어요. 지금은 예시 친구로 보여 줘요.</p>' : !FR.online && FR.err ? '<p class="note">지금 친구 서버에 연결이 안 돼요. 잠시 뒤 자동으로 다시 시도해요.</p>' : ''}
     <div class="frlist">${list || '<p class="note">아직 친구가 없어요. 초대 링크를 보내거나 친구 코드를 넣어 보세요.<br>링크로 들어온 친구와는 바로 친구가 돼요.</p>'}</div>
-    <div class="mbtns one"><button class="b2" id="frClose">닫기</button></div>`);
-  $('#frClose').onclick = closeModal;
+    <div class="mbtns one"><button class="b2" id="frClose">친구 목록으로</button></div>`);
+  $('#frClose').onclick = frHub;
   $('#frCopy').onclick = async () => { try{ await navigator.clipboard.writeText(frCode()); toast('친구 코드를 복사했어요'); }catch(_){ toast('코드: ' + frCode()); } };
   $('#frInv').onclick = () => viralShare(cardInvite(), frManage);
   const go = async () => { const v = $('#frIn').value; $('#frGo').disabled = true; const ok = await frAdd(v); if(ok) frManage(); else { const b = $('#frGo'); if(b) b.disabled = false; } };
@@ -181,6 +181,7 @@ function frMsgText(m){
   const n = '<b>' + escH(m.nick) + '</b>님';
   if(m.kind === 'friend') return n + '과 친구가 됐어요';
   if(m.kind === 'heart') return n + '이 하트를 보냈어요';
+  if(m.kind === 'play' && m.data && m.data.room){ const g = GAMES[m.data.g]; return n + '이 대전 방으로 불렀어요' + (g ? ' · ' + g.name + ' ' + (RM_DNAME[m.data.d] || '') : ''); }
   if(m.kind === 'play'){ const g = m.data && GAMES[m.data.g]; return n + '이 같이 하재요' + (g ? ' · ' + GAMES[m.data.g].name : ''); }
   if(m.kind === 'challenge'){ const g = m.data && GAMES[m.data.g]; return n + '의 도전장' + (g ? ' · ' + GAMES[m.data.g].name + ' ' + fmt(m.data.s || 0) + '점' : ''); }
   return n + '의 알림';
@@ -190,7 +191,7 @@ async function frAck(ids){ FR.inbox = FR.inbox.filter(m => !ids.includes(m.id));
 function frInboxHtml(){
   if(!FR.inbox.length) return '';
   return FR.inbox.slice().reverse().map(m => {
-    const act = m.kind === 'heart' ? `<button class="btn small gold" data-act="${m.id}">${ic('heart')} 받기</button>` : m.kind === 'play' ? `<button class="btn small primary" data-act="${m.id}">지금 하기</button>` : m.kind === 'challenge' ? `<button class="btn small primary" data-act="${m.id}">도전하기</button>` : `<button class="btn small secondary" data-act="${m.id}">확인</button>`;
+    const act = m.kind === 'heart' ? `<button class="btn small gold" data-act="${m.id}">${ic('heart')} 받기</button>` : m.kind === 'play' ? `<button class="btn small primary" data-act="${m.id}">${m.data && m.data.room ? '들어가기' : '지금 하기'}</button>` : m.kind === 'challenge' ? `<button class="btn small primary" data-act="${m.id}">도전하기</button>` : `<button class="btn small secondary" data-act="${m.id}">확인</button>`;
     return `<div class="gift fr">${rivalAv({ name:m.from })}<span>${frMsgText(m)}</span>${act}</div>`;
   }).join('');
 }
@@ -199,6 +200,7 @@ function frInboxBind(reopen){
     const m = FR.inbox.find(q => q.id === +b.dataset.act); if(!m) return;
     frAck([m.id]);
     if(m.kind === 'heart'){ fxPop(b, 'heart'); sfx('heartGet'); addHearts(1); toast(m.nick + '님의 하트 +1'); reopen(); renderHome(); return; }
+    if(m.kind === 'play' && m.data && m.data.room){ closeModal(); rmJoin(m.data.room, { invited:true }); return; }
     if(m.kind === 'play'){ closeModal(); const g = m.data && GAME_IDS.includes(m.data.g) && dayState().set.includes(m.data.g) ? m.data.g : pickNext(); quickStart(g); return; }
     if(m.kind === 'challenge' && m.data && GAME_IDS.includes(m.data.g)){ closeModal(); showChallenge({ n:m.nick, g:m.data.g, d:m.data.d || '', s:+m.data.s || 0, lv:m.data.lv || examLv() }); return; }
     reopen();

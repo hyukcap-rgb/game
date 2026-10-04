@@ -103,6 +103,36 @@ async function duelMatch(S, opp){
     }
   }, 250);
 }
+/* 상대가 이미 정해진 1:1 대전(대전 방·친구와 같이 하기): 상대 찾기 없이 두 사람이 같은 이름의 대전 방에 들어가
+   duelMatch와 같은 방법으로 같은 순간에 시작한다. o = { nick, room(결과 창이 쓰는 방 정보), onFail(why) }.
+   돌려주는 값의 cancel()로 기다리기를 그만둘 수 있다. 게임 이름을 모르는 공용 함수. */
+function duelPrivate(id, lv, name, o = {}){
+  const H = { dead:false, cancel(){ H.dead = true; clearInterval(H.iv); if(H.nr) try{ H.nr.leave(); }catch(_){} } };
+  const fail = why => { if(H.dead) return; H.cancel(); if(o.onFail) try{ o.onFail(why); }catch(_){} };
+  if(!duelLive()){ setTimeout(() => fail('offline'), 0); return H; }
+  const nick = o.nick || duelNick();
+  ROOM.join(String(name).slice(0, 60)).then(nr => {
+    if(H.dead){ try{ nr.leave(); }catch(_){} return; }
+    H.nr = nr; nr.presence({ nk:nick, nw:store.get('hp:help:' + id, false) ? 0 : 1, pg:0, dn:0, sc:0 }).catch(() => {});
+    const t0 = Date.now();
+    H.iv = setInterval(() => {
+      if(H.dead) return;
+      let ps = []; try{ ps = nr.peers(); }catch(_){}
+      const op = ps.find(p => !p.sameTab), meP = ps.find(p => p.sameTab);
+      if(!(op && op.presence && op.presence.nk)){ if(Date.now() - t0 > 12000) fail('gone'); return; }
+      clearInterval(H.iv);
+      const duel = { mode:'pvp', seed:name + ':' + dayKey(), nr, oppPeer:op.peer, myNick:nick, opp:{ nick:String(op.presence.nk).slice(0, 12), pg:0, dn:0, sc:0 }, me:null, room:o.room || null };
+      if(meP && String(meP.peer) < String(op.peer)){
+        const fresh = !store.get('hp:help:' + id, false) || !!op.presence.nw;
+        const srv = netNow() + (fresh ? 4000 : 2500);
+        duel.startAt = duelLocalStart(srv); nr.presence({ go:srv }).catch(() => {});
+      }
+      H.dead = true; closeModal(); startGame(id, lv, { duel });
+      if(!(G && G.duel === duel)){ try{ nr.presence({ q:1 }).catch(() => {}); nr.leave(); }catch(_){} if(o.onFail) try{ o.onFail('start'); }catch(_){} }   /* 하트가 없어 시작 못 함 */
+    }, 250);
+  }).catch(() => fail('join'));
+  return H;
+}
 function duelGoAI(S){
   if(DS !== S || S.phase === 'join') return;
   const id = S.id, nick = duelNick(), seed = 'ai:' + id + ':' + Date.now() + ':' + Math.random();
