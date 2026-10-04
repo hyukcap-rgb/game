@@ -147,3 +147,52 @@ body.gs-full{overflow:hidden}
 .gs-gate .gs-askb{flex-direction:column}
 
 @media (prefers-reduced-motion: reduce){ .gs-ban.on{animation-duration:.01s} .gs-fan .gs-c{animation:none} }
+
+/* 포인트 표시 */
+.gs-ptv{color:#B5490F !important; font-weight:900 !important; font-size:28px !important}
+.gs-sub{margin-top:2px !important; font-size:22px !important}
+.gs-prof{padding-top:12px !important}
+
+/* 방 고르기 · 포인트 얻기 */
+.gs-lobby{position:absolute; inset:0; z-index:85; display:grid; place-items:center; background:rgba(8,30,10,.35)}
+.gs-lobby[hidden]{display:none}
+.gs-lb{position:relative; width:1460px; height:840px; border-radius:36px; background:#FFF7E6; border:6px solid #1A0F45; box-shadow:0 12px 0 #1A0F45; color:#1A0F45; padding:34px 44px; box-sizing:border-box;
+  display:grid; grid-template-columns:1fr 560px; grid-template-rows:auto auto 1fr; column-gap:40px}
+.gs-wal{grid-column:1; display:flex; align-items:center; gap:22px}
+.gs-coin{display:grid; place-items:center; width:110px; height:110px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #FFF2B0, #FFC93C 55%, #E59A10); border:5px solid #1A0F45; box-shadow:0 6px 0 #1A0F45; font-size:58px; font-weight:900; color:#5A2E00}
+.gs-wal small{display:block; font-size:26px; font-weight:800; color:#6B4FB5}
+.gs-wal b{display:block; font-size:66px; font-weight:900; line-height:1.1; color:#B5490F; font-variant-numeric:tabular-nums}
+.gs-wal em{display:block; font-style:normal; font-size:26px; font-weight:700; color:#5A4A6A}
+.gs-lb h3{grid-column:1; margin:28px 0 14px; font-size:38px; font-weight:900}
+.gs-rooms{grid-column:1; display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start}
+.gs-room{min-height:104px; border-radius:24px; border:5px solid #1A0F45; box-shadow:0 7px 0 #1A0F45; background:#fff; color:#1A0F45; cursor:pointer; text-align:left; padding:10px 24px}
+.gs-room b{display:block; font-size:38px; font-weight:900}
+.gs-room small{display:block; font-size:24px; font-weight:700; color:#6A5A7A}
+.gs-room.r0{background:#EDE7F6}
+.gs-room.r1{background:#E3F6D8}
+.gs-room.r2{background:#FFF0B8}
+.gs-room.r3{background:#FFD9C2}
+.gs-room.r4{background:#FFC2D0}
+.gs-room:active{transform:translateY(5px); box-shadow:0 2px 0 #1A0F45}
+.gs-room:disabled{opacity:.45; cursor:default; transform:none; box-shadow:0 7px 0 #1A0F45}
+.gs-rnote{grid-column:1; font-size:23px; line-height:1.45; color:#5A4A6A; margin:18px 0 0}
+.gs-rnote b{color:#B5490F}
+.gs-earn{grid-column:2; grid-row:1 / span 3; border-radius:28px; background:#2A1A5E; color:#fff; padding:24px 26px; display:flex; flex-direction:column; gap:12px}
+.gs-earn > b{font-size:34px; font-weight:900; color:#FFD34D}
+.gs-earn > div{display:flex; align-items:center; gap:14px; padding:12px 16px; border-radius:18px; background:rgba(255,255,255,.08)}
+.gs-earn > div span{flex:1; font-size:28px; font-weight:800}
+.gs-earn > div small{display:block; font-size:20px; font-weight:600; color:#C9BFF0; line-height:1.4}
+.gs-earn > div i{font-style:normal; font-size:22px; font-weight:800; color:#9EF0C8; white-space:nowrap}
+.gs-earn > div.done i{color:#9EF0C8}
+.gs-earn button{border:4px solid #1A0F45; border-radius:24px; background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00; font-size:28px; font-weight:900; padding:10px 22px; box-shadow:0 5px 0 #1A0F45; cursor:pointer}
+.gs-lmsg{position:absolute; left:44px; bottom:22px; margin:0; font-size:28px; font-weight:900; color:#2A8A10}
+.gs-sroom{font-size:30px !important; color:#FFE27A !important; min-height:0 !important}
+/* 결과 창 포인트 */
+.gs-pay{display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:12px 22px; border-radius:16px; background:#EDE7F6; font-size:30px; font-weight:800}
+.gs-pay b{font-size:44px; font-weight:900; font-variant-numeric:tabular-nums}
+.gs-pay.up{background:#E3F6D8} .gs-pay.up b{color:#2A8A10}
+.gs-pay.down{background:#FFE0E6} .gs-pay.down b{color:#C81E3A}
+.gs-pay.sm{margin-top:8px; font-size:24px; padding:8px 22px} .gs-pay.sm b{font-size:30px}
+.gs-after{margin:12px 0 0; font-size:26px; color:#5A4A6A}
+.gs-after b{color:#B5490F}
+.gs-askc.gs-end{width:820px}

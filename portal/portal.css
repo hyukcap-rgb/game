@@ -374,3 +374,4 @@ body[data-mode] .dock{display:none}
 .gift.fr .btn{margin:0 0 0 auto; flex:none}
 .gift.fr .av{width:36px; height:36px; flex:none}
 .gift.fr{grid-template-columns:36px 1fr auto}
+.cnote{font:inherit; font-weight:800; color:#B5490F}

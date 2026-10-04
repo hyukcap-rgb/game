@@ -55,6 +55,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelHow` `duelLaunch()` | 대전 설명 문구, 자기 방식 대전(함대) |
 | `modes:['solo','duel']` | 이 게임에 있는 모드만(붙여 쓰는 모듈 첫 화면·명령에 반영). 없으면 오늘의 문제·솔로·연습·대전 모두. 사이트 오늘의 시험지는 `SUBJ`로 따로 정함 |
 | `age:19` | 이용 연령 표시 정보(고스톱). 표시·확인 화면은 게임이 직접 |
+| `cardNote()` | 사이트 솔로·대전 목록과 모듈 첫 화면에 덧붙일 짧은 한 줄(예: 고스톱 보유 포인트) |
 | `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임) |
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 

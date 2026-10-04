@@ -346,7 +346,7 @@ function renderAdv(lv){
     let dots = ''; for(let k = 1; k <= 10; k++){ const n = cs + k, s = p.stars[n] || 0; dots += `<i class="${s ? 's' + s : n === cur ? 'cur' : ''}"></i>`; }
     const el = document.createElement('div'); el.className = 'acard panel'; el.style.setProperty('--gc', GCOL[id][1]);
     el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c}</span></span><div class="ac-mid"><div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
-      <div class="ac-stage">${chName(id, c)} · 스테이지 <em>${cur}</em></div><div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
+      <div class="ac-stage">${chName(id, c)} · 스테이지 <em>${cur}</em>${NG[id].cardNote ? ' · <b class="cnote">' + esc(NG[id].cardNote()) + '</b>' : ''}</div><div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
       <div class="ac-btns"><button class="map">${ic('map')} 맵</button><button class="gr-go adv">${cur} 시작 <span class="freebadge">무료</span></button></div></div>`;
     el.querySelector('.map').onclick = () => openAdvMap(id);
     el.querySelector('.gr-go').onclick = () => startGame(id, null, { adv:cur });
@@ -763,7 +763,7 @@ function renderDuel(d){
     const r = R[id] || { w:0, d:0, l:0 }, tot = r.w + r.d + r.l, wait = duelWaiting(id);
     const how = NG[id].duelHow || '같은 문제 · 점수가 높으면 승리';
     const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><span class="gr-mid"><b>${GAMES[id].name}</b><span>${how}</span><span class="drec">${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : '첫 대전을 해 보세요'}</span></span><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button>`;
+    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><span class="gr-mid"><b>${GAMES[id].name}</b><span>${how}</span><span class="drec">${NG[id].cardNote ? '<b class="cnote">' + esc(NG[id].cardNote()) + '</b> · ' : ''}${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : '첫 대전을 해 보세요'}</span></span><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button>`;
     row.querySelector('.gr-go').onclick = () => duelStart(id);
     row.querySelector('.g-art').onclick = () => duelStart(id);
     list.appendChild(row);
