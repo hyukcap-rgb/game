@@ -374,3 +374,116 @@ body[data-mode] .dock{display:none}
 .gift.fr .btn{margin:0 0 0 auto; flex:none}
 .gift.fr .av{width:36px; height:36px; flex:none}
 .gift.fr{grid-template-columns:36px 1fr auto}
+
+/* ===== UI 검수 결론(2026-10-04): 신뢰·홈 정리·목록 줄이기·글자 크기·터치 44px (브랜드는 그대로) ===== */
+/* 머리줄: 하트 칩·알림 44px */
+.res{height:44px}
+.res-val small{font-size:12px}
+.mail{width:44px; height:44px}
+.me-btn .lvb{font-size:12px}
+/* 홈 요약줄: 이름표 달린 세 칸 + 과목 성적 */
+.strip{grid-template-columns:1fr auto; gap:8px 6px; padding:10px 8px 10px 10px}
+.st3{grid-column:1; display:grid; grid-template-columns:1.2fr .8fr 1.1fr; gap:6px; min-width:0}
+.strip .sc{display:flex; flex-direction:column; gap:1px; min-width:0; padding:6px 9px 7px; border-radius:12px; background:rgba(14,7,48,.45); box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
+.strip .sc small{font-family:var(--font); font-size:13px; font-weight:700; letter-spacing:0; color:#D9D0FF; line-height:1.2}
+.strip .sc b{font-family:var(--heavy); font-weight:400; font-size:21px; line-height:1.1; color:#fff; white-space:nowrap; letter-spacing:.2px}
+.strip .sc b em{font-style:normal; font-size:14px; color:#CFC5FF; margin-left:1px}
+.stgr{grid-column:1; display:flex; gap:4px; min-width:0}
+.stgr i{font-family:var(--font); flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:4px; height:28px; border-radius:999px; font-style:normal; font-size:13px; font-weight:700; color:#E9E2FF; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.2); white-space:nowrap}
+.stgr i b{display:inline; font-family:var(--heavy); font-weight:400; font-size:15px; line-height:1; color:var(--gcol)}
+.stgr i.none b{color:#A99FDA}
+.strip .go{grid-column:2; grid-row:1/3; align-self:center}
+/* 큰 버튼 윗줄: 흰 글자 알약(대비 4.5:1 이상) */
+.cta-txt i{align-self:flex-start; font-size:13px; color:#fff; padding:1px 9px 2px; margin-bottom:2px; border-radius:999px; background:rgba(110,0,55,.45); text-shadow:none}
+.cta-txt small{font-size:13px}
+/* 날짜 한 줄 */
+.daynote{font-size:14px; margin:-4px 0 12px}
+/* 시험지 목록: 주 행동은 큰 버튼 하나, 목록 버튼은 보조(크림), 지금 차례만 금테 */
+.grow.now{outline:3px solid #FFD35C; outline-offset:2px}
+.gr-mid span{font-size:13px}
+.gr-mid em.nowtx{color:#C2185B}
+.grow .g-art .newb{font-size:12px; letter-spacing:0; padding:2px 6px 3px}
+.gr-go.soft{background:linear-gradient(180deg,#FFFFFF,#FFF1DA); color:#C2185B; text-shadow:none; border:2.5px solid var(--outline2); box-shadow:0 3px 0 var(--outline2); font-size:15px}
+.gr-go.soft.re{color:var(--ink)}
+.gr-go.soft:active{box-shadow:0 1px 0 var(--outline2)}
+.gr-go.soft .freebadge{background:#FFE1EE; color:#B0125A; font-size:12px}
+.gr-go.soft .cost{background:#FFE1EE; color:#B0125A}
+.gr-go.soft .cost .ico{color:#F0368A}
+.freebadge{font-size:12px}
+/* 모두의 기부: 목록 아래 얇은 띠 */
+.pool{min-height:44px; margin-top:14px; padding:6px 10px 6px 12px; border-radius:14px; color:#FFE9A8; background:rgba(255,211,92,.1); border:2px solid rgba(255,211,92,.5); box-shadow:none}
+.pool > .ico{width:20px; height:20px; color:#FFD35C}
+.pool .pt{flex:1}
+.pool .pt .pl-t, .lgpool .pl-t{font-family:var(--disp); font-weight:400; font-size:15px; letter-spacing:0; color:#FFD35C}
+.pool .pt .pl-s, .lgpool .pl-s{font-size:13px; font-weight:700; color:#E9E2FF}
+.pool .pt .pl-n{font-family:var(--heavy); font-size:17px; color:#FFE98E}
+.lgpool{width:100%; border:0; text-align:left; cursor:pointer; color:#FFD86B}
+.lgpool .pt{display:flex; flex-direction:column; flex:1; min-width:0; line-height:1.3}
+.lgpool .pl-n{font-family:var(--heavy); font-weight:400; font-size:17px; color:#FFE98E}
+.advpromo small{font-size:13px}
+/* 솔로·대전: 과목 칩 필터 */
+.fchips{display:flex; gap:6px; margin:14px 0 0; overflow-x:auto; scrollbar-width:none; padding:2px 0 4px}
+.fchips::-webkit-scrollbar{display:none}
+.fchips button{flex:1 0 auto; height:44px; padding:0 12px; border-radius:999px; font-family:var(--disp); font-size:15px; color:#D9D0FF; background:#170C45; box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.fchips button[aria-pressed="true"]{color:#5A3300; background:linear-gradient(#FFE98E,#FFB020); border:2.5px solid #9A5A00; box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 3px 0 #9A5A00}
+.adultsec{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin:10px 2px 0; font-family:var(--disp); font-size:15px; color:#FFD0D6}
+.a19{flex:none; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-family:var(--heavy); font-size:14px; color:#fff; background:#E5484D; border:2.5px solid #fff; box-shadow:0 2px 0 var(--outline2)}
+/* 솔로: 2열 타일 */
+.advlist{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px}
+.acard.tile{display:flex; flex-direction:column; gap:6px; padding:7px 7px 8px; min-width:0}
+.acard.tile .g-art{width:100%; height:auto; min-height:0; aspect-ratio:16/9; margin:0; border-radius:12px}
+.acard.tile .chn{font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.acard.tile .ac-top{padding:0 2px}
+.acard.tile .ac-top b{font-size:16px}
+.acard.tile .ac-top span{font-size:14px}
+.acard.tile .chdots{margin:0 2px}
+.acard.tile .ac-btns{margin-top:0}
+.acard.tile .ac-btns .map{flex:none; width:44px; height:44px; padding:0; display:grid; place-items:center}
+.acard.tile .ac-btns .map .ico{width:22px; height:22px}
+.acard.tile .ac-btns .gr-go{height:44px; min-width:0; padding:0 6px; font-size:15px}
+/* 대전: 빠른 대전 + 촘촘한 한 줄(설명은 말줄임 없이 두 줄) */
+.quickduel{margin-top:12px; height:56px; font-size:18px; gap:6px}
+.quickduel small{font-family:var(--font); font-size:13px; font-weight:700; opacity:.95}
+.quickduel > .ico{width:22px; height:22px}
+.duelrow{grid-template-columns:60px 1fr auto; grid-template-rows:auto auto; gap:2px 10px; align-items:center; padding:6px 8px}
+#duelList{gap:8px}
+.duelrow .g-art{width:60px; grid-column:1; grid-row:1/3; align-self:start}
+.duelrow .dname{grid-column:2; grid-row:1; min-width:0; display:flex; flex-direction:column; font-family:var(--disp); font-weight:400; font-size:17px; line-height:1.2; color:var(--ink)}
+.duelrow .dname .drec{font-family:var(--disp); font-size:13px; color:var(--sub)}
+.duelrow .gr-go{grid-column:3; grid-row:1; height:44px}
+.duelrow .dhow{grid-column:2/4; grid-row:2; font-size:13px; font-weight:700; line-height:1.4; color:var(--sub); white-space:normal}
+.dh-rec span{font-size:12.5px}
+.dh-top small{font-size:13px}
+/* 리그 */
+.tabs button{height:44px}
+.row .send{width:44px; height:44px; background:#fff; border:2.5px solid #F0368A; color:#F0368A; box-shadow:0 3px 0 #8E0F4F}
+.row .send .ico{filter:none}
+.row .send:disabled{background:#E9DCC0; border-color:#B7A27A; box-shadow:none; color:#8F7A52}
+.row .samp{font-size:12px; color:#7A5A00}
+.sampnote{color:var(--sub)}
+.rank-note, .advnote{font-size:13px}
+/* 첫 방문 창: 아이콘 흰색, 카드 촘촘히 */
+.welcome{gap:8px}
+.welcome .hstep{grid-template-columns:44px 1fr; padding:10px 12px}
+.welcome .hstep .hn{width:44px; height:44px}
+.welcome .hstep .hn .ico{color:#fff; width:28px; height:28px; filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.welcome .hstep span{font-size:14px}
+/* 내 정보: 배지·솔로 성장 접기 */
+.bdwrap{padding:12px}
+.bdwrap .badges{padding:0}
+.bdwrap details .badges{margin-top:8px}
+.bd-empty{font-size:14px; color:var(--sub); text-align:center; margin:2px 0 4px; line-height:1.5}
+details.more > summary{min-height:44px; display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-size:15px; color:#6236D6; cursor:pointer; list-style:none}
+details.more > summary::-webkit-details-marker{display:none}
+details.more > summary::after{content:"▾"; margin-left:6px; font-size:13px}
+details.more[open] > summary::after{content:"▴"}
+.growlist details.more{border-top:2px dashed var(--paper-line)}
+.bdg{font-size:12px}
+.grw small{font-size:13px}
+.xp-t, .ac-stage{font-size:13px}
+.sp-r, .solopts small{font-size:12.5px}
+.cal .h{font-size:12px}
+.wd{color:#8F7A52}
+.bq-part .ex{font-size:13px}
+/* 하단 탭 글자 13px */
+.dock button{font-size:13px}
