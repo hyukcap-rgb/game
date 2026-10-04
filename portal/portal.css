@@ -487,3 +487,4 @@ details.more[open] > summary::after{content:"▴"}
 .bq-part .ex{font-size:13px}
 /* 하단 탭 글자 13px */
 .dock button{font-size:13px}
+.cnote{font:inherit; font-weight:800; color:#B5490F}

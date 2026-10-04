@@ -377,6 +377,7 @@ function renderAdv(lv){
     const el = document.createElement('div'); el.className = 'acard tile panel'; el.style.setProperty('--gc', GCOL[id][1]);
     el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c} · ${chName(id, c)}</span></span>
       <div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
+      ${NG[id].cardNote ? '<div class="ac-note"><b class="cnote">' + escH(NG[id].cardNote()) + '</b></div>' : ''}
       <div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
       <div class="ac-btns"><button class="map" aria-label="${GAMES[id].name} 스테이지 맵">${ic('map')}</button><button class="gr-go adv" aria-label="${GAMES[id].name} 스테이지 ${cur} 시작, 무료">스테이지 ${cur}</button></div>`;
     el.querySelector('.map').onclick = () => openAdvMap(id);
@@ -832,7 +833,7 @@ function renderDuel(d){
     /* 게임마다 다른 한 줄: 게임 정의의 duelHow, 없으면 게임 방법 첫 줄 */
     const how = NG[id].duelHow || (HELP[id] && HELP[id][0] && HELP[id][0][0]) || '점수가 높으면 승리';
     const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}${tot ? `<small class="drec">${r.w}승 ${r.d}무 ${r.l}패</small>` : ''}</b><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button><span class="dhow">${escH(how)}</span>`;
+    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}${tot || NG[id].cardNote ? `<small class="drec">${NG[id].cardNote ? '<b class="cnote">' + escH(NG[id].cardNote()) + '</b> ' : ''}${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : ''}</small>` : ''}</b><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button><span class="dhow">${escH(how)}</span>`;
     row.querySelector('.gr-go').onclick = () => duelStart(id);
     row.querySelector('.g-art').onclick = () => duelStart(id);
     list.appendChild(row);

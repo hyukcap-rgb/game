@@ -5,7 +5,7 @@
    · 보내기: 하트(하루 1번) · "같이 하자"(오늘의 시험지로 부르기) · 도전장(내 공식 점수로 같은 문제 도전).
    · 친구 리그: 진짜 친구가 한 명이라도 있으면 진짜 친구만, 없으면 예시 친구를 보여 주고 초대를 권한다.
    · 서버가 없거나 연결이 안 되면 조용히 예시 친구로 돌아간다(게임·대전은 영향 없음). */
-const FR_API_DEFAULT = '';   /* 친구 서버 주소(예: https://friends-production-xxxx.up.railway.app/api/) — 배포 뒤 채움 */
+const FR_API_DEFAULT = 'https://function-bun-production-da45.up.railway.app/api/';   /* 친구 서버 주소(예: https://friends-production-xxxx.up.railway.app/api/) — 배포 뒤 채움 */
 const FR = { acct:null, friends:[], inbox:[], online:false, busy:false, lastSync:'', err:'' };
 function frApi(){
   try{ const q = new URLSearchParams(location.search).get('frapi'); if(q) store.set('hp:frapi', q); }catch(_){}

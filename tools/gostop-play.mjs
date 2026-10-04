@@ -48,6 +48,8 @@ async function step(pg, goPref){
   return pg.evaluate(goPref => {
     if(!G || !G.gs) return 'nogame';
     if(G.over) return 'over';
+    const room = document.querySelector('#gsLobby:not([hidden]) [data-r="1"]:not([disabled])') || document.querySelector('#gsLobby:not([hidden]) [data-r="0"]');
+    if(room){ room.click(); return 'room'; }
     const ask = document.querySelector('#gsAsk:not([hidden])');
     if(ask){
       const end = ask.querySelector('#gsEndOk'); if(end){ end.click(); return 'end'; }
@@ -122,6 +124,8 @@ for(const [stage, goPref] of [[1, true], [5, false], [25, true]]){
   const A = await mk('A'), Bp = await mk('B');
   await A.pg.waitForFunction(() => ROOM_STATE === 'ok', null, { timeout:15000 }); await Bp.pg.waitForFunction(() => ROOM_STATE === 'ok', null, { timeout:15000 });
   await A.pg.evaluate(() => duelStart('gostop')); await w(400); await Bp.pg.evaluate(() => duelStart('gostop'));
+  const pickRoom = x => x.pg.waitForFunction(() => { const b = document.querySelector('#gsLobby:not([hidden]) [data-r="1"]'); if(b){ b.click(); return true; } return false; }, null, { timeout:10000 }).catch(() => {});
+  await pickRoom(A); await w(300); await pickRoom(Bp);
   const started = await Promise.all([A, Bp].map(x => x.pg.waitForFunction(() => G && G.gs && G.gs.began && G.gs.mode === 'pvp', null, { timeout:20000 }).then(() => true).catch(() => false)));
   ok(started.every(Boolean), '두 기기 연결 · 같은 판 시작');
   if(SHOTS) await A.pg.screenshot({ path:path.join(SHOTS, 'gostop-pvp-start.png') });
