@@ -888,7 +888,7 @@ Object.assign(HOST, {
   subtitle:(L, attempt, ex) => attempt === 1 ? `${subjOf(G.id) ? subjOf(G.id) + ' · ' : ''}${L.name}${ex} · 공식 답안` : `다시 풀기 · 기록 안 됨 · ${L.name}${ex}`,
   quitInfo:() => ({
     note:G.attempt === 1 ? '지금 나가면 여기까지 진행한 만큼(최대 300점)만 공식 점수로 기록돼요. 오늘 이 문제의 공식 답안은 한 번뿐이에요.' : '연습 판이라 나가도 공식 기록은 그대로예요.',
-    label:G.attempt === 1 ? '여기서 제출하기' : '연습 그만하기',
+    label:G.attempt === 1 ? '여기서 제출하기' : '다시 풀기 그만하기',
     onQuit(){ if(G.attempt === 1){ runClear(); const d = dayState(), part = Math.round(examProgress() * 300); d.best[G.id] = part; d.offDone = d.offDone || {}; d.offDone[G.id] = 1; if(!d.att) d.att = true; saveDay(d); toast(GAMES[G.id].name + ' 부분 점수 ' + fmt(part) + '점을 기록했어요'); } }
   }),
   finish(win){ if(G.adv) advFinish(win); else examFinish(win); },
