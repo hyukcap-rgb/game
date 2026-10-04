@@ -87,7 +87,7 @@
 ## 친구 서버
 진짜 친구(친구 코드로 맺기·삭제, 친구 오늘 점수, 하트·"같이 하자"·도전장 알림함)는 대전 서버와 **따로 도는** 친구 서버(`server/friends.ts`, Bun)를 씁니다. 대전에는 영향이 없습니다.
 - 저장: `DATABASE_URL`(Postgres)이 있으면 Postgres, 없으면 메모리(시험용).
-- 배포(예정): Railway 프로젝트 `haru-puzzle-league`에 Postgres + 함수 `friends`(코드 = `server/friends.ts`, 변수 `DATABASE_URL=${{Postgres.DATABASE_URL}}`) → 도메인 만들기 → `portal/friends.js`의 `FR_API_DEFAULT`에 `https://<도메인>/api/` 넣고 빌드.
+- 배포: Railway 프로젝트 `haru-puzzle-league` → 함수 `function-bun`(코드 = `server/friends.ts`, 변수 `DATABASE_URL=${{Postgres.DATABASE_URL}}`) + Postgres. 주소 `https://function-bun-production-da45.up.railway.app` (상태: `/health`). 코드를 바꾸면 Railway 함수 코드도 같이 바꿔야 합니다.
 - 서버 주소가 비어 있거나 연결이 안 되면 사이트는 예시 친구로 보여 줍니다(게임·대전 그대로).
 - 로컬 시험: `PORT=8788 bun server/friends.ts` → 사이트를 `?frapi=http://127.0.0.1:8788/api/`로 열기.
 - 계정: 로그인 전까지 기기마다 pid + 비밀 열쇠(secret)를 브라우저에 저장. 카카오 로그인(결정 103)이 붙으면 계정에 묶습니다.
