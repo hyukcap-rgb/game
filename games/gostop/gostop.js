@@ -1,6 +1,6 @@
 /* 고스톱 */
 /* ===== 고스톱 (gostop) · 하루퍼즐 리그 게임 모듈 · 19세 이상 =====
-   2인 맞고 규칙(한게임 맞고에서 널리 쓰는 기본 규칙): 7점 나면 고/스톱, 피박·광박·고박·멍따, 흔들기·폭탄,
+   2인 맞고 규칙(온라인 맞고에서 널리 쓰는 기본 규칙): 7점 나면 고/스톱, 피박·광박·고박·멍따, 흔들기·폭탄,
    뻑·쪽·따닥·쓸, 보너스패 3장(쌍피 2 · 쓰리피 1), 총통·3뻑 바로 승리, 나가리(무승부).
    화투 그림은 모두 직접 그린 오리지널 SVG(전통 월별 소재만 씀, 특정 회사 카드 그림·화면 배치는 쓰지 않음).
    모드: 솔로(AI와 스테이지) · 대전(실시간 1:1 턴제, 상대가 없으면 AI). 오늘의 시험지·연습에는 넣지 않는다(modes).
@@ -340,7 +340,7 @@ NG.gostop = (() => {
   const BACK = `<svg viewBox="${GSART.VB}" aria-hidden="true">${GSART.back}</svg>`;
   const BADGE19 = '<span class="gs19" aria-label="19세 이상 이용">19</span>';
 
-  /* ---------- 화면: 한게임 맞고식 가로 판(기준 1630×923, 화면에 맞춰 확대·축소, 세로 화면이면 90° 돌림) ---------- */
+  /* ---------- 화면: 온라인 맞고식 가로 판(기준 1630×923, 화면에 맞춰 확대·축소, 세로 화면이면 90° 돌림) ---------- */
   const BW = 1630, BH = 923, MAINW = 1262;
   const CW = { hand:[142, 232], floor:[84, 137], cap:[44, 72], deck:[92, 150] };
   const GS = () => G && G.gs;
@@ -647,10 +647,25 @@ NG.gostop = (() => {
   /* ----- 19세 확인 ----- */
   const AGE_KEY = 'hp:age19';
   const ageOk = () => !!store.get(AGE_KEY, 0);
+  /* 확인 창은 돌아가는 판(#gsb) 밖에 둔다 → 세로 휴대폰에서도 늘 똑바로 보인다 */
   function gateHtml(){
-    return `<div class="gs-gate" id="gsGate"><div class="gs-gcard"><span class="gs19 big">19</span><b>19세 이상 이용 게임이에요</b>
+    return `<div class="gs-gate" id="gsGate" role="dialog" aria-modal="true" aria-labelledby="gsGateT"><div class="gs-gcard"><span class="gs19 big">19</span><b id="gsGateT">19세 이상 이용 게임이에요</b>
       <p>고스톱은 청소년에게 맞지 않는 게임이라 만 19세 이상만 할 수 있어요. 돈이나 상품을 걸 수 없고, 점수는 게임 안에서만 써요.</p>
-      <div class="gs-askb"><button class="pri" id="gsAgeY">네, 만 19세 이상이에요</button><button id="gsAgeN">아니요</button></div></div></div>`;
+      <div class="mbtns gs-gbtns"><button class="b2" id="gsAgeN">아니요</button><button class="b1" id="gsAgeY">네, 만 19세 이상이에요</button></div></div></div>`;
+  }
+  /* 세로 화면이면 "가로로 돌려 주세요" 안내를 한 번(판 밖, 똑바로). 누르거나 2.6초 뒤, 가로로 돌리면 사라짐. 보이기만 함 */
+  let turnShown = false;
+  function turnHint(){
+    try{
+      const g = GS(), host = $('#gsg'); if(!g || !host || !g.rot || turnShown) return;
+      turnShown = true;
+      host.insertAdjacentHTML('beforeend', `<div class="gs-turn" id="gsTurn" role="status"><div class="gs-tcard">
+        <svg class="gs-tph" viewBox="0 0 64 64" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="4" fill="#fff" stroke="#1A0F45" stroke-width="3"/><path d="M48 40a18 18 0 0 1-18 16" fill="none" stroke="#FFE27A" stroke-width="4" stroke-linecap="round"/><path d="M26 52l4 4 4-4" fill="none" stroke="#FFE27A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>휴대폰을 가로로 돌려 주세요</b><small>그대로 해도 돼요. 판이 옆으로 누워 보여요.</small></div></div>`);
+      const el = $('#gsTurn'), off = () => { if(el && el.parentNode){ el.classList.add('out'); setTimeout(() => el.remove(), 250); } };
+      el.onclick = off; setTimeout(off, 2600);
+      g.turnOff = off;
+    }catch(_){}
   }
   function ageGate(go){
     if(ageOk()){ go(); return; }
@@ -837,10 +852,9 @@ NG.gostop = (() => {
       <div class="gs-ban" id="gsBan" aria-live="polite"></div>
       <div class="gs-search" id="gsSearch" hidden></div>
       <div class="gs-ask" id="gsAsk" hidden></div>
-      ${ageOk() ? '' : gateHtml()}
-    </div></div>`;
+    </div>${ageOk() ? '' : gateHtml()}</div>`;
     document.body.classList.add('gs-full');
-    const g0 = GS(); if(g0){ g0.onRs = () => fit(); addEventListener('resize', g0.onRs); addEventListener('orientationchange', g0.onRs); }
+    const g0 = GS(); if(g0){ g0.onRs = () => { fit(); const g = GS(); if(g && !g.rot && g.turnOff) g.turnOff(); }; addEventListener('resize', g0.onRs); addEventListener('orientationchange', g0.onRs); }
     fit();
     $('#gsHelpB').onclick = () => openHelp(ID);
     $('#gsOut').onclick = () => confirmQuit();
@@ -848,6 +862,7 @@ NG.gostop = (() => {
     const go = () => {
       const g = GS(); if(!g || G.over) return;
       const gate = $('#gsGate'); if(gate) gate.remove();
+      turnHint();
       if(g.mode === 'pvp') search();
       else startPlay('gs:' + (G.adv ? 'solo:' + G.adv : 'ai') + ':' + g.seedBase);
     };

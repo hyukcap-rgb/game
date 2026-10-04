@@ -180,7 +180,6 @@ NG.crossword = (() => {
   const dirName = d => d ? '세로' : '가로';
   const canPlay = () => { const m = G && G.m; return !!(m && !G.over && !G.paused && m.phase === 'play'); };
 
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
   const ICO = {
     word:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="8" width="7" height="7" rx="1.5" fill="#DFF7E6" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="1" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="15" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="16" y="8" width="6" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
@@ -197,7 +196,7 @@ NG.crossword = (() => {
     const x = $('#cwCheck'); if(x){ x.querySelector('b').textContent = m.checkLeft; x.disabled = m.checkLeft <= 0; }
     const lv = $('#cwLives');
     if(lv && !m.lives) lv.hidden = true;
-    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="cw-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#cwMsg'); if(!e) return; e.className = 'cw-msg ' + (cls || ''); e.innerHTML = html; }
   /* 잠깐 알림: ms 뒤 원래 문구로(앞 알림의 되돌리기 예약은 취소) */
@@ -317,7 +316,7 @@ NG.crossword = (() => {
     const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;
     flash(`<b class="bad">아니에요</b><span>${left === 0 ? '기회를 다 썼어요' : left > 0 ? '기회 ' + left + '번 남음' : '점수 −20'}${m.tick ? ' · −' + m.tick + '초' : ''}</span>`);
     if(m.tick){ m.pen += m.tick; try{ const tp = $('#cwTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }catch(_){} }
-    try{ const hs = document.querySelectorAll('.ng-crossword .cw-heart'), lost = left >= 0 && hs[left]; if(lost) lost.classList.add('lost'); }catch(_){}
+    try{ const hs = document.querySelectorAll('.ng-crossword .hlives i'), lost = left >= 0 && hs[left]; if(lost) lost.classList.add('lost'); }catch(_){}
     if(got.length && m.solved >= m.words.length){ win(); return; }
     if(left === 0){ G.paws = 0; lose('기회를 다 썼어요', 'miss'); return; }
     if(left > 0) G.paws = left;
@@ -359,25 +358,40 @@ NG.crossword = (() => {
     }, 1000);
   }
 
-  /* 휴대폰 화면 키보드가 올라오면 판이 가려지지 않게: 칸을 줄이고 판 위쪽이 보이게 */
-  function keepVisible(){
+  /* 휴대폰 화면 키보드가 올라왔나: 입력창에 초점이 있고, 보이는 높이(visualViewport)가 처음 화면 높이보다 많이 작음 */
+  function kbdOn(){
+    const m = S(), vv = window.visualViewport;
+    return !!(m && vv && document.activeElement === $('#cwIn') && vv.height < (m.fullH || innerHeight || 800) * .82);
+  }
+  /* 키보드가 올라오면 보이는 칸(visualViewport) 안에 판(위)과 '지금 열쇠 + 입력창'(키보드 바로 위)을 붙여 둔다.
+     판은 layout()이 그 사이 남은 높이에 맞게 줄인다. 보이기만 함(판정·시계와 무관) */
+  function placeCtl(){
     try{
-      layout();
-      const bd = $('#cwBoard'), vv = window.visualViewport; if(!bd || !vv) return;
-      if(vv.height < (innerHeight || 800) * .82 && document.activeElement === $('#cwIn')){
-        const r = bd.getBoundingClientRect();
-        window.scrollBy(0, r.top - 6 - (vv.offsetTop || 0));
-      }
+      const root = document.querySelector('.ng-crossword'), ctl = $('#cwCtl'), bd = $('#cwBoard'), vv = window.visualViewport; if(!root || !ctl || !bd) return;
+      if(kbdOn()){
+        root.classList.add('cw-kbd');
+        const top = vv.offsetTop || 0;
+        ctl.style.top = Math.round(top + vv.height - ctl.offsetHeight - 6) + 'px';
+        bd.style.top = Math.round(top + 6) + 'px';
+      } else { root.classList.remove('cw-kbd'); ctl.style.top = ''; bd.style.top = ''; }
     }catch(_){}
   }
+  function keepVisible(){ try{ layout(); placeCtl(); }catch(_){} }
   function layout(){
     const m = S(), bd = $('#cwBoard'), root = document.querySelector('.ng-crossword'); if(!bd || !root || !m) return;
     const W = Math.min(root.clientWidth || 360, 460), N = m.N, gap = 2, pad = 8;
     let cw = Math.floor((W - pad * 2 - gap * (N - 1)) / N);
     const vv = window.visualViewport;
-    if(vv && document.activeElement === $('#cwIn') && vv.height < (innerHeight || 800) * .82){
+    if(!m.fullH || !kbdOn()) m.fullH = Math.max(m.fullH || 0, innerHeight || 0, vv ? vv.height : 0);
+    if(kbdOn()){
       const ctl = ($('#cwCtl') ? $('#cwCtl').offsetHeight : 110) + 18;
       cw = Math.min(cw, Math.floor((vv.height - ctl - pad * 2 - gap * (N - 1)) / N));
+    } else {
+      /* 판은 화면 높이에 맞춰(열쇠·입력창·목록 접기 줄이 한 화면에 들어오게) */
+      const top = bd.getBoundingClientRect().top + (window.scrollY || 0);
+      const below = ($('#cwCtl') ? $('#cwCtl').offsetHeight : 130) + 12 + 64;
+      const hcw = Math.floor(((innerHeight || 800) - top - below - pad * 2 - gap * (N - 1) - 8) / N);
+      if(hcw > 0) cw = Math.min(cw, hcw);
     }
     cw = Math.max(24, Math.min(52, cw));
     bd.style.setProperty('--cw', cw + 'px'); bd.style.setProperty('--gap', gap + 'px'); bd.style.setProperty('--pad', pad + 'px');
@@ -441,17 +455,17 @@ NG.crossword = (() => {
     const inp = $('#cwIn');
     inp.onkeydown = e => { if(e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); submit(); } };
     inp.onfocus = () => T(keepVisible, 350);
-    inp.onblur = () => T(layout, 200);
+    inp.onblur = () => T(() => { layout(); placeCtl(); }, 200);
     $('#cwGo').onpointerdown = e => e.preventDefault();   /* 누를 때 입력창 포커스(키보드)가 내려가지 않게 */
     $('#cwGo').onclick = submit;
     $('#cwPrev').onclick = () => step(-1);
     $('#cwNext').onclick = () => step(1);
     $('#cwHint').onclick = useHint;
     $('#cwCheck').onclick = useCheck;
-    $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, true); };
+    $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); const mo = $('#cwMore'); if(mo) mo.open = false; select(+b.dataset.k, true); };
     m.onResize = () => layout();
     addEventListener('resize', m.onResize);
-    if(window.visualViewport){ m.onVV = () => layout(); visualViewport.addEventListener('resize', m.onVV); }
+    if(window.visualViewport){ m.onVV = () => { layout(); placeCtl(); }; visualViewport.addEventListener('resize', m.onVV); visualViewport.addEventListener('scroll', m.onVV); }
   }
 
   /* 썸네일 낱말판 */
@@ -508,7 +522,7 @@ NG.crossword = (() => {
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.onResize) removeEventListener('resize', m.onResize);
-        if(m.onVV && window.visualViewport) visualViewport.removeEventListener('resize', m.onVV);
+        if(m.onVV && window.visualViewport){ visualViewport.removeEventListener('resize', m.onVV); visualViewport.removeEventListener('scroll', m.onVV); }
         if(G && G.raf) cancelAnimationFrame(G.raf);
         document.querySelectorAll('.fxcombo').forEach(e => e.remove());
       };
@@ -528,21 +542,21 @@ NG.crossword = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-crossword">
-        <div class="cw-hud">
-          <div class="cw-pill" aria-label="맞힌 낱말"><span class="cw-ic">${ICO.word}</span><b id="cwFound">0</b><small>/${m.words.length}</small></div>
-          <div class="cw-pill cw-time" id="cwTimeP" aria-label="남은 시간"><span class="cw-ic">${ICO.clock}</span><b id="cwTime">${mmss(G.limit)}</b></div>
-          <button class="cw-pill cw-btn" id="cwHint" aria-label="글자 열기"><span class="cw-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
-          <button class="cw-pill cw-btn" id="cwCheck" aria-label="틀린 칸 확인"><span class="cw-ic">${ICO.check}</span><b>${m.checkLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="맞힌 낱말"><span class="hv">${ICO.word}<b id="cwFound">0</b><small>/${m.words.length}</small></span><em>맞힌 낱말</em></div>
+          <div class="hchip time" id="cwTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="cwTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="cwHint" aria-label="글자 열기"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>글자 열기</em></button>
+          <button class="hchip item" id="cwCheck" aria-label="틀린 칸 확인"><span class="hv">${ICO.check}<b>${m.checkLeft}</b></span><em>틀린 칸</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cw-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cw-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="cw-chip mj">${k === 'theme' && m.theme ? '주제 · ' + dict().catName[m.theme] : CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cw-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
-        <div class="cw-barw" id="cwBarWrap"><i id="cwBar"></i></div>
-        <div class="cw-row"><div class="cw-lives" id="cwLives" role="img"></div><div class="cw-msg" id="cwMsg"><span>낱말판을 펼치는 중…</span></div></div>
+        <div class="hbar cw-tbar" id="cwBarWrap"><i id="cwBar"></i></div>
+        <div class="cw-row"><div class="hlives" id="cwLives" role="img"></div><div class="cw-msg" id="cwMsg"><span>낱말판을 펼치는 중…</span></div></div>
         <div class="cw-board in" id="cwBoard" role="grid" aria-label="낱말판">${boardHtml()}</div>
         <div class="cw-ctl" id="cwCtl">
           <div class="cw-clue"><button class="cw-arr" id="cwPrev" aria-label="이전 열쇠">${ICO.prev}</button><div class="cw-cl" id="cwClue" aria-live="polite"></div><button class="cw-arr" id="cwNext" aria-label="다음 열쇠">${ICO.next}</button></div>
           <div class="cw-in"><input id="cwIn" type="text" lang="ko" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" maxlength="12" aria-label="답 넣기"><button id="cwGo" class="cw-go">넣기</button></div>
         </div>
-        <div class="cw-list" id="cwList"></div>
+        <details class="cw-more" id="cwMore"><summary>열쇠 목록 전체 보기<small>가로 ${m.words.filter(w => !w.d).length} · 세로 ${m.words.filter(w => w.d).length}</small></summary><div class="cw-list" id="cwList"></div></details>
       </div>`;
       layout(); wire(); refresh();
       T(() => { const b = $('#cwBoard'); if(b) b.classList.remove('in'); }, 900);
@@ -564,31 +578,20 @@ body[data-mode="crossword"]{background:
   linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px) 0 0/100% 26px,
   linear-gradient(180deg,#FFF5E4 0%,#FFE2C2 55%,#FFC99A 100%) fixed}
 .ng-crossword{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none; padding-bottom:20px}
-.ng-crossword .cw-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-crossword .cw-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#FFF4E6); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(160,90,20,.14), 0 3px 0 #1A0F45; color:#5A2E0A; white-space:nowrap}
-.ng-crossword .cw-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-crossword .cw-pill small{font-family:var(--disp); font-size:14px; color:#9A6A3E}
-.ng-crossword .cw-ic{width:22px; height:22px; flex:none; display:block}
-.ng-crossword .cw-ic svg{width:100%; height:100%; display:block}
-.ng-crossword .cw-time{flex:1.3 1 0}
-.ng-crossword .cw-time b{font-size:23px}
-.ng-crossword .cw-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-crossword .cw-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-crossword .cw-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-crossword .cw-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(160,90,20,.14), 0 1px 0 #1A0F45}
-.ng-crossword .cw-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
-.ng-crossword .cw-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
-.ng-crossword .cw-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#FFD38A,#F07F2E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
-.ng-crossword .cw-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
+.ng-crossword .hud-row{margin:0}
+.ng-crossword .hchip.time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
+.ng-crossword .hchip.time.hurry b{text-shadow:0 2px 0 #8E0F2F}
+.ng-crossword .hchip.time.hurry em{color:#fff}
+.ng-crossword .hchip:is(button){-webkit-tap-highlight-color:transparent}
+.ng-crossword .cw-tbar{margin:8px 0 0; height:10px}
+.ng-crossword .cw-tbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#FFD38A,#F07F2E)}
+.ng-crossword .cw-tbar.hurry > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-crossword .cw-row{display:flex; align-items:center; gap:8px; width:100%; height:36px}
-.ng-crossword .cw-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-crossword .cw-lives[hidden]{display:none}
-.ng-crossword .cw-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-crossword .cw-heart svg{width:100%; height:100%; display:block}
-.ng-crossword .cw-heart.off{color:#DCD6E6}
-.ng-crossword .cw-heart.lost{animation:cw-lost .5s ease-out}
-@keyframes cw-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
+.ng-crossword .hlives{flex:none}
+.ng-crossword .hlives[hidden]{display:none}
+.ng-crossword .hlives i{display:inline-block}
+.ng-crossword .hlives i.lost{animation:cw-lost .5s ease-out}
+@keyframes cw-lost{0%{transform:scale(1.6); color:#FFE27A} 100%{transform:none}}
 .ng-crossword .cw-msg{flex:1; min-width:0; overflow:hidden; height:36px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#7A3F10; white-space:nowrap}
 .ng-crossword .cw-msg span{overflow:hidden; text-overflow:ellipsis}
 .ng-crossword .cw-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; flex:none}
@@ -605,7 +608,7 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-x{width:var(--cw); height:var(--cw); border-radius:calc(var(--cw) * .16); background:rgba(255,255,255,.06)}
 .ng-crossword .cw-c{position:relative; width:var(--cw); height:var(--cw); border-radius:calc(var(--cw) * .16); cursor:pointer; -webkit-tap-highlight-color:transparent;
   background:linear-gradient(180deg,#FFFFFB 0%,#FFF3DE 100%); box-shadow:inset 0 -2px 0 rgba(160,90,20,.16), 0 2px 0 #1A0F45; display:grid; place-items:center; transition:background .12s, transform .12s}
-.ng-crossword .cw-c i{position:absolute; left:2px; top:0; font-style:normal; font-family:var(--disp); font-size:calc(var(--cw) * .28); line-height:1.1; color:#8A5A2E}
+.ng-crossword .cw-c i{position:absolute; left:2px; top:0; font-style:normal; font-family:var(--disp); font-size:max(12px, calc(var(--cw) * .3)); line-height:1.1; color:#8A5A2E}
 .ng-crossword .cw-c b{font-family:var(--heavy); font-weight:400; font-size:calc(var(--cw) * .56); line-height:1; color:#1A0F45; padding-top:calc(var(--cw) * .06)}
 .ng-crossword .cw-c.gold{box-shadow:inset 0 0 0 2.5px #F2B705, inset 0 -2px 0 rgba(160,90,20,.16), 0 2px 0 #1A0F45}
 .ng-crossword .cw-c.on{background:linear-gradient(180deg,#FFF6C0,#FFE07A); transform:translateY(-1px)}
@@ -628,7 +631,7 @@ body[data-mode="crossword"]{background:
 @keyframes cw-cheer{40%{transform:scale(1.04)}}
 .ng-crossword .cw-ctl{width:100%; margin-top:12px; display:flex; flex-direction:column; gap:8px}
 .ng-crossword .cw-clue{display:flex; align-items:stretch; gap:6px; width:100%}
-.ng-crossword .cw-arr{flex:none; width:38px; border-radius:14px; border:2.5px solid #1A0F45; background:#fff; color:#1A0F45; box-shadow:0 3px 0 #1A0F45; padding:0; display:grid; place-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-crossword .cw-arr{flex:none; width:44px; border-radius:14px; border:2.5px solid #1A0F45; background:#fff; color:#1A0F45; box-shadow:0 3px 0 #1A0F45; padding:0; display:grid; place-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-crossword .cw-arr svg{width:20px; height:20px}
 .ng-crossword .cw-arr:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .ng-crossword .cw-cl{flex:1; min-width:0; min-height:62px; display:flex; align-items:center; gap:9px; padding:6px 10px 6px 7px; border-radius:14px; background:#FFFDF6; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; font-size:15px; line-height:1.35; color:#2A1A10; user-select:text}
@@ -654,7 +657,18 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-chip.mj{background:#FFF0DC; color:#9A4610}
 .ng-crossword .cw-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-crossword .cw-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-.ng-crossword .cw-list{width:100%; margin-top:14px; display:flex; flex-direction:column; gap:10px}
+.ng-crossword .cw-more{width:100%; margin-top:12px}
+.ng-crossword .cw-more > summary{list-style:none; display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 14px; border-radius:16px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  background:rgba(255,255,255,.72); border:2px solid #1A0F45; box-shadow:0 3px 0 rgba(26,15,69,.6); font-family:var(--disp); font-size:15px; color:#7A3F10}
+.ng-crossword .cw-more > summary::-webkit-details-marker{display:none}
+.ng-crossword .cw-more > summary::after{content:''; width:8px; height:8px; border-right:2.5px solid #7A3F10; border-bottom:2.5px solid #7A3F10; transform:translateY(-2px) rotate(45deg); transition:transform .15s}
+.ng-crossword .cw-more[open] > summary::after{transform:translateY(2px) rotate(225deg)}
+.ng-crossword .cw-more > summary small{font-size:13px; color:#6A5884}
+.ng-crossword .cw-list{width:100%; margin-top:10px; display:flex; flex-direction:column; gap:10px}
+/* 키보드가 올라온 동안: 열쇠+입력창을 키보드 바로 위에 붙임(top은 visualViewport로 계산) */
+.ng-crossword.cw-kbd .cw-ctl{position:fixed; left:12px; right:12px; width:auto; margin:0; z-index:30; padding:8px; border-radius:18px; background:rgba(255,245,228,.97); box-shadow:0 -4px 16px rgba(26,15,69,.18)}
+.ng-crossword.cw-kbd .cw-board{position:fixed; left:0; right:0; margin:0 auto; z-index:29}
+.ng-crossword.cw-kbd .cw-more{display:none}
 .ng-crossword .cw-lsec{background:rgba(255,255,255,.72); border:2px solid #1A0F45; border-radius:16px; padding:8px 8px 6px; box-shadow:0 3px 0 rgba(26,15,69,.6)}
 .ng-crossword .cw-lsec h4{margin:0 0 4px 4px; font-family:var(--heavy); font-weight:400; font-size:16px; color:#7A3F10}
 .ng-crossword .cw-li{display:flex; align-items:baseline; gap:8px; width:100%; text-align:left; padding:7px 6px; border:0; border-top:1px dashed rgba(26,15,69,.15); background:none; font:inherit; font-size:14.5px; line-height:1.35; color:#2A1A10; cursor:pointer; -webkit-tap-highlight-color:transparent}
@@ -662,12 +676,12 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-li b{flex:none; min-width:22px; font-family:var(--heavy); font-weight:400; color:#F07F2E}
 .ng-crossword .cw-lsec:last-child .cw-li b{color:#6A4BD8}
 .ng-crossword .cw-li span{flex:1; min-width:0}
-.ng-crossword .cw-li small{flex:none; color:#9A6A3E; font-size:12px}
+.ng-crossword .cw-li small{flex:none; color:#8A5A2E; font-size:13px}
 .ng-crossword .cw-li.cur{background:#FFF1B8; border-radius:10px}
 .ng-crossword .cw-li.done{color:#7FA58E}
 .ng-crossword .cw-li.done em{font-style:normal; font-weight:800; color:#13703F}
 .ng-crossword .cw-li.gold b::after{content:'★'; color:#F2B705; margin-left:1px}
-@media (max-width:370px){ .ng-crossword .cw-pill b{font-size:18px} .ng-crossword .cw-time b{font-size:20px} .ng-crossword .cw-hud{gap:5px} .ng-crossword .cw-pill{padding:0 5px} .ng-crossword .cw-msg b{font-size:18px} .ng-crossword .cw-go{width:78px} }
+@media (max-width:370px){ .ng-crossword .cw-msg b{font-size:18px} .ng-crossword .cw-go{width:78px} }
 @media (prefers-reduced-motion: reduce){ .ng-crossword .cw-board.in .cw-c, .ng-crossword .cw-c.pop{animation:none} }
 `,
     sounds:{

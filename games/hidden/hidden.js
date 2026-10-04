@@ -286,7 +286,6 @@ NG.hidden = (() => {
   const SVGNS = 'http://www.w3.org/2000/svg';
   const curLi = m => m.list.findIndex(L => L.got < L.need);
 
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
   const ICO = {
     glass:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#E6F6FF" stroke="#1A0F45" stroke-width="2.2"/><path d="M15 15l5.5 5.5" stroke="#1A0F45" stroke-width="3.4" stroke-linecap="round"/><path d="M7 8a3.5 3.5 0 0 1 3-2.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
@@ -300,7 +299,7 @@ NG.hidden = (() => {
     const f = $('#hdFound'); if(f) f.textContent = m.found;
     const h = $('#hdHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const lv = $('#hdLives');
-    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.misses); lv.hidden = false; lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="hd-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
+    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.misses); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
   }
   function msg(html, cls){ const e = $('#hdMsg'); if(!e) return; e.className = 'hd-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
@@ -384,20 +383,30 @@ NG.hidden = (() => {
     const m = S();
     m.misses++; m.streak++; m.combo = 0;
     const cool = 700 + 350 * Math.min(3, m.streak - 1);   /* 연속으로 빗나가면 더 오래 못 누름(마구 누르기 막기) */
-    m.coolUntil = Date.now() + cool;
+    m.coolUntil = Date.now() + cool; m.coolLen = cool;
     const xg = document.createElementNS(SVGNS, 'g'); xg.setAttribute('class', 'hd-x');
     const sc = 1 / m.view.z; xg.setAttribute('transform', `translate(${r1(x)} ${r1(y)}) scale(${r1(sc * 100) / 100})`);
     xg.innerHTML = '<path d="M-9-9L9 9M9-9L-9 9" class="o"/><path d="M-9-9L9 9M9-9L-9 9" class="c"/>';
     const ml = $('#hdMarks'); if(ml){ ml.appendChild(xg); T_(() => xg.remove(), 650); }
     const w = $('#hdWrap'), c = $('#hdCool');
     if(w){ w.classList.add('cool'); T_(() => { if(Date.now() >= m.coolUntil - 20) w.classList.remove('cool'); }, cool); }
-    if(c){ c.querySelector('b').textContent = '잠깐! ' + (cool / 1000).toFixed(1) + '초'; }
+    coolShow();
     sfx('hdMiss'); fxBuzz(25);
     const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;
     msg('<b class="bad">빗나갔어요</b><span>' + (left < 0 ? '점수 −15' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'hd-pop');
     hud();
     T_(() => { if(m.phase === 'play') msg(playMsg()); }, 1100);
     if(left >= 0){ G.paws = left; if(!left) lose('기회를 다 썼어요', 'miss'); }
+  }
+  /* 쿨다운 남은 시간 보여 주기(장면 위 '잠깐! 0.8초' + 줄어드는 막대). 보이기만 함 */
+  function coolShow(){
+    try{
+      const m = S(), c = $('#hdCool'); if(!c || !m) return;
+      const left = Math.max(0, m.coolUntil - Date.now()); if(!left) return;
+      const t = (Math.ceil(left / 100) / 10).toFixed(1);
+      const b = c.querySelector('b'); if(b && b.dataset.t !== t){ b.dataset.t = t; b.textContent = '잠깐! ' + t + '초'; }
+      const bar = $('#hdCoolBar'); if(bar) bar.style.transform = `scaleX(${Math.min(1, left / (m.coolLen || 700))})`;
+    }catch(_){}
   }
   function clearHint(){ const h = $('#hdHintRing'); if(h) h.remove(); }
   function useHint(){
@@ -439,7 +448,7 @@ NG.hidden = (() => {
       if(sec <= 10 && sec > 0){ sfx('hdTick', { hi:sec <= 5 }); try{ if(p && !FXR.reduce && p.animate) p.animate([{ transform:'scale(1)' }, { transform:'scale(1.12)' }, { transform:'scale(1)' }], { duration:300, easing:'ease-out' }); }catch(_){} }
     }
     if(rem <= 0){ const e = $('#hdTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요', 'time'); }
-    const c = $('#hdWrap'); if(c && c.classList.contains('cool') && Date.now() >= m.coolUntil) c.classList.remove('cool');
+    const c = $('#hdWrap'); if(c && c.classList.contains('cool')){ if(Date.now() >= m.coolUntil) c.classList.remove('cool'); else coolShow(); }
   }
   function win(){
     const m = S(); m.phase = 'done'; m.sec = elapsed();
@@ -467,7 +476,7 @@ NG.hidden = (() => {
     const RW = Math.min(root.clientWidth || 360, 480);
     const top = wrap.getBoundingClientRect().top + (window.scrollY || 0);
     const lh = list ? list.offsetHeight : 90;
-    const avail = Math.max(300, (innerHeight || 740) - top - lh - 22);
+    const avail = Math.max(300, (innerHeight || 740) - top - lh - 32);
     const w = Math.floor(Math.max(240, Math.min(RW, avail * W / H)));
     wrap.style.width = w + 'px'; wrap.style.height = Math.round(w * H / W) + 'px';
     if(list) list.style.maxWidth = Math.max(w, Math.min(RW, 420)) + 'px';
@@ -589,20 +598,20 @@ NG.hidden = (() => {
         <mask id="hdMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><circle id="hdLight" cx="${m.light[0]}" cy="${m.light[1]}" r="${LIGHT_R}" fill="url(#hdLg)"/></mask></defs>
         <g id="hdNight" class="hd-night"><rect width="${W}" height="${H}" fill="#0B0A2A" fill-opacity=".985" mask="url(#hdMask)"/><circle id="hdGlow" cx="${m.light[0]}" cy="${m.light[1]}" r="${LIGHT_R - 4}" fill="none" stroke="#FFE9A0" stroke-width="2" stroke-dasharray="5 6" opacity=".55"/></g>` : '';
       st.innerHTML = `<div class="ng-hidden">
-        <div class="hd-hud">
-          <div class="hd-pill" aria-label="찾은 물건"><span class="hd-ic">${ICO.glass}</span><b id="hdFound">0</b><small>/${totalOf(m)}개</small></div>
-          <div class="hd-pill hd-time" id="hdTimeP" aria-label="남은 시간"><span class="hd-ic">${ICO.clock}</span><b id="hdTime">${mmss(G.limit)}</b></div>
-          <button class="hd-pill hd-btn" id="hdHint" aria-label="힌트"><span class="hd-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="찾은 물건"><span class="hv">${ICO.glass}<b id="hdFound">0</b><small>/${totalOf(m)}</small></span><em>찾은 물건</em></div>
+          <div class="hchip time" id="hdTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="hdTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="hdHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="hd-rules" aria-label="켜진 규칙">${m.boss ? '<span class="hd-chipr boss">보스</span>' : ''}${m.mj.map(k => `<span class="hd-chipr mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="hd-chipr tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
-        <div class="hd-barw" id="hdBarWrap"><i id="hdBar"></i></div>
-        <div class="hd-row"><div class="hd-lives" id="hdLives" role="img" hidden></div><div class="hd-msg" id="hdMsg">${playMsg()}</div></div>
+        <div class="hbar hd-tbar" id="hdBarWrap"><i id="hdBar"></i></div>
+        <div class="hd-row"><div class="hlives" id="hdLives" role="img" hidden></div><div class="hd-msg" id="hdMsg">${playMsg()}</div></div>
         <div class="hd-wrap in" id="hdWrap">
           <svg id="hdSvg" class="hd-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${sc.T.name} 장면: 숨은 물건을 찾아 누르세요">
             <g class="hd-bg">${sc.bg}</g><g class="hd-items">${items}</g><g class="hd-top">${sc.top}</g>${night}<g id="hdMarks"></g>
           </svg>
           <div class="hd-zoom"${m.night ? ' hidden' : ''}><button id="hdZin" aria-label="확대">${ICO.zin}</button><button id="hdZout" aria-label="축소" disabled>${ICO.zout}</button></div>
-          <div class="hd-cool" id="hdCool" aria-hidden="true"><b>잠깐!</b></div>
+          <div class="hd-cool" id="hdCool" aria-hidden="true"><b>잠깐!</b><i><s id="hdCoolBar"></s></i></div>
         </div>
         <div class="hd-list" id="hdList" role="list" aria-label="찾을 물건"></div>
       </div>`;
@@ -629,29 +638,17 @@ body[data-mode="hidden"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.28) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#FFF1DC 0%,#FFD9A8 55%,#F8BE7C 100%) fixed}
 .ng-hidden{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-hidden .hd-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-hidden .hd-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#FFF4E6); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(160,90,20,.14), 0 3px 0 #1A0F45; color:#6A3A10; white-space:nowrap}
-.ng-hidden .hd-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-hidden .hd-pill small{font-family:var(--disp); font-size:14px; color:#A06A3A}
-.ng-hidden .hd-ic{width:22px; height:22px; flex:none; display:block}
-.ng-hidden .hd-ic svg{width:100%; height:100%; display:block}
-.ng-hidden .hd-time{flex:1.2 1 0}
-.ng-hidden .hd-time b{font-size:23px}
-.ng-hidden .hd-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-hidden .hd-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-hidden .hd-btn{flex:.75 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-hidden .hd-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(160,90,20,.14), 0 1px 0 #1A0F45}
-.ng-hidden .hd-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
-.ng-hidden .hd-barw{position:relative; width:100%; height:10px; margin:9px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
-.ng-hidden .hd-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#FFD08A,#F08A24); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
-.ng-hidden .hd-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
+.ng-hidden .hud-row{margin:0}
+.ng-hidden .hchip.time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
+.ng-hidden .hchip.time.hurry b{text-shadow:0 2px 0 #8E0F2F}
+.ng-hidden .hchip.time.hurry em{color:#fff}
+.ng-hidden .hchip:is(button){-webkit-tap-highlight-color:transparent}
+.ng-hidden .hd-tbar{margin:8px 0 0; height:10px}
+.ng-hidden .hd-tbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#FFD08A,#F08A24)}
+.ng-hidden .hd-tbar.hurry > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-hidden .hd-row{display:flex; align-items:center; gap:8px; width:100%; height:36px}
-.ng-hidden .hd-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-hidden .hd-lives[hidden]{display:none}
-.ng-hidden .hd-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-hidden .hd-heart svg{width:100%; height:100%; display:block}
-.ng-hidden .hd-heart.off{color:#DCD6E6}
+.ng-hidden .hlives{flex:none}
+.ng-hidden .hlives[hidden]{display:none}
 .ng-hidden .hd-msg{flex:1; min-width:0; overflow:hidden; height:36px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#7A4310; white-space:nowrap}
 .ng-hidden .hd-msg span{overflow:hidden; text-overflow:ellipsis}
 .ng-hidden .hd-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; flex:none}
@@ -692,16 +689,18 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-zoom button:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .ng-hidden .hd-zoom button:disabled{opacity:.4; cursor:default}
 .ng-hidden .hd-cool{position:absolute; left:50%; top:10px; transform:translateX(-50%) scale(.6); opacity:0; pointer-events:none; transition:opacity .15s, transform .2s cubic-bezier(.2,1.5,.4,1)}
-.ng-hidden .hd-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:17px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:5px 13px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap}
+.ng-hidden .hd-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:17px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:5px 13px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap; font-variant-numeric:tabular-nums}
+.ng-hidden .hd-cool i{display:block; height:6px; margin:5px 10px 0; border-radius:99px; background:rgba(26,15,69,.35); overflow:hidden}
+.ng-hidden .hd-cool s{display:block; height:100%; background:#FFE27A; transform-origin:left center}
 .ng-hidden .hd-wrap.cool .hd-cool{opacity:1; transform:translateX(-50%) scale(1)}
 .ng-hidden .hd-wrap.cool .hd-svg{filter:saturate(.55) brightness(.92)}
 .ng-hidden .hd-wrap.cleared{animation:hidden-cheer .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes hidden-cheer{40%{transform:scale(1.03)}}
 .ng-hidden .hd-list{--cols:4; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:5px; width:100%; margin:12px 0 0}
-.ng-hidden .hd-chip{position:relative; display:flex; align-items:center; gap:3px; height:36px; padding:0 5px 0 3px; border-radius:11px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0}
+.ng-hidden .hd-chip{position:relative; display:flex; align-items:center; gap:3px; height:40px; padding:0 5px 0 3px; border-radius:11px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0}
 .ng-hidden .hd-ci{width:28px; height:28px; flex:none; display:block}
 .ng-hidden .hd-ci svg{width:100%; height:100%; display:block; overflow:visible}
-.ng-hidden .hd-cn{flex:1; min-width:0; font-family:var(--disp); font-size:12.5px; line-height:1.05; color:#4A2A10; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.3px}
+.ng-hidden .hd-cn{flex:1; min-width:0; font-family:var(--disp); font-size:13px; line-height:1.05; color:#4A2A10; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.3px}
 .ng-hidden .hd-chip em{position:absolute; top:-7px; right:-5px; font-style:normal; font-family:var(--heavy); font-size:12px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
 .ng-hidden .hd-chip em.ok{background:#2BB673}
 .ng-hidden .hd-chip.done{background:#E3FAEC}
@@ -716,7 +715,7 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-chipr.mj{background:#FFF0DC; color:#9A4A08}
 .ng-hidden .hd-chipr.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-hidden .hd-chipr.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-hidden .hd-pill b{font-size:18px} .ng-hidden .hd-time b{font-size:20px} .ng-hidden .hd-pill small{font-size:12px} .ng-hidden .hd-hud{gap:5px} .ng-hidden .hd-msg b{font-size:18px} .ng-hidden .hd-cn{font-size:11.5px} .ng-hidden .hd-chipr{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-hidden .hd-msg b{font-size:18px} .ng-hidden .hd-cn{font-size:12px} .ng-hidden .hd-chipr{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-hidden .hd-mark circle{animation:none; stroke-dashoffset:0} .ng-hidden .hd-wrap.in, .ng-hidden .hd-chip.cur{animation:none} }
 `,
     sounds:{
