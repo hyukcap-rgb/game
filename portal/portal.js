@@ -210,9 +210,9 @@ const DAILY_N = 5, SOLO_CAP = 1000, DUEL_PTS = { w:400, d:250, l:150 };
    · 오늘 점수 = 5과목 공식 점수 합(솔로·대전·출석 보너스를 더하지 않음 → 누구와도 그대로 비교)
    · 성적표: 같은 문제를 푼 사람 중 등수로 과목마다 수·우·미·양·가 (서버 전까지는 분포 가정)
    · 출석은 점수가 아니라 선물(연속 3·7·14·30…일 하트)과 휴식권으로만 */
-const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link']], ['전략', ['tower','merge']], ['추리', ['fleet','match']]];
+const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge']], ['추리', ['fleet','match']]];
 /* 과목에 새로 들어온 게임은 이 날짜부터 시험지에 나온다(그 전 날짜의 시험지는 그대로 → 이미 푼 사람과 같은 문제) */
-const SUBJ_FROM = { link:'2026-10-04' };
+const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06' };
 const subjGames = (i, kk) => SUBJ[i][1].filter(g => !SUBJ_FROM[g] || kk >= SUBJ_FROM[g]);
 const subjOf = id => { const x = SUBJ.find(q => q[1].includes(id)); return x ? x[0] : ''; };
 const LV_KO = { easy:'쉬움', normal:'보통', hard:'어려움' }, WD_KO = ['일','월','화','수','목','금','토'];
