@@ -210,6 +210,56 @@
       "file": "snowball.html",
       "bytes": 234328,
       "gzip": 77639
+    },
+    {
+      "id": "flag",
+      "name": "청기 백기",
+      "version": "1.0.0",
+      "summary": "진행자 명령대로 파란 깃발·흰 깃발을 올리고 내리는 순발력 게임(막 누르면 손해)",
+      "duel": true,
+      "file": "flag.html",
+      "bytes": 240744,
+      "gzip": 78822
+    },
+    {
+      "id": "mole",
+      "name": "두더지 땅땅",
+      "version": "1.0.0",
+      "summary": "구멍에서 튀어나오는 두더지만 치고 폭탄 두더지는 참는 순발력 게임",
+      "duel": true,
+      "file": "mole.html",
+      "bytes": 240481,
+      "gzip": 78992
+    },
+    {
+      "id": "twin",
+      "name": "쌍둥이 찾기",
+      "version": "1.0.0",
+      "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
+      "duel": true,
+      "file": "twin.html",
+      "bytes": 240562,
+      "gzip": 80471
+    },
+    {
+      "id": "arrow",
+      "name": "거꾸로 화살표",
+      "version": "1.0.0",
+      "summary": "파란 화살표는 그 방향, 빨간 화살표는 반대로 미는 순발력 게임",
+      "duel": true,
+      "file": "arrow.html",
+      "bytes": 235075,
+      "gzip": 76711
+    },
+    {
+      "id": "rps",
+      "name": "가위바위보 지령",
+      "version": "1.0.0",
+      "summary": "상대 손과 지령(이겨라·져라·비겨라)에 맞는 손을 재빨리 내는 순발력 게임",
+      "duel": true,
+      "file": "rps.html",
+      "bytes": 236046,
+      "gzip": 76904
     }
   ]
 }

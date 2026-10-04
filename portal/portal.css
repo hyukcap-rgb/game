@@ -422,9 +422,10 @@ body[data-mode] .dock{display:none}
 .lgpool .pl-n{font-family:var(--heavy); font-weight:400; font-size:17px; color:#FFE98E}
 .advpromo small{font-size:13px}
 /* 솔로·대전: 과목 칩 필터 */
-.fchips{display:flex; gap:6px; margin:14px 0 0; overflow-x:auto; scrollbar-width:none; padding:2px 0 4px}
+.fchips{display:flex; gap:5px; margin:14px 0 0; overflow-x:auto; scrollbar-width:none; padding:2px 0 4px}
 .fchips::-webkit-scrollbar{display:none}
-.fchips button{flex:1 0 auto; height:44px; padding:0 12px; border-radius:999px; font-family:var(--disp); font-size:15px; color:#D9D0FF; background:#170C45; box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+@media (max-width:375px){ .fchips{gap:4px} .fchips button{min-width:0; font-size:14px; padding:0 2px} }
+.fchips button{flex:1 1 0; min-width:44px; height:44px; padding:0 4px; border-radius:999px; font-family:var(--disp); font-size:15px; white-space:nowrap; color:#D9D0FF; background:#170C45; box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
 .fchips button[aria-pressed="true"]{color:#5A3300; background:linear-gradient(#FFE98E,#FFB020); border:2.5px solid #9A5A00; box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 3px 0 #9A5A00}
 .adultsec{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin:10px 2px 0; font-family:var(--disp); font-size:15px; color:#FFD0D6}
 .a19{flex:none; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-family:var(--heavy); font-size:14px; color:#fff; background:#E5484D; border:2.5px solid #fff; box-shadow:0 2px 0 var(--outline2)}
