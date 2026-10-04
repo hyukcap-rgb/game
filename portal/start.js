@@ -10,5 +10,6 @@ else if(store.get('hp:welcome', 0) < 3) welcome();
 else if(LG_RES) showLeagueResult(LG_RES);
 else { const ls0 = leagueState(); if(ls0.last && ls0.seen === false) showLeagueResult(ls0.last); }
 
+evCheck();   /* 운영자 이벤트 선물(portal/events.js) */
 setInterval(tickHome, 1000);
 try{ sceneHome({ kind:'stars', colors:['#FFFFFF','#FFE9A8','#CFC5FF'], density:.7 }); }catch(_){}   /* 홈 밤하늘: 반짝이는 별·별똥별 */
