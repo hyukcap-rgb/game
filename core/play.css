@@ -274,3 +274,42 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .dr-side .crown{position:absolute; top:-15px; font-size:22px; filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
 .dr-vs{font-family:var(--heavy); font-size:22px; color:#FFC93C; -webkit-text-stroke:5px var(--outline); paint-order:stroke fill}
 .dr-lb{margin:10px 0 -4px; font-family:var(--disp); font-size:14px; color:var(--sub)}
+
+/* ===== 공용 게임 화면 규격 v1 (2026-10-04 디자인·UX·기획 검수 결론) =====
+   게임은 이 클래스만 써서 위쪽 정보줄(HUD)·기회 표시·도구 버튼을 똑같이 만든다. core는 게임 이름을 모른다.
+   HUD 순서: ① 진행(0/15) ② 시간 ③ 아이템(힌트, 노랑) ④ 보조(넘기기·섞기, 하늘). 칩은 최대 4개. 칩마다 아래 작은 이름표(<em>)를 단다.
+   기회(목숨)는 하트 대신 별(.hlives) — 하트는 사이트 재화(♥) 전용. */
+.hud-row{display:flex; gap:8px; align-items:stretch; width:100%; margin:0 0 8px}
+.hchip{position:relative; flex:1 1 0; min-width:0; height:48px; padding:0 10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  border-radius:16px; background:linear-gradient(180deg,#FFFFFF,#F3EEFF); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; color:#3A2261; font:inherit; white-space:nowrap}
+.hchip .hv{display:flex; align-items:center; gap:5px; line-height:1}
+.hchip .ico, .hchip .hv svg{width:18px; height:18px; flex:none}
+.hchip b{font-family:var(--heavy); font-weight:400; font-size:20px; line-height:1; font-variant-numeric:tabular-nums}
+.hchip small{font-family:var(--disp); font-size:13px; color:#6A5884}
+.hchip em{font-style:normal; font-family:var(--disp); font-size:12px; line-height:1; color:#6A5884; letter-spacing:-.2px}
+.hchip.time{flex:1.25 1 0}
+.hchip.item{background:linear-gradient(180deg,#FFF6C4,#FFD45A)} .hchip.item em, .hchip.item small{color:#7A4A00}
+.hchip.skip{background:linear-gradient(180deg,#EAF7FF,#A9DBFF)} .hchip.skip em, .hchip.skip small{color:#124F92}
+.hchip.warn b{color:#E5484D}
+.hchip:is(button){cursor:pointer}
+.hchip:is(button):active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+.hchip:is(button):disabled{opacity:.45}
+.hbar{width:100%; height:8px; border-radius:99px; background:rgba(26,15,69,.12); border:2px solid #1A0F45; overflow:hidden; margin:0 0 8px}
+.hbar > i{display:block; height:100%; width:0; background:linear-gradient(90deg,#FFD45A,#FF8A3D); transition:width .25s}
+/* 기회: 별 n개(남은 것 금색, 잃은 것 회색). 왼쪽에 '기회' 글자 */
+.hlives{display:inline-flex; align-items:center; gap:3px; height:28px; padding:0 10px 0 8px; border-radius:99px; background:#fff; border:2px solid #1A0F45; font-family:var(--disp); font-size:13px; color:#3A2261}
+.hlives i{font-style:normal; font-size:17px; line-height:1; color:#FFB020; text-shadow:0 1px 0 #7A4A00}
+.hlives i.off{color:#D6CCE6; text-shadow:none}
+/* 도구 버튼 3종: 보통(크림) · 켜고 끄기(켜지면 보라) · 아이템(노랑, 개수 배지). 핑크는 화면당 주 행동 1개에만 */
+.tool{position:relative; min-height:52px; padding:6px 10px; border-radius:16px; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font-family:var(--disp); font-size:14px; color:#3A2261; background:linear-gradient(180deg,#FFFFFF,#F3EBDD); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; cursor:pointer}
+.tool .ico, .tool svg{width:22px; height:22px}
+.tool:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+.tool:disabled{opacity:.45}
+.tool.toggle[aria-pressed="true"]{background:linear-gradient(180deg,#A98BFF,#6C3CE0); color:#fff; text-shadow:0 1px 0 rgba(0,0,0,.25)}
+.tool.item{background:linear-gradient(180deg,#FFF6C4,#FFC93C); color:#5A3300}
+.tool .cnt{position:absolute; top:-8px; right:-6px; min-width:22px; height:22px; padding:0 5px; border-radius:99px; background:#F0368A; color:#fff; border:2px solid #1A0F45; font:13px/18px var(--heavy); text-align:center}
+.tool.item .cnt{background:#6C3CE0}
+.tools-row{display:flex; gap:8px; width:100%} .tools-row > .tool{flex:1 1 0; min-width:0}
+@media (max-width:370px){ .hchip{height:44px; padding:0 6px} .hchip b{font-size:17px} .hud-row{gap:5px} .tool{font-size:13px} }
+@media (prefers-reduced-motion:reduce){ .hbar > i{transition:none} }
