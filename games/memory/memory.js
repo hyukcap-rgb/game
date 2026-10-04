@@ -554,10 +554,10 @@ NG.memory = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-memory">
-        <div class="mm-hud">
-          <div class="mm-pill" aria-label="찾은 짝"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></div>
-          <div class="mm-pill mm-time" id="mmTimeP" aria-label="남은 시간"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></div>
-          <div class="mm-pill" aria-label="뒤집은 횟수"><span class="mm-ic">${ICO.flip}</span><b id="mmFlips">0</b><small>번</small></div>
+        <div class="hud-row mm-hud">
+          <div class="hchip" aria-label="찾은 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></span><em>찾은 짝</em></div>
+          <div class="hchip time mm-time" id="mmTimeP" aria-label="남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <div class="hchip" aria-label="뒤집은 횟수"><span class="hv"><span class="mm-ic">${ICO.flip}</span><b id="mmFlips">0</b><small>번</small></span><em>뒤집은 수</em></div>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}</div>` : ''}
         <div class="mm-barw" id="mmBarWrap"><i id="mmBar"></i></div>
@@ -585,16 +585,11 @@ body[data-mode="memory"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.22) 0 3px, transparent 3.5px) 0 0/46px 46px,
   linear-gradient(180deg,#FFE0C9 0%,#FFB8A8 55%,#FF8F9E 100%) fixed}
 .ng-memory{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-memory .mm-hud{display:flex; gap:8px; width:100%; justify-content:space-between}
-.ng-memory .mm-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px;
-  background:linear-gradient(180deg,#FFFFFF,#FFF1DE); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(160,110,60,.14), 0 3px 0 #1A0F45; color:#3A2261; white-space:nowrap}
-.ng-memory .mm-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-memory .mm-pill small{font-family:var(--disp); font-size:14px; color:#7B6A93}
-.ng-memory .mm-ic{width:22px; height:22px; flex:none; display:block}
+.ng-memory .mm-hud{margin:0}
+.ng-memory .mm-ic{width:20px; height:20px; flex:none; display:block}
 .ng-memory .mm-ic svg{width:100%; height:100%; display:block}
-.ng-memory .mm-time{flex:1.25 1 0}
-.ng-memory .mm-time b{font-size:23px}
 .ng-memory .mm-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
+.ng-memory .mm-time.hurry em{color:#fff}
 .ng-memory .mm-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
 .ng-memory .mm-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-memory .mm-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0B8,#27B86A); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
@@ -657,7 +652,7 @@ body[data-mode="memory"]{background:
 .ng-memory .mm-card.boomed{opacity:.55}
 .ng-memory .mm-card.ok.jk .mm-front{background:linear-gradient(160deg,#FFF1A8,#FFC6EA 50%,#C9DAFF)}
 @keyframes memory-cheer{0%{transform:none} 40%{transform:translateY(-10px) scale(1.1)} 100%{transform:none}}
-@media (max-width:370px){ .ng-memory .mm-chip{font-size:12px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-pill b{font-size:18px} .ng-memory .mm-time b{font-size:21px} .ng-memory .mm-pill small{font-size:12.5px} .ng-memory .mm-hud{gap:6px} .ng-memory .mm-msg b{font-size:19px} }
+@media (max-width:370px){ .ng-memory .mm-chip{font-size:12px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-msg b{font-size:19px} }
 @media (prefers-reduced-motion: reduce){ .ng-memory .mm-in{transition-duration:.01s} .ng-memory .mm-card.in, .ng-memory .mm-card.ok .mm-pop, .ng-memory .mm-card.cheer .mm-pop, .ng-memory .mm-msg b{animation:none} }
 `,
     sounds:{

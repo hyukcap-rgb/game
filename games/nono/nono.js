@@ -291,8 +291,8 @@ NG.nono = (() => {
     return p;
   }
 
-  /* ---------- 그림 조각(아이콘·하트·✕) ---------- */
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21l-1.4-1.3C5.4 15 2 11.9 2 8.1 2 5 4.4 2.6 7.5 2.6c1.7 0 3.4.8 4.5 2.1 1.1-1.3 2.8-2.1 4.5-2.1C19.6 2.6 22 5 22 8.1c0 3.8-3.4 6.9-8.6 11.6z"/><ellipse class="sh" cx="7.6" cy="7.4" rx="2.4" ry="1.6" transform="rotate(-30 7.6 7.4)"/></svg>';
+  /* ---------- 그림 조각(아이콘·✕) ---------- */
+  const ZOOM = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="#fff" stroke="currentColor" stroke-width="2.4"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
   const WATCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFB020" stroke="#1A0F45" stroke-width="1.6"/><circle cx="12" cy="13.5" r="6.2" fill="#FFF8EA"/><rect x="10.2" y="1.8" width="3.6" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.6v4.2l2.8 1.7" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>';
   const BULB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a6.8 6.8 0 0 0-4 12.3c.7.5 1.1 1.3 1.1 2.1V18h5.8v-1.1c0-.8.4-1.6 1.1-2.1A6.8 6.8 0 0 0 12 2.5z" fill="#FFD23F" stroke="#1A0F45" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.3 19.3h5.4v1.2a1.8 1.8 0 0 1-1.8 1.8h-1.8a1.8 1.8 0 0 1-1.8-1.8z" fill="#8E6BD1" stroke="#1A0F45" stroke-width="1.3"/><path d="M9.8 7.6a3 3 0 0 1 2.2-1.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>';
   const SQ = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="15" height="15" rx="3.2" fill="#3A2A92" stroke="#1A0F45" stroke-width="1.6"/><path d="M5.5 6.5h6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".45"/></svg>';
@@ -330,7 +330,8 @@ NG.nono = (() => {
   function lives(){
     const el = $n('#nnLives'); if(!el) return;
     const MP = G.nnMaxP || 3, prev = +(el.dataset.n || MP);
-    el.innerHTML = Array.from({ length:MP }, (_, k) => k).map(k => `<span class="nn-heart${k >= G.paws ? ' off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}${G.paws === 1 && k === 0 ? ' last' : ''}">${HEART}</span>`).join('');
+    /* 기회 = 별(공용 .hlives). 하트는 사이트 재화 전용이라 쓰지 않는다 */
+    el.innerHTML = Array.from({ length:MP }, (_, k) => k).map(k => `<i class="${k >= G.paws ? 'off' + (k === G.paws && G.paws < prev ? ' lost' : '') : ''}${G.paws === 1 && k === 0 ? ' last' : ''}">★</i>`).join('');
     el.dataset.n = G.paws; el.setAttribute('aria-label', '남은 기회 ' + G.paws + '번');
     const fr = $n('#nnFrame');
     if(fr){ fr.classList.toggle('danger', G.paws === 1 && !G.over); const tag = fr.querySelector('.nn-last');
@@ -400,14 +401,14 @@ NG.nono = (() => {
     fxBurst(p.x, p.y, ['#E5484D', '#FF9AA4', '#7A1030'], 10, { speed:190, size:3.6, kinds:['rect', 'dot'], g:900, up:20 });
     const fr = $n('#nnFrame'); if(fr && !FXR.reduce){ fr.classList.remove('shake'); void fr.offsetWidth; fr.classList.add('shake'); }
     fxVignette(); sfx('fBad'); fxBuzz([70, 40, 110]);
-    const hs = document.querySelectorAll('#nnLives .nn-heart'), lostEl = hs[G.paws - 1];
+    const hs = document.querySelectorAll('#nnLives i'), lostEl = hs[G.paws - 1];
     if(lostEl && !FXR.reduce){
-      const q = fxCenter(lostEl), d = document.createElement('div'); d.className = 'ng-nono nn-lost'; d.innerHTML = HEART;
+      const q = fxCenter(lostEl), d = document.createElement('div'); d.className = 'ng-nono nn-lost'; d.textContent = '★';
       d.style.left = (q.x - 14) + 'px'; d.style.top = (q.y - 14) + 'px'; document.body.appendChild(d);
       d.animate([{ transform:'translate(0,0) rotate(0)', opacity:1 }, { transform:'translate(-8px,-26px) rotate(-30deg) scale(1.3)', opacity:1, offset:.25 }, { transform:'translate(26px,150px) rotate(200deg) scale(.6)', opacity:0 }], { duration:900, easing:'cubic-bezier(.3,0,.7,1)' }).onfinish = () => d.remove();
     }
     G.paws--; lives();
-    const pill = $n('#nnLives'); if(pill){ pill.classList.remove('hurt'); void pill.offsetWidth; pill.classList.add('hurt'); }
+    const pill = $n('#nnLivesC'); if(pill){ pill.classList.remove('hurt'); void pill.offsetWidth; pill.classList.add('hurt'); }
     fxFloat(p.x, p.y - p.h * .6, '−1', 'bad');
     if(G.paws <= 0){ G.done = true; endDrag(); hud(); setTimeout(() => { if(!G.over) finish(false); }, 900); }
   }
@@ -442,6 +443,7 @@ NG.nono = (() => {
   function win(){
     if(G.done) return;
     G.done = true; G.winSec = elapsed(); G.nnWin = true; endDrag();
+    if(G.nnZoom){ G.nnZoom = false; layout(); }   /* 완성 그림은 판 전체로 보여 준다 */
     const N = G.N, bd = $n('#bd'), fr = $n('#nnFrame');
     const c0 = (N - 1) / 2;
     for(let i = 0; i < N * N; i++){
@@ -577,7 +579,7 @@ NG.nono = (() => {
   function setMode(m){
     if(m === 'mark' && G.nomark) return;
     G.mode = m === 'fill2' ? 'fill' : m; if(m !== 'mark') G.nnC = m === 'fill2' ? 2 : 1;
-    document.querySelectorAll('#nnSeg button').forEach(b => { const on = b.dataset.m === m; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+    document.querySelectorAll('#nnSeg button').forEach(b => { const on = b.dataset.m === m; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     const sg = $n('#nnSeg'); if(sg) sg.dataset.m = m;
     sfx('toggle', { on:m !== 'mark' });
   }
@@ -617,22 +619,34 @@ NG.nono = (() => {
     for(const r of rs) one('r', r); for(const c of cs) one('c', c);
   }
 
+  /* 문서 맨 위에서 요소까지 거리(등장 애니메이션의 transform에 흔들리지 않게 offsetTop으로) */
+  const docTop = el => { let t = 0; for(let e = el; e; e = e.offsetParent) t += e.offsetTop; return t; };
   /* ---------- 크기 계산: 폭(단서 영역 포함)과 높이에 맞춰 칸 크기를 정한다 ---------- */
   function layout(){
     const root = $n('#nnRoot'), grid = $n('#nnGrid'); if(!root || !grid) return;
     const N = G.N, avail = root.clientWidth - 16;   /* 판 패널 테두리·안쪽 여백 */
+    /* 화면 아래까지 채운다: 판은 남은 높이만큼 키우고, 조작 줄은 엄지가 닿는 아래쪽 */
+    const top = docTop(root);
+    root.style.minHeight = Math.max(0, Math.min(innerHeight, Math.floor(innerHeight - top - 10))) + 'px';
     const rl = $n('#nnRules'), extra = rl ? rl.offsetHeight + 8 : 0;
-    const maxH = Math.max(260, innerHeight - root.getBoundingClientRect().top - 196 - extra);
+    const hd = $n('#nnHud'), ct = $n('#nnCtrl'), tp = $n('#nnTip');
+    const below = (hd ? hd.offsetHeight + 8 : 56) + (ct ? ct.offsetHeight : 56) + (tp ? tp.offsetHeight + 8 : 0) + 14 + 16 + 12;
+    const maxH = Math.max(240, innerHeight - top - below - extra);
     const pad = G.twoC ? .34 : 0;   /* 두 색 단서는 동그란 배지라 폭이 조금 더 든다 */
     const wOf = (cl, f) => cl.reduce((a, v) => a + ((v >= 10 ? 1.12 : .62) + pad) * f, 0) + Math.max(0, cl.length - 1) * .42 * f + 9;
-    let cs = 54, f = 18, rw = 0, ch = 0;
-    for(; cs >= 12; cs--){
-      f = Math.max(10.5, Math.min(19, cs * .56));
-      rw = Math.ceil(Math.max(...G.rows.map(cl => wOf(cl, f))));
-      ch = Math.ceil(Math.max(...G.cols.map(cl => cl.length)) * f * 1.06 + 8);
+    const fit = cs => {
+      const f = Math.max(12, Math.min(19, cs * .56));   /* 단서 숫자는 12px 아래로 줄이지 않는다 */
+      let rw = Math.ceil(Math.max(...G.rows.map(cl => wOf(cl, f)))), ch = Math.ceil(Math.max(...G.cols.map(cl => cl.length)) * f * 1.06 + 8);
       rw = Math.max(rw, Math.round(cs * .9)); ch = Math.max(ch, Math.round(cs * .9));
-      if(rw + 3 + cs * N <= avail && ch + 3 + cs * N <= maxH) break;
-    }
+      return { f, rw, ch };
+    };
+    let cs = 56, m = fit(cs);
+    for(; cs >= 12; cs--){ m = fit(cs); if(m.rw + 3 + cs * N <= avail && m.ch + 3 + cs * N <= maxH) break; }
+    const fr = $n('#nnFrame'), zoom = !!G.nnZoom && cs < 30;
+    if(zoom){ cs = 32; m = fit(cs); }   /* 확대 보기: 칸을 손가락 크기로 키우고 판 틀 안에서 밀어 본다(숫자 줄은 붙어 있음) */
+    if(fr){ fr.classList.toggle('zoom', zoom); fr.style.maxHeight = zoom ? (maxH + 16) + 'px' : ''; }
+    const zb = $n('#nnZoom'); if(zb){ zb.hidden = !(G.nnZoom || cs < 30); zb.setAttribute('aria-pressed', zoom); }
+    const { f, rw, ch } = m;
     G.nnCs = cs;
     grid.style.setProperty('--cs', cs + 'px'); grid.style.setProperty('--f', f.toFixed(1) + 'px');
     grid.style.gridTemplateColumns = `${rw}px ${cs * N}px`; grid.style.gridTemplateRows = `${ch}px ${cs * N}px`;
@@ -691,7 +705,7 @@ NG.nono = (() => {
     help:[
       ['숫자만큼 이어서 칠하기', '왼쪽 숫자는 그 가로줄, 위 숫자는 그 세로줄에서 이어서 칠할 칸 수예요. "3 1"이면 3칸 묶음, 한 칸 이상 띄고 1칸 묶음이에요.'],
       ['칠하기 · ✕ 표시', '아래 버튼으로 모드를 바꿔요. 누르면 한 칸, 손가락으로 끌면 한 줄로 여러 칸이 돼요. ✕는 비워 둘 칸 메모고, 다시 누르면 지워져요.'],
-      ['틀리면 하트 1개', '비어야 할 칸을 칠하면 빨간 ✕가 되고 하트가 줄어요. 3번 틀리거나 시간이 다 되면 끝. 힌트는 한 줄을 통째로 알려줘요(판당 3번).'],
+      ['틀리면 기회 1개', '비어야 할 칸을 칠하면 빨간 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 3번 틀리거나 시간이 다 되면 끝. 힌트는 한 줄을 통째로 알려줘요(판당 3번).'],
       ['솔로의 새 규칙', '솔로는 5판마다 새 규칙이나 변주가 나와요. ?는 길이를 모르는 묶음, 두 가지 색은 색을 골라 칠하고, 거울 그림은 좌우 대칭이에요. 확인 없이 판은 다 칠한 뒤 [채점]을 눌러요.']
     ],
     chapters:['모눈 공방', '픽셀 마을', '도트 정원', '타일 궁전', '모자이크 성'],
@@ -753,7 +767,7 @@ NG.nono = (() => {
         nomark:tw === 'nomark', nodone:tw === 'nodone', nnC:1, nnFixed:0, nnChk:false, fc:new Uint8Array(N * N), nnMaxP:tw === 'tight' ? 2 : 3,
         cells:new Uint8Array(N * N), rowDone:new Uint8Array(N), colDone:new Uint8Array(N),
         total, found:0, mine:0, miss:0, combo:0, hints:tw === 'bare' ? 0 : 3, hintLines:0, hintCells:0, mode:'fill', done:false, winSec:0,
-        nnPal:pal, nnEls:null, nnBase:null, nnHl:null, nnCur:-1, nnWin:false, nnPrev:null, nnQuiet:false, nnLastBeep:0 });
+        nnPal:pal, nnZoom:false, nnEls:null, nnBase:null, nnHl:null, nnCur:-1, nnWin:false, nnPrev:null, nnQuiet:false, nnLastBeep:0 });
       G.paws = G.nnMaxP;   /* 외줄 타기: 두 번째 실수에서 끝 */
       G.nnCol = Array.from({ length:N * N }, (_, i) => p.pic[i] === 2 ? colorAt2(i) : colorAt(i));
       G.cleanup = () => {
@@ -777,10 +791,11 @@ NG.nono = (() => {
       };
       const chip = (k, t) => { const inf = conceptInfo(ID, k) || { name:k, desc:'' }; return `<span class="nn-rule ${t}" title="${inf.desc}" aria-label="${t === 'tw' ? '변주' : '규칙'} ${inf.name}: ${inf.desc}">${t === 'tw' ? '⚡' : '★'} ${inf.name}</span>`; };
       const rules = G.solo && (G.mjOn.length || G.tw) ? `<div class="nn-rules" id="nnRules">${G.mjOn.map(k => chip(k, 'mj')).join('')}${G.tw ? chip(G.tw, 'tw') : ''}</div>` : '';
+      /* 도구 버튼: 칠하기/표시는 켜고 끄기(.tool.toggle), 힌트는 아이템(.tool.item) — 공용 규격 v1 */
       const segBtns = G.twoC
-        ? `<button data-m="fill" class="on" role="radio" aria-checked="true" aria-label="보라색 칠하기"><span class="nn-sq"></span>보라</button><button data-m="fill2" role="radio" aria-checked="false" aria-label="주황색 칠하기"><span class="nn-sq o"></span>주황</button>`
-        : `<button data-m="fill" class="on" role="radio" aria-checked="true" aria-label="칠하기"><span class="nn-sq"></span>칠하기</button>`;
-      const markBtn = `<button data-m="mark" role="radio" aria-checked="false" aria-label="${G.nomark ? '✕ 표시(이번 판은 못 써요)' : '✕ 표시'}"${G.nomark ? ' class="lock" aria-disabled="true"' : ''}>${XS}표시</button>`;
+        ? `<button class="tool toggle on" data-m="fill" aria-pressed="true" aria-label="보라색 칠하기"><span class="nn-sq"></span>보라</button><button class="tool toggle" data-m="fill2" aria-pressed="false" aria-label="주황색 칠하기"><span class="nn-sq o"></span>주황</button>`
+        : `<button class="tool toggle on" data-m="fill" aria-pressed="true" aria-label="칠하기"><span class="nn-sq"></span>칠하기</button>`;
+      const markBtn = `<button class="tool toggle${G.nomark ? ' lock' : ''}" data-m="mark" aria-pressed="false" aria-label="${G.nomark ? '✕ 표시(이번 판은 못 써요)' : '✕ 표시'}"${G.nomark ? ' aria-disabled="true"' : ''}>${XS}표시</button>`;
       const tip = G.blind ? '틀려도 바로 알려 주지 않아요 · 다 칠하면 [채점]을 눌러요 · 칠한 칸을 다시 누르면 지워져요'
         : G.twoC ? '색을 골라 칠해요 · 색이 다른 묶음끼리는 붙어 있을 수 있어요'
         : G.mir ? '그림이 좌우 대칭이에요 · 오른쪽 세로 숫자는 왼쪽 거울 줄과 같아요'
@@ -788,10 +803,10 @@ NG.nono = (() => {
         : G.nodone ? '이번 판은 줄을 다 채워도 표시가 안 나요'
         : '끌면 한 줄로 칠해요 · 다 채운 줄엔 ✕가 저절로 쳐져요';
       st.innerHTML = `<div class="ng-nono" id="nnRoot">
-        <div class="nn-hud">
-          <div class="nn-pill nn-lives" id="nnLives" aria-label="남은 기회"></div>
-          <div class="nn-pill nn-time" id="nnTimeP" aria-label="남은 시간">${WATCH}<b id="nnClock">${mmss(G.limit || 0)}</b></div>
-          <div class="nn-pill nn-prog" aria-label="${G.blind ? '칠한 칸' : '찾은 칸'}">${SQ}<b id="nnCnt">0/${G.total}</b><span class="nn-bar"><i id="nnBar"></i></span></div>
+        <div class="hud-row nn-hud" id="nnHud">
+          <div class="hchip" aria-label="${G.blind ? '칠한 칸' : '찾은 칸'}"><span class="hv">${SQ}<b id="nnCnt">0/${G.total}</b></span><em>${G.blind ? '칠한 칸' : '찾은 칸'}</em></div>
+          <div class="hchip time" id="nnTimeP" aria-label="남은 시간"><span class="hv">${WATCH}<b id="nnClock">${mmss(G.limit || 0)}</b></span><em>남은 시간</em></div>
+          <div class="hchip nn-lv" id="nnLivesC"><span class="hv"><span class="hlives" id="nnLives" aria-label="남은 기회"></span></span><em>기회</em></div>
         </div>${rules}
         <div class="nn-frame" id="nnFrame">
           <div class="nn-grid" id="nnGrid" style="--n:${N}">
@@ -801,15 +816,13 @@ NG.nono = (() => {
             <div class="nn-bd" id="bd" role="grid" aria-label="네모 그림 판 ${N}×${N}"></div>
           </div>
         </div>
-        <div class="nn-ctrl">
-          <div class="nn-seg${G.twoC ? ' three' : ''}" id="nnSeg" role="radiogroup" aria-label="칠하기 모드" data-m="fill">
-            <span class="nn-knob" aria-hidden="true"></span>
-            ${segBtns}${markBtn}
-          </div>
-          <button class="nn-hint" id="nnHint" aria-label="힌트: 한 줄 알려주기${G.tw === 'bare' ? '(이번 판은 없어요)' : ''}">${BULB}<i id="nnHintN">${G.hints}</i><span>힌트</span></button>
-          ${G.blind ? `<button class="nn-check" id="nnChk" aria-label="채점: 다 칠했으면 눌러요" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>채점</span></button>` : ''}
+        <p class="nn-tip" id="nnTip">${tip}</p>
+        <div class="tools-row nn-ctrl" id="nnCtrl">
+          <div class="nn-seg" id="nnSeg" role="group" aria-label="칠하기 모드" data-m="fill">${segBtns}${markBtn}</div>
+          <button class="tool item nn-hint" id="nnHint" aria-label="힌트: 한 줄 알려주기${G.tw === 'bare' ? '(이번 판은 없어요)' : ''}">${BULB}<span>힌트</span><i class="cnt" id="nnHintN">${G.hints}</i></button>
+          ${N >= 12 ? `<button class="tool toggle nn-zoom" id="nnZoom" aria-pressed="false" aria-label="판 확대해서 보기" hidden>${ZOOM}<span>확대</span></button>` : ''}
+          ${G.blind ? `<button class="tool nn-check" id="nnChk" aria-label="채점: 다 칠했으면 눌러요" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>채점</span></button>` : ''}
         </div>
-        <p class="nn-tip">${tip}</p>
       </div>`;
       const bd = $n('#bd'), frag = document.createDocumentFragment();
       G.nnEls = []; G.nnBase = [];
@@ -835,9 +848,11 @@ NG.nono = (() => {
         if(b.dataset.m === 'mark' && G.nomark){ sfx('nonoNo'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); const p = fxCenter(b); fxFloat(p.x, p.y - 20, '이번 판은 ✕ 없이!', 'bad'); return; }
         const cur = G.mode === 'mark' ? 'mark' : G.nnC === 2 ? 'fill2' : 'fill'; if(cur !== b.dataset.m) setMode(b.dataset.m); });
       $n('#nnHint').onclick = hint;
+      const zb = $n('#nnZoom'); if(zb) zb.onclick = () => { G.nnZoom = !G.nnZoom; endDrag(); layout(); sfx('toggle', { on:G.nnZoom }); };
       const ck = $n('#nnChk'); if(ck) ck.onclick = check;
       addEventListener('keydown', key); addEventListener('resize', layout);
       lives(); layout(); hud();
+      requestAnimationFrame(() => { if(G && G.id === ID && !G.over) layout(); });   /* 화면이 자리 잡은 뒤 높이를 한 번 더 맞춘다 */
       clearInterval(G.nnT); G.nnT = setInterval(tick, 250); tick();
     },
     progress(){ return G && G.total ? Math.min(1, G.found / G.total) : 0; },
@@ -862,31 +877,26 @@ NG.nono = (() => {
 
     css:`
 body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(180deg,#E9FBF3 0%,#ECE7FF 55%,#F3E6FF 100%); background-size:22px 22px, 22px 22px, 100% 100%; background-attachment:fixed}
-.ng-nono{--ink:#2A1B5E; --line:#E2D4B6; --grid:#1A0F45; color:var(--ink); margin:0 -8px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
-.ng-nono .nn-hud{display:flex; justify-content:center; align-items:center; gap:8px; margin:0 0 10px}
-.ng-nono .nn-pill{height:44px; padding:0 12px; border-radius:22px; background:#FFF8EA; border:2.5px solid var(--grid); box-shadow:inset 0 -3px 0 rgba(160,120,60,.14), 0 3px 0 var(--grid); display:flex; align-items:center; gap:5px; white-space:nowrap}
-.ng-nono .nn-pill b{font-family:var(--disp); font-weight:400; font-size:20px; font-variant-numeric:tabular-nums; line-height:1}
-.ng-nono .nn-pill > svg{width:24px; height:24px; flex:none}
-.ng-nono .nn-lives{gap:1px; padding:0 9px}
-.ng-nono .nn-heart svg{width:25px; height:25px; display:block; fill:#FF4F7F; stroke:#7A0B3C; stroke-width:1.5}
-.ng-nono .nn-heart .sh{fill:#fff; stroke:none; opacity:.7}
-.ng-nono .nn-heart.off svg{fill:#E6DDF3; stroke:#C7BBDD}
-.ng-nono .nn-heart.off .sh{opacity:0}
-.ng-nono .nn-heart.lost{animation:nnlost .5s}
-.ng-nono .nn-heart.last svg{animation:nnbeat 1s ease-in-out infinite}
-@keyframes nnlost{30%{transform:scale(1.4) rotate(-12deg)}}
+.ng-nono{--ink:#2A1B5E; --line:#E2D4B6; --grid:#1A0F45; color:var(--ink); margin:0 -8px; display:flex; flex-direction:column; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
+.ng-nono .nn-hud{margin:0 0 8px}
+.ng-nono .hchip .hv > svg{width:20px; height:20px; flex:none}
+.ng-nono .nn-lv .hlives{height:auto; padding:0; border:0; background:none; gap:2px}
+.ng-nono .nn-lv .hlives i{display:inline-block; font-size:19px}
+.ng-nono .hlives i.lost{animation:nnlost .5s}
+.ng-nono .hlives i.last{animation:nnbeat 1s ease-in-out infinite}
+@keyframes nnlost{30%{transform:scale(1.5) rotate(-12deg)}}
 @keyframes nnbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.22)}30%{transform:scale(1)}45%{transform:scale(1.14)}}
-.ng-nono .nn-pill.hurt{animation:nnhurt .5s}
+.ng-nono .hchip.hurt{animation:nnhurt .5s}
 @keyframes nnhurt{20%{background:#FFD6DE; transform:translateX(-4px)}50%{transform:translateX(4px)}}
-.ng-nono .nn-time b{min-width:46px; text-align:center}
-.ng-nono .nn-time.warn{background:#FFE3E6; border-color:#B3123E; color:#B3123E; animation:nnwarn 1s ease-in-out infinite}
-@keyframes nnwarn{50%{transform:scale(1.06)}}
-.ng-nono .nn-prog{position:relative; overflow:hidden; padding-right:12px}
-.ng-nono .nn-prog > svg{width:20px; height:20px}
-.ng-nono .nn-prog b{font-size:18px; min-width:44px; text-align:center}
-.ng-nono .nn-bar{position:absolute; left:10px; right:10px; bottom:4px; height:4px; border-radius:2px; background:#EADBC0}
-.ng-nono .nn-bar i{display:block; height:100%; width:0; border-radius:2px; background:linear-gradient(90deg,#8E6BD1,#E6457A); transition:width .25s}
-.ng-nono .nn-frame{position:relative; padding:5px; border-radius:18px; background:linear-gradient(180deg,#FFF8EA,#FBEBCB); border:3px solid var(--grid); box-shadow:inset 0 0 0 2px rgba(255,255,255,.8), 0 5px 0 var(--grid), 0 12px 22px rgba(40,20,90,.18); width:fit-content; max-width:100%; margin:0 auto}
+.ng-nono .hchip.time b{min-width:52px; text-align:center}
+.ng-nono .hchip.time.warn{background:linear-gradient(180deg,#FFF1F3,#FFD3DA); animation:nnwarn 1s ease-in-out infinite}
+.ng-nono .hchip.time.warn em{color:#B3123E}
+@keyframes nnwarn{50%{transform:scale(1.05)}}
+.ng-nono .nn-frame{position:relative; padding:5px; border-radius:18px; background:linear-gradient(180deg,#FFF8EA,#FBEBCB); border:3px solid var(--grid); box-shadow:inset 0 0 0 2px rgba(255,255,255,.8), 0 5px 0 var(--grid), 0 12px 22px rgba(40,20,90,.18); width:fit-content; max-width:100%; margin:auto; flex:none}
+.ng-nono .nn-frame.zoom{width:100%; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch}
+.ng-nono .nn-frame.zoom .nn-corner{position:sticky; left:0; top:0; z-index:4}
+.ng-nono .nn-frame.zoom .nn-cc{position:sticky; top:0; z-index:3; background:#FFF8EA; touch-action:pan-x pan-y}
+.ng-nono .nn-frame.zoom .nn-rc{position:sticky; left:0; z-index:3; background:#FFF8EA; touch-action:pan-x pan-y}
 .ng-nono .nn-frame.shake{animation:nnshake .45s cubic-bezier(.36,.07,.19,.97)}
 @keyframes nnshake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(5px)}30%,50%,70%{transform:translateX(-8px) rotate(-.5deg)}40%,60%{transform:translateX(8px) rotate(.5deg)}}
 .ng-nono .nn-frame.bump{animation:nnbump .5s cubic-bezier(.2,1.6,.4,1)}
@@ -947,28 +957,19 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 @keyframes nnrev{0%{transform:scale(1); background:#2E2080}45%{transform:scale(1.3); filter:brightness(1.4)}100%{transform:scale(1)}}
 .ng-nono .nn-stamp{position:absolute; left:50%; top:100%; z-index:6; transform:translate(-50%,-50%) rotate(-6deg); font-family:var(--heavy); font-size:clamp(24px,7.5vw,34px); color:#fff; white-space:nowrap; padding:6px 18px; border-radius:16px; background:linear-gradient(180deg,#FF8AC0,#F0368A); border:3px solid var(--grid); box-shadow:0 5px 0 var(--grid); text-shadow:0 2px 0 #8E0F4F; pointer-events:none; animation:nnstamp .45s cubic-bezier(.2,1.8,.4,1) both}
 @keyframes nnstamp{0%{transform:translate(-50%,-50%) rotate(-6deg) scale(2.6); opacity:0}100%{transform:translate(-50%,-50%) rotate(-6deg) scale(1); opacity:1}}
-.ng-nono .nn-ctrl{display:flex; align-items:center; gap:12px; margin:18px 4px 0}
-.ng-nono .nn-seg{position:relative; flex:1; display:grid; grid-template-columns:1fr 1fr; height:58px; padding:4px; border-radius:20px; background:linear-gradient(180deg,#E3DAF7,#F6F1FF); border:2.5px solid var(--grid); box-shadow:inset 0 3px 0 rgba(26,15,69,.12), 0 4px 0 var(--grid)}
-.ng-nono .nn-knob{position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 4px); border-radius:15px; background:linear-gradient(180deg,#8C7BFF,#5A3FD8); border:2px solid #2A1478; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(0,0,0,.18), 0 3px 0 #2A1478; transition:transform .22s cubic-bezier(.3,1.4,.5,1), background .2s}
-.ng-nono .nn-seg[data-m="mark"] .nn-knob{transform:translateX(100%); background:linear-gradient(180deg,#FFB3C8,#E6457A); border-color:#8C1740; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(0,0,0,.18), 0 3px 0 #8C1740}
-.ng-nono .nn-seg button{position:relative; z-index:1; display:flex; align-items:center; justify-content:center; gap:7px; font-family:var(--disp); font-size:19px; color:#6A5A93; transition:color .2s, transform .08s; min-height:44px}
-.ng-nono .nn-seg button.on{color:#fff; text-shadow:0 2px 0 rgba(26,15,69,.55)}
-.ng-nono .nn-seg button:active{transform:translateY(2px)}
-.ng-nono .nn-seg button > svg{width:19px; height:19px}
-.ng-nono .nn-sq{width:17px; height:17px; border-radius:4px; background:currentColor; box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4)}
-.ng-nono .nn-seg button:not(.on) .nn-sq{background:#3A2A92}
-.ng-nono .nn-seg button:not(.on) > svg{color:#A89CC0}
-.ng-nono .nn-hint{position:relative; width:64px; height:58px; flex:none; border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; background:linear-gradient(180deg,#FFF3B8,#FFD23F); border:2.5px solid var(--grid); box-shadow:inset 0 2px 0 rgba(255,255,255,.7), inset 0 -3px 0 rgba(160,100,0,.2), 0 4px 0 var(--grid); font-family:var(--disp); font-size:12.5px; color:#5A3300; transition:transform .08s, box-shadow .08s}
-.ng-nono .nn-hint:active{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.7), 0 1px 0 var(--grid)}
-.ng-nono .nn-hint > svg{width:28px; height:28px}
-.ng-nono .nn-hint span{line-height:1; margin-top:-1px}
-.ng-nono .nn-hint i{position:absolute; top:-9px; right:-9px; min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:#E5484D; color:#fff; font-style:normal; font-family:var(--disp); font-size:15px; display:grid; place-items:center; border:2px solid var(--grid)}
-.ng-nono .nn-hint i.off{background:#B9AECB}
-.ng-nono .nn-hint:disabled{opacity:.5}
-.ng-nono .nn-tip{text-align:center; font-size:12.5px; color:#7B6A93; margin:14px 8px 0; line-height:1.4}
-.ng-nono.nn-lost{position:fixed; z-index:19; pointer-events:none; width:28px; height:28px}
-.ng-nono.nn-lost svg{width:100%; height:100%; fill:#FF4F7F; stroke:#7A0B3C; stroke-width:1.5}
-.ng-nono.nn-lost .sh{fill:#fff; stroke:none; opacity:.7}
+.ng-nono .nn-ctrl{align-items:stretch; margin:0; padding:0 4px 4px}
+.ng-nono .nn-seg{flex:1 1 0; min-width:0; display:flex; gap:8px}
+.ng-nono .nn-ctrl > .tool{flex:0 0 68px}
+.ng-nono .nn-seg .tool{flex:1 1 0; min-width:0; min-height:56px; flex-direction:row; gap:6px; font-size:17px}
+.ng-nono .nn-seg .tool > svg{width:18px; height:18px}
+.ng-nono .nn-sq{width:17px; height:17px; border-radius:4px; flex:none; background:#3A2A92; box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4)}
+.ng-nono .nn-seg .tool.on .nn-sq{background:#fff}
+.ng-nono .nn-seg .tool:not(.on) > svg{color:#8E80AE}
+.ng-nono .nn-hint > svg, .ng-nono .nn-zoom > svg{width:24px; height:24px}
+.ng-nono .nn-hint .cnt.off{background:#B9AECB}
+.ng-nono .tool[hidden]{display:none}
+.ng-nono .nn-tip{text-align:center; font-size:13px; color:#6A5884; margin:0 8px; padding:12px 0 10px; line-height:1.4}
+.ng-nono.nn-lost{position:fixed; z-index:19; pointer-events:none; width:28px; height:28px; font-size:24px; line-height:28px; text-align:center; color:#FFB020; text-shadow:0 1px 0 #7A4A00}
 .ng-nono .nn-rules{display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:-2px 4px 10px}
 .ng-nono .nn-rule{font-family:var(--disp); font-size:13.5px; line-height:1; padding:6px 11px; border-radius:999px; background:#E9DEFF; border:2px solid var(--grid); box-shadow:0 2px 0 var(--grid); white-space:nowrap}
 .ng-nono .nn-rule.tw{background:#FFE9A8}
@@ -990,24 +991,16 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-c.c2::before{background:linear-gradient(150deg,#FF9A6B 0%,#F0602E 60%,#C8401A 100%)}
 .ng-nono .nn-c.bad.f::before{animation:nnbadf .6s ease-out}
 @keyframes nnbadf{0%{box-shadow:0 0 0 3px #E5484D}35%{transform:scale(.72); box-shadow:0 0 0 4px #E5484D}100%{}}
-.ng-nono .nn-seg.three{grid-template-columns:1fr 1fr 1fr}
-.ng-nono .nn-seg.three .nn-knob{width:calc(33.333% - 2.67px)}
-.ng-nono .nn-seg.three[data-m="fill2"] .nn-knob{transform:translateX(100%); background:linear-gradient(180deg,#FFB089,#F0602E); border-color:#8A2A0A; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(0,0,0,.18), 0 3px 0 #8A2A0A}
-.ng-nono .nn-seg.three[data-m="mark"] .nn-knob{transform:translateX(200%)}
-.ng-nono .nn-seg.three button{font-size:16.5px; gap:5px}
-.ng-nono .nn-seg button:not(.on) .nn-sq.o{background:#F0602E}
-.ng-nono .nn-seg button.lock{opacity:.4}
-.ng-nono .nn-seg button.lock > svg{color:#6A5A93}
-.ng-nono .nn-seg button.nope{animation:nnnope .3s}
-.ng-nono .nn-check{position:relative; width:64px; height:58px; flex:none; border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(180deg,#D8F8E8,#3EC9A5); border:2.5px solid var(--grid); box-shadow:inset 0 2px 0 rgba(255,255,255,.7), inset 0 -3px 0 rgba(0,80,60,.2), 0 4px 0 var(--grid); font-family:var(--disp); font-size:13px; color:#0D4A38; transition:transform .08s}
-.ng-nono .nn-check svg{width:26px; height:26px}
-.ng-nono .nn-check span{line-height:1}
-.ng-nono .nn-check:active{transform:translateY(3px)}
-.ng-nono .nn-check:disabled{opacity:.45; filter:grayscale(.7)}
-.ng-nono .nn-check.ready{animation:nnready 1.1s ease-in-out infinite}
+.ng-nono .nn-seg .nn-sq.o{background:#F0602E}
+.ng-nono .nn-seg .tool.on .nn-sq.o{background:#FFD1BC}
+.ng-nono .nn-seg .tool.on[data-m="fill2"]{background:linear-gradient(180deg,#FFB089,#F0602E)}
+.ng-nono .nn-seg .tool.on[data-m="mark"]{background:linear-gradient(180deg,#FFB3C8,#E6457A)}
+.ng-nono .nn-seg .tool.lock{opacity:.4}
+.ng-nono .nn-seg .tool.nope{animation:nnnope .3s}
+.ng-nono .nn-check svg{width:24px; height:24px}
+.ng-nono .nn-check.ready{background:linear-gradient(180deg,#D8F8E8,#3EC9A5); color:#0D4A38; animation:nnready 1.1s ease-in-out infinite}
+@media (max-width:370px){ .ng-nono .nn-seg .tool{font-size:15px; gap:4px} .ng-nono .nn-rule{font-size:12.5px; padding:5px 9px} }
 @keyframes nnready{50%{transform:scale(1.08)}}
-@media (max-width:370px){ .ng-nono .nn-seg.three button{font-size:14.5px; gap:3px} .ng-nono .nn-ctrl{gap:9px} .ng-nono .nn-rule{font-size:12.5px; padding:5px 9px} }
-@media (max-width:370px){ .ng-nono .nn-pill{padding:0 9px; gap:4px} .ng-nono .nn-heart svg{width:22px; height:22px} .ng-nono .nn-pill b{font-size:18px} .ng-nono .nn-prog b{font-size:16px} .ng-nono .nn-seg button{font-size:17px} }
 @media (prefers-reduced-motion: reduce){ .ng-nono .nn-c, .ng-nono .nn-c::before, .ng-nono .nn-cl{animation:none!important; transition:none!important} }
 `,
     sounds:{
