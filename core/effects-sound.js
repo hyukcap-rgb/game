@@ -22,10 +22,17 @@ const FX_EASE = {
   'back.out':k => { const c = 1.70158; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); }
 };
 const fxEase = n => FX_EASE[n] || FX_EASE.linear;
+/* 효과 층 자리: 팝업 창이 열려 있으면 창 뒤(어두운 막 위, 창 아래)로 옮겨 글자·버튼 위로 지나가지 않게 한다 */
+function fxPlace(){
+  const cv = FXR.cv, v = document.getElementById('veil'); if(!cv) return;
+  const on = !!(v && v.classList.contains('on'));
+  if(on && cv.parentNode !== v) v.insertBefore(cv, v.firstChild);
+  else if(!on && cv.parentNode !== document.body) document.body.appendChild(cv);
+}
 function fxCanvas(){
-  if(FXR.cv && FXR.cv.isConnected) return;
+  if(FXR.cv && FXR.cv.parentNode){ fxPlace(); return; }
   const cv = document.createElement('canvas'); cv.className = 'fxfx'; cv.setAttribute('aria-hidden', 'true'); document.body.appendChild(cv);
-  FXR.cv = cv; FXR.ctx = cv.getContext('2d');
+  FXR.cv = cv; FXR.ctx = cv.getContext('2d'); fxPlace();
   const size = () => { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; FXR.ctx.setTransform(d, 0, 0, d, 0, 0); };
   size(); addEventListener('resize', size);
 }
@@ -150,18 +157,19 @@ function fxFlash(color, alpha, ms){
   const d = document.createElement('div'); d.className = 'fxflash'; d.style.background = color || '#fff'; document.body.appendChild(d);
   const an = d.animate([{ opacity:alpha ?? .35 }, { opacity:0 }], { duration:ms || 260, easing:'ease-out' }); an.onfinish = () => d.remove(); setTimeout(() => d.remove(), (ms || 260) + 200);
 }
-function fxConfetti(){   /* 완성: 화면 위에서 색종이(펄럭임) + 양옆 대포 + 반짝이 */
+function fxConfetti(){   /* 완성: 화면 위에서 색종이(펄럭임) + 양옆 대포 + 반짝이. 1.2초 안에 끝(UI 검수 2026-10-04) */
   if(FXR.reduce) return; fxCanvas();
   const cols = ['#FF9E4F','#FFD04D','#FF8C9E','#62AEFF','#5ECF9C','#B48BFF','#fff'], k = FXR.q;
-  for(let i = 0; i < 110 * k; i++) fxAdd({ x:Math.random() * innerWidth, y:-20 - Math.random() * 120, vx:(Math.random() - .5) * 120, vy:120 + Math.random() * 220, g:240, drag:.7, wob:60, ph:Math.random() * 6, flip:true,
-    rot:Math.random() * 6, vr:(Math.random() - .5) * 10, s:5 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[i % cols.length], kind:i % 7 === 0 ? 'star' : i % 4 === 0 ? 'ribbon' : 'rect', t:-Math.random() * .6, dur:2.6 });
-  for(const side of [0, 1]) for(let i = 0; i < 45 * k; i++){
-    const a = side ? -Math.PI * (.62 + Math.random() * .16) : -Math.PI * (.22 + Math.random() * .16), sp = 700 + Math.random() * 520;
-    fxAdd({ x:side ? innerWidth + 10 : -10, y:innerHeight * .78, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, g:900, drag:1.6, wob:40, ph:Math.random() * 6, flip:true,
-      rot:Math.random() * 6, vr:(Math.random() - .5) * 16, s:4 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[(i + side) % cols.length], kind:i % 6 ? 'rect' : 'star', t:-Math.random() * .25, dur:2.3 });
+  /* 결과 창이 열려 있으면 효과 층이 창 뒤로 가므로(CSS) 창 바깥에서 잘 보이게 위·양옆에만 뿌린다 */
+  for(let i = 0; i < 90 * k; i++) fxAdd({ x:Math.random() * innerWidth, y:-20 - Math.random() * 80, vx:(Math.random() - .5) * 140, vy:260 + Math.random() * 320, g:420, drag:.7, wob:60, ph:Math.random() * 6, flip:true,
+    rot:Math.random() * 6, vr:(Math.random() - .5) * 12, s:5 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[i % cols.length], kind:i % 7 === 0 ? 'star' : i % 4 === 0 ? 'ribbon' : 'rect', t:-Math.random() * .15, dur:1.05 });
+  for(const side of [0, 1]) for(let i = 0; i < 38 * k; i++){
+    const a = side ? -Math.PI * (.62 + Math.random() * .16) : -Math.PI * (.22 + Math.random() * .16), sp = 760 + Math.random() * 520;
+    fxAdd({ x:side ? innerWidth + 10 : -10, y:innerHeight * .78, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, g:1100, drag:1.8, wob:40, ph:Math.random() * 6, flip:true,
+      rot:Math.random() * 6, vr:(Math.random() - .5) * 16, s:4 + Math.random() * 5, a0:1, a1:0, ae:fxEase('linear'), c:cols[(i + side) % cols.length], kind:i % 6 ? 'rect' : 'star', t:-Math.random() * .1, dur:1.05 });
   }
   /* 화면 가운데 위쪽에서 반짝이 */
-  if(k > .6) fxEmit(innerWidth / 2, innerHeight * .3, { quantity:22, speed:{ min:60, max:260 }, lifespan:{ min:700, max:1300 }, kind:'twinkle', tint:['#FFFFFF','#FFF2B0','#FFD6F0'], scale:{ start:5, end:0, ease:'quad.in' }, gravityY:60, drag:1.5, glow:true });
+  if(k > .6) fxEmit(innerWidth / 2, innerHeight * .3, { quantity:22, speed:{ min:60, max:260 }, lifespan:{ min:600, max:1000 }, kind:'twinkle', tint:['#FFFFFF','#FFF2B0','#FFD6F0'], scale:{ start:5, end:0, ease:'quad.in' }, gravityY:60, drag:1.5, glow:true });
   fxKick();
 }
 function fxCenter(el){ const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2, w:r.width, h:r.height }; }

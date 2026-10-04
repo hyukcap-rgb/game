@@ -14,7 +14,9 @@ const HOST = {
   exit(){},
   canDuel:() => true,
   duelRewardHtml:() => '',
-  duelResult(r, a, b){}
+  duelResult(r, a, b){},
+  historyGuard:false,       /* true면 뒤로가기(안드로이드 버튼·iOS 밀기)를 엔진이 받아 처리(사이트). 모듈은 붙인 곳의 방문 기록을 건드리지 않게 기본 끔 */
+  back:() => false          /* 뒤로가기: 창·판이 없을 때 HOST가 먼저 처리하면 true(사이트: 다른 탭 → 오늘 탭) */
 };
 
 const SVG = {
@@ -332,8 +334,58 @@ function openAdvMap(id, want){
   draw();
 }
 
-function openModal(html){ if(!$('#veil').classList.contains('on')) sfx('open'); const m = $('#modal'); m.className = 'modal'; m.style.removeProperty('--gc'); m.innerHTML = html; $('#veil').classList.add('on'); m.scrollTop = 0; }
-function closeModal(){ $('#veil').classList.remove('on'); }
+function openModal(html){ if(!$('#veil').classList.contains('on')) sfx('open'); const m = $('#modal'); m.className = 'modal'; m.style.removeProperty('--gc'); m.innerHTML = html; $('#veil').classList.add('on'); document.body.classList.add('modal-open'); m.scrollTop = 0; }
+function closeModal(){ $('#veil').classList.remove('on'); document.body.classList.remove('modal-open'); }
+
+/* ===== 결과 창 버튼(공용 위계, UI 검수 2026-10-04) =====
+   ① 주 버튼 1개(전체 폭, 핑크) ② 반반 버튼 0~2개 ③ 글자 버튼 줄. 사이트·모듈의 결과 창이 같이 쓴다.
+   o = { pri:{ id, label, sub?, fn }, pair:[{ id, label, cls?:'b2'|'gold', fn, keep? }], links:[{ id, label, fn, keep? }] }
+   keep:true면 누를 때 창을 닫지 않는다(공유·도전장처럼 위에 다른 창을 띄우는 버튼). */
+function resBtns(o){
+  const pri = o.pri ? `<button class="b1 rb-pri" id="${o.pri.id}"><span class="rb-l">${o.pri.label}</span>${o.pri.sub ? `<small>${o.pri.sub}</small>` : ''}</button>` : '';
+  const pair = (o.pair || []).filter(Boolean), links = (o.links || []).filter(Boolean);
+  const pr = pair.length ? `<div class="rb-pair${pair.length === 1 ? ' one' : ''}">${pair.map(b => `<button class="${b.cls === 'gold' ? 'btn gold' : 'b2'}" id="${b.id}">${b.label}</button>`).join('')}</div>` : '';
+  const ln = links.length ? `<div class="rb-links">${links.map(b => `<button id="${b.id}">${b.label}</button>`).join('<i aria-hidden="true">·</i>')}</div>` : '';
+  return `<div class="rbtns">${pri}${pr}${ln}</div>`;
+}
+function resBind(o){
+  [o.pri].concat(o.pair || [], o.links || []).forEach(b => { if(!b || !b.fn) return; const el = document.getElementById(b.id); if(el) el.onclick = () => { if(!b.keep) closeModal(); b.fn(); }; });
+}
+
+/* ===== 뒤로가기(HOST.historyGuard가 켜진 곳만) =====
+   방문 기록에 한 칸을 쌓아 두고, 뒤로가기가 오면 다시 쌓은 뒤 화면 안에서 처리한다.
+   창이 열려 있으면 닫기 · 플레이 중이면 그만하기 확인 · 결과 뒤면 나가기 · HOST.back() · 그 밖엔 "한 번 더 누르면 나가요" */
+const NAV = { on:false, last:0 };
+function navInit(){
+  if(NAV.on || !HOST.historyGuard) return;
+  try{ history.replaceState(Object.assign({}, history.state, { hp:'base' }), ''); history.pushState({ hp:'guard' }, ''); }catch(_){ return; }
+  NAV.on = true;
+  addEventListener('popstate', () => {
+    let leave = false;
+    try{ leave = navBack(); }catch(_){}
+    if(leave){ try{ history.back(); }catch(_){} return; }   /* 두 번째 뒤로가기: 진짜로 나감 */
+    try{ history.pushState({ hp:'guard' }, ''); }catch(_){}
+  });
+}
+const NAV_CLOSE = ['#mStay', '#dsCancel', '#mClose', '#mBack', '#hsClose', '#wLater', '#chLater', '#mOk'];
+function navBack(){
+  const playing = !!G && !!$('#play') && $('#play').style.display === 'block';   /* showPlay()가 'block'으로, 나가기가 'none'으로 바꾼다 */
+  if($('#veil').classList.contains('on')){
+    if(playing && G && G.over){   /* 판이 끝난 뒤: 결과 창이면 나가기, 대전 결과를 기다리는 창이면 그대로 */
+      if(document.querySelector('#modal #mPri, #modal .rbtns, #modal #mOut')){ closeModal(); HOST.exit(); }
+      return false;
+    }
+    const b = NAV_CLOSE.map(s => document.querySelector('#modal ' + s)).find(Boolean);
+    if(b) b.click(); else { closeModal(); if(G && G.paused) gResume(); }
+    return false;
+  }
+  if(playing && G && !G.over){ confirmQuit(); return false; }
+  if(playing){ HOST.exit(); return false; }
+  if(HOST.back && HOST.back()) return false;
+  if(Date.now() - NAV.last < 2000) return true;
+  NAV.last = Date.now(); toast('한 번 더 누르면 나가요');
+  return false;
+}
 
 /* 게임 방법(? 버튼, 첫 판 자동) — 여는 동안 시간 멈춤 */
 const duelNoStop = () => !!(G && G.duel && !G.duel.fleet);

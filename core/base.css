@@ -6,7 +6,7 @@
   color-scheme:light;
   --night:#1C1250; --night2:#2A1B6E; --outline:#2A1650; --outline2:#1A0F45;
   --paper:#FFF8EA; --paper2:#FBEBCB; --paper-line:#EADBC0;
-  --ink:#3A2261; --sub:#7B6A93; --line:#E6D6B6;
+  --ink:#3A2261; --sub:#6A5884; --line:#E6D6B6;
   --gold:#FFC93C; --gold2:#FF9A1F; --pink:#F0368A; --sky:#2E8FE8;
   --bg:#EEF2F8; --surface:#FFFFFF; --surface2:#F3EBDD;
   --primary:#6C3CE0; --on-primary:#FFFFFF; --accent:#FF3D7F; --success:#27B86A; --danger:#E5484D;
@@ -217,8 +217,8 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .pbar{display:grid; grid-template-columns:44px 1fr 44px; align-items:center; gap:8px; min-height:60px; margin:2px 0 12px; padding:6px 8px; border-radius:18px;
   background:linear-gradient(180deg,#4A33A8,#2C1C7C); border:3px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.25), 0 4px 0 #0E0730}
 .ptitle{text-align:center; font-family:var(--disp); font-size:19px; line-height:1.2; min-width:0; color:#fff; -webkit-text-stroke:4px var(--outline2); paint-order:stroke fill}
-.ptitle small{display:block; font-family:var(--font); font-size:11.5px; font-weight:700; color:#CFC5FF; -webkit-text-stroke:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.iconbtn{width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 #0E0730}
+.ptitle small{display:block; font-family:var(--font); font-size:12.5px; font-weight:700; color:#CFC5FF; -webkit-text-stroke:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.iconbtn{width:44px; height:44px; min-width:44px; min-height:44px; flex:none; border-radius:50%; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 #0E0730}
 .iconbtn .ico{width:22px; height:22px}
 .iconbtn:active{transform:translateY(2px); box-shadow:0 1px 0 #0E0730}
 .stats{display:flex; justify-content:space-between; align-items:center; background:#fff; border-radius:16px; padding:8px 14px; margin-bottom:12px; min-height:52px}
@@ -290,7 +290,7 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .hstep{display:grid; grid-template-columns:48px 1fr; gap:12px; align-items:center; padding:12px; border-radius:16px; background:#fff; border:2px solid var(--paper-line)}
 .hstep .hn{width:48px; height:48px; border-radius:14px; display:grid; place-items:center; color:#fff; font-family:var(--heavy); font-size:24px; border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.45), 0 3px 0 var(--outline2); text-shadow:0 2px 0 rgba(0,0,0,.3)}
 .hstep b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; color:var(--ink)}
-.hstep span{font-size:13.5px; color:var(--sub); line-height:1.5}
+.hstep span{font-size:15px; color:var(--sub); line-height:1.55}
 .optsep{font-family:var(--disp); font-size:14px; color:var(--sub); margin:8px 4px 0}
 
 /* ---------- 알림 ---------- */
@@ -298,6 +298,9 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
   display:flex; align-items:center; gap:8px; font-family:var(--disp); font-size:16px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0; transition:.2s; pointer-events:none;
   background:linear-gradient(#3D2A8F,#24186A); border:2.5px solid #FFD35C; box-shadow:0 0 0 2.5px var(--outline2), 0 10px 24px rgba(0,0,0,.4)}
 .toast.on{opacity:1; transform:translate(-50%,0)}
+/* 게임 중에는 위쪽 정보줄(HUD)을 가리지 않게 화면 아래쪽에 띄운다 */
+body[data-mode] .toast{top:auto; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,14px); white-space:normal; width:max-content; height:auto; min-height:48px; padding:8px 20px; text-align:center; line-height:1.3}
+body[data-mode] .toast.on{transform:translate(-50%,0)}
 
 @media (max-width:370px){ .logo-main{font-size:42px} .hero-score .n span{font-size:40px} .hero-in{grid-template-columns:74px 1fr} .medal-big{width:74px; height:82px} .row{grid-template-columns:34px 42px 1fr auto 40px; gap:6px} }
 @media (prefers-reduced-motion: reduce){ *{animation:none!important; transition:none!important} }
@@ -314,3 +317,33 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 /* 대전 결과 창 '계속 풀기'(상대가 먼저 끝나 판이 끊긴 쪽만) */
 .modal .dcont{display:flex; width:100%; margin:12px 0 0; min-height:52px; height:auto; padding:8px 14px; flex-wrap:wrap; column-gap:6px; row-gap:0}
 .modal .dcont small{flex-basis:100%; font-family:var(--font); font-size:12px; font-weight:700; opacity:.9}
+
+/* ===== 결과 창 v2 (UI 검수 2026-10-04): 요약 카드 1장 + 버튼 위계(주 1 · 반반 2 · 글자 줄) ===== */
+.rsum{margin:10px 0 2px; padding:10px 12px; border-radius:18px; background:#fff; border:2px solid var(--paper-line); text-align:center}
+.rsum b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; line-height:1.35; color:var(--ink)}
+.rsum b.new{display:inline-block; padding:3px 12px; border-radius:999px; background:linear-gradient(#FFE98E,#FFB020); color:#5A3300; border:2px solid #9A5A00; box-shadow:0 2px 0 #9A5A00}
+.rsum span{display:block; margin-top:5px; font-size:13px; font-weight:700; line-height:1.45; color:var(--sub)}
+.rsum span:empty{display:none}
+.rsum .ico{width:15px; height:15px; vertical-align:-2px}
+.rbtns{display:flex; flex-direction:column; gap:10px; margin-top:16px}
+.rbtns button{min-width:0; font-family:var(--disp); white-space:normal; line-height:1.15}
+.rb-pri{width:100%; min-height:58px; padding:6px 16px; border-radius:16px; font-size:19px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
+.rb-pri small{display:block; font-family:var(--font); font-size:13px; font-weight:700; opacity:.95; text-shadow:0 1px 0 var(--c3)}
+.rb-pair{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.rb-pair.one{grid-template-columns:1fr}
+.rb-pair button{height:auto; min-height:50px; padding:4px 10px; border-radius:14px; font-size:16px; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-align:center}
+.rb-pair .ico{width:18px; height:18px; flex:none}
+.rb-pair .cost{flex:none}
+.rb-links{display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap}
+.rb-links button{min-height:44px; padding:0 12px; font-size:15px; color:var(--sub); background:none; border:0; text-decoration:underline; text-decoration-color:rgba(106,88,132,.35); text-underline-offset:4px}
+.rb-links button .ico{width:16px; height:16px; vertical-align:-3px; margin-right:3px}
+.rb-links i{font-style:normal; color:var(--line)}
+.modal .rbtns + .note{margin-top:4px}
+/* 꽃가루·효과 층: 창이 열려 있으면 창 뒤로(글자·버튼 위로 지나가지 않게) */
+.veil > .fxfx{z-index:0}
+.veil > .modal{z-index:1}
+body.modal-open > .fxfx, body:has(.veil.on) > .fxfx{z-index:19}
+/* 진행 중이던 공식 답안이 자동 제출됐을 때 안내 */
+.runsub{margin:8px 0 2px; padding:12px; border-radius:16px; background:#fff; border:2px solid var(--paper-line); text-align:center}
+.runsub b{display:block; font-family:var(--disp); font-weight:400; font-size:18px; color:var(--ink)}
+.runsub span{display:block; margin-top:4px; font-size:14px; color:var(--sub); line-height:1.5}

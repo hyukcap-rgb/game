@@ -27,12 +27,15 @@ function duelSearch(id){
   duelSearchStop();
   const S = DS = { id, nick:duelNick(), t0:Date.now(), live:duelLive(), phase:'search' };
   const WAIT = 12;
-  openModal(`<div class="dsearch" style="--gc:${GCOL[id][1]}"><p class="kick">1:1 대전</p><h3>${GAMES[id].name}</h3>
+  /* 실시간 연결이 없으면 '찾는 중' 연출 없이 처음부터 AI 상대를 보여 준다(표시만, 흐름은 그대로) */
+  const opp = S.live ? `<span class="ds-radar"><i></i><i></i><i></i></span><b id="dsOppN">찾는 중…</b><small id="dsOppS"></small>`
+    : `<span class="av" style="--avbg:#E6DAFF">${toyImg('owl')}</span><b id="dsOppN">AI 상대</b><small id="dsOppS">곧 시작해요</small>`;
+  openModal(`<div class="dsearch${S.live ? '' : ' ai'}" style="--gc:${GCOL[id][1]}"><p class="kick">1:1 대전</p><h3>${GAMES[id].name}</h3>
     <div class="vsrow"><div class="vs-side">${avatar({ me:true })}<b>나</b><small>${esc(S.nick)}</small></div><div class="vs-x">VS</div>
-      <div class="vs-side op" id="dsOpp"><span class="ds-radar"><i></i><i></i><i></i></span><b id="dsOppN">찾는 중…</b><small id="dsOppS"></small></div></div>
+      <div class="vs-side op" id="dsOpp">${opp}</div></div>
     <p class="note" id="dsTxt"></p>
     ${HOST.duelRewardHtml()}
-    <div class="mbtns"><button class="b2" id="dsCancel">취소</button><button class="b1" id="dsAi">AI와 바로 대전 ${costTag()}</button></div></div>`);
+    <div class="mbtns"><button class="b2" id="dsCancel">취소</button><button class="b1" id="dsAi">${S.live ? 'AI와 바로 대전' : '바로 시작'} ${costTag()}</button></div></div>`);
   $('#modal').classList.add('duelm');
   sfx('flPing');
   $('#dsCancel').onclick = () => { duelSearchStop(); closeModal(); };
@@ -41,7 +44,7 @@ function duelSearch(id){
     if(DS !== S) return;
     const left = Math.max(0, WAIT - Math.floor((Date.now() - S.t0) / 1000)), t = $('#dsTxt'); if(!t) return;
     if(S.phase === 'join'){ t.innerHTML = '상대를 찾았어요! 연결하는 중…'; return; }
-    if(!S.live){ t.textContent = '지금은 실시간 연결이 안 돼서 AI 상대와 겨뤄요.'; return; }
+    if(!S.live){ t.innerHTML = '<b>지금은 AI와 겨뤄요.</b> 실시간 서버에 연결되면 사람과 붙어요.'; return; }
     const n = duelWaiting(id);
     t.innerHTML = `<b class="num">${left}초</b> 안에 상대가 없으면 AI와 붙어요${n ? ` · 기다리는 사람 ${n}명` : ''}`;
     if(left <= 0) duelGoAI(S);

@@ -11,7 +11,7 @@
 .path{position:relative; display:grid; grid-template-columns:repeat(5,1fr); gap:12px 8px; padding:14px 8px; margin-top:6px; border-radius:18px; background:color-mix(in srgb, var(--gc) 12%, #FFF8EA); border:2px solid color-mix(in srgb, var(--gc) 30%, #EADBC0)}
 .st{position:relative; aspect-ratio:1; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--heavy); font-size:17px; color:#fff;
   background:linear-gradient(180deg, color-mix(in srgb, var(--gc) 65%, #fff), var(--gc)); border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2); text-shadow:0 2px 0 rgba(0,0,0,.3)}
-.st i{position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); font-style:normal; font-size:11px; letter-spacing:-1px; white-space:nowrap; text-shadow:none; -webkit-text-stroke:0}
+.st i{position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); font-style:normal; font-size:12px; letter-spacing:-1px; white-space:nowrap; text-shadow:none; -webkit-text-stroke:0}
 .st i .on{color:#FFB020; text-shadow:0 1px 0 #7A4A00} .st i .off{color:#D8C8A8}
 .st.lock{background:#DCCFB4; color:#A8966F; border-color:#A8966F; box-shadow:0 3px 0 #A8966F; text-shadow:none}
 .st.lock .ico{width:18px; height:18px}
@@ -21,10 +21,10 @@
 .st.boss{border-radius:30%}
 .modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
 .modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}
-.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:11px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
+.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:12px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
 .rule .cline{display:inline-block; margin-top:4px; font-size:13.5px; color:#5B3FB5; background:#EFE7FF; border-radius:10px; padding:3px 9px}
 .legend3{font-size:12.5px; color:var(--sub); margin:6px 0 0; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap}
-.legend3 .lg-n{font:11px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
+.legend3 .lg-n{font:12px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
 .legend3 .lg-h, .legend3 .lg-x{display:inline-block; width:12px; height:12px; border-radius:4px; background:linear-gradient(#FF7A7A,#B3122E)}
 .legend3 .lg-x{background:linear-gradient(#A77BFF,#4B1E9E)}
 .ncard{display:flex; gap:12px; align-items:center; text-align:left; background:#FFF8EA; border:3px solid var(--outline); border-radius:18px; padding:12px 14px; margin:10px 0 4px; box-shadow:0 4px 0 var(--outline2); color:var(--ink)}
@@ -156,9 +156,9 @@ body.duel-ready .duelbar{visibility:hidden}
 .db-row.op .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
 .db-track b{position:absolute; top:-1px; bottom:-1px; width:2px; margin-left:-1px; background:rgba(255,255,255,.35)} /* 상대 위치 눈금(내 줄에만) */
 .db-val{min-width:58px; text-align:right; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums}
-.db-val small{font-family:var(--font); font-size:10.5px; font-weight:700; color:#B9AEE8; margin-left:1px}
+.db-val small{font-family:var(--font); font-size:12px; font-weight:700; color:#B9AEE8; margin-left:1px}
 .db-val .tile{display:inline-block; min-width:30px; padding:2px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:12.5px}
-.db-sub{display:flex; gap:3px; align-items:center; min-width:0; font-size:11px; font-weight:800; color:#FFD9E6}
+.db-sub{display:flex; gap:3px; align-items:center; min-width:0; font-size:12px; font-weight:800; color:#FFD9E6}
 .db-sub:empty{display:none}
 .db-sub .ico{width:11px; height:11px; color:#FF7A9A; vertical-align:0}
 .db-sub .pip{width:8px; height:8px; border-radius:50%; background:#FFD35C; box-shadow:0 0 0 1.5px var(--outline2)}
@@ -195,7 +195,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .pbar.has-duel .db-tag.flip{animation:tagFlipC .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes tagFlipC{0%{transform:translateX(-50%) scale(.5)} 60%{transform:translateX(-50%) scale(1.18)}}
 .pbar.has-duel .dping{top:calc(100% + 8px)}
-@media (max-width:370px){ .pbar.has-duel .db-val{min-width:50px; font-size:13px} .pbar.has-duel .db-val small{font-size:10px} }
+@media (max-width:370px){ .pbar.has-duel .db-val{min-width:50px; font-size:13px} .pbar.has-duel .db-val small{font-size:12px} }
 
 
 /* ---------- (3) 순간 알림(대전 말풍선): 막대 바로 아래, 판을 가리지 않게 ---------- */
@@ -239,7 +239,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .dwait .dw-op .av{width:48px; height:48px}
 .dwait .dw-op b{display:block; font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink)}
 .dwait .dw-op .dw-stat{display:block; font-size:13px; font-weight:800; color:#D1145A}
-.dwait .aitag{font-style:normal; font-family:var(--font); font-size:10px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:2px}
+.dwait .aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:2px}
 .dwait .db-track{display:block; height:12px; margin-top:5px; background:#E9E0F7; border:2px solid var(--outline)}
 .dwait .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
 .dwait .dw-need{margin:10px 0 2px; font-size:13.5px; font-weight:700; color:var(--ink)}
@@ -269,7 +269,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .dr-side .av{width:56px; height:56px}
 .dr-side b{font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .dr-side .num{font-family:var(--heavy); font-size:20px; color:var(--ink)}
-.dr-side small{font-size:11.5px; font-weight:700; color:var(--sub)}
+.dr-side small{font-size:12.5px; font-weight:700; color:var(--sub)}
 .dr-side.win{background:linear-gradient(180deg,#FFF6C8,#FFE08A); border-color:#E0A21C; box-shadow:0 3px 0 #B87A00}
 .dr-side .crown{position:absolute; top:-15px; font-size:22px; filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
 .dr-vs{font-family:var(--heavy); font-size:22px; color:#FFC93C; -webkit-text-stroke:5px var(--outline); paint-order:stroke fill}
