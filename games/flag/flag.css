@@ -1,0 +1,177 @@
+/* 청기 백기(flag) 화면. 범위: body[data-mode="flag"] · .ng-flag
+   세계: 운동회 마당(하늘·삼각 깃발 줄·잔디·구령대). 눈이 편하게: 차분한 색, 번쩍임·체크무늬·계속 흔들림 없음.
+   움직임은 transform/opacity만(60fps). 동작 줄이기면 애니메이션 끔. */
+html body[data-mode="flag"]{background:linear-gradient(180deg,#BFE3FF 0%,#E4F3FF 52%,#D6EFCB 100%) fixed}
+html body[data-mode="flag"] .wrap{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+html body[data-mode="flag"] .pbar{margin-bottom:10px}
+.ng-flag{position:relative; display:flex; flex-direction:column; width:100%; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  --hs:120px; --fs:62px; --bh:72px; --bub:100px; --mid:110px; --strip:0px; --ol:#1A0F45}
+.ng-flag .fl-defs{position:absolute; width:0; height:0; overflow:hidden}
+.ng-flag .hud-row{margin:0 0 8px; flex:none}
+.ng-flag .fl-lifechip .hlives{border:0; background:none; padding:0; height:auto; gap:2px}
+.ng-flag .fl-lifechip .hlives i{font-size:20px}
+.ng-flag .fl-lifechip.warn{background:linear-gradient(180deg,#FFF1F1,#FFD6D6)}
+
+/* ---------- 장면(운동장) ---------- */
+.ng-flag .fl-scene{position:relative; flex:1 1 auto; min-height:220px; border-radius:22px; overflow:hidden; border:3px solid var(--ol);
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 70%); box-shadow:0 4px 0 var(--ol), 0 12px 22px rgba(30,70,130,.16); touch-action:none}
+.ng-flag .fl-bunt{position:absolute; left:0; top:0; width:100%; height:46px; pointer-events:none}
+.ng-flag .fl-cloud{position:absolute; border-radius:50%; background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,255,255,0)); pointer-events:none}
+.ng-flag .fl-cloud.c1{width:150px; height:54px; left:-30px; top:44%}
+.ng-flag .fl-cloud.c2{width:120px; height:44px; right:-24px; top:52%}
+.ng-flag .fl-field{position:absolute; left:-10%; right:-10%; bottom:0; height:calc(var(--feet, 60px) * .55 + 34px); border-radius:50% 50% 0 0 / 34px 34px 0 0; background:linear-gradient(180deg,var(--fd1),var(--fd2)); pointer-events:none}
+.ng-flag .fl-field::after{content:""; position:absolute; left:6%; right:6%; top:38%; height:4px; border-radius:99px; background:rgba(255,255,255,.75)}
+.ng-flag .fl-podium{position:absolute; left:50%; bottom:6px; width:calc(var(--hs) * 1.28); height:calc(var(--feet, 60px) - 6px); transform:translateX(-50%); border-radius:12px 12px 6px 6px;
+  background:linear-gradient(180deg,#FFF8EA 0,#FFF8EA 10px,#F0DDB6 10px,#DCC191 100%); box-shadow:inset 6px 0 10px rgba(255,255,255,.35), inset -8px -6px 12px rgba(120,80,30,.16), 0 6px 10px rgba(26,15,69,.18); pointer-events:none}
+/* 구령대 앞 장식: 삼각 깃발 치마 + 가운데 청기·백기 표지 */
+.ng-flag .fl-skirt{position:absolute; left:6px; right:6px; top:10px; width:calc(100% - 12px); height:14px}
+.ng-flag .fl-emb{position:absolute; left:50%; top:calc(50% + 6px); transform:translate(-50%,-50%); display:flex; gap:4px; padding:5px 10px; border-radius:99px; background:rgba(255,255,255,.55)}
+.ng-flag .fl-emb .fl-fi{width:20px; height:20px}
+
+/* ---------- 깃발 든 캐릭터 ---------- */
+.ng-flag .fl-rig{position:absolute; width:calc(var(--s) * 1.9); height:calc(var(--s) * 1.5); pointer-events:none}
+.ng-flag .fl-rig.host{--s:var(--hs); left:50%; bottom:calc(var(--feet, 60px) - var(--hs) * .08); transform:translateX(-50%); z-index:2}
+.ng-flag .fl-body{position:absolute; left:calc(var(--s) * .45); top:calc(var(--s) * .5); width:var(--s); height:var(--s); z-index:2; display:block}
+.ng-flag .fl-arm{position:absolute; top:calc(var(--s) * .32); width:calc(var(--s) * .5); height:calc(var(--s) * .917); z-index:1}
+.ng-flag .fl-arm.L{left:calc(var(--s) * .36); transform:scaleX(-1)}
+.ng-flag .fl-arm.R{left:calc(var(--s) * 1.04)}
+.ng-flag .fl-armw{width:100%; height:100%; transform-origin:50% 87.3%; transition:transform .26s cubic-bezier(.3,1.45,.5,1); will-change:transform}
+.ng-flag .fl-arm.up .fl-armw{transform:rotate(14deg)}
+.ng-flag .fl-arm.down .fl-armw{transform:rotate(158deg)}
+.ng-flag .fl-armi{display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 2px 1.5px rgba(26,15,69,.25))}
+/* 깃발 천: 올림·내림마다 바깥쪽에 오는 천을 따로 그려 둔다(필터와 뒤집기 변환을 섞으면 색이 깨져서) */
+.ng-flag .fl-cloth{transition:opacity .14s ease}
+.ng-flag .fl-arm.up .fl-cloth.d, .ng-flag .fl-arm.down .fl-cloth.u{opacity:0}
+.ng-flag .fl-top{position:absolute; left:calc(var(--s) * .807); top:calc(var(--s) * .2); width:calc(var(--s) * .286); height:calc(var(--s) * .5); z-index:1; transition:transform .26s cubic-bezier(.3,1.45,.5,1)}
+.ng-flag .fl-top.down{transform:translateY(102%)}   /* 내리면 머리 뒤로 숨는다(올렸을 때와 확실히 다르게) */
+.ng-flag .fl-topi{display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 2px 1.5px rgba(26,15,69,.25))}
+
+/* 흉내쟁이 너구리: 옆에서 쏙 */
+.ng-flag .fl-rac{position:absolute; right:-4px; bottom:calc(var(--feet, 60px) - var(--hs) * .14); width:calc(var(--hs) * .78); height:auto; z-index:3; pointer-events:none;
+  transform:translateX(125%) rotate(12deg); transition:transform .34s cubic-bezier(.3,1.4,.5,1)}
+.ng-flag .fl-rac.on{transform:translateX(0) rotate(-4deg)}
+
+/* ---------- 말풍선(명령) ---------- */
+.ng-flag .fl-bub{position:absolute; left:10px; right:10px; top:30px; min-height:var(--bub); z-index:5; display:flex; flex-direction:column; padding:7px 12px 9px;
+  background:#fff; border:3px solid var(--ol); border-radius:20px; box-shadow:0 4px 0 var(--ol); --tail:50%; transition:background-color .2s, border-color .2s}
+.ng-flag .fl-bub::after{content:""; position:absolute; left:var(--tail); bottom:-14px; width:22px; height:22px; margin-left:-11px; background:inherit; border:3px solid var(--ol); border-top:0; border-left:0; transform:rotate(45deg); border-radius:0 0 6px 0; transition:left .25s}
+.ng-flag .fl-who{display:flex; align-items:center; gap:6px; height:22px; font-family:var(--disp); font-size:13px; color:#6A5884}
+.ng-flag .fl-who img{width:24px; height:24px}
+.ng-flag .fl-who b{font-weight:400}
+.ng-flag .fl-cmd{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:40px; font-family:var(--disp); font-size:clamp(26px,7.8vw,31px); line-height:1.1; color:#2A1D55; white-space:nowrap}
+.ng-flag .fl-cmd.pop{animation:flag-cmd .28s cubic-bezier(.2,1.5,.4,1)}
+@keyframes flag-cmd{from{transform:scale(.72); opacity:0}}
+.ng-flag .fl-pt{display:inline-flex; align-items:center; gap:6px}
+.ng-flag .fl-fn{display:inline-flex; align-items:center; gap:3px}
+.ng-flag .fl-fn.b{color:#1D5FC4}
+.ng-flag .fl-fn.y{color:#B07800}
+.ng-flag .fl-fi{width:1.05em; height:1.05em; flex:none}
+.ng-flag .fl-vb{display:inline-flex; align-items:center; gap:2px}
+.ng-flag .fl-vb .fl-ai{width:.92em; height:.92em}
+.ng-flag .fl-vb.up .fl-ai{color:#E8730C}
+.ng-flag .fl-vb.dn .fl-ai{color:#5B3FB5}
+.ng-flag .fl-vb.neg{color:#D3243A}
+.ng-flag .fl-x{display:inline-grid; place-items:center; width:1.05em; height:1.05em; margin-right:3px; border-radius:50%; font-style:normal; font-size:.62em; color:#fff; background:#E5484D; box-shadow:0 0 0 2px #fff, 0 0 0 4px #E5484D; transform:rotate(-10deg)}
+.ng-flag .fl-and{font-family:var(--heavy); font-size:.6em; color:#B3A6CF; line-height:.6}
+.ng-flag .fl-cardt{font-family:var(--heavy); font-weight:400; font-size:.95em; color:#2A1D55}
+.ng-flag .fl-foot{position:relative; height:18px; margin-top:3px}
+.ng-flag .fl-win{position:absolute; left:0; right:0; top:3px; height:12px; border-radius:99px; background:rgba(26,15,69,.1); border:2px solid var(--ol); overflow:hidden}
+.ng-flag .fl-win i{display:block; width:100%; height:100%; transform-origin:left center; transform:scaleX(0); background:linear-gradient(180deg,#8CF2BC,#22B865); border-radius:99px}
+.ng-flag .fl-win.mid i{background:linear-gradient(180deg,#FFE58A,#FFB020)}
+.ng-flag .fl-win.low i{background:linear-gradient(180deg,#FF9EA2,#E5484D)}
+.ng-flag .fl-win.hurry{animation:flag-jit .1s linear infinite alternate}
+@keyframes flag-jit{from{transform:translateX(-1px)} to{transform:translateX(1px)}}
+.ng-flag .fl-res{position:absolute; inset:-3px 0; display:flex; align-items:center; justify-content:center; gap:6px; background:inherit; font-family:var(--disp); font-size:15px; color:#6A5884; white-space:nowrap; overflow:hidden}
+.ng-flag .fl-bub .fl-res{background:#fff}
+.ng-flag .fl-res:empty{display:none}
+.ng-flag .fl-res.ok{color:#14894B}
+.ng-flag .fl-res.bad{color:#C8283A}
+.ng-flag .fl-res small{font-size:13px; color:#6A5884}
+/* 두 줄 명령(두 개 한꺼번에) */
+.ng-flag .fl-bub.two .fl-cmd{font-size:26px}
+/* 흉내쟁이 명령: 점선 테두리·베이지 말풍선·꼬리는 너구리 쪽 */
+.ng-flag .fl-bub.mimic{background:#F3ECE3; border-style:dashed; --tail:84%}
+.ng-flag .fl-bub.mimic .fl-res{background:#F3ECE3}
+.ng-flag .fl-bub.mimic .fl-who{color:#7D6E64}
+.ng-flag .fl-bub.mimic .fl-who::after{content:"따라 하면 안 돼요"; margin-left:auto; font-size:12px; color:#fff; background:#9C8D80; border-radius:99px; padding:2px 8px}
+.ng-flag .fl-bub.card.flip, .ng-flag .fl-bub.card.flip .fl-res{background:#F1EAFF}
+.ng-flag .fl-bub.card.keep, .ng-flag .fl-bub.card.keep .fl-res{background:#E8FAEF}
+.ng-flag .fl-bub.lose .fl-cardt{color:#C8283A}
+/* 반대로 표시(말풍선 모서리 꼬리표 + 화면 테두리 보라) */
+.ng-flag .fl-flipb{position:absolute; left:50%; transform:translateX(-50%); top:-15px; display:none; padding:3px 10px; border-radius:99px; font-family:var(--disp); font-size:14px; color:#fff; background:linear-gradient(180deg,#A98BFF,#6C3CE0); border:2.5px solid var(--ol)}
+.ng-flag.flipped .fl-flipb{display:block}
+.ng-flag.flipped .fl-bub{border-color:#5B2BC9}
+.ng-flag.flipped .fl-scene{border-color:#5B2BC9}
+.ng-flag .fl-frame{position:fixed; inset:0; pointer-events:none; z-index:15; border:6px solid #8B5CF6; box-shadow:inset 0 0 26px rgba(139,92,246,.35); opacity:0; transition:opacity .35s}
+.ng-flag.flipped .fl-frame{opacity:1}
+
+/* 판정 도장 */
+.ng-flag .fl-stamp{position:absolute; right:8px; top:-16px; width:64px; height:64px; z-index:6; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+  border:3px solid var(--ol); box-shadow:0 3px 0 var(--ol); color:#fff; opacity:0; transform:scale(1.6) rotate(-14deg); pointer-events:none}
+.ng-flag .fl-stamp b{font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1}
+.ng-flag .fl-stamp span{font-family:var(--disp); font-size:12px; line-height:1.1; white-space:nowrap}
+.ng-flag .fl-stamp.ok{background:radial-gradient(circle at 35% 30%,#8DF5BC,#1FB866 70%)}
+.ng-flag .fl-stamp.bad{background:radial-gradient(circle at 35% 30%,#FF9EA2,#E5484D 70%)}
+.ng-flag .fl-stamp.on{animation:flag-stamp .3s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes flag-stamp{to{opacity:1; transform:scale(1) rotate(-12deg)}}
+
+/* 반대로/그대로 카드(진행자가 들어 올림) */
+.ng-flag .fl-card{position:absolute; left:50%; top:calc(30px + var(--bub) + 28px); z-index:4; padding:8px 18px 7px; border-radius:16px; border:3px solid var(--ol); box-shadow:0 4px 0 var(--ol); text-align:center;
+  opacity:0; transform:translate(-50%,24px) scale(.6) rotate(-6deg); transition:transform .3s cubic-bezier(.2,1.5,.4,1), opacity .2s; pointer-events:none}
+.ng-flag .fl-card b{display:block; font-family:var(--heavy); font-weight:400; font-size:28px; line-height:1.1; color:#fff; -webkit-text-stroke:5px var(--ol); paint-order:stroke fill}
+.ng-flag .fl-card small{display:block; font-family:var(--disp); font-size:13px; color:#fff}
+.ng-flag .fl-card.flip{background:linear-gradient(180deg,#A98BFF,#6C3CE0)}
+.ng-flag .fl-card.keep{background:linear-gradient(180deg,#7EE8A8,#22B865)}
+.ng-flag .fl-card.on{opacity:1; transform:translate(-50%,0) scale(1) rotate(-3deg)}
+
+/* 보스 띠·알림·규칙 칩 */
+.ng-flag .fl-bossband{position:absolute; left:0; right:0; top:48%; height:48px; z-index:6; display:flex; align-items:center; justify-content:center; pointer-events:none;
+  background:linear-gradient(90deg,rgba(229,72,77,0),rgba(214,48,68,.92) 18%,rgba(214,48,68,.92) 82%,rgba(229,72,77,0)); animation:flag-band 1.7s ease forwards}
+.ng-flag .fl-bossband b{font-family:var(--heavy); font-weight:400; font-size:32px; color:#FFE27A; -webkit-text-stroke:6px var(--ol); paint-order:stroke fill; letter-spacing:2px}
+@keyframes flag-band{0%{opacity:0; transform:scaleX(.3)} 18%{opacity:1; transform:none} 78%{opacity:1} 100%{opacity:0}}
+.ng-flag .fl-note{position:absolute; left:50%; top:calc(30px + var(--bub) + 24px); z-index:7; padding:6px 16px; border-radius:99px; background:#1A0F45; color:#FFE27A; font-family:var(--disp); font-size:18px; white-space:nowrap;
+  opacity:0; transform:translateX(-50%) scale(.7); pointer-events:none}
+.ng-flag .fl-note.on{animation:flag-note 1.1s ease forwards}
+@keyframes flag-note{0%{opacity:0; transform:translateX(-50%) scale(.7)} 15%{opacity:1; transform:translateX(-50%) scale(1.06)} 25%{transform:translateX(-50%) scale(1)} 80%{opacity:1} 100%{opacity:0; transform:translateX(-50%) translateY(-8px)}}
+.ng-flag .fl-rules{position:absolute; right:10px; top:6px; z-index:1; display:flex; gap:4px; max-width:62%; overflow:hidden; justify-content:flex-end}
+.ng-flag .fl-bub.mimic .fl-rules, .ng-flag .fl-bub.card .fl-rules, .ng-flag .fl-bub.two .fl-rules{display:none}
+.ng-flag .fl-rules .fl-chip{padding:3px 8px; font-size:12px; border-width:1.5px; box-shadow:none}
+.ng-flag .fl-chip{font-family:var(--disp); font-size:12.5px; line-height:1; padding:5px 9px; border-radius:99px; border:2px solid var(--ol); background:#fff; color:#1D4F9E; box-shadow:0 2px 0 var(--ol); white-space:nowrap}
+.ng-flag .fl-chip.tw{background:#EFE7FF; color:#5B3FB5}
+.ng-flag .fl-chip.boss{background:linear-gradient(180deg,#FFB3B6,#E5484D); color:#fff}
+.ng-flag .fl-edge{position:fixed; inset:0; pointer-events:none; z-index:16; opacity:0; box-shadow:inset 0 0 0 4px rgba(229,72,77,.6), inset 0 0 70px rgba(229,72,77,.5)}
+.ng-flag .fl-edge.on{animation:flag-edge .6s ease-out}
+@keyframes flag-edge{0%{opacity:1} 100%{opacity:0}}
+
+/* ---------- 조작판(엄지 자리) ---------- */
+.ng-flag .fl-deck{flex:none; position:relative; display:grid; gap:10px; margin-top:12px; height:var(--deck);
+  grid-template-columns:1fr var(--mid) 1fr; grid-template-rows:var(--bh) var(--bh); grid-template-areas:"bu me wu" "bd me wd"}
+.ng-flag .fl-deck.third{grid-template-columns:1fr 1fr 1fr; grid-template-rows:var(--strip) var(--bh) var(--bh); grid-template-areas:"me me me" "bu yu wu" "bd yd wd"}
+.ng-flag .fl-me{grid-area:me; position:relative; pointer-events:none; z-index:0}
+.ng-flag .fl-rig.me{--s:var(--fs); left:50%; bottom:calc(var(--fs) * .36 + 8px); transform:translateX(-50%)}
+.ng-flag .fl-deck.third .fl-rig.me{bottom:-2px}
+.ng-flag .fl-metag{position:absolute; left:50%; bottom:0; transform:translateX(-50%); z-index:3; padding:0 10px; border-radius:99px; background:#FF7A12; color:#fff; border:2px solid var(--ol); font-family:var(--disp); font-size:13px; line-height:20px}
+.ng-flag .fl-deck.third .fl-metag{left:calc(50% + var(--fs) * .72); bottom:auto; top:calc(var(--strip) * .42); transform:none}
+.ng-flag .fl-btn{position:relative; z-index:1; min-width:0; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 6px;
+  border-radius:20px; border:3px solid var(--ol); box-shadow:inset 0 3px 0 rgba(255,255,255,.55), inset 0 -5px 0 rgba(26,15,69,.1), 0 4px 0 var(--ol);
+  font-family:var(--disp); font-size:19px; line-height:1; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent}
+.ng-flag .fl-btn.b{background:linear-gradient(180deg,#86C2FF 0%,#3F8CF2 55%,#2C72DD 100%); color:#fff; text-shadow:0 2px 0 #174A9E}
+.ng-flag .fl-btn.w{background:linear-gradient(180deg,#FFFFFF 0%,#F2F5FB 55%,#DEE5F2 100%); color:#24345E}
+.ng-flag .fl-btn.y{background:linear-gradient(180deg,#FFEFA6 0%,#FFD24A 55%,#FFBE1A 100%); color:#5A3300}
+.ng-flag .fl-bi{display:flex; align-items:center; gap:2px}
+.ng-flag .fl-bi .fl-fi{width:24px; height:24px}
+.ng-flag .fl-bi .fl-ai{width:30px; height:30px; filter:drop-shadow(0 2px 0 rgba(26,15,69,.25))}
+.ng-flag .fl-btn.b .fl-ai{color:#fff}
+.ng-flag .fl-btn.w .fl-ai{color:#2C3A66}
+.ng-flag .fl-btn.y .fl-ai{color:#6A3D00}
+.ng-flag .fl-bl{white-space:nowrap}
+.ng-flag .fl-lamp{position:absolute; top:8px; right:9px; width:11px; height:11px; border-radius:50%; background:rgba(26,15,69,.16); transition:background-color .15s, box-shadow .15s}
+.ng-flag .fl-btn.on .fl-lamp{background:#5BF08F; box-shadow:0 0 0 2px var(--ol), 0 0 8px rgba(91,240,143,.9)}
+.ng-flag .fl-btn.hit{animation:flag-hit .2s ease-out}
+@keyframes flag-hit{0%{transform:translateY(3px) scale(.97); box-shadow:inset 0 3px 0 rgba(255,255,255,.4), 0 1px 0 var(--ol)}}
+.ng-flag .fl-deck.lock .fl-btn{filter:grayscale(.5) brightness(.95)}
+@media (max-width:370px){ .ng-flag .fl-btn{font-size:17px} .ng-flag .fl-bi .fl-ai{width:26px; height:26px} .ng-flag .fl-bub{padding:6px 10px 8px} }
+@media (prefers-reduced-motion: reduce){
+  .ng-flag .fl-armw, .ng-flag .fl-cloth, .ng-flag .fl-top, .ng-flag .fl-rac, .ng-flag .fl-card{transition-duration:.01s}
+  .ng-flag .fl-cmd.pop, .ng-flag .fl-btn.hit, .ng-flag .fl-win.hurry{animation:none}
+}
