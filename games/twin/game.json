@@ -1,0 +1,13 @@
+{
+  "id": "twin",
+  "name": "쌍둥이 찾기",
+  "version": "1.0.0",
+  "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
+  "js": [
+    "twin-art.js",
+    "twin.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 23
+}
