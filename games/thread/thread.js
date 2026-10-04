@@ -166,6 +166,8 @@ NG.thread = (() => {
       + `<ellipse cx="${cx - R * .42}" cy="${cy - R * .5}" rx="${R * .22}" ry="${R * .12}" fill="#fff" opacity=".65" transform="rotate(-35 ${cx - R * .42} ${cy - R * .5})"/>`;
   }
   const colOf = (m, k) => PAL[m.P.pal[k]];
+  /* 색을 t만큼 밝게(+)·어둡게(−) */
+  function shade(hex, t){ const n = parseInt(hex.slice(1), 16), f = v => Math.round(t < 0 ? v * (1 + t) : v + (255 - v) * t); return '#' + [n >> 16, n >> 8 & 255, n & 255].map(v => f(v).toString(16).padStart(2, '0')).join(''); }
   const shapeOf = (m, k) => SHAPES[m.P.pal[k] % SHAPES.length];
   const ctr = (m, node) => { const c = node >> 1; return [(c % m.P.N) * 100 + 50, Math.floor(c / m.P.N) * 100 + 50]; };
 
@@ -173,8 +175,13 @@ NG.thread = (() => {
     const P = m.P, N = P.N, W = N * 100, s = [];
     s.push(`<defs><pattern id="thTw" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="14" height="14" fill="#36558E"/><path d="M0 3h14M0 10h14" stroke="#2B4677" stroke-width="3"/><path d="M0 6.5h14" stroke="#4466A3" stroke-width="1.2" opacity=".7"/></pattern></defs>`);
     s.push(`<rect width="${W}" height="${W}" fill="url(#thTw)"/>`);
+    /* 실 색마다 꼬인 결 무늬(사선 줄무늬는 가로·세로 실 어디서나 꼬인 실처럼 보인다) */
+    s.push('<defs>' + P.pal.map((pi, k) => { const c = PAL[pi], d = shade(c, -.2), l = shade(c, .35);
+      return `<pattern id="thF${k}" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(40)"><rect width="13" height="13" fill="${c}"/><rect width="13" height="4.2" fill="${d}"/><rect y="7" width="13" height="1.6" fill="${l}" opacity=".9"/></pattern>`; }).join('') + '</defs>');
+    /* 청바지 가장자리 금색 스티치(성공하면 한 바퀴 박음질) */
+    s.push(`<rect class="th-hem" x="9" y="9" width="${W - 18}" height="${W - 18}" rx="10" fill="none" stroke="#F2B544" stroke-width="3.4" stroke-dasharray="13 8" stroke-linecap="round" opacity=".9"/>`);
     /* 칸 사이 바느질 점선 */
-    for(let i = 1; i < N; i++) s.push(`<path d="M${i * 100} 4V${W - 4}M4 ${i * 100}H${W - 4}" stroke="#E9DFC4" stroke-opacity=".32" stroke-width="2.4" stroke-dasharray="9 8" fill="none"/>`);
+    for(let i = 1; i < N; i++) s.push(`<path d="M${i * 100} 4V${W - 4}M4 ${i * 100}H${W - 4}" stroke="#E9DFC4" stroke-opacity=".2" stroke-width="2.2" stroke-dasharray="8 9" fill="none"/>`);
     /* 구멍 헝겊 */
     P.type.forEach((t, i) => {
       if(t !== 'hole') return;
@@ -208,16 +215,16 @@ NG.thread = (() => {
     const P = m.P, under = [], over = [], tint = [];
     paths.forEach((p, k) => {
       const col = colOf(m, k), done = isDone(m, k, p);
-      p.forEach(nd => { const c = nd >> 1; if(P.type[c] !== 'bridge' && P.endc[c] < 0){ const [x, y] = ctr(m, nd); tint.push(`<rect x="${x - 48}" y="${y - 48}" width="96" height="96" rx="12" fill="${col}" opacity="${done ? .3 : .2}"/>`); } });
+      p.forEach(nd => { const c = nd >> 1; if(P.type[c] !== 'bridge' && P.endc[c] < 0){ const [x, y] = ctr(m, nd); tint.push(`<rect x="${x - 44}" y="${y - 44}" width="88" height="88" rx="20" fill="${col}" opacity="${done ? .22 : .14}"/>`); } });
       for(let i = 1; i < p.length; i++){
         const a = p[i - 1], b = p[i], [x1, y1] = ctr(m, a), [x2, y2] = ctr(m, b);
-        const seg = { d:`M${x1} ${y1}L${x2} ${y2}`, col, k };
+        const seg = { d:`M${x1} ${y1}L${x2} ${y2}`, col:`url(#thF${k})`, k };
         ((a & 1) || (b & 1) ? under : over).push(seg);
       }
     });
     const draw = segs => segs.map(s => `<path d="${s.d}" stroke="${OL}" stroke-width="42" stroke-linecap="round"/>`).join('')
       + segs.map(s => `<path d="${s.d}" stroke="${s.col}" stroke-width="31" stroke-linecap="round"/>`).join('')
-      + segs.map(s => `<path d="${s.d}" stroke="#fff" stroke-opacity=".4" stroke-width="5" stroke-dasharray="10 10" stroke-linecap="round" transform="translate(-5 -5)"/>`).join('');
+      + segs.map(s => `<path d="${s.d}" stroke="#fff" stroke-opacity=".28" stroke-width="7" stroke-linecap="round" transform="translate(-6 -6)"/>`).join('');
     const tunnels = Object.keys(P.br).map(c => { c = +c; const x = (c % P.N) * 100, y = Math.floor(c / P.N) * 100; return `<rect x="${x + 28}" y="${y + 2}" width="44" height="96" rx="12" fill="rgba(10,6,40,.42)"/><path d="M${x + 50} ${y + 8}l-8 9h16zM${x + 50} ${y + 92}l-8 -9h16z" fill="#FFE9B8" opacity=".8"/>`; }).join('');
     return `<g class="th-tint">${tint.join('')}</g>${tunnels}<g>${draw(under)}</g>${bridgeSvg(m)}<g>${draw(over)}</g>`;
   }
@@ -236,7 +243,7 @@ NG.thread = (() => {
     P.endc.forEach((k, i) => {
       if(k < 0) return;
       const [x, y] = ctr(m, i * 2), done = isDone(m, k, paths[k]);
-      s.push(`<g class="th-btn${done ? ' done' : ''}${m.justDone.has(k) ? ' jd' : ''}${m.glowK === k ? ' glow' : ''}" data-k="${k}" style="transform-origin:${x}px ${y}px">${buttonSvg(shapeOf(m, k), colOf(m, k), x, y, 33)}</g>`);
+      s.push(`<ellipse cx="${x + 3}" cy="${y + 7}" rx="33" ry="31" fill="rgba(10,6,40,.38)"/><g class="th-btn${done ? ' done' : ''}${m.justDone.has(k) ? ' jd' : ''}${m.glowK === k ? ' glow' : ''}" data-k="${k}" style="transform-origin:${x}px ${y}px">${buttonSvg(shapeOf(m, k), colOf(m, k), x, y, 33)}</g>`);
     });
     return s.join('');
   }
@@ -252,7 +259,6 @@ NG.thread = (() => {
     const m = S(); if(!m) return;
     const st = stats(m);
     const d = $('#thDone'); if(d) d.textContent = st.done;
-    const f = $('#thFill'); if(f) f.style.transform = `scaleX(${(st.filled / m.total).toFixed(3)})`;
     const fp = $('#thFillP'); if(fp) fp.textContent = Math.floor(st.filled * 100 / m.total) + '%';
     const mv = $('#thMoves'); if(mv) mv.textContent = m.capMax ? `${m.moves}/${m.capMax}` : m.moves;
     const h = $('#thHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || m.phase !== 'play'; }
@@ -486,8 +492,9 @@ NG.thread = (() => {
         <linearGradient id="${u}1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DDE8FF"/><stop offset="1" stop-color="#9DB8F2"/></linearGradient>
         <pattern id="${u}2" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="5" height="5" fill="#36558E"/><path d="M0 1.2h5" stroke="#2B4677" stroke-width="1.4"/></pattern></defs>
         <rect width="160" height="100" fill="url(#${u}1)"/>
-        <rect x="${ox - 4}" y="${oy - 2}" width="${cs * N + 8}" height="${cs * N + 6}" rx="9" fill="#F3E6C8" stroke="${OL}" stroke-width="2.2"/>
+        <rect x="${ox - 4}" y="${oy - 2}" width="${cs * N + 8}" height="${cs * N + 6}" rx="9" fill="#22396A" stroke="${OL}" stroke-width="2.2"/>
         <rect x="${ox}" y="${oy + 1}" width="${cs * N}" height="${cs * N}" rx="5" fill="url(#${u}2)"/>
+        <rect x="${ox + 2.5}" y="${oy + 3.5}" width="${cs * N - 5}" height="${cs * N - 5}" rx="3" fill="none" stroke="#F2B544" stroke-width="1.1" stroke-dasharray="3 2"/>
         ${line([[0, 0], [0, 3], [1, 3]], PAL[0])}${line([[1, 0], [3, 0], [3, 2]], PAL[1])}${line([[1, 1], [2, 1], [2, 3], [3, 3], [3, 4], [0, 4]], PAL[3])}${line([[4, 0], [4, 4]], PAL[2])}
         ${btn(0, 0, PAL[0], 'circle')}${btn(1, 3, PAL[0], 'circle')}${btn(1, 0, PAL[1], 'square')}${btn(3, 2, PAL[1], 'square')}${btn(1, 1, PAL[3], 'heart')}${btn(0, 4, PAL[3], 'heart')}${btn(4, 0, PAL[2], 'flower')}${btn(4, 4, PAL[2], 'flower')}
         <path d="M16 74c6-10 14-8 14 0s-10 10-6 18" fill="none" stroke="#FF8FC0" stroke-width="3" stroke-linecap="round"/><path d="M140 20l8-8" stroke="#C8CEDD" stroke-width="3" stroke-linecap="round"/><circle cx="139" cy="21" r="2" fill="none" stroke="#8A93AA" stroke-width="1.4"/></svg>`;
@@ -556,7 +563,6 @@ NG.thread = (() => {
         <div class="th-wrap"><div class="th-frame"><div class="th-board in" id="thBoard" role="group" aria-label="색실 잇기 ${N}×${N} 천, 단추 ${m.P.K}쌍">
           <svg viewBox="0 0 ${N * 100} ${N * 100}" aria-hidden="true">${fabricSvg(m)}${wallsSvg(m)}<g id="thDyn"></g></svg>
         </div></div></div>
-        <div class="th-fill"><i id="thFill"></i></div>
         <div class="tools-row th-ctl">
           <button class="tool" id="thUndo" aria-label="되돌리기">${ICO.undo}<span>되돌리기</span></button>
           <button class="tool" id="thReset" aria-label="처음부터">${ICO.reset}<span>처음부터</span></button>
@@ -598,8 +604,8 @@ body[data-mode="thread"]{background:
 .ng-thread .th-msg.th-win b{font-size:24px; color:#FFE27A}
 @keyframes thread-in{from{transform:scale(.6); opacity:0}}
 .ng-thread .th-wrap{margin:auto -6px; display:flex; justify-content:center}
-.ng-thread .th-frame{padding:7px; border-radius:20px; background:#F3E6C8; border:3px solid #1A0F45; box-shadow:inset 0 0 0 2px #fff, 0 5px 0 #1A0F45, 0 14px 22px rgba(30,40,110,.25);
-  background-image:repeating-linear-gradient(90deg, transparent 0 10px, rgba(200,74,106,.55) 10px 18px); background-size:100% 3px; background-repeat:no-repeat; background-position:0 3px}
+.ng-thread .th-frame{padding:7px; border-radius:20px; background:#22396A; border:3px solid #1A0F45; box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 5px 0 #1A0F45, 0 14px 22px rgba(30,40,110,.28);
+  outline:2.5px dashed #F2B544; outline-offset:-6px}
 .ng-thread .th-board{position:relative; touch-action:none; border-radius:12px; overflow:hidden; box-shadow:inset 0 0 0 2.5px #1A0F45; cursor:pointer}
 .ng-thread .th-board svg{display:block; width:100%; height:100%}
 .ng-thread .th-board.drawing{cursor:grabbing}
@@ -614,19 +620,19 @@ body[data-mode="thread"]{background:
 .ng-thread .th-board.in .th-btn{animation:thread-deal .45s cubic-bezier(.2,1.5,.4,1) both}
 @keyframes thread-deal{from{opacity:0; transform:scale(.4)}}
 .ng-thread .th-board.cleared{animation:thread-cheer .6s cubic-bezier(.2,1.6,.4,1)}
+.ng-thread .th-board.cleared .th-hem{stroke:#FFD978; stroke-width:5; animation:thread-hem 1.1s linear both}
+@keyframes thread-hem{from{stroke-dashoffset:0} to{stroke-dashoffset:-210}}
 @keyframes thread-cheer{40%{scale:1.03}}
-.ng-thread .th-fill{width:min(240px,70%); height:8px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.16); border:2px solid #1A0F45; overflow:hidden}
-.ng-thread .th-fill i{display:block; height:100%; transform-origin:left center; transform:scaleX(0); background:linear-gradient(90deg,#FF8FC0,#FFD23F,#3CCB7F,#6FD3FF); transition:transform .25s}
 .ng-thread .th-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
 .ng-thread .th-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#2B2160; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
 .ng-thread .th-chip.mj{background:#E3ECFF; color:#1F3C8A}
 .ng-thread .th-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-thread .th-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-.ng-thread .th-ctl{margin-top:8px}
+.ng-thread .th-ctl{margin-top:0; padding-top:14px}
 .ng-thread .th-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-thread .th-ctl .tool .cnt{font-style:normal}
 @media (max-width:370px){ .ng-thread .th-ctl .tool{font-size:14px; gap:3px} .ng-thread .th-msg b{font-size:18px} .ng-thread .th-chip{font-size:12px; padding:4px 7px} }
-@media (prefers-reduced-motion: reduce){ .ng-thread .th-btn, .ng-thread .th-board.in .th-btn, .ng-thread .th-bead.bad{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-thread .th-btn, .ng-thread .th-board.in .th-btn, .ng-thread .th-bead.bad, .ng-thread .th-board.cleared .th-hem{animation:none} }
 `,
     sounds:{
       thGrab(o){ aTone({ f:620 + (o.k || 0) * 30, f2:760, type:'triangle', d:.06, v:.04 }); },

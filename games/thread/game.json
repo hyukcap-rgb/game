@@ -1,7 +1,7 @@
 {
   "id": "thread",
   "name": "색실 잇기",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "summary": "같은 색 단추를 색실로 꿰어 잇고 천의 빈칸을 남김없이 채우는 공간지각 퍼즐",
   "js": [
     "thread-bank.js",
