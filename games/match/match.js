@@ -863,8 +863,8 @@ NG.match = (() => {
     const d = $m('#mtItems'); if(!d) return;
     const v = inv();
     d.innerHTML = ITEMS.map(it => { const open = !!v.got[it.key], n = v.n[it.key] || 0;
-      return `<button class="mt-bst it${open ? '' : ' lk'}${M.item === it.key ? ' on' : ''}" data-it="${it.key}" ${open && n > 0 ? '' : 'disabled'} aria-label="${it.name}: ${it.desc}${open ? ', ' + n + '개' : ', 스테이지 ' + it.at + '에서 열려요'}">
-        <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span><em>${it.name}</em>${open ? `<b class="mt-cnt num">${n}</b>` : `<b class="mt-cnt lk">${it.at}</b>`}</button>`; }).join('');
+      return `<button class="tool item mt-it${open ? '' : ' lk'}${M.item === it.key ? ' on' : ''}" data-it="${it.key}" aria-pressed="${M.item === it.key}" ${open && n > 0 ? '' : 'disabled'} aria-label="${it.name}: ${it.desc}${open ? ', ' + n + '개' : ', 스테이지 ' + it.at + '에서 열려요'}">
+        <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span><span class="mt-in2">${it.name}</span>${open ? `<b class="cnt num">${n}</b>` : `<b class="cnt lk">${it.at}판</b>`}</button>`; }).join('');
     d.querySelectorAll('button[data-it]').forEach(b => b.onclick = () => {
       if(M.busy || M.stop || G.over) return;
       const k = b.dataset.it;
@@ -982,10 +982,15 @@ NG.match = (() => {
     M.onResize = () => { if(!M || M.busy) return; sizeBoard(); layoutAll(); };
     window.addEventListener('resize', M.onResize);
   }
+  /* 문서 맨 위에서 요소까지 거리(등장 애니메이션의 transform에 흔들리지 않게 offsetTop으로) */
+  const docTop = el => { let t = 0; for(let e = el; e; e = e.offsetParent) t += e.offsetTop; return t; };
   function sizeBoard(){
     const st = M.root.parentElement, wAvail = Math.min(460, st.clientWidth || 360);
     const top = M.panel.getBoundingClientRect().top + window.scrollY;
-    const hAvail = Math.max(260, window.innerHeight - top - 112);
+    const dk = M.root.querySelector('.mt-dock'), dH = dk ? dk.offsetHeight + 16 : 112;
+    const hAvail = Math.max(260, window.innerHeight - top - dH - 20);
+    const rt = docTop(M.root);   /* 아래 줄(안내·아이템)은 화면 맨 아래 엄지 자리 */
+    M.root.style.minHeight = Math.max(0, Math.min(window.innerHeight, Math.floor(window.innerHeight - rt - 10))) + 'px';
     const pad = 16;
     const s = Math.max(34, Math.floor((Math.min(wAvail, hAvail) - pad) / N));
     M.s = s;
@@ -1051,20 +1056,21 @@ NG.match = (() => {
     render(st){
       M = G.mt;
       const cfg = G.cfg, mv = cfg.mode === 'moves';
-      const hudHtml = mv ? `<div class="mt-hud mv">
+      /* 위쪽 정보줄: 공용 칩 규격(.hud-row/.hchip, 아래 이름표 em). 목표 진행이 핵심이라 목표 칸은 크게 둔다 */
+      const hudHtml = mv ? `<div class="hud-row mt-hud mv">
           <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
-          <div class="mt-box mt-goal"><span class="mt-tag">목표</span><div class="mt-gs">${cfg.goals.map((g, n) => `<span class="mt-gc" id="mtG${n}" aria-label="${g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? '상자' : g.t === 'ice' ? '얼음' : '사슬'} ${g.n}개"><i class="${g.t === 'ice' ? 'ice' : ''}" style="background-image:${goalIcon(g)}"></i><b class="num">${g.n}</b><s>${ic('check')}</s></span>`).join('')}</div></div>
-          <div class="mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="mt-tag">이동 횟수</span><b class="num" id="mtMv">${cfg.moves}</b>${cfg.hard || cfg.boss ? `<span class="mt-diff ${cfg.boss ? 'x' : ''}">${cfg.boss ? '아주 어려움' : '어려움'}</span>` : ''}</div>
-        </div>` : `<div class="mt-hud">
+          <div class="hchip mt-box mt-goal"><div class="mt-gs">${cfg.goals.map((g, n) => `<span class="mt-gc" id="mtG${n}" aria-label="${g.t === 'k' ? KNAME[g.k] : g.t === 'box' ? '상자' : g.t === 'ice' ? '얼음' : '사슬'} ${g.n}개"><i class="${g.t === 'ice' ? 'ice' : ''}" style="background-image:${goalIcon(g)}"></i><b class="num">${g.n}</b><s>${ic('check')}</s></span>`).join('')}</div><em>모을 목표</em></div>
+          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동">${cfg.hard || cfg.boss ? `<span class="mt-diff ${cfg.boss ? 'x' : ''}">${cfg.boss ? '아주 어려움' : '어려움'}</span>` : ''}<span class="hv"><b class="num" id="mtMv">${cfg.moves}</b><small>번</small></span><em>남은 이동</em></div>
+        </div>` : `<div class="hud-row mt-hud">
           <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
-          <div class="mt-box mt-goal" id="mtGoal"><span class="mt-tag">목표</span>
+          <div class="hchip mt-box mt-goal" id="mtGoal">
             <div class="mt-gl"><b class="num" id="mtPts">0</b><small class="num">/ ${fmt(cfg.target)}</small></div>
             <div class="mt-prog" aria-label="목표까지 진행"><div class="mt-pbar"><i id="mtProgF"></i></div>
               <span class="mt-mk" id="mtMk0" style="left:62.5%" aria-label="목표">★</span><span class="mt-mk" id="mtMk1" style="left:81.25%" aria-label="목표의 1.3배">★</span><span class="mt-mk last" id="mtMk2" style="left:100%" aria-label="목표의 1.6배">★</span></div>
-          </div>
-          <div class="mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="mt-tag">남은 이동</span><b class="num" id="mtMv">${cfg.moves}</b><div class="mt-tbar"><i id="mtTF"></i></div></div>
+            <em>목표 점수</em></div>
+          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="hv"><b class="num" id="mtMv">${cfg.moves}</b><small>번</small></span><div class="mt-tbar"><i id="mtTF"></i></div><em>남은 이동</em></div>
         </div>`;
-      const dockHtml = mv ? `<div class="mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
+      const dockHtml = mv ? `<div class="tools-row mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
           <span class="mt-bst"><span class="mt-bi"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i></span><em>4개<br>줄 폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i></span><em>ㄱ·ㅗ<br>폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi"><i style="background-image:${RB_IMG}"></i></span><em>5개<br>무지개</em></span>
@@ -1072,18 +1078,15 @@ NG.match = (() => {
           <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>최고<br>콤보</em></span>
         </div>`;
       st.innerHTML = `<div class="ng-match" id="mtRoot">
-        <div class="mt-top"><button class="mt-rbt" id="mtBack" aria-label="그만하기">${ic('back')}</button><div class="mt-ttl" id="mtTtl"></div><button class="mt-rbt" id="mtHelp" aria-label="게임 방법">${ic('help')}</button></div>
         ${hudHtml}
         <div class="mt-stage"><div class="mt-roof" aria-hidden="true"></div>
           <div class="mt-panel" id="mtPanel"><div class="mt-grid" id="mtGrid" role="application" aria-label="동물 삼총사 판. 이웃한 동물을 밀어서 바꿔요"></div><div class="mt-combo" id="mtCombo" aria-live="polite"></div></div>
         </div>
         ${dockHtml}
       </div>`;
-      st.querySelector('#mtTtl').innerHTML = $('#ptitle').innerHTML;
-      st.querySelector('#mtBack').onclick = () => confirmQuit();
-      st.querySelector('#mtHelp').onclick = () => { if(G && !G.over) openHelp(G.id); };
       M.root = st.querySelector('#mtRoot'); M.grid = st.querySelector('#mtGrid'); M.panel = st.querySelector('#mtPanel'); M.tf = st.querySelector('#mtTF');
       sizeBoard(); layoutAll(); bindInput(); hud();
+      requestAnimationFrame(() => { try{ if(!M || M.dead) return; const rt = docTop(M.root); M.root.style.minHeight = Math.max(0, Math.min(window.innerHeight, Math.floor(window.innerHeight - rt - 10))) + 'px'; }catch(_){} });   /* 화면이 자리 잡은 뒤 높이를 한 번 더 맞춘다 */
       if(mv){ paintDock(); paintIce(); }
       setTimeout(() => { if(M && !M.dead) banner(mv ? '이동 ' + cfg.moves + '번 안에 목표를 모아요' : '이동 ' + cfg.moves + '번 안에 ' + fmt(cfg.target) + '점!', 'mix'); }, 350);
       bake(Math.min(256, Math.round(M.s * 1.25 * Math.min(3, window.devicePixelRatio || 1))), () => { if(M && !M.dead && !M.busy){ M.views.forEach(v => { const t = M.E.b.find(x => x && x.id === v.id); if(t) restyle(v, t); }); } });
@@ -1107,7 +1110,6 @@ NG.match = (() => {
     stars(){ const m = G.mt; if(isMoves()){ const l = m.leftAtWin || 0, mv = G.cfg.moves; return l >= Math.max(2, Math.ceil(mv * .2)) ? 3 : l >= Math.max(1, Math.ceil(mv * .1)) ? 2 : 1; } const p = m.E.pts, t = G.cfg.target; return p >= 1.6 * t ? 3 : p >= 1.3 * t ? 2 : 1; },
     css:`
 body[data-mode="match"]{background:#C7DCEF}
-body[data-mode="match"] #play > .pbar{display:none!important}
 body[data-mode="match"]::before{content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   background:
     radial-gradient(120% 40% at 30% 110%, #CFE3C4 0 50%, rgba(207,227,196,0) 51%),
@@ -1115,43 +1117,37 @@ body[data-mode="match"]::before{content:""; position:fixed; inset:0; z-index:0; 
 body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match{position:relative; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; color:var(--ink)}
 .ng-match .num{font-variant-numeric:tabular-nums}
-/* 맨 위 줄 */
-.ng-match .mt-top{display:grid; grid-template-columns:42px 1fr 42px; align-items:center; gap:6px; margin:0 0 6px}
-.ng-match .mt-rbt{width:42px; height:42px; border-radius:50%; display:grid; place-items:center; color:#4B4775; background:#FAF8F3; border:2px solid #4B4775; box-shadow:0 2px 0 #4B4775}
-.ng-match .mt-rbt .ico{width:22px; height:22px}
-.ng-match .mt-rbt:active{transform:translateY(2px); box-shadow:0 0 0 #4B4775}
-.ng-match .mt-ttl{text-align:center; font-family:var(--disp); font-size:19px; line-height:1.15; color:#3F4470; min-width:0}
-.ng-match .mt-ttl small{display:block; font-family:var(--font); font-size:11px; font-weight:800; color:#6B7197; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-/* HUD: 버건디 틀 + 크림 칸 */
-.ng-match .mt-hud{position:relative; display:grid; grid-template-columns:74px 1fr 88px; gap:8px; align-items:stretch; padding:8px 9px 9px 8px; border-radius:22px;
-  background:#6E6A9E; border:2px solid #4B4775; box-shadow:0 3px 0 #4B4775, 0 8px 14px rgba(20,40,90,.14)}
-.ng-match .mt-por{position:relative; border-radius:20px; background:#BFD6EE; border:2px solid #4B4775; overflow:hidden; min-height:70px}
+/* HUD: 공용 칩 규격(테두리 2.5px · 모서리 18px · 그림자 3px · 이름표 em) */
+.ng-match .mt-hud{display:flex; gap:8px; align-items:stretch; margin:0 0 4px}
+.ng-match .mt-hud .hchip{height:auto; min-height:66px; padding:6px 10px 5px; border-radius:18px; justify-content:space-between}
+.ng-match .mt-por{flex:0 0 58px; position:relative; border-radius:18px; background:linear-gradient(180deg,#D7E8FA,#BFD6EE); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; overflow:hidden}
 .ng-match .mt-por i{position:absolute; inset:2px -2px -6px; background:center/contain no-repeat}
-.ng-match .mt-box{position:relative; border-radius:16px; padding:17px 8px 7px; background:#FAF8F3; border:2px solid #4B4775; text-align:center}
-.ng-match .mt-tag{position:absolute; left:50%; top:-9px; transform:translateX(-50%); white-space:nowrap; padding:1px 10px 2px; border-radius:9px; font-family:var(--disp); font-size:12.5px; color:#fff; background:#4B4775; border:2px solid #4B4775; font-size:12px}
+.ng-match .mt-goal{flex:2.4 1 0}
+.ng-match .mt-mvb{flex:1 1 0}
 .ng-match .mt-gl{display:flex; align-items:baseline; justify-content:center; gap:4px; line-height:1}
-.ng-match .mt-gl b{font-family:var(--heavy); font-weight:400; font-size:26px; color:#3A2261; letter-spacing:.3px}
+.ng-match .mt-gl b{font-family:var(--heavy); font-weight:400; font-size:24px; color:#3A2261; letter-spacing:.3px}
 .ng-match .mt-gl b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
-.ng-match .mt-gl small{font-family:var(--disp); font-size:13px; color:#9A7A55}
+.ng-match .mt-gl small{font-family:var(--disp); font-size:14px; color:#6A5884}
 .ng-match .mt-gl{white-space:nowrap}
-@media (max-width:380px){ .ng-match .mt-hud{grid-template-columns:60px minmax(0,1fr) 82px; gap:6px} .ng-match .mt-gl b{font-size:22px} .ng-match .mt-gl small{font-size:12px} }
+@media (max-width:380px){ .ng-match .mt-por{flex-basis:48px} .ng-match .mt-hud{gap:6px} .ng-match .mt-gl b{font-size:21px} .ng-match .mt-gl small{font-size:13px} }
 @keyframes mtBump{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
 .ng-match .mt-goal.done{background:linear-gradient(180deg,#FFF8C8,#FFDE6A)}
-.ng-match .mt-prog{position:relative; height:20px; margin:6px 10px 0 2px}
-.ng-match .mt-pbar{position:absolute; left:0; right:0; top:4px; height:12px; border-radius:99px; background:#E9E6F0; border:1.5px solid #B9B4CE; overflow:hidden}
+.ng-match .mt-prog{position:relative; align-self:stretch; height:20px; margin:3px 10px 3px 2px}
+.ng-match .mt-pbar{position:absolute; left:0; right:0; top:4px; height:12px; border-radius:99px; background:rgba(26,15,69,.12); border:2px solid #1A0F45; overflow:hidden}
 .ng-match .mt-pbar i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(180deg,#9BF07A,#2EBD55); box-shadow:inset 0 -3px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.6); transition:width .35s cubic-bezier(.2,.9,.3,1)}
-.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:1.5px solid #B9B4CE; color:#D5D0E2; font-size:12px; line-height:1}
+.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:2px solid #1A0F45; color:#D6CCE6; font-size:12px; line-height:1}
 .ng-match .mt-mk.last{transform:translateX(-70%)}
-.ng-match .mt-mk.on{background:linear-gradient(#FFE98E,#FFB020); color:#8A4B00; animation:mtBump .35s}
-.ng-match .mt-time b{display:block; font-family:var(--heavy); font-weight:400; font-size:34px; line-height:1.05; color:#3A2261}
-.ng-match .mt-tbar{height:8px; margin-top:5px; border-radius:99px; background:#E9E6F0; border:1.5px solid #B9B4CE; overflow:hidden}
+.ng-match .mt-mk.on{background:linear-gradient(#FFE98E,#FFB020); color:#7A4A00; animation:mtBump .35s}
+.ng-match .mt-time b{font-family:var(--heavy); font-weight:400; font-size:28px; line-height:1; color:#3A2261}
+.ng-match .mt-tbar{align-self:stretch; height:8px; margin:3px 0 2px; border-radius:99px; background:rgba(26,15,69,.12); border:2px solid #1A0F45; overflow:hidden}
 .ng-match .mt-tbar i{display:block; height:100%; width:100%; transform-origin:left center; background:linear-gradient(180deg,#86D6FF,#2E8FE8)}
 .ng-match.warn .mt-time{animation:mtWarn .5s ease-in-out infinite alternate}
 .ng-match.warn .mt-time b{color:#E5484D}
 .ng-match.warn .mt-tbar i{background:linear-gradient(180deg,#FF9C9C,#E5484D)}
-@keyframes mtWarn{from{background:linear-gradient(180deg,#FFFBEF,#FBE9C6)}to{background:linear-gradient(180deg,#FFE3E3,#FFB9B9)}}
+@keyframes mtWarn{from{background:linear-gradient(180deg,#FFFFFF,#F3EEFF)}to{background:linear-gradient(180deg,#FFE3E3,#FFB9B9)}}
 /* 판: 연보라 칸 + 금테 */
-.ng-match .mt-stage{position:relative; margin-top:18px}
+.ng-match{display:flex; flex-direction:column}
+.ng-match .mt-stage{position:relative; margin:auto 0; padding:14px 0 0}
 .ng-match .mt-roof{display:none; position:absolute; left:50%; top:-12px; transform:translateX(-50%); width:62%; height:18px; border-radius:12px 12px 4px 4px; background:repeating-linear-gradient(90deg,#C8683A 0 16px,#A9502A 16px 18px); border:2.5px solid #5A2A12; box-shadow:inset 0 3px 0 rgba(255,255,255,.25); z-index:0}
 .ng-match .mt-panel{position:relative; z-index:1; margin:0 auto; width:max-content; padding:5px; border-radius:14px; background:linear-gradient(180deg,#F3CF7A,#D9A441); border:2px solid #8A6424;
   box-shadow:0 3px 0 #8A6424, 0 10px 18px rgba(20,40,90,.16)}
@@ -1187,13 +1183,13 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .rb .mt-img{animation:none}
 @keyframes mtRb{from{transform:scale(.92) rotate(-8deg)}to{transform:scale(1.06) rotate(8deg)}}
 /* 아래: 특수 동물 안내(초록 아이템 칸) */
-.ng-match .mt-dock{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px}
-.ng-match .mt-bst{position:relative; border-radius:16px; background:#EEF1F7; border:2px solid #B9BFD3; box-shadow:0 2px 0 #B9BFD3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:8px; padding:7px 4px 8px; min-height:96px; overflow:hidden}
+.ng-match .mt-dock{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; padding-bottom:4px}
+.ng-match .mt-bst{position:relative; border-radius:16px; background:#EEF1F7; border:2px solid #B9BFD3; box-shadow:0 2px 0 #B9BFD3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px; padding:7px 4px 8px; min-height:88px; overflow:hidden}
 .ng-match .mt-bi{position:relative; flex:none; width:46px; height:42px}
 .ng-match .mt-bst i{position:absolute; inset:0; background:center/contain no-repeat}
 .ng-match .mt-bst i.ar{inset:30% -14% 4%}
 .ng-match .mt-bst i.bb{inset:auto; right:-18%; top:36%; width:46%; height:46%}
-.ng-match .mt-bst em{position:relative; z-index:1; font-style:normal; font-family:var(--disp); font-size:11.5px; line-height:1.05; text-align:center; color:#4B4775; padding:0}
+.ng-match .mt-bst em{position:relative; z-index:1; font-style:normal; font-family:var(--disp); font-size:13px; line-height:1.1; text-align:center; color:#4B4775; padding:0}
 .ng-match .mt-bst.best{background:#F6EEF4; border-color:#D3BFD0; box-shadow:0 2px 0 #D3BFD0; flex-direction:column; justify-content:center; align-items:center}
 .ng-match .mt-bst.best b{font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1; color:#8C4F7A}
 .ng-match .mt-bst.best em{color:#8C4F7A; padding:2px 0 0}
@@ -1232,15 +1228,15 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
 .ng-match .mt-gc{position:relative; display:flex; flex-direction:column; align-items:center; min-width:40px}
 .ng-match .mt-gc i{display:block; width:36px; height:36px; background:center/contain no-repeat}
 .ng-match .mt-gc i.ice{border-radius:9px; background:linear-gradient(180deg,#E6FAFF,#9FE1FA); border:2px solid #6CC6EA; box-shadow:inset 0 2px 0 #fff; width:30px; height:30px; margin:3px}
-.ng-match .mt-gc b{font-family:var(--heavy); font-weight:400; font-size:17px; line-height:1; color:#3A2261; margin-top:1px}
+.ng-match .mt-gc b{font-family:var(--heavy); font-weight:400; font-size:18px; line-height:1; color:#3A2261; margin-top:1px}
 .ng-match .mt-gc.bump b{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
 .ng-match .mt-gc s{display:none; position:absolute; right:-2px; top:18px; width:20px; height:20px; border-radius:50%; background:linear-gradient(#8BF06A,#2BB24C); border:2px solid #fff; color:#fff; place-items:center; text-decoration:none}
 .ng-match .mt-gc s .ico{width:12px; height:12px}
 .ng-match .mt-gc.done b{visibility:hidden}
 .ng-match .mt-gc.done s{display:grid}
-.ng-match .mt-mvb b{font-size:36px}
+.ng-match .mt-mvb b{font-size:28px}
 .ng-match .mt-mvb b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
-.ng-match .mt-diff{display:inline-block; margin-top:3px; padding:1px 7px 2px; border-radius:8px; font-family:var(--disp); font-size:11px; color:#fff; background:#E5484D; white-space:nowrap}
+.ng-match .mt-diff{position:absolute; top:-11px; left:50%; transform:translateX(-50%); padding:1px 8px 2px; border-radius:8px; border:2px solid #1A0F45; font-family:var(--disp); font-size:12px; color:#fff; background:#E5484D; white-space:nowrap}
 .ng-match .mt-diff.x{background:#7B3FE0}
 .ng-match.warn .mt-mvb{animation:mtWarn .5s ease-in-out infinite alternate}
 .ng-match.warn .mt-mvb b{color:#E5484D}
@@ -1251,14 +1247,14 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
 .ng-match .mt-diag{position:absolute; inset:0; width:100%; height:100%; z-index:5; pointer-events:none; overflow:visible}
 .ng-match .mt-diag line{stroke-width:calc(var(--s) * .34); stroke-linecap:round; opacity:.9; filter:drop-shadow(0 0 5px #fff); stroke-dasharray:1200; stroke-dashoffset:1200; animation:mtDiag .55s ease-out forwards}
 @keyframes mtDiag{0%{stroke-dashoffset:1200; opacity:1}40%{stroke-dashoffset:0; opacity:1}100%{stroke-dashoffset:0; opacity:0; stroke-width:2px}}
-.ng-match .mt-dock.items{grid-template-columns:repeat(4,1fr)}
-.ng-match .mt-bst.it{cursor:pointer; min-height:88px}
-.ng-match .mt-bst.it:disabled{cursor:default; opacity:.55}
-.ng-match .mt-bst.it.lk .mt-bi{filter:grayscale(1) opacity(.5)}
-.ng-match .mt-bst.it.on{background:#FFF6C8; border-color:#E0A700; box-shadow:0 0 0 3px rgba(255,200,40,.45), 0 2px 0 #E0A700}
-.ng-match .mt-cnt{position:absolute; right:5px; top:5px; min-width:20px; height:20px; padding:0 5px; border-radius:10px; font-family:var(--heavy); font-weight:400; font-size:12px; line-height:20px; color:#fff; background:#FF5C7A}
-.ng-match .mt-cnt.lk{background:#8E97AC; font-size:10px}
-.ng-match .mt-cnt.lk::before{content:"St."}
+.ng-match .mt-dock.items{display:flex; margin-top:20px}
+.ng-match .mt-it{min-height:78px; gap:4px; padding:6px 4px 7px}
+.ng-match .mt-it .mt-bi{width:40px; height:36px}
+.ng-match .mt-it .mt-bi i{position:absolute; inset:0; background:center/contain no-repeat}
+.ng-match .mt-it .mt-in2{font-size:13px; line-height:1.1; white-space:nowrap}
+.ng-match .mt-it.lk .mt-bi{filter:grayscale(1) opacity(.5)}
+.ng-match .mt-it.on{background:linear-gradient(180deg,#A98BFF,#6C3CE0); color:#fff; text-shadow:0 1px 0 rgba(0,0,0,.25); box-shadow:0 0 0 3px rgba(169,139,255,.5), 0 3px 0 #1A0F45}
+.ng-match .mt-it .cnt.lk{background:#8E97AC; font-size:12px}
 .ng-match .mt-dock:not(.items){grid-template-columns:repeat(5,1fr)}
 .modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
 .modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}

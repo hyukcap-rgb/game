@@ -359,19 +359,19 @@ NG.block = (function(){
     const s = S();
     const gl = goals(s), multi = gl.length > 1 || gl[0].k !== 'lines';
     const gHtml = multi ? gl.map(o => `<span class="bk-gi g-${o.k}" aria-label="${o.name} ${o.need}개">${GIC[o.k]}<b><i id="bkG_${o.k}">0</i><small>/${o.need}</small></b></span>`).join('')
-      : `<span>줄 지우기</span><b><i id="bkLines">0</i><small>/${s.target}</small></b>`;
+      : `<span class="bk-gi g-lines">${GIC.lines}<b><i id="bkLines">0</i><small>/${s.target}</small></b></span>`;
     const chips = ruleChips(s.cfg);
     st.innerHTML = `<div class="ng-block">
-      <div class="bk-hud">
-        <div class="bk-goal" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}<em id="bkUsed">조각 0개</em></div>
-          <div class="bk-bar"><i id="bkFill"></i></div></div>
-        <div class="bk-pill"><small>점수</small><b id="bkPts">0</b></div>
-        <div class="bk-pill"><small>시간</small><b id="sclock">00:00</b></div>
+      <div class="hud-row bk-hud">
+        <div class="hchip bk-goal" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}</div>
+          <div class="hbar bk-bar"><i id="bkFill"></i></div><em>${multi ? '모을 목표' : '지운 줄'} · <span id="bkUsed">조각 0개</span></em></div>
+        <div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>
+        <div class="hchip bk-pts"><span class="hv"><b id="bkPts">0</b></span><em>점수</em></div>
       </div>
       ${chips ? `<div class="bk-rules" aria-label="이번 판 규칙">${chips}</div>` : ''}
       <div class="bk-board" id="bd"><canvas id="bkCv" aria-label="8×8 블록 판"></canvas><div class="bk-msg" id="bkMsg"></div></div>
-      <div class="bk-tray" id="bkTray" aria-label="놓을 조각 3개">${[0,1,2].map(i => `<div class="bk-slot" data-i="${i}" role="button" aria-label="조각 ${i + 1}"><div class="bk-pc"><canvas></canvas></div></div>`).join('')}</div>
       <p class="bk-tip" id="bkTip">조각을 끌어서 판 위에 놓아요</p>
+      <div class="bk-tray" id="bkTray" aria-label="놓을 조각 3개">${[0,1,2].map(i => `<div class="bk-slot" data-i="${i}" role="button" aria-label="조각 ${i + 1}"><div class="bk-pc"><canvas></canvas></div></div>`).join('')}</div>
     </div>`;
     const root = st.querySelector('.ng-block');
     s.cv = st.querySelector('#bkCv'); s.ctx = s.cv.getContext('2d'); s.boardEl = st.querySelector('#bd'); s.trayEl = st.querySelector('#bkTray');
@@ -387,13 +387,18 @@ NG.block = (function(){
     s.onResize = () => { if(G && G.bk === s) { layout(); paintTray(false); } };
     addEventListener('resize', s.onResize);
     layout(); paintTray(true); hud();
+    requestAnimationFrame(() => { if(G && G.bk === s && !s.dead){ layout(); paintTray(false); } });   /* 화면이 자리 잡은 뒤 높이를 한 번 더 맞춘다 */
     if(s.cfg.boss) later(() => { if(!G.paused) toast(s.cfg.plan && s.cfg.plan.mj.length ? '보스 스테이지 · 배운 규칙이 한꺼번에 나와요' : '보스 스테이지 · 돌 블록도 줄을 채우면 함께 사라져요'); }, 500);
     const me = G;
     const loop = ts => { if(G !== me || s.dead) return; G.raf = requestAnimationFrame(loop); frame(ts); };
     G.raf = requestAnimationFrame(loop);
   }
+  /* 문서 맨 위에서 요소까지 거리(등장 애니메이션의 transform에 흔들리지 않게 offsetTop으로) */
+  const docTop = el => { let t = 0; for(let e = el; e; e = e.offsetParent) t += e.offsetTop; return t; };
   function layout(){
-    const s = S(), W = s.boardEl.parentNode.clientWidth || 360;
+    const s = S(), root = s.boardEl.parentNode, W = root.clientWidth || 360;
+    const rt = docTop(root);   /* 화면 아래까지 채우고 조각 받침은 엄지 자리(아래) */
+    root.style.minHeight = Math.max(0, Math.min(innerHeight, Math.floor(innerHeight - rt - 10))) + 'px';
     const avail = Math.max(200, innerHeight - 330);            /* 짧은 화면에서는 판을 조금 줄임 */
     const S0 = Math.floor(Math.min(W - 20, avail, 460) / 8) * 8;
     s.dpr = Math.min(3, devicePixelRatio || 1); s.cell = S0 / 8; s.size = S0;
@@ -763,30 +768,27 @@ NG.block = (function(){
     css:`
 body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0%, rgba(75,47,184,0) 60%), radial-gradient(80% 50% at 100% 100%, rgba(239,75,63,.28) 0%, rgba(239,75,63,0) 70%), linear-gradient(180deg,#2B1B82 0%, #1A1057 45%, #0E0833 100%); background-attachment:fixed}
 .ng-block, .ng-block *{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none}
-.ng-block .bk-hud{display:flex; gap:6px; align-items:stretch; margin:0 0 10px}
-.ng-block .bk-goal, .ng-block .bk-pill{background:linear-gradient(180deg,#FFF8EA,#FBEBCB); border:2.5px solid #1A0F45; border-radius:14px; box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 #0E0730; color:var(--ink)}
-.ng-block .bk-goal{flex:1; min-width:0; padding:4px 10px 7px}
-.ng-block .bk-gt{display:flex; align-items:baseline; gap:6px; white-space:nowrap; line-height:1.25}
-.ng-block .bk-gt span{font-family:var(--disp); font-size:13.5px; color:#7B6A93}
+.ng-block{display:flex; flex-direction:column}
+.ng-block .bk-hud{margin:0 0 8px}
+.ng-block .bk-goal{flex:2.3 1 0; height:auto; min-height:56px; padding:5px 10px; gap:3px}
+.ng-block .bk-gt{display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; line-height:1}
 .ng-block .bk-gt b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#EF4B3F; letter-spacing:.3px}
 .ng-block .bk-gt b i{font-style:normal}
-.ng-block .bk-gt b small{font-size:14px; color:#7B6A93; margin-left:1px}
-.ng-block .bk-gt em{margin-left:auto; font-style:normal; font-size:11.5px; font-weight:700; color:#7B6A93}
+.ng-block .bk-gt b small{font-size:14px; color:#6A5884; margin-left:1px}
 .ng-block .bk-gt.gm{gap:10px}
 .ng-block .bk-gi{display:inline-flex; align-items:center; gap:4px}
 .ng-block .bk-gi svg{width:20px; height:20px; flex:none}
 .ng-block .bk-gt.gm .bk-gi b{font-size:19px}
 .ng-block .bk-gi.g-gem b{color:#C42A95}
 .ng-block .bk-gi.g-ice b{color:#2A76A8}
+.ng-block .bk-hud .hchip:not(.bk-goal){height:auto; min-height:56px}
+.ng-block .bk-pts b, .ng-block .bk-hud .time b{font-size:18px}
 .ng-block .bk-rules{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:-3px 0 9px}
 .ng-block .bk-chip{font-family:var(--disp); font-size:12.5px; line-height:1; padding:4px 9px 4px; border-radius:999px; border:2px solid #1A0F45; color:#1A0F45; background:#FFE27A; box-shadow:0 2px 0 #0E0730; white-space:nowrap}
 .ng-block .bk-chip.tw{background:#CFC5FF}
-.ng-block .bk-bar{position:relative; height:9px; border-radius:6px; background:#E6D4B2; box-shadow:inset 0 1.5px 0 rgba(90,50,10,.22); overflow:hidden; margin-top:2px}
-.ng-block .bk-bar i{position:absolute; left:0; top:0; bottom:0; width:0; border-radius:6px; background:linear-gradient(180deg,#FFB27A,#EF4B3F); box-shadow:inset 0 2px 0 rgba(255,255,255,.45); transition:width .35s cubic-bezier(.3,1.3,.5,1)}
-.ng-block .bk-pill{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px 8px; min-width:62px}
-.ng-block .bk-pill small{font-family:var(--disp); font-size:11.5px; color:#7B6A93; line-height:1.1}
-.ng-block .bk-pill b{font-family:var(--heavy); font-weight:400; font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.2}
-.ng-block .bk-board{position:relative; width:max-content; margin:0 auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #1A0F45;
+.ng-block .bk-bar{margin:0; height:8px}
+.ng-block .bk-bar i{transition:width .35s cubic-bezier(.3,1.3,.5,1)}
+.ng-block .bk-board{position:relative; width:max-content; margin:auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #1A0F45;
   box-shadow:inset 0 2px 0 rgba(255,255,255,.2), inset 0 0 0 2px rgba(140,120,255,.14), 0 5px 0 #0B0628, 0 14px 26px rgba(4,0,20,.45); touch-action:none}
 .ng-block .bk-board canvas{display:block; touch-action:none}
 .ng-block .bk-msg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; white-space:nowrap; padding:12px 22px; border-radius:18px; font-family:var(--disp); font-size:22px;
@@ -798,7 +800,7 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-multi.m3{color:#FF9BD0; font-size:50px}
 .ng-block .bk-multi.m4, .ng-block .bk-multi.m5{color:#8CFFC1; font-size:54px}
 @keyframes bkMulti{0%{transform:translate(-50%,-50%) scale(.3) rotate(-8deg); opacity:0}25%{transform:translate(-50%,-50%) scale(1.12) rotate(-4deg); opacity:1}70%{transform:translate(-50%,-58%) scale(1) rotate(-4deg); opacity:1}100%{transform:translate(-50%,-80%) scale(.95) rotate(-4deg); opacity:0}}
-.ng-block .bk-tray{display:grid; grid-template-columns:repeat(3,1fr); margin-top:14px; border-radius:20px; background:rgba(8,4,30,.35); box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
+.ng-block .bk-tray{display:grid; grid-template-columns:repeat(3,1fr); margin:0 0 4px; overflow:clip; border-radius:20px; background:rgba(8,4,30,.35); box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
 .ng-block .bk-slot{position:relative; display:flex; align-items:center; justify-content:center; min-height:44px; padding-bottom:10px; cursor:grab; touch-action:none}
 .ng-block .bk-slot + .bk-slot::before{content:""; position:absolute; left:0; top:18%; bottom:18%; width:1.5px; background:rgba(255,255,255,.07)}
 .ng-block .bk-pc{display:flex; filter:drop-shadow(0 4px 0 rgba(8,3,30,.55)); transition:opacity .2s, filter .2s}
@@ -806,9 +808,9 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-pc.in{animation:bkIn .42s cubic-bezier(.2,1.3,.4,1) both}
 @keyframes bkIn{0%{transform:translateX(130px) scale(.6); opacity:0}100%{transform:none; opacity:1}}
 .ng-block .bk-slot.nofit .bk-pc{opacity:.38; filter:grayscale(.85) drop-shadow(0 3px 0 rgba(8,3,30,.4))}
-.ng-block .bk-slot.nofit::after{content:"놓을 곳 없음"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%); font-size:10.5px; font-weight:700; color:#FFB2B2; white-space:nowrap; opacity:.85}
+.ng-block .bk-slot.nofit::after{content:"놓을 곳 없음"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:700; color:#FFC4C4; white-space:nowrap}
 .ng-block .bk-slot.empty{cursor:default}
-.ng-block .bk-tip{margin:12px 0 0; text-align:center; font-family:var(--disp); font-size:15px; color:#CFC5FF; opacity:.85; transition:opacity .4s}
+.ng-block .bk-tip{margin:0; padding:12px 0 10px; text-align:center; font-family:var(--disp); font-size:15px; color:#CFC5FF; opacity:.85; transition:opacity .4s}
 .ng-block .bk-tip.off{opacity:0}
 .ng-block.bk-drag{position:fixed; left:0; top:0; z-index:30; pointer-events:none; will-change:transform}
 .ng-block.bk-drag canvas{display:block; filter:drop-shadow(0 10px 8px rgba(0,0,0,.45)); transform-origin:50% 50%; animation:bkPick .14s ease-out both}

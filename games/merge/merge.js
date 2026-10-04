@@ -297,13 +297,13 @@ NG.merge = (() => {
 
   function hud(){
     const M = G.M, s = (id, t) => { const e = document.getElementById(id); if(e) e.textContent = t; };
-    if(M.mv){ const left = Math.max(0, M.mv - M.moves); s('mMoves', left); const e = document.getElementById('mMoves'); if(e) e.parentNode.classList.toggle('warn', left <= Math.max(3, Math.round(M.mv * .12))); }
+    if(M.mv){ const left = Math.max(0, M.mv - M.moves); s('mMoves', left); const e = document.getElementById('mMoves'); if(e) e.closest('.hchip').classList.toggle('warn', left <= Math.max(3, Math.round(M.mv * .12))); }
     else s('mMoves', M.moves);
     s('mPts', fmt(M.pts));
     const b = document.getElementById('mBest'); if(b && +b.dataset.v !== M.best){ b.dataset.v = M.best; b.innerHTML = tileHTML(M.best); }
     const f = document.getElementById('mFill'); if(f) f.style.width = (NG.merge.progress() * 100).toFixed(1) + '%';
     const u = document.getElementById('mUndo');
-    if(u){ u.disabled = M.noUndo || !M.snap || M.undoUsed || M.lock; u.querySelector('small').textContent = M.noUndo ? '맨손' : M.undoUsed ? '사용함' : '1회'; }
+    if(u){ u.disabled = M.noUndo || !M.snap || M.undoUsed || M.lock; u.querySelector('.cnt').textContent = M.noUndo || M.undoUsed ? '0' : '1'; }
     if(M.cfg.rot){
       const d = banNow(M), left = ROT_EVERY - M.moves % ROT_EVERY, bar = document.getElementById('mBan');
       if(bar){ bar.className = 'mban d' + d; bar.setAttribute('aria-label', DIRN[d] + '쪽으로는 밀 수 없어요'); }
@@ -322,6 +322,12 @@ NG.merge = (() => {
       el.innerHTML = '<div class="mi"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 14l7 4 3 8M19 26l8-3 4 5M16 18l9-6" fill="none" stroke="#4E4670" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
       el.setAttribute('aria-label', '돌 칸'); M.layer.appendChild(el); }
       else if(t) mkTile(t, i, cls); });
+  }
+  /* 화면 아래까지 채운다: 되돌리기·안내 줄은 엄지가 닿는 아래쪽(문서 위치는 transform에 흔들리지 않게 offsetTop으로) */
+  function fillH(){
+    const M = G && G.M; if(!M || !M.wrap) return;
+    let t = 0; for(let e = M.wrap; e; e = e.offsetParent) t += e.offsetTop;
+    M.wrap.style.minHeight = Math.max(0, Math.min(innerHeight, Math.floor(innerHeight - t - 10))) + 'px';
   }
   function measure(){
     const M = G && G.M; if(!M || !M.board) return;
@@ -525,25 +531,23 @@ NG.merge = (() => {
       if(c.tw) chips.push(`<span class="mc t">${nameOf(c.tw)}</span>`);
       if(c.boss) chips.unshift('<span class="mc b">보스</span>'); else if(c.hard) chips.unshift('<span class="mc h">어려움</span>');
       st.innerHTML = `<div class="ng-merge${c.boss || M.stones ? ' boss' : ''}${M.N === 3 ? ' n3' : ''}" style="--n:${M.N}">
-        <div class="mhud">
-          <div class="mgoal" aria-label="목표 ${M.target}"><span>목표</span><div class="mgt">${tileHTML(M.target)}</div></div>
-          <div class="mstats">
-            <div class="ms"><span>최고</span><b class="mbest" id="mBest" data-v="0"></b></div>
-            <div class="ms${M.mv ? ' lim' : ''}"><span>${M.mv ? '남은 이동' : '이동'}</span><b id="mMoves">0</b></div>
-            <div class="ms"><span>점수</span><b id="mPts">0</b></div>
-            <div class="ms"><span>시간</span><b id="sclock">00:00</b></div>
-          </div>
+        <div class="hud-row mhud">
+          <div class="hchip mgoal" aria-label="목표 ${M.target}"><span class="mgl"><b class="mbest" id="mBest" data-v="0"></b><span class="mto" aria-hidden="true">→</span><span class="mgt">${tileHTML(M.target)}</span></span>
+            <span class="hbar mprog" aria-hidden="true"><i id="mFill"></i></span><em>최고 → 목표</em></div>
+          <div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>
+          <div class="hchip${M.mv ? ' lim' : ''}"><span class="hv"><b id="mMoves">0</b></span><em>${M.mv ? '남은 이동' : '이동'}</em></div>
+          <div class="hchip mpts"><span class="hv"><b id="mPts">0</b></span><em>점수</em></div>
         </div>
         ${chips.length ? `<div class="mchips" aria-label="이번 판 규칙">${chips.join('')}${c.rot ? '<span class="mc x" id="mBanTxt"></span>' : ''}</div>` : ''}
-        <div class="mprog" aria-hidden="true"><i id="mFill"></i></div>
         <div class="mbwrap"><div class="mboard" id="mBoard" role="application" aria-label="숫자 판. 밀거나 화살표 키로 움직여요">
           <div class="mslots">${'<i></i>'.repeat(M.N * M.N)}</div><div class="mlayer"></div>${c.rot ? '<div class="mban" id="mBan"></div>' : ''}</div></div>
         <div class="mtools">
-          <button class="mundo" id="mUndo" aria-label="되돌리기 한 번">${ICON_UNDO}<span>되돌리기<small>1회</small></span></button>
+          <button class="tool item mundo" id="mUndo" aria-label="되돌리기 한 번">${ICON_UNDO}<span>되돌리기</span><b class="cnt">1</b></button>
           <div class="mtip">${tipHTML(M)}</div>
         </div></div>`;
       M.wrap = st.querySelector('.ng-merge'); M.board = st.querySelector('#mBoard'); M.bwrap = st.querySelector('.mbwrap'); M.layer = st.querySelector('.mlayer');
-      drawAll('new'); measure(); hud();
+      drawAll('new'); measure(); hud(); fillH();
+      requestAnimationFrame(() => { if(G && G.M === M) { fillH(); measure(); } });   /* 화면이 자리 잡은 뒤 한 번 더 */
       /* 밀기: 24px 넘게 끌면 바로 움직임(손을 떼기 전에) */
       let sx = 0, sy = 0, pid = null, used = false;
       const down = e => { if(e.button > 0) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; used = false; try{ M.wrap.setPointerCapture(pid); }catch(_){} };
@@ -556,7 +560,7 @@ NG.merge = (() => {
       const KEYS = { ArrowUp:0, ArrowRight:1, ArrowDown:2, ArrowLeft:3, w:0, d:1, s:2, a:3, W:0, D:1, S:2, A:3 };
       const key = e => { if(!G || G.M !== M) return; const v = document.getElementById('veil'); if(v && v.classList.contains('on')) return;
         if(e.key in KEYS){ e.preventDefault(); doMove(KEYS[e.key]); } else if((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)){ e.preventDefault(); undo(); } };
-      const rs = () => measure();
+      const rs = () => { fillH(); measure(); };
       addEventListener('keydown', key); addEventListener('resize', rs);
       M.off = () => { removeEventListener('keydown', key); removeEventListener('resize', rs); };
       st.querySelector('#mUndo').onclick = () => undo();
@@ -564,7 +568,7 @@ NG.merge = (() => {
       later(() => {
         const s = M.layer.querySelector('.stone'), l = M.layer.querySelector('.mt.lk');
         if(l) fxBubble(l, '같은 숫자로 부딪히면 풀려요'); else if(s) fxBubble(s, '돌 칸: 움직이지 않아요');
-        else if(M.mv){ const e = document.getElementById('mMoves'); if(e) fxBubble(e.parentNode, M.mv + '번 안에 만들어요'); }
+        else if(M.mv){ const e = document.getElementById('mMoves'); if(e) fxBubble(e.closest('.hchip'), M.mv + '번 안에 만들어요'); }
       }, 700);
     },
     progress(){ const M = G && G.M; if(!M) return 0; return Math.max(0, Math.min(1, (Math.log2(Math.max(2, M.best)) - 1) / (Math.log2(M.target) - 1))); },
@@ -582,23 +586,19 @@ body[data-mode="merge"]{background:
   radial-gradient(70% 45% at 100% 100%, rgba(80,40,200,.55) 0%, rgba(80,40,200,0) 70%),
   linear-gradient(170deg,#FF9A5C 0%, #F0568F 42%, #8B3FD0 78%, #4A2398 100%) fixed}
 .ng-merge{--gap:8px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none; color:#fff; padding-bottom:6px}
-.ng-merge .mhud{display:flex; align-items:stretch; gap:8px; padding:8px; border-radius:20px; background:linear-gradient(180deg,#3A2596,#23166A); border:3px solid #1A0F45;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.2), 0 4px 0 #0E0730, 0 10px 18px rgba(20,5,60,.3)}
-.ng-merge .mgoal{flex:none; width:76px; border-radius:14px; background:radial-gradient(circle at 50% 60%, rgba(255,226,122,.35), rgba(255,226,122,0) 70%), #170D47; box-shadow:inset 0 2px 5px rgba(0,0,0,.45);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 0 7px; gap:2px}
-.ng-merge .mgoal > span{font-family:var(--disp); font-size:13px; color:#FFE27A; line-height:1}
-.ng-merge .mgt{position:relative; width:52px; height:52px; --ts:52px; animation:merge_mgbob 2.4s ease-in-out infinite}
-@keyframes merge_mgbob{50%{transform:translateY(-2px) rotate(-3deg)}}
-.ng-merge .mstats{flex:1; min-width:0; display:grid; grid-template-columns:1fr 1fr; gap:6px}
-.ng-merge .ms{display:flex; align-items:center; justify-content:space-between; gap:4px; padding:0 10px; border-radius:12px; background:rgba(255,255,255,.1); box-shadow:inset 0 1px 0 rgba(255,255,255,.12); min-height:34px}
-.ng-merge .ms > span{font-size:12px; font-weight:700; color:#CFC5FF; white-space:nowrap}
-.ng-merge .ms > b{font-family:var(--heavy); font-weight:400; font-size:19px; letter-spacing:.3px; font-variant-numeric:tabular-nums; color:#fff; line-height:1}
-.ng-merge .ms > b#sclock{font-family:var(--heavy); font-size:17px; color:#FFE27A}
-.ng-merge .mbest{position:relative; width:32px; height:32px; --ts:32px; display:block}
+.ng-merge{display:flex; flex-direction:column}
+.ng-merge .mhud{margin:0; color:#3A2261}
+.ng-merge .mhud .hchip{height:auto; min-height:60px}
+.ng-merge .mhud .hv b{font-size:18px}
+.ng-merge .mgoal{flex:1.9 1 0; padding:5px 8px; gap:3px}
+.ng-merge .mgl{display:flex; align-items:center; gap:5px}
+.ng-merge .mto{font-family:var(--heavy); font-size:15px; color:#6A5884}
+.ng-merge .mgt{position:relative; display:block; width:34px; height:34px; --ts:34px}
+.ng-merge .mbest{position:relative; width:30px; height:30px; --ts:30px; display:block}
 .ng-merge .mbest .mi, .ng-merge .mgt .mi{border-width:2px}
-.ng-merge .mprog{position:relative; height:10px; margin:10px 6px 10px; border-radius:6px; background:rgba(26,15,69,.55); box-shadow:inset 0 2px 3px rgba(0,0,0,.35); overflow:hidden}
-.ng-merge .mprog i{position:absolute; left:0; top:0; bottom:0; width:0; border-radius:6px; background:linear-gradient(90deg,#FFE27A,#FFB020); box-shadow:inset 0 2px 0 rgba(255,255,255,.55); transition:width .35s cubic-bezier(.2,.8,.3,1)}
-.ng-merge .mbwrap{position:relative}
+.ng-merge .mprog{margin:0; height:8px}
+.ng-merge .mprog i{transition:width .35s cubic-bezier(.2,.8,.3,1)}
+.ng-merge .mbwrap{position:relative; margin:auto 0; padding:14px 0}
 .ng-merge .mboard{--ts:70px; position:relative; aspect-ratio:1; width:100%; max-width:440px; margin:0 auto; padding:var(--gap); border-radius:22px;
   background:linear-gradient(180deg,#34228A,#241668); border:3px solid #1A0F45;
   box-shadow:inset 0 3px 0 rgba(255,255,255,.18), inset 0 -4px 0 rgba(0,0,0,.25), 0 6px 0 #0E0730, 0 16px 30px rgba(20,5,60,.45)}
@@ -661,14 +661,10 @@ body[data-mode="merge"]{background:
 .ng-merge .mbb .btn{height:46px; flex:1; gap:4px}
 .ng-merge .mbb .btn svg{width:18px; height:18px}
 @keyframes merge_mban{0%{opacity:0; scale:.5} 100%{opacity:1; scale:1}}
-.ng-merge .mtools{display:flex; align-items:center; gap:10px; margin-top:16px}
-.ng-merge .mundo{flex:none; display:flex; align-items:center; gap:8px; height:52px; padding:0 16px 0 12px; border-radius:16px; color:#fff; font-family:var(--disp); font-size:16px; text-shadow:0 2px 0 #124F92;
-  background:linear-gradient(180deg,#86D6FF,#2E8FE8); border:2.5px solid #124F92; box-shadow:inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 0 rgba(0,0,0,.14), 0 4px 0 #124F92, 0 7px 12px rgba(20,5,40,.22); transition:transform .08s}
-.ng-merge .mundo span{display:flex; flex-direction:column; align-items:flex-start; line-height:1.1}
-.ng-merge .mundo small{font-family:var(--font); font-size:11px; font-weight:800; opacity:.9; text-shadow:none}
-.ng-merge .mundo:active:not(:disabled){transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 1px 0 #124F92}
-.ng-merge .mundo:disabled{filter:grayscale(.8); opacity:.55}
-.ng-merge .mtip{flex:1; min-width:0; font-size:13px; font-weight:700; line-height:1.35; color:#fff; background:rgba(26,15,69,.35); border-radius:14px; padding:8px 12px}
+.ng-merge .mtools{display:flex; align-items:stretch; gap:10px; margin:0; padding-bottom:4px}
+.ng-merge .mundo{flex:0 0 96px; min-height:56px}
+.ng-merge .mundo svg{width:22px; height:22px}
+.ng-merge .mtip{flex:1; min-width:0; align-self:center; font-size:13.5px; font-weight:700; line-height:1.35; color:#fff; background:rgba(26,15,69,.4); border-radius:16px; padding:8px 12px}
 .ng-merge .mtip b{font-family:var(--heavy); font-weight:400; color:#FFE27A}
 .ng-merge.boss .mtip{background:rgba(26,15,69,.6); box-shadow:inset 0 0 0 2px rgba(207,197,255,.4)}
 .ng-merge .mtip b:not(.n){display:inline-block; font-family:var(--disp); font-size:12px; color:#1A0F45; background:#FFE27A; border-radius:6px; padding:0 6px; margin-right:4px}
@@ -681,10 +677,11 @@ body[data-mode="merge"]{background:
 .ng-merge .mc.b{background:#FF5C6A; color:#fff; -webkit-text-stroke:3px #7A1440; paint-order:stroke fill}
 .ng-merge .mc.h{background:#FFA53A}
 .ng-merge .mc.x{background:#1B1150; color:#FFE27A; border-color:#FF5C6A; font-variant-numeric:tabular-nums}
-.ng-merge .ms.lim{background:rgba(255,226,122,.2); box-shadow:inset 0 0 0 2px rgba(255,226,122,.55)}
-.ng-merge .ms.lim > span{color:#FFE27A}
-.ng-merge .ms.warn{background:rgba(255,92,106,.5); box-shadow:inset 0 0 0 2px #FF8A95; animation:merge_mwarn 1s ease-in-out infinite}
-@keyframes merge_mwarn{50%{background:rgba(255,92,106,.25)}}
+.ng-merge .hchip.lim{background:linear-gradient(180deg,#FFF9DA,#FFE9A0)}
+.ng-merge .hchip.lim em{color:#7A4A00}
+.ng-merge .hchip.warn{background:linear-gradient(180deg,#FFE3E6,#FFB3BB); animation:merge_mwarn 1s ease-in-out infinite}
+.ng-merge .hchip.warn b{color:#C21F3A}
+@keyframes merge_mwarn{50%{transform:scale(1.05)}}
 .ng-merge .mt.lk .mi{filter:saturate(.4) brightness(.78)}
 .ng-merge .mt.lk .mi::after{content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(26,15,69,.3) 0 7%, rgba(26,15,69,0) 7% 16%)}
 .ng-merge .mlk{position:absolute; right:-9%; top:-11%; width:46%; height:46%; z-index:3; filter:drop-shadow(0 2px 0 rgba(10,4,40,.6)); animation:merge_lkwob 2.8s ease-in-out infinite}
@@ -700,7 +697,7 @@ body[data-mode="merge"]{background:
 body[data-mode="merge"] .fxfloat.mgf.unl{color:#FFD84A; font-size:20px}
 body[data-mode="merge"] .fxfloat.mgf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#fff; -webkit-text-stroke:5px #1A0F45}
 body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
-@media (max-width:370px){ .ng-merge{--gap:7px} .ng-merge .mgoal{width:66px} .ng-merge .mgt{width:46px; height:46px; --ts:46px} .ng-merge .ms{padding:0 8px} .ng-merge .ms > b{font-size:17px} .ng-merge .mtip{font-size:12px} }
+@media (max-width:370px){ .ng-merge{--gap:7px} .ng-merge .mgt{width:30px; height:30px; --ts:30px} .ng-merge .mbest{width:26px; height:26px; --ts:26px} .ng-merge .mhud .hv b{font-size:16px} .ng-merge .mtip{font-size:13px} }
 @media (prefers-reduced-motion: reduce){ .ng-merge .mt{transition-duration:60ms} .ng-merge .v512::after, .ng-merge .v1024::after, .ng-merge .v2048::after, .ng-merge .mgt{animation:none} }
 `,
     sounds:{
