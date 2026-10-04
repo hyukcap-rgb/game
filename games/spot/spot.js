@@ -197,7 +197,6 @@ NG.spot = (() => {
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>'
   };
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
   const COVER = '<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M8 20c8-9 36-9 44 0" fill="none" stroke="#1A0F45" stroke-width="3.6" stroke-linecap="round"/><path d="M14 24l-3 5M23 27l-1 6M37 27l1 6M46 24l3 5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/></svg>';
   const ring = (cx, cy, r, cls, col) => `<g class="sp-ring ${cls || ''}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${OL}" stroke-width="6.4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${col || '#FF3D7F'}" stroke-width="3.4"${cls === 'reveal' ? ' stroke-dasharray="7 5"' : ''}/></g>`;
 
@@ -207,7 +206,7 @@ NG.spot = (() => {
     const h = $('#spHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const lv = $('#spLives');
     if(lv && !m.lives) lv.hidden = true;
-    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="sp-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#spMsg'); if(!e) return; e.className = 'sp-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
@@ -280,7 +279,7 @@ NG.spot = (() => {
     const m = S();
     m.misses++; m.streak++;
     const cd = Math.min(2400, 700 + 400 * (m.streak - 1));   /* 연달아 빗나갈수록 쉬는 시간이 길어진다(마구 누르기 막기) */
-    m.coolUntil = performance.now() + cd;
+    m.coolUntil = performance.now() + cd; m.coolLen = cd;
     const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;
     sfx('spotMiss'); fxBuzz(30);
     try{
@@ -290,18 +289,29 @@ NG.spot = (() => {
         const x = L.lastElementChild; T(() => { if(x) x.remove(); }, Math.max(650, cd));
       }
       const pics = $('#spPics'); if(pics){ pics.classList.add('cool'); fxShake($('#sp' + w), 4); }
+      coolShow();
     }catch(_){}
     T(() => { const pics = $('#spPics'); if(pics && performance.now() >= m.coolUntil - 20) pics.classList.remove('cool'); }, cd);
     msg('<b class="bad">빗나갔어요</b><span>' + (left < 0 ? '−' + MISS_PTS + '점 · 잠깐 쉬어요' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'sp-pop');
     T(() => { if(m.phase === 'play') msg(playMsg()); }, Math.max(1100, cd));
     hud();
     if(left >= 0){
-      const hs = document.querySelectorAll('.ng-spot .sp-heart'), lost = hs[left];
-      try{ if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot', 'spark'], up:60, g:500, dur:.6 }); } }catch(_){}
+      const hs = document.querySelectorAll('.ng-spot .hlives i'), lost = hs[left];
+      try{ if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot', 'spark'], up:60, g:500, dur:.6 }); } }catch(_){}
       G.paws = left; if(!left) lose('기회를 다 썼어요', 'miss');
     }
   }
 
+  /* 쉬는 시간 남은 초 보여 주기(두 그림 사이 '잠깐! 0.8초' + 줄어드는 막대). 보이기만 함 */
+  function coolShow(){
+    try{
+      const m = S(), c = $('#spCool'); if(!c || !m) return;
+      const left = Math.max(0, m.coolUntil - performance.now()); if(!left) return;
+      const t = (Math.ceil(left / 100) / 10).toFixed(1);
+      const b = c.querySelector('b'); if(b && b.dataset.t !== t){ b.dataset.t = t; b.textContent = '잠깐! ' + t + '초'; }
+      const bar = $('#spCoolBar'); if(bar) bar.style.transform = `scaleX(${Math.min(1, left / (m.coolLen || 700))})`;
+    }catch(_){}
+  }
   function clearHint(){ ['A', 'B'].forEach(w => { const L = fxLayer(w); if(L) L.querySelectorAll('.sp-hintc').forEach(e => e.remove()); }); }
   function useHint(){
     const m = S(); if(!m || G.over || G.paused || m.phase !== 'play' || m.hintLeft <= 0) return;
@@ -348,6 +358,7 @@ NG.spot = (() => {
       const b = $('#spBarWrap'); if(b) b.classList.toggle('hurry', sec <= 10);
       if(sec <= 10 && sec > 0){ sfx('spotTick', { hi:sec <= 5 }); try{ if(p && !FXR.reduce && p.animate) p.animate([{ transform:'scale(1)' }, { transform:'scale(1.12)' }, { transform:'scale(1)' }], { duration:300, easing:'ease-out' }); }catch(_){} }
     }
+    if(performance.now() < m.coolUntil) coolShow();
     if(rem <= 0){ const e = $('#spTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요', 'time'); }
   }
   function uncover(){ const m = S(); m.cover = null; ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(e) e.classList.remove('covered'); }); }
@@ -451,17 +462,18 @@ NG.spot = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-spot">
-        <div class="sp-hud">
-          <div class="sp-pill" id="spFoundP" aria-label="찾은 차이"><span class="sp-ic">${ICO.eye}</span><b id="spFound">0</b><small>/${m.secret ? '?' : m.N}곳</small></div>
-          <div class="sp-pill sp-time" id="spTimeP" aria-label="남은 시간"><span class="sp-ic">${ICO.clock}</span><b id="spTime">${mmss(G.limit)}</b></div>
-          <button class="sp-pill sp-btn" id="spHint" aria-label="힌트"><span class="sp-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" id="spFoundP" aria-label="찾은 차이"><span class="hv">${ICO.eye}<b id="spFound">0</b><small>/${m.secret ? '?' : m.N}</small></span><em>찾은 곳</em></div>
+          <div class="hchip time" id="spTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="spTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="spHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="sp-rules" aria-label="켜진 규칙">${m.boss ? '<span class="sp-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="sp-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="sp-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
-        <div class="sp-barw" id="spBarWrap"><i id="spBar"></i></div>
-        <div class="sp-row"><div class="sp-lives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div></div>
+        <div class="hbar sp-tbar" id="spBarWrap"><i id="spBar"></i></div>
+        <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div></div>
         <div class="sp-pics in" id="spPics">
           <div class="sp-pic" id="spA">${picA(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
           <div class="sp-pic" id="spB">${picB(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
+          <div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div>
         </div>
       </div>`;
       ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(e) e.onpointerdown = ev => tapAt(w, ev); });
@@ -488,32 +500,21 @@ body[data-mode="spot"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.25) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#E2FBF6 0%,#B2EEE3 55%,#86DCCD 100%) fixed}
 .ng-spot{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-spot .sp-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-spot .sp-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#ECFBF8); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(20,140,120,.14), 0 3px 0 #1A0F45; color:#124A42; white-space:nowrap}
-.ng-spot .sp-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-spot .sp-pill small{font-family:var(--disp); font-size:14px; color:#4E8A80}
-.ng-spot .sp-ic{width:22px; height:22px; flex:none; display:block}
-.ng-spot .sp-ic svg{width:100%; height:100%; display:block}
-.ng-spot .sp-time{flex:1.3 1 0}
-.ng-spot .sp-time b{font-size:23px}
-.ng-spot .sp-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-spot .sp-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-spot .sp-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-spot .sp-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(20,140,120,.14), 0 1px 0 #1A0F45}
-.ng-spot .sp-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
-.ng-spot .sp-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
-.ng-spot .sp-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#8EF0E0,#14B8A6); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
-.ng-spot .sp-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
+.ng-spot .hud-row{margin:0}
+.ng-spot .hchip.time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
+.ng-spot .hchip.time.hurry b{text-shadow:0 2px 0 #8E0F2F}
+.ng-spot .hchip.time.hurry em{color:#fff}
+.ng-spot .hchip:is(button){-webkit-tap-highlight-color:transparent}
+.ng-spot .sp-tbar{margin:8px 0 0; height:10px}
+.ng-spot .sp-tbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#8EF0E0,#14B8A6)}
+.ng-spot .sp-tbar.hurry > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-spot .sp-row{display:flex; align-items:center; gap:8px; width:100%; height:36px}
-.ng-spot .sp-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-spot .sp-lives[hidden]{display:none}
-.ng-spot .sp-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-spot .sp-heart svg{width:100%; height:100%; display:block}
-.ng-spot .sp-heart.off{color:#DCD6E6}
-.ng-spot .sp-heart.lost{animation:spot-lost .5s ease-out}
-.ng-spot .sp-lives.last{background:#FFE3E3}
-@keyframes spot-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
+.ng-spot .hlives{flex:none}
+.ng-spot .hlives[hidden]{display:none}
+.ng-spot .hlives i{display:inline-block}
+.ng-spot .hlives i.lost{animation:spot-lost .5s ease-out}
+.ng-spot .hlives.last{background:#FFE3E3}
+@keyframes spot-lost{0%{transform:scale(1.6); color:#FFE27A} 100%{transform:none}}
 .ng-spot .sp-msg{flex:1; min-width:0; overflow:hidden; height:36px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#145A50; white-space:nowrap}
 .ng-spot .sp-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-spot .sp-msg b.boss{color:#FFE27A}
@@ -521,7 +522,12 @@ body[data-mode="spot"]{background:
 .ng-spot .sp-msg.sp-pop, .ng-spot .sp-msg.sp-win{animation:spot-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-spot .sp-msg.sp-win b{font-size:24px; color:#FFE27A}
 @keyframes spot-in{from{transform:scale(.6); opacity:0}}
-.ng-spot .sp-pics{display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; touch-action:manipulation}
+.ng-spot .sp-pics{position:relative; display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; touch-action:manipulation}
+.ng-spot .sp-cool{position:absolute; left:50%; top:50%; z-index:5; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; transition:opacity .15s, transform .2s cubic-bezier(.2,1.5,.4,1)}
+.ng-spot .sp-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:17px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:5px 13px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap; font-variant-numeric:tabular-nums}
+.ng-spot .sp-cool i{display:block; height:6px; margin:5px 10px 0; border-radius:99px; background:rgba(26,15,69,.35); overflow:hidden}
+.ng-spot .sp-cool s{display:block; height:100%; background:#FFE27A; transform-origin:left center}
+.ng-spot .sp-pics.cool .sp-cool{opacity:1; transform:translate(-50%,-50%) scale(1)}
 .ng-spot .sp-pic{position:relative; width:var(--pw, 100%); height:var(--ph, auto); border:3px solid #1A0F45; border-radius:16px; overflow:hidden; background:#fff;
   box-shadow:0 4px 0 #1A0F45, 0 10px 18px rgba(10,80,70,.2); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:filter .15s}
 .ng-spot .sp-pic svg{display:block; width:100%; height:100%}
@@ -547,7 +553,7 @@ body[data-mode="spot"]{background:
 .ng-spot .sp-chip.mj{background:#DDF8F3; color:#0B6B61}
 .ng-spot .sp-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-spot .sp-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-spot .sp-pill b{font-size:18px} .ng-spot .sp-time b{font-size:20px} .ng-spot .sp-pill small{font-size:12px} .ng-spot .sp-hud{gap:5px} .ng-spot .sp-pill{padding:0 5px} .ng-spot .sp-msg b{font-size:18px} .ng-spot .sp-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-spot .sp-msg b{font-size:18px} .ng-spot .sp-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-spot .sp-pics.in .sp-pic, .ng-spot .sp-ring.pop circle, .ng-spot .sp-hintc circle{animation:none} .ng-spot .sp-cover{transition:none} }
 `,
     sounds:{

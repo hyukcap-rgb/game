@@ -1,7 +1,7 @@
 {
   "id": "hidden",
   "name": "숨은그림 찾기",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "summary": "꾸밈이 가득한 장면 속에 숨은 물건을 찾아 누르는 집중력 게임",
   "js": [
     "hidden.js"

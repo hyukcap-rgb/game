@@ -57,7 +57,6 @@ NG.link = (() => {
   const symName = k => k === STONE ? '돌' : k === CLOCK ? '시계' : (k.endsWith(ALT) ? '점 찍힌 ' : '') + SYM[baseOf(k)][0];
   const symCol = k => k === CLOCK ? '#5BD08A' : k === STONE ? '#8E8AA6' : SYM[baseOf(k)][1];
 
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
   const LIVES = 3;   /* 기본 기회 3번: 세 번째 실수에서 끝 */
   const ICO = {
     pair:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="14" y="9" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><path d="M6 5V2h12v7" fill="none" stroke="#FF9A1F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -224,7 +223,7 @@ NG.link = (() => {
     const f = $('#lkFound'); if(f) f.textContent = m.found;
     const h = $('#lkHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const x = $('#lkMix'); if(x){ x.querySelector('b').textContent = m.mixLeft; x.disabled = m.mixLeft <= 0; }
-    const lv = $('#lkLives'); if(lv && !m.lives) lv.hidden = true; else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="lk-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    const lv = $('#lkLives'); if(lv && !m.lives) lv.hidden = true; else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#lkMsg'); if(!e) return; e.className = 'lk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
@@ -300,7 +299,7 @@ NG.link = (() => {
     setSel(a, false); m.sel = null;
     sfx('linkMiss'); fxBuzz(25);
     msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left < 0 ? '점수 −25' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
-    const hs = document.querySelectorAll('.ng-link .lk-heart'), lost = left >= 0 && hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
+    const hs = document.querySelectorAll('.ng-link .hlives i'), lost = left >= 0 && hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
     if(m.tick){ m.pen += m.tick; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }
     hud();
     T(() => { [a, i].forEach(j => { const el = cellEl(j); if(el) el.classList.remove('bad'); }); if(m.phase === 'play') msg(playMsg()); }, 700);
@@ -474,7 +473,7 @@ NG.link = (() => {
     help:[
       ['같은 그림 두 개를 골라요', '같은 그림 타일 두 개를 차례로 누르면 길로 이어져 함께 사라져요. 고른 타일을 다시 누르면 취소돼요.'],
       ['길은 두 번까지만 꺾여요', '길은 빈칸과 판 바깥 테두리로만 지나갈 수 있고, 꺾이는 곳은 두 번까지예요.'],
-      ['기회는 3번', '다른 그림을 고르거나 길이 막힌 짝을 고르면 기회 하나(♥)를 잃어요. 세 번 틀리면 게임이 끝나요. 마구 누르지 말고 잘 보고 골라요!'],
+      ['기회는 3번', '다른 그림을 고르거나 길이 막힌 짝을 고르면 기회 하나(★)를 잃어요. 세 번 틀리면 게임이 끝나요. 마구 누르지 말고 잘 보고 골라요!'],
       ['시간 안에 판을 비워요', '제한 시간 안에 모든 짝을 지우면 성공! 막히면 💡힌트나 섞기를 쓸 수 있지만 점수가 조금 줄어요. 지울 짝이 하나도 없으면 저절로 섞여요.'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 돌 타일·닮은꼴·시계 타일·미끄럼 같은 새 규칙과 번개·외줄 타기·한 번 꺾기 같은 변주가 5판마다 하나씩 나와요.']
     ],
@@ -521,15 +520,15 @@ NG.link = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-link">
-        <div class="lk-hud">
-          <div class="lk-pill" aria-label="지운 짝"><span class="lk-ic">${ICO.pair}</span><b id="lkFound">0</b><small>/${m.pairs}짝</small></div>
-          <div class="lk-pill lk-time" id="lkTimeP" aria-label="남은 시간"><span class="lk-ic">${ICO.clock}</span><b id="lkTime">${mmss(G.limit)}</b></div>
-          <button class="lk-pill lk-btn" id="lkHint" aria-label="힌트"><span class="lk-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
-          <button class="lk-pill lk-btn" id="lkMix" aria-label="섞기"><span class="lk-ic">${ICO.mix}</span><b>${m.mixLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="지운 짝"><span class="hv">${ICO.pair}<b id="lkFound">0</b><small>/${m.pairs}</small></span><em>지운 짝</em></div>
+          <div class="hchip time" id="lkTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="lkTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="lkHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
+          <button class="hchip skip" id="lkMix" aria-label="섞기"><span class="hv">${ICO.mix}<b>${m.mixLeft}</b></span><em>섞기</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
-        <div class="lk-barw" id="lkBarWrap"><i id="lkBar"></i></div>
-        <div class="lk-row"><div class="lk-lives" id="lkLives" role="img"></div><div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
+        <div class="hbar lk-tbar" id="lkBarWrap"><i id="lkBar"></i></div>
+        <div class="lk-row"><div class="hlives" id="lkLives" role="img"></div><div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
         <div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div>
       </div>`;
       build(); wire(); hud();
@@ -554,32 +553,21 @@ body[data-mode="link"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.25) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#E3F8EA 0%,#B6E8CB 55%,#8FD5B0 100%) fixed}
 .ng-link{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-link .lk-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-link .lk-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#EFFAF2); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(40,120,80,.14), 0 3px 0 #1A0F45; color:#1E4A35; white-space:nowrap}
-.ng-link .lk-pill b{font-family:var(--heavy); font-size:20px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-link .lk-pill small{font-family:var(--disp); font-size:14px; color:#5E8A74}
-.ng-link .lk-ic{width:22px; height:22px; flex:none; display:block}
-.ng-link .lk-ic svg{width:100%; height:100%; display:block}
-.ng-link .lk-time{flex:1.3 1 0}
-.ng-link .lk-time b{font-size:23px}
-.ng-link .lk-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-link .lk-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-link .lk-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-link .lk-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(40,120,80,.14), 0 1px 0 #1A0F45}
-.ng-link .lk-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
-.ng-link .lk-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
-.ng-link .lk-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0B8,#27B86A); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
-.ng-link .lk-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
+.ng-link .hud-row{margin:0}
+.ng-link .hchip.time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
+.ng-link .hchip.time.hurry b{text-shadow:0 2px 0 #8E0F2F}
+.ng-link .hchip.time.hurry em{color:#fff}
+.ng-link .hchip:is(button){-webkit-tap-highlight-color:transparent}
+.ng-link .lk-tbar{margin:8px 0 0; height:10px}
+.ng-link .lk-tbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#9EF0B8,#27B86A)}
+.ng-link .lk-tbar.hurry > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-link .lk-row{display:flex; align-items:center; gap:8px; width:100%; height:38px}
-.ng-link .lk-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-link .lk-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-link .lk-heart svg{width:100%; height:100%; display:block}
-.ng-link .lk-heart.off{color:#DCD6E6}
-.ng-link .lk-heart.lost{animation:link-lost .5s ease-out}
-.ng-link .lk-lives.last{background:#FFE3E3; animation:link-last 1s ease-in-out infinite alternate}
-@keyframes link-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
-@keyframes link-last{to{box-shadow:0 2px 0 #1A0F45, 0 0 10px 3px rgba(255,77,109,.6)}}
+.ng-link .hlives{flex:none}
+.ng-link .hlives i.lost{animation:link-lost .5s ease-out}
+.ng-link .hlives.last{background:#FFE3E3; animation:link-last 1s ease-in-out infinite alternate}
+@keyframes link-lost{0%{transform:scale(1.6); color:#FFE27A} 100%{transform:none}}
+.ng-link .hlives i{display:inline-block}
+@keyframes link-last{to{box-shadow:0 0 10px 3px rgba(255,77,109,.6)}}
 .ng-link .lk-msg{flex:1; min-width:0; overflow:hidden; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#1E5A3D; white-space:nowrap}
 .ng-link .lk-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-link .lk-msg b.boss{color:#FFE27A}
@@ -631,10 +619,7 @@ body[data-mode="link"]{background:
 .ng-link .lk-chip.mj{background:#E3FAEC; color:#13703F}
 .ng-link .lk-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-link .lk-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-.ng-link .lk-chip.miss{background:#E6FFF0; color:#15703F}
-.ng-link .lk-chip.miss b{font-family:var(--heavy); font-weight:400; font-size:15px}
-.ng-link .lk-chip.miss.low{background:#FFE3E3; color:#B3122E}
-@media (max-width:370px){ .ng-link .lk-pill b{font-size:18px} .ng-link .lk-time b{font-size:20px} .ng-link .lk-pill small{font-size:12px} .ng-link .lk-hud{gap:5px} .ng-link .lk-pill{padding:0 5px} .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-link .lk-line path{animation:link-fade .52s ease-in forwards; stroke-dasharray:none} .ng-link .lk-board.in .lk-cell.tile, .ng-link .lk-cell.mixin .lk-face, .ng-link .lk-cell.hint .lk-face{animation:none} }
 `,
     sounds:{
