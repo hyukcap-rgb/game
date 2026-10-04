@@ -120,6 +120,86 @@
       "file": "gostop.html",
       "bytes": 786376,
       "gzip": 495211
+    },
+    {
+      "id": "crossword",
+      "name": "가로세로 낱말퀴즈",
+      "version": "1.0.0",
+      "summary": "뜻풀이 열쇠를 보고 가로·세로로 엇갈린 한국어 낱말을 맞히는 추리 퍼즐",
+      "duel": true,
+      "file": "crossword.html",
+      "bytes": 244487,
+      "gzip": 95647
+    },
+    {
+      "id": "hidden",
+      "name": "숨은그림 찾기",
+      "version": "1.0.0",
+      "summary": "꾸밈이 가득한 장면 속에 숨은 물건을 찾아 누르는 집중력 게임",
+      "duel": true,
+      "file": "hidden.html",
+      "bytes": 244751,
+      "gzip": 80955
+    },
+    {
+      "id": "spot",
+      "name": "틀린그림 찾기",
+      "version": "1.0.0",
+      "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
+      "duel": true,
+      "file": "spot.html",
+      "bytes": 244855,
+      "gzip": 80856
+    },
+    {
+      "id": "chosung",
+      "name": "초성게임",
+      "version": "1.0.0",
+      "summary": "초성과 분류를 보고 낱말을 떠올려 쓰는 추리 게임",
+      "duel": true,
+      "file": "chosung.html",
+      "bytes": 225105,
+      "gzip": 83062
+    },
+    {
+      "id": "wordchain",
+      "name": "끝말잇기",
+      "version": "1.0.0",
+      "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — AI와 잇기, 한방 낱말, 실시간 1:1 턴제 대전",
+      "duel": true,
+      "file": "wordchain.html",
+      "bytes": 256288,
+      "gzip": 106654
+    },
+    {
+      "id": "mines",
+      "name": "지뢰찾기",
+      "version": "1.0.0",
+      "summary": "숫자를 보고 밤송이가 숨은 칸을 피해 숲을 모두 여는 찍기 없는 논리 게임",
+      "duel": true,
+      "file": "mines.html",
+      "bytes": 223038,
+      "gzip": 73952
+    },
+    {
+      "id": "omok",
+      "name": "오목",
+      "version": "1.0.0",
+      "summary": "정확히 5개를 먼저 잇는 오목 — 오늘의 묘수풀이·AI 대국·실시간 1:1 대전",
+      "duel": true,
+      "file": "omok.html",
+      "bytes": 229414,
+      "gzip": 76950
+    },
+    {
+      "id": "parking",
+      "name": "자동차 주차하기",
+      "version": "1.0.0",
+      "summary": "꽉 찬 주차장에서 차를 앞뒤로 밀어 빨간 내 차를 자리까지 보내는 공간지각 퍼즐",
+      "duel": true,
+      "file": "parking.html",
+      "bytes": 288751,
+      "gzip": 104761
     }
   ]
 }

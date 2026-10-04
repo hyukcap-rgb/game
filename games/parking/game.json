@@ -1,0 +1,14 @@
+{
+  "id": "parking",
+  "name": "자동차 주차하기",
+  "version": "1.0.0",
+  "summary": "꽉 찬 주차장에서 차를 앞뒤로 밀어 빨간 내 차를 자리까지 보내는 공간지각 퍼즐",
+  "js": [
+    "parking-solver.js",
+    "parking-bank.js",
+    "parking.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 20
+}

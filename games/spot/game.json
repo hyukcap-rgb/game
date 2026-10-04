@@ -1,0 +1,13 @@
+{
+  "id": "spot",
+  "name": "틀린그림 찾기",
+  "version": "1.0.0",
+  "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
+  "js": [
+    "spot-art.js",
+    "spot.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 15
+}
