@@ -2,7 +2,7 @@
    - 48장: gostop-cards.js의 그림판(GS_SPRITE, Wikimedia Commons 'SVG Hwatu' · CC BY-SA 4.0)에서 잘라 씀.
      그림판은 한 번만 Blob URL로 바꿔 둔다(카드마다 큰 data URL 문자열을 복사하지 않게).
    - 보너스패 3장 · 뒷면 · 폭탄 빈 패: 실물 화투 테두리(빨강)에 맞춰 직접 그린 SVG(176×287).
-   크기: 카드 한 장 176×287(실물 화투 비율 103.2:168.2). */
+   크기: 카드 한 장 176×287(실물 화투 비율 103.2:168.2). 그림판 실제 칸 크기와 상관없이 이 좌표로 잘라 씀. */
 const GSART = (() => {
   const W = 176, H = 287, COLS = 12;
   let url = null;
@@ -16,7 +16,9 @@ const GSART = (() => {
     return url;
   }
   /* 48장 중 i번(월 m의 k번째 = (m-1)*4+k) — 그림판에서 잘라 보이기 */
-  const img = i => `<image href="${spriteUrl()}" x="${-(i % COLS) * W}" y="${-Math.floor(i / COLS) * H}" width="${W * COLS}" height="${H * 4}" preserveAspectRatio="none"/>`;
+  /* 그림판 칸은 둥근 모서리까지 구워져 있음(v1.4: 256×417, 그림이 패에 꽉 차게). 위에 얇은 윤곽선 두 겹(바깥 어둡게·안쪽 밝게)으로 매끈한 종이 느낌 */
+  const img = i => `<image href="${spriteUrl()}" x="${-(i % COLS) * W}" y="${-Math.floor(i / COLS) * H}" width="${W * COLS}" height="${H * 4}" preserveAspectRatio="none"/>` +
+    `<rect x=".6" y=".6" width="174.8" height="285.8" rx="13" fill="none" stroke="rgba(70,0,0,.45)" stroke-width="1.2"/><rect x="2.4" y="2.4" width="171.2" height="282.2" rx="11.5" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/>`;
   const FRAME = (inner) => `<rect x="1" y="1" width="174" height="285" rx="11" fill="#E8251E"/><rect x="9" y="9" width="158" height="269" rx="8" fill="${inner}"/>`;
   const T = (x, y, s, c, t, w = 900) => `<text x="${x}" y="${y}" font-size="${s}" font-weight="${w}" text-anchor="middle" fill="${c}" font-family="'Noto Sans KR','Malgun Gothic',system-ui,sans-serif">${t}</text>`;
   function bonus(pv){

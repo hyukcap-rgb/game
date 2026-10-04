@@ -8,6 +8,7 @@ const ROOT = path.join(__dirname, '..');
 const ctx = { NG:{}, console, Math, JSON, Object, Array, Set, String, Number, Promise, setTimeout, clearTimeout };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'core/util.js'), 'utf8').replace(/^const \$ = .*$/m, '').replace(/^function toast[\s\S]*?\n/m, ''), ctx);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'games/gostop/gostop-art.js'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'games/gostop/gostop.js'), 'utf8'), ctx);
 const R = vm.runInContext('NG.gostop._rules', ctx);
 const mulberry = vm.runInContext('mulberry', ctx), seedFrom = vm.runInContext('seedFrom', ctx);
@@ -59,4 +60,21 @@ console.log(`최종 점수: 중앙 ${q(.5)} · 75% ${q(.75)} · 95% ${q(.95)} ·
 console.log('배수:', Object.entries(st.mult).map(([k, v]) => `${k} ${(v / st.n * 100).toFixed(1)}%`).join(' · '));
 const pair = (a, b) => { const w = st.lvWin[a + '>' + b] || 0, l = st.lvWin[b + '>' + a] || 0; return `${a} vs ${b}: ${w}승 ${l}패`; };
 console.log('AI 세기:', [pair('hard', 'easy'), pair('hard', 'normal'), pair('normal', 'easy')].join(' · '));
-process.exit(st.err ? 1 : 0);
+/* 8초 자동(비풍초똥팔삼)만으로 두 사람이 끝까지: 늘 낼 수 있는 수이고, 같은 판이면 같은 수(대신 둬도 두 기기가 같음) */
+let autoErr = 0, autoN = 0;
+for(let i = 0; i < Math.min(N, 1500); i++){
+  const S = R.gsDeal('auto:' + i); let guard = 0;
+  try{
+    while(!S.over){
+      if(++guard > 200) throw new Error('끝나지 않음');
+      const p = S.pendingGS >= 0 ? S.pendingGS : S.turn, a = R.autoAct(S, p), b = R.autoAct(R.cloneS(S), p);
+      if(JSON.stringify(a) !== JSON.stringify(b)) throw new Error('같은 판인데 자동 수가 다름');
+      if(a.gs != null) R.gsGoStop(S, p, !!a.gs);
+      else { if(!S.P[p].hand.includes(a.c)) throw new Error('손에 없는 패 ' + a.c); R.gsApply(S, p, a); }
+      check(S, 'auto:' + i);
+    }
+    autoN++;
+  }catch(e){ autoErr++; if(autoErr < 4) console.error('✗ 자동', i, e.message); }
+}
+console.log(`8초 자동끼리 ${autoN}판 끝까지 · 오류 ${autoErr}`);
+process.exit(st.err || autoErr ? 1 : 0);

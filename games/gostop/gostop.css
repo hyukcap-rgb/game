@@ -206,3 +206,62 @@ body.gs-full{overflow:hidden}
 .gs-after{margin:12px 0 0; font-size:26px; color:#5A4A6A}
 .gs-after b{color:#B5490F}
 .gs-askc.gs-end{width:820px}
+
+/* ===== v1.4: 8초 시계 + 캐릭터 표정 · 선 뽑기 · 연속 판 · 나가기 예약 ===== */
+.gs-pav{width:120px; height:120px}
+.gs-ring{position:absolute; left:-9px; top:-9px; width:138px; height:138px; transform:rotate(-90deg); pointer-events:none; opacity:0; transition:opacity .2s}
+.gs-ring circle{fill:none; stroke-width:8}
+.gs-ring .bg{stroke:rgba(26,15,69,.18)}
+.gs-ring .fg{stroke:#2FBF71; stroke-dasharray:100; stroke-dashoffset:100; stroke-linecap:round; transition:stroke-dashoffset .1s linear, stroke .3s}
+.gs-sec{position:absolute; right:-12px; bottom:-8px; min-width:44px; height:44px; border-radius:22px; background:#1A0F45; color:#fff; font-size:28px; font-weight:900; display:none; place-items:center; border:3px solid #fff; box-sizing:border-box}
+.gs-sweat{position:absolute; left:98px; top:4px; width:18px; height:26px; border-radius:50% 50% 50% 50%/60% 60% 40% 40%; background:#7FD3FF; border:2px solid #1A0F45; opacity:0; transform:scale(.4)}
+.gs-prof.tm .gs-ring{opacity:1}
+.gs-prof.tm .gs-sec{display:grid}
+.gs-prof.hurry .gs-ring .fg{stroke:#FFB020}
+.gs-prof.hurry .gs-pav .av{animation:gs-bob .5s ease-in-out infinite}
+.gs-prof.hurry .gs-sweat{opacity:1; transform:none; animation:gs-drip 1s ease-in infinite}
+.gs-prof.panic .gs-ring .fg{stroke:#FF3B5C}
+.gs-prof.panic .gs-sec{background:#FF3B5C; animation:gs-beat .5s ease-in-out infinite}
+.gs-prof.panic .gs-pav .av{animation:gs-shiver .18s linear infinite}
+.gs-prof.panic .gs-sweat{opacity:1; transform:none; animation:gs-drip .55s ease-in infinite}
+.gs-prof.panic{box-shadow:0 7px 0 #1A0F45, 0 0 0 6px #FF3B5C !important}
+@keyframes gs-bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)}}
+@keyframes gs-shiver{0%{transform:translate(0,0) rotate(0)} 25%{transform:translate(-3px,1px) rotate(-3deg)} 50%{transform:translate(2px,-1px) rotate(2deg)} 75%{transform:translate(-2px,0) rotate(-1deg)} 100%{transform:translate(0,0)}}
+@keyframes gs-beat{0%,100%{transform:scale(1)} 50%{transform:scale(1.18)}}
+@keyframes gs-drip{0%{transform:translateY(0); opacity:1} 100%{transform:translateY(22px); opacity:0}}
+.gs-ps b.bye{background:#3B4A7A}
+.gs-ps b.off{background:#8A8FA8}
+.gs-btns button.out.on{background:linear-gradient(180deg,#B9C3E8,#6C7BB8)}
+.gs-btns button.q{flex:.8; background:#FFF7E6; color:#C81E3A}
+.gs-eno{display:inline-block; margin-bottom:6px; padding:4px 16px; border-radius:16px; background:#1A0F45; color:#FFD34D; font-size:24px; font-weight:900}
+.gs-nx{position:relative; margin:16px auto 4px; width:90%; height:46px; border-radius:23px; background:#EFE7D6; border:3px solid #1A0F45; overflow:hidden}
+.gs-nx i{position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,#FFD34D,#FFB020)}
+.gs-nx span{position:relative; display:block; line-height:40px; font-size:24px; font-weight:900; color:#1A0F45}
+.gs-askb button.on{background:#6C7BB8; color:#fff}
+/* 선 뽑기 */
+.gs-sunb{position:absolute; inset:0; z-index:70}
+.gs-sunb[hidden]{display:none}
+.gs-sunh{position:absolute; left:0; right:0; top:46px; text-align:center; color:#fff}
+.gs-sunh b{display:block; font-size:84px; font-weight:900; color:#FFE27A; -webkit-text-stroke:12px #1A0F45; paint-order:stroke fill}
+.gs-sunh span{display:inline-block; margin-top:8px; padding:6px 22px; border-radius:22px; background:rgba(26,15,69,.75); font-size:28px; font-weight:800}
+.gs-sunh em{font-style:normal; color:#FFD34D}
+.gs-sunp{position:absolute; top:560px; width:300px; text-align:center; color:#fff}
+.gs-sunp.a{left:330px} .gs-sunp.b{right:330px}
+.gs-sunp .av{width:110px; height:110px; margin:0 auto}
+.gs-sunp b{display:block; font-size:32px; font-weight:900; -webkit-text-stroke:6px #1A0F45; paint-order:stroke fill}
+.gs-sunp small{font-size:22px; font-weight:800; opacity:.9}
+.gs-c.sunc{position:absolute; padding:0; border:0; background:none; cursor:default; border-radius:12px; filter:drop-shadow(0 8px 0 rgba(0,0,0,.35)); transition:transform .15s}
+.gs-c.sunc.can{cursor:pointer; animation:gs-bob 1.2s ease-in-out infinite}
+.gs-c.sunc.can:hover{transform:translateY(-14px)}
+.gs-c.sunc svg{width:100%; height:100%; display:block}
+.gs-c.sunc.open.mine{outline:6px solid #FFD34D; outline-offset:4px}
+.gs-c.sunc.open.opp{outline:6px solid #9EE7FF; outline-offset:4px}
+.gs-c.sunc.sun{transform:translateY(-22px) scale(1.12); z-index:5}
+.gs-sunl{position:absolute; left:50%; top:calc(100% + 14px); transform:translateX(-50%); white-space:nowrap; padding:4px 14px; border-radius:16px; background:#1A0F45; color:#fff; font-size:22px; font-weight:900}
+.gs-sunm{position:absolute; left:0; right:0; top:760px; text-align:center; font-size:34px; font-weight:800; color:#fff; text-shadow:0 3px 0 #1A0F45}
+.gs-sunm b{color:#FFE27A}
+.gs-sunt{position:absolute; left:565px; width:500px; top:822px; height:22px; border-radius:11px; background:rgba(26,15,69,.55); overflow:hidden; border:3px solid #1A0F45}
+.gs-sunt i{display:block; height:100%; width:100%; background:#2FBF71}
+.gs-sunt.hurry i{background:#FF3B5C}
+.gs-sunx{position:absolute; right:30px; top:30px; padding:10px 26px; border-radius:28px; border:4px solid #1A0F45; background:#FFF7E6; color:#1A0F45; font-size:26px; font-weight:900; box-shadow:0 5px 0 #1A0F45; cursor:pointer}
+@media (prefers-reduced-motion: reduce){ .gs-prof.hurry .gs-pav .av, .gs-prof.panic .gs-pav .av, .gs-c.sunc.can{animation:none} }

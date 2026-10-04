@@ -13,6 +13,8 @@
 NG.gostop = (() => {
   const INK = '#2B1B12';
   const ID = 'gostop';
+  /* 효과·소리 연출(gostop-fx.js). 없으면 아무것도 안 하는 대역 */
+  const GX = typeof GSFX !== 'undefined' ? GSFX : { land(){}, flip(){}, grab(){}, event(){}, clear(){}, sounds:{}, gate:{} };
   /* ---------- 패 ---------- */
   /* 월별 네 장의 종류: g 광 · y 열끗 · hong/cheong/cho 단 · rain 비띠 · p 피 · s 쌍피 */
   const T = [null,
@@ -344,7 +346,7 @@ NG.gostop = (() => {
   const BW = 1630, BH = 923, MAINW = 1262;
   const CW = { hand:[142, 232], floor:[84, 137], cap:[44, 72], deck:[92, 150] };
   const GS = () => G && G.gs;
-  const myTurn = () => { const g = GS(); return g && g.S && !g.S.over && g.S.turn === g.me && g.S.pendingGS < 0; };
+  const myTurn = () => { const g = GS(); return g && g.S && g.phase === 'play' && !g.S.over && g.S.turn === g.me && g.S.pendingGS < 0; };
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const px = (x, y, w, h) => `left:${Math.round(x)}px;top:${Math.round(y)}px;width:${Math.round(w)}px;height:${Math.round(h)}px`;
   function setMsg(html, cls){ const m = $('#gsMsg'); if(m){ m.className = 'gs-msg' + (cls ? ' ' + cls : ''); m.innerHTML = '<span>' + html + '</span>'; } }
@@ -379,11 +381,12 @@ NG.gostop = (() => {
   function profHtml(p, view){
     const g = GS(), S = g.S, P = S.P[p], me = p === g.me;
     const name = me ? '나' : esc(g.oppNick), av = me ? avatar({ me:true }) : oppAv(g.oppNick);
-    const st = [P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
+    const bye = me ? g.bye : g.oppBye, off = !me && g.mode === 'pvp' && g.began && !g.oppHere;
+    const st = [off ? '<b class="off">연결 끊김·자동</b>' : '', bye ? '<b class="bye">나가기 예약</b>' : '', P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
     return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
-      <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt0 != null ? fmtP(g.oppPt0) : '') : '판돈 무제한'}</div>
+      <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt != null ? fmtP(g.oppPt) : '') : '판돈 무제한'}</div>
       <div class="gs-pl gs-sub" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 ' + G.adv + '판' : g.mode === 'pvp' ? '실시간 대전' : 'AI 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
-      <div class="gs-ps">${st}</div><span class="gs-pav">${av}</span>`;
+      <div class="gs-ps">${st}</div><span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>`;
   }
   /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
   const SLOT = [...Array(13)].map((_, m) => { const a = (180 + (m - 1) * 30) * Math.PI / 180; return [630 + Math.cos(a) * 425, 334 + Math.sin(a) * 152]; });
@@ -401,7 +404,7 @@ NG.gostop = (() => {
   }
   function handHtml(view){
     const g = GS(), hand = view.h[g.me].slice().sort((a, b) => ((C[a] && C[a].m) || 99) - ((C[b] && C[b].m) || 99) || a - b);
-    const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy, [w, h] = CW.hand, n = hand.length;
+    const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy && !g.picking, [w, h] = CW.hand, n = hand.length;
     const step = n > 1 ? Math.min(152, (1452 - w) / (n - 1)) : 0;
     return hand.map((id, i) => { const c = C[id], hit = c && !c.bonus && fm.has(c.m), bon = (c && c.bonus) || isDummy(id);
       return `<button class="gs-c hd${mt && (hit || bon) ? ' match' : ''}${mt ? '' : ' off'}" data-cid="${id}" data-h="${id}" style="${px(12 + i * step, 683, w, h)};z-index:${i + 1}" aria-label="${cardName(id)}${hit ? ', 바닥에 같은 월 있음' : ''}">${cardSvg(id)}</button>`; }).join('');
@@ -412,7 +415,7 @@ NG.gostop = (() => {
     const mul = [P.shake ? '흔들 ×' + Math.pow(2, P.shake) : '', P.go >= 3 ? P.go + '고 ×' + Math.pow(2, P.go - 2) : '', s.yN >= 7 ? '멍따 ×2' : ''].filter(Boolean);
     return `<div class="gs-ih">내 패</div><div class="gs-ir"><span>광 <b>${s.gN}</b></span><span>열 <b>${s.yN}</b></span><span>띠 <b>${s.tN}</b></span><span>피 <b>${s.piV}</b></span></div>
       <div class="gs-ir2">${mul.length ? mul.join(' · ') : (s.birds === 3 ? '고도리!' : s.hong === 3 || s.cheong === 3 || s.cho === 3 ? '단 완성!' : '7점 나면 고 · 스톱')}</div>
-      <div class="gs-timer" id="gsTimer"><i></i></div>`;
+`;
   }
   function draw(view){
     const g = GS(); if(!g || !$('#gsb')) return;
@@ -432,6 +435,7 @@ NG.gostop = (() => {
     $('#gsHand').innerHTML = handHtml(view);
     $('#gsHand').querySelectorAll('[data-h]').forEach(b => b.onclick = () => onHand(+b.dataset.h));
     const au = $('#gsAuto'); if(au) au.disabled = !(myTurn() && !g.busy);
+    clockPaint();
   }
   /* 장면 바꾸기: 카드가 예전 자리에서 새 자리로 날아가게(FLIP). 판이 돌려져 있으면 화면 좌표를 판 좌표로 바꿔 계산 */
   function flipTo(view, prev, dur){
@@ -460,197 +464,462 @@ NG.gostop = (() => {
     b.innerHTML = `<b class="${kind || ''}">${txt}</b>`; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
     try{ const r = b.getBoundingClientRect(); fxEmit(r.left + r.width / 2, r.top + r.height / 2, { quantity:22, speed:[180, 360], lifespan:750, scale:{ start:1.3, end:0 }, color:kind === 'bad' ? ['#FF8A8F', '#FFFFFF'] : ['#FFE27A', '#FFFFFF'], kind:'spark', glow:true }); }catch(_){}
   }
-  async function playScenes(prev, scenes){
+  /* 장면 재생 + 연출(gostop-fx.js GSFX): 패가 '탁' 부딪힘 · 뒤집기 · 먹은 패 모으기 · 이벤트(뻑·쪽·따닥·쓸·폭탄…) · 족보 완성 */
+  const EVMAP = [['자뻑!', 'jappuk'], ['뻑 먹기!', 'ppukEat'], ['폭탄!', 'bomb'], ['따닥!', 'ttadak'], ['쪽!', 'jjok'], ['쓸!', 'sseul'], ['흔들기!', 'shake'], ['뻑!', 'ppuk'], ['보너스!', 'bonus']];
+  async function playScenes(prev, scenes, p, ep){
+    const g = GS(), who = p === g.me ? 'me' : 'op', s0 = scoreOf(prev.c[p]);
     let pv = prev;
     for(const sc of scenes){
-      if(!GS() || G.over) return;
-      flipTo(sc, pv, 360);
-      sfx(sc.flip != null ? 'gsFlip' : 'gsSlap');
-      let w = 440;
-      if(sc.lab && sc.lab.length){
-        const big = sc.lab.find(l => /[!]$/.test(l));
-        if(big){ banner(sc.lab.filter(l => /!$/.test(l)).join(' '), /뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'bad' : ''); sfx(/뻑!$/.test(big) && !/먹기|자뻑/.test(big) ? 'gsBad' : 'gsBig'); fxBuzz([20, 30, 20]); w = 780; }
-        const st = sc.lab.find(l => /^피 /.test(l)); if(st){ setTimeout(() => { try{ toast(st); }catch(_){} }, 200); }
+      if(GS() !== g || G.over || g.epoch !== ep) return;
+      flipTo(sc, pv, 340);
+      const labs = sc.lab || [], lid = sc.flip != null ? sc.flip : sc.hi && sc.hi[0];
+      const evs = EVMAP.filter(([l]) => labs.includes(l)).map(x => x[1]);
+      const big = evs.includes('bomb') || evs.includes('ppukEat') || evs.includes('jappuk');
+      const nm = lid != null && C[lid] ? sc.f.filter(x => C[x] && C[x].m === C[lid].m).length : 0;
+      setTimeout(() => X(() => { const el = lid != null && document.querySelector(`#gsb [data-cid="${lid}"]`); if(!el) return; if(sc.flip != null) GX.flip(el); else GX.land(el, big ? 3 : nm >= 2 ? 2 : 1); }), 300);
+      for(const q of [0, 1]){
+        const nw = sc.c[q].filter(x => !pv.c[q].includes(x));
+        if(nw.length) setTimeout(() => X(() => GX.grab(nw.map(x => document.querySelector(`#gsCap${q === g.me ? 'Me' : 'Op'} [data-cid="${x}"]`)).filter(Boolean), q === g.me ? 'me' : 'op')), 400);
       }
-      if(sc.c && pv && (sc.c[0].length > pv.c[0].length || sc.c[1].length > pv.c[1].length)) setTimeout(() => sfx('gsCap'), 260);
+      let w = 470;
+      if(evs.length){
+        setTimeout(() => X(() => GX.event(evs[0], { who })), 330);
+        if(evs[1]) setTimeout(() => X(() => GX.event(evs[1], { who })), 1050);
+        faceFor(p, evs[0] === 'ppuk' ? 'sad' : 'joy', 1800);
+        if(evs[0] !== 'ppuk' && evs[0] !== 'bonus') faceFor(1 - p, 'wow', 1500);
+        fxBuzz(big ? [40, 30, 60] : [20, 30, 20]);
+        w = evs[1] ? 1650 : evs[0] === 'bonus' ? 750 : 1150;
+      }
+      const st = labs.find(l => /^피 /.test(l));
+      if(st){ const n = parseInt(st.slice(2), 10) || 1, at = w - 200; setTimeout(() => X(() => GX.event('steal', { who, n })), at); w += 400; }
       await wait(w);
       pv = sc;
     }
-  }
-
-  /* ----- 흐름 ----- */
-  function startPlay(seed){
-    const g = GS();
-    g.S = gsDeal(seed); g.S.first = 0;
-    g.rnd = mulberry(seedFrom(seed + ':ai'));
-    g.sel = null; g.busy = false; g.began = true;
-    $('#gsBody').hidden = false; fit();
-    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<span>고스톱 · ${(g.room || ROOMS[0]).stake ? '점당 ' + fmtP(g.room.stake) : '연습 판'}</span>`;
-    const gate = $('#gsGate'); if(gate) gate.remove();
-    draw(liveView());
-    /* 패 돌리기 연출 */
-    try{ if(!FXR.reduce) document.querySelectorAll('#gsg .gs-c.hd, #gsg .gs-c.fl').forEach((el, i) => el.animate([{ transform:'translateY(-30px) scale(.5)', opacity:0 }, { transform:'none', opacity:1 }], { duration:360, delay:i * 28, easing:'cubic-bezier(.2,1.4,.4,1)', fill:'backwards' })); }catch(_){}
-    sfx('gsDeal');
-    if(g.S.over){ setTimeout(() => endGame(), 900); return; }
-    setTimeout(() => startTurn(), 650);
-  }
-  function startTurn(){
-    const g = GS(); if(!g || G.over) return;
-    const S = g.S;
-    if(S.over){ endGame(); return; }
-    g.sel = null;
-    draw(liveView());
-    clearTimeout(g.turnT); g.turnAt = Date.now();
-    if(S.turn === g.me){
-      setMsg(`<b>내 차례</b> · ${S.P[g.me].hand.some(id => C[id] && C[id].bonus) ? '보너스패를 먼저 내도 돼요' : '낼 패를 누르세요'}`, 'me');
-      sfx('gsTurn');
-      if(g.mode === 'pvp') timerRun(TURN_SEC, () => autoPlay());
-    } else {
-      setMsg(`<b>${esc(g.oppNick)}</b> 차례…`, 'op');
-      timerStop();
-      if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && !G.over) aiTurn(); }, 650 + g.rnd() * 500);
+    if(GS() !== g || G.over || g.epoch !== ep) return;
+    /* 족보가 이번에 완성됐으면 */
+    const s1 = scoreOf(pv.c[p]), yk = [];
+    if(s1.birds === 3 && s0.birds < 3) yk.push(['godori']);
+    for(const k of ['hong', 'cheong', 'cho']) if(s1[k] === 3 && s0[k] < 3) yk.push([k + 'dan']);
+    if(s1.gN >= 3 && s1.gN > s0.gN) yk.push(['gwang', s1.gN]);
+    for(const [n, v] of yk){
+      X(() => GX.event(n, { who, n:v }));
+      faceFor(p, 'joy', 1800);
+      await wait(n === 'gwang' && v >= 5 ? 1600 : 1150);
+      if(GS() !== g || G.over || g.epoch !== ep) return;
     }
   }
-  const TURN_SEC = 25, GS_SEC = 15, OPP_WAIT = 60;
-  function timerRun(sec, onEnd){
-    const g = GS(); timerStop();
-    g.tEnd = Date.now() + sec * 1000; g.tSec = sec; g.tCb = onEnd;
-    g.tIv = setInterval(() => {
-      if(GS() !== g || G.over){ clearInterval(g.tIv); return; }
-      const left = (g.tEnd - Date.now()) / 1000, t = $('#gsTimer');
-      if(t){ t.classList.add('on'); t.firstChild.style.width = Math.max(0, left / g.tSec * 100) + '%'; t.classList.toggle('hurry', left < 6); }
-      if(left <= 0){ clearInterval(g.tIv); const cb = g.tCb; g.tCb = null; if(cb) cb(); }
-    }, 200);
+
+  /* ----- 흐름 -----
+     한 판 = 결정(step)의 줄. 결정마다 주인(S 자리)이 있다: 패 내기(S.turn) · 고/스톱(S.pendingGS).
+     g.k = 지금 결정 번호, g.log[k] = 실제로 둔 수, g.raw[k] = 받은 그대로의 수, g.own[k] = 내 결정이었는지, g.src[k] = 'mine'|'opp'(누구 기록으로 뒀는지).
+     대전(g.sess: 사람·AI 대전)에서는 결정마다 8초 시계 — 시간이 다 되면 비풍초똥팔삼 순서로 자동(autoAct, 무작위 없음 → 대신 내 줘도 두 기기가 같은 수). */
+  const TURN_SEC = 8, GS_SEC = 8, SUN_SEC = 5, GRACE = 3, GONE_SEC = 2.5, NEXT_SEC = 6;
+  const PRI = [12, 10, 5, 11, 8, 3, 9, 7, 6, 4, 2, 1];   /* 비·풍·초·똥·팔·삼, 그다음 남은 월(큰 월부터) */
+  const val = id => { const c = C[id]; return !c ? 0 : c.g ? 5 : c.y ? 4 : c.tt ? 3 : c.pv >= 2 ? 2 : 1; };
+  const bestOf = L => L.slice().sort((a, b) => val(b) - val(a) || a - b)[0];
+  function autoAct(S, p){
+    if(S.pendingGS === p) return { gs:0 };   /* 고·스톱 시간 끝 → 스톱 */
+    const h = S.P[p].hand;
+    let c = h.find(id => !isDummy(id) && C[id].bonus);
+    if(c == null) c = h.find(isDummy);
+    if(c == null) for(const m of PRI){ const L = h.filter(id => C[id].m === m).sort((a, b) => val(a) - val(b) || a - b); if(L.length){ c = L[0]; break; } }
+    const act = { c, a:-1, b:-1, s:0 };
+    if(c != null && !isDummy(c) && !C[c].bonus){ const F = floorOf(S, C[c].m); if(F.length === 2) act.a = bestOf(F); }
+    const pr = gsApply(cloneS(S), p, act, true);
+    if(pr && pr.need === 'b') act.b = bestOf(pr.opts);
+    return act;
   }
-  function timerStop(){ const g = GS(); if(!g) return; clearInterval(g.tIv); g.tCb = null; const t = $('#gsTimer'); if(t) t.classList.remove('on', 'hurry'); }
+  const owner = S => S.pendingGS >= 0 ? S.pendingGS : S.turn;
+  const valid = (S, p, x) => x && (x.gs != null ? S.pendingGS === p : S.pendingGS < 0 && S.turn === p && S.P[p].hand.includes(x.c));
+  function applyRaw(S, p, x){ if(x.gs != null){ gsGoStop(S, p, !!x.gs); return []; } return gsApply(S, p, x); }
+  /* 대전 기록 한 줄: [판, 번호, 종류, …]  종류 0 패 [c,a,b,s] · 1 고스톱 [g] · 2 선 뽑기 [칸] · 3 다음 판 [나가기 예약, 포인트] */
+  const E = (gi, k, x) => x.gs != null ? [gi, k, 1, x.gs] : [gi, k, 0, x.c, x.a, x.b, x.s];
+  const D = e => e[2] === 1 ? { gs:e[3] } : { c:e[3], a:e[4], b:e[5], s:e[6] };
+  const fe = (L, gi, k) => (L || []).find(e => Array.isArray(e) && e[0] === gi && e[1] === k);
+  const sameX = (x, y) => JSON.stringify(E(0, 0, x)) === JSON.stringify(E(0, 0, y));
+  const X = (f) => { try{ f(); }catch(_){} };   /* 효과는 보이기만: 오류가 나도 판은 계속 */
+  const seedOf = gi => GS().seed0 + ':' + gi;
+  const seatOf = si => { const g = GS(); return si === 0 ? g.first : 1 - g.first; };
+
+  function startPlay(){
+    const g = GS(); if(!g || G.over) return;
+    g.me = g.seat === g.first ? 0 : 1;   /* S 0번 자리 = 이번 판 선 */
+    g.S = gsDeal(seedOf(g.gi)); g.S.first = 0;
+    g.rnd = mulberry(seedFrom(seedOf(g.gi) + ':ai:' + g.seat));
+    g.k = 0; g.log = []; g.raw = []; g.own = []; g.src = []; g.busy = true; g.picking = false; g.stepT0 = Date.now() + 700;   /* 패 돌리는 동안은 대신 두기 금지 */
+    g.began = true; g.inGame = true; g.ended = false; g.paid = false; g.res = null; g.phase = 'play'; g.epoch = (g.epoch || 0) + 1;
+    g.nxSent = false; clearInterval(g.nxIv);
+    $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
+    const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
+    $('#gsBody').hidden = false; fit();
+    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<span>고스톱 · ${(g.room || ROOMS[0]).stake ? '점당 ' + fmtP(g.room.stake) : '연습 판'}${g.sess ? ' · ' + (g.gi + 1) + '판째' : ''}</span>`;
+    const gate = $('#gsGate'); if(gate) gate.remove();
+    byeUI();
+    draw(liveView());
+    /* 패 돌리기 연출 */
+    X(() => { if(!FXR.reduce) document.querySelectorAll('#gsg .gs-c.hd, #gsg .gs-c.fl').forEach((el, i) => el.animate([{ transform:'translateY(-30px) scale(.5)', opacity:0 }, { transform:'none', opacity:1 }], { duration:360, delay:i * 28, easing:'cubic-bezier(.2,1.4,.4,1)', fill:'backwards' })); });
+    X(() => GX.event('deal', { n:18 }));
+    if(g.S.over){ setTimeout(() => endGame(), 900); return; }
+    const ep = g.epoch;
+    setTimeout(() => { if(GS() === g && g.epoch === ep) nextStep(); }, 700);
+  }
+  function nextStep(){
+    const g = GS(); if(!g || G.over || g.phase !== 'play') return;
+    const S = g.S; if(S.over){ endGame(); return; }
+    g.busy = false;
+    const p = owner(S), gs = S.pendingGS >= 0, k = g.k;
+    draw(liveView());
+    g.stepT0 = Date.now(); clearTimeout(g.turnT);
+    if(g.sess) clockRun(p, gs ? GS_SEC : TURN_SEC, p === g.me ? () => timeUp(k) : null);
+    if(p === g.me){
+      if(gs){ askGS(k); return; }
+      setMsg(`<b>내 차례</b> · ${S.P[g.me].hand.some(id => C[id] && C[id].bonus) ? '보너스패를 먼저 내도 돼요' : g.sess ? '8초 안에 낼 패를 누르세요' : '낼 패를 누르세요'}`, 'me');
+      X(() => GX.event('turn'));
+    } else {
+      setMsg(`<b>${esc(g.oppNick)}</b> ${gs ? '고? 스톱? 고르는 중…' : '차례…'}${g.mode === 'pvp' && !g.oppHere ? ' <small>(연결 끊김 · 자동으로 대신 쳐요)</small>' : ''}`, 'op');
+      if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy) step(k, gs ? { gs:aiGo(S, p, g.ai, g.rnd) ? 1 : 0 } : aiPick(S, p, g.ai, g.rnd), 'ai'); }, gs ? 800 : 650 + g.rnd() * 500);
+      else sync();
+    }
+  }
+  /* 시계: 지금 결정의 주인 프로필에 둥근 시계 + 남은 시간에 따라 캐릭터 표정(여유 → 놀람 → 울상) */
+  function clockRun(p, sec, onEnd){
+    const g = GS(); clockStop();
+    g.clk = { p, t0:Date.now(), sec, cb:onEnd, last:99 };
+    const tk = () => {
+      if(GS() !== g || G.over || !g.clk){ clearInterval(g.tIv); return; }
+      const c = g.clk, left = c.sec - (Date.now() - c.t0) / 1000;
+      clockPaint();
+      const n = Math.ceil(left);
+      if(n >= 1 && n <= 3 && n < c.last){ c.last = n; if(c.p === g.me) X(() => GX.event('tick', { n })); }
+      if(left <= 0){ clearInterval(g.tIv); const cb = c.cb; c.cb = null; if(cb) cb(); }
+    };
+    g.tIv = setInterval(tk, 100); tk();
+  }
+  function clockStop(){ const g = GS(); if(!g) return; clearInterval(g.tIv); g.clk = null; clockPaint(); }
+  const MOODS = { calm:'', hurry:'wow', panic:'sad' };
+  function setMood(el, mood){
+    X(() => {
+      const im = el && el.querySelector('img.toy'); if(!im || im.dataset.md === mood) return;
+      let k = im.dataset.kind;
+      if(!k){ k = Object.keys(TOY.A).find(x => ['', 'joy', 'sad', 'wow'].some(m => toySrc(x, m) === im.getAttribute('src'))); if(!k) return; im.dataset.kind = k; }
+      im.src = toySrc(k, mood); im.dataset.md = mood;
+    });
+  }
+  function clockPaint(){
+    const g = GS(); if(!g || !g.S) return;
+    const c = g.clk, now = Date.now();
+    for(const p of [0, 1]){
+      const el = $(p === g.me ? '#gsMe' : '#gsOpp'); if(!el) continue;
+      const on = c && c.p === p, left = on ? Math.max(0, c.sec - (now - c.t0) / 1000) : 0;
+      const st = !on ? '' : left > 5 ? 'calm' : left > 2.5 ? 'hurry' : 'panic';
+      el.classList.toggle('tm', !!on); ['calm', 'hurry', 'panic'].forEach(x => el.classList.toggle(x, st === x));
+      const fg = el.querySelector('.gs-ring .fg'); if(fg) fg.style.strokeDashoffset = on ? (100 - left / c.sec * 100).toFixed(1) : '100';
+      const sec = el.querySelector('.gs-sec'); if(sec) sec.textContent = on ? Math.ceil(left) : '';
+      const face = g.face && g.face[p] && g.face[p][1] > now ? g.face[p][0] : null;
+      setMood(el, on ? MOODS[st] : face || '');
+    }
+  }
+  /* 잠깐 표정(큰 일이 생긴 쪽): 시계가 없을 때만 보임 */
+  function faceFor(p, mood, ms){ const g = GS(); if(!g) return; g.face = g.face || []; g.face[p] = [mood, Date.now() + (ms || 1800)]; clockPaint(); setTimeout(() => { if(GS() === g) clockPaint(); }, (ms || 1800) + 50); }
+  function timeUp(k){
+    const g = GS(); if(!g || G.over || g.phase !== 'play' || g.k !== k || g.busy) return;
+    closeAsk();
+    X(() => GX.event('timeout'));
+    toast('8초가 지나 비풍초똥팔삼 순서로 자동으로 냈어요');
+    step(k, autoAct(g.S, g.me), 'me');
+  }
   function onHand(id){
-    const g = GS(); if(!g || g.busy || !myTurn()) return;
+    const g = GS(); if(!g || g.busy || g.picking || !myTurn()) return;
     sfx('gsPick', { off:false });
     myPlay(id);   /* 한 번 누르면 바로 냄 */
   }
   function autoHand(){
-    const g = GS(); if(!g || g.busy || !myTurn()) return;
-    g.busy = true; timerStop();
-    commit(g.me, aiPick(g.S, g.me, 'normal', g.rnd));   /* 자동 치기: 보통 AI가 대신 골라 냄 */
+    const g = GS(); if(!g || g.busy || g.picking || !myTurn()) return;
+    step(g.k, aiPick(g.S, g.me, 'normal', g.rnd), 'me');   /* 자동 치기: 보통 AI가 대신 골라 냄 */
   }
-  /* 고르기 창(게임 화면 안). pvp에선 시간이 다 되면 기본값 */
-  function ask(title, opts, defIdx, cards){
+  /* 고르기 창(게임 화면 안). closeAsk()로 닫으면 null */
+  function ask(title, opts, cards){
     const g = GS();
     return new Promise(res => {
-      const box = $('#gsAsk'); if(!box){ res(opts[defIdx || 0].v); return; }
+      const box = $('#gsAsk'); if(!box){ res(null); return; }
       box.innerHTML = `<div class="gs-askc"><b>${title}</b>${cards ? `<div class="gs-askcards">${cards}</div>` : ''}<div class="gs-askb">${opts.map((o, i) => `<button class="${o.cls || ''}" data-i="${i}">${o.html}</button>`).join('')}</div></div>`;
       box.hidden = false;
       let done = false;
       const fin = v => { if(done) return; done = true; if(g.askFin === fin0) g.askFin = null; box.hidden = true; box.innerHTML = ''; res(v); };
-      const fin0 = () => fin(opts[defIdx || 0].v);
+      const fin0 = () => fin(null);
       box.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { sfx('gsPick', {}); fin(opts[+b.dataset.i].v); });
       g.askFin = fin0;
     });
   }
+  function closeAsk(){ const g = GS(); if(g && g.askFin) g.askFin(); }
   async function myPlay(id){
-    const g = GS(), S = g.S;
-    g.busy = true; g.sel = null;
+    const g = GS(), S = g.S, k = g.k;
+    g.picking = true;
+    const gone = v => v == null || GS() !== g || G.over || g.k !== k || g.busy;
     let s = 0, a = -1, b = -1;
     if(!isDummy(id) && !C[id].bonus){
       const M = C[id].m, nh = S.P[g.me].hand.filter(x => C[x] && C[x].m === M).length, F = floorOf(S, M);
       if(nh >= 3 && F.length === 1){ s = 2; }
       else if(nh >= 3 && F.length === 0){
-        s = await ask(`${M}월 세 장! 흔들까요?`, [{ v:1, html:'흔들기 (점수 ×2)', cls:'pri' }, { v:0, html:'그냥 내기' }], 0, S.P[g.me].hand.filter(x => C[x] && C[x].m === M).map(x => `<div class="gs-c ask">${cardSvg(x)}</div>`).join(''));
-        if(!GS() || G.over) return;
+        s = await ask(`${M}월 세 장! 흔들까요?`, [{ v:1, html:'흔들기 (점수 ×2)', cls:'pri' }, { v:0, html:'그냥 내기' }], S.P[g.me].hand.filter(x => C[x] && C[x].m === M).map(x => `<div class="gs-c ask">${cardSvg(x)}</div>`).join(''));
+        if(gone(s)) return;
       }
       if(s !== 2 && F.length === 2){
         if(same(F[0], F[1])) a = F[0];
-        else { a = await ask('어느 패를 먹을까요?', F.map(x => ({ v:x, html:`<div class="gs-c ask">${cardSvg(x)}</div><small>${cardName(x)}</small>`, cls:'card' })), 0); if(!GS() || G.over) return; }
+        else { a = await ask('어느 패를 먹을까요?', F.map(x => ({ v:x, html:`<div class="gs-c ask">${cardSvg(x)}</div><small>${cardName(x)}</small>`, cls:'card' }))); if(gone(a)) return; }
       }
       const pr = gsApply(cloneS(S), g.me, { c:id, a, b:-1, s }, true);
       if(pr && pr.need === 'b'){
-        b = await ask(`뒤집은 패 <span class="gs-inl">${cardSvg(pr.flip)}</span> 로 어느 패를 먹을까요?`, pr.opts.map(x => ({ v:x, html:`<div class="gs-c ask">${cardSvg(x)}</div><small>${cardName(x)}</small>`, cls:'card' })), 0);
-        if(!GS() || G.over) return;
+        b = await ask(`뒤집은 패 <span class="gs-inl">${cardSvg(pr.flip)}</span> 로 어느 패를 먹을까요?`, pr.opts.map(x => ({ v:x, html:`<div class="gs-c ask">${cardSvg(x)}</div><small>${cardName(x)}</small>`, cls:'card' })));
+        if(gone(b)) return;
       }
     }
-    timerStop();
-    await commit(g.me, { c:id, a, b, s });
+    if(gone(0)) return;
+    step(k, { c:id, a, b, s }, 'me');
   }
-  function autoPlay(){
-    const g = GS(); if(!g || G.over) return;
-    if(g.askFin){ g.askFin(); return; }
-    if(g.busy || !myTurn()) return;
-    toast('시간이 지나 자동으로 냈어요');
-    g.busy = true;
-    commit(g.me, aiPick(g.S, g.me, 'normal', g.rnd));
+  async function askGS(k){
+    const g = GS(), S = g.S, p = g.me;
+    const sc = scoreOf(S.P[p].cap).total, op = S.P[1 - p];
+    g.picking = true;
+    sfx('gsBig');
+    setMsg(`<b>${sc}점!</b> 고? 스톱?`, 'me');
+    const go = await ask(`<span class="gs-gsh">${sc}점 났어요!</span>${op.go ? '<small>상대가 고를 했어요 · 지금 스톱하면 고박(×2)</small>' : `<small>고 하면 +${S.P[p].go + 1}점${S.P[p].go + 1 >= 3 ? ' · 배수' : ''} · 대신 상대가 먼저 나면 고박</small>`}${g.sess ? '<small>8초 안에 안 고르면 스톱</small>' : ''}`,
+      [{ v:1, html:`고! <small>${S.P[p].go + 1}고</small>`, cls:'go' }, { v:0, html:'스톱', cls:'stop' }]);
+    if(go == null || GS() !== g || G.over || g.k !== k || g.busy) return;
+    step(k, { gs:go }, 'me');
   }
-  function aiTurn(){
-    const g = GS(); if(!g || G.over || g.busy || g.S.turn === g.me) return;
-    g.busy = true;
-    commit(1 - g.me, aiPick(g.S, 1 - g.me, g.ai, g.rnd));
-  }
-  async function commit(p, act){
-    const g = GS(), S = g.S;
-    g.busy = true; g.askFin = null;
+  /* 결정 하나 두기(내 손·시간 끝·AI·상대 기록·대신 두기 모두 여기로). 잘못된 수면 자동 수로 바꿈(두 기기 같은 규칙) */
+  async function step(k, x, from){
+    const g = GS(); if(!g || G.over || g.phase !== 'play' || g.busy || k !== g.k) return;
+    const S = g.S, p = owner(S), raw = x;
+    if(!valid(S, p, x)) x = autoAct(S, p);
+    g.busy = true; g.picking = false; closeAsk(); clockStop(); clearTimeout(g.turnT);
+    const ep = g.epoch, who = p === g.me ? 'me' : 'op';
+    g.log[k] = x; g.raw[k] = raw; g.own[k] = p === g.me; g.src[k] = from === 'opp' ? 'opp' : 'mine';
+    if(g.mode === 'pvp' && (from === 'me' || from === 'proxy')) publish(E(g.gi, k, raw && valid(S, p, raw) ? raw : x));
+    if(from === 'proxy') setMsg(`<b>${esc(g.oppNick)}</b> 대신 자동으로 냈어요`, 'op');
     const prev = liveView();
-    const scenes = gsApply(S, p, act);
-    await playScenes(prev, scenes);
-    if(GS() !== g || G.over) return;
-    if(S.pendingGS === p){
-      let go;
-      if(p === g.me){
-        draw(liveView());
-        const sc = scoreOf(S.P[p].cap).total, op = S.P[1 - p];
-        if(g.mode === 'pvp') timerRun(GS_SEC, () => { if(g.askFin) g.askFin(); });
-        sfx('gsBig');
-        go = await ask(`<span class="gs-gsh">${sc}점 났어요!</span>${op.go ? '<small>상대가 고를 했어요 · 지금 스톱하면 고박(×2)</small>' : `<small>고 하면 +${S.P[p].go + 1}점${S.P[p].go + 1 >= 3 ? ' · 배수' : ''} · 대신 상대가 먼저 나면 고박</small>`}`,
-          [{ v:1, html:`고! <small>${S.P[p].go + 1}고</small>`, cls:'go' }, { v:0, html:'스톱', cls:'stop' }], 1);
-        timerStop();
-        if(!GS() || G.over) return;
-        act.g = go ? 1 : 0;
-      } else go = g.mode === 'pvp' ? act.g === 1 : aiGo(S, p, g.ai, g.rnd);
-      gsGoStop(S, p, !!go);
-      banner(go ? (S.P[p].go + '고!') : '스톱!', go ? '' : 'stop');
-      sfx(go ? 'gsGo' : 'gsStop'); fxBuzz(go ? [30, 40, 30] : 60);
-      await wait(900);
-      if(GS() !== g || G.over) return;
+    if(x.gs != null){
+      gsGoStop(S, p, !!x.gs);
+      X(() => GX.event(x.gs ? 'go' : 'stop', { who, n:S.P[p].go }));
+      faceFor(p, x.gs ? 'joy' : 'wow', 1600);
+      fxBuzz(x.gs ? [30, 40, 30] : 60);
+      draw(liveView());
+      await wait(x.gs ? (S.P[p].go >= 3 ? 1500 : 1150) : 950);
+    } else {
+      const scenes = gsApply(S, p, x);
+      await playScenes(prev, scenes, p, ep);
     }
-    if(p === g.me) publish(act);
-    g.busy = false;
-    if(S.over) endGame(); else startTurn();
+    if(GS() !== g || G.over || g.epoch !== ep) return;
+    g.k = k + 1; g.busy = false;
+    if(S.over) endGame(); else nextStep();
+  }
+  /* 기록이 엇갈렸을 때(내가 끊긴 사이 상대가 대신 냄 등): 판 처음부터 정해진 규칙으로 다시 쌓기
+     규칙: 결정마다 '주인이 아닌 쪽(대신 둔 쪽)'의 기록이 있으면 그것, 없으면 주인 기록. 두 기기가 같은 결과 */
+  function rebuild(){
+    const g = GS(); if(!g || g.phase !== 'play') return;
+    g.epoch++; closeAsk(); clockStop(); clearTimeout(g.turnT);
+    const S = gsDeal(seedOf(g.gi)); S.first = 0; g.S = S; g.log = []; g.raw = []; g.own = []; g.src = [];
+    let k = 0;
+    while(!S.over && k < 200){
+      const p = owner(S), mine = p === g.me, my = fe(g.ev, g.gi, k), op = fe(g.oev, g.gi, k);
+      const e = mine ? (op || my) : (my || op); if(!e || e[2] > 1) break;
+      const raw = D(e); let x = raw; if(!valid(S, p, x)) x = autoAct(S, p);
+      applyRaw(S, p, x); g.log[k] = x; g.raw[k] = raw; g.own[k] = mine; g.src[k] = e === my ? 'mine' : 'opp'; k++;
+    }
+    g.k = k; g.busy = false; g.picking = false;
+    toast('연결이 늦어 상대와 판을 다시 맞췄어요');
+    draw(liveView());
+    if(S.over) endGame(); else nextStep();
   }
 
-  /* ----- 끝 ----- */
+  /* ----- 선 뽑기: 엎어 둔 8장 중 한 장씩 뒤집어 높은 월이 선. 같은 월이면 다시. 5초 안에 안 고르면 아무거나(정해진 씨앗) ----- */
+  function sunStart(){ const g = GS(); g.phase = 'sun'; g.began = true; g.sunR = 0; $('#gsBody').hidden = true; $('#gsSearch').hidden = true; sunRound(); }
+  function sunCards(r){ return gsShuffle([...Array(48).keys()], mulberry(seedFrom(GS().seed0 + ':sun:' + r))).slice(0, 8); }
+  const SUNW = 124, SUNH = 202, SUNG = 22, SUNX = (BW - (8 * SUNW + 7 * SUNG)) / 2;
+  function sunRound(){
+    const g = GS(); if(!g || G.over) return;
+    g.sunCards = sunCards(g.sunR); g.sunPicks = []; g.sunBusy = false; g.sunT0 = Date.now() + 700;
+    const box = $('#gsSun'); box.hidden = false;
+    const nm = s => s === g.seat ? '나' : esc(g.oppNick);
+    box.innerHTML = `<div class="gs-sunh"><b>선 뽑기</b><span>${g.sunR ? '다시 뽑기 · ' : ''}엎어 둔 패 한 장씩 뒤집어 <em>높은 월</em>이 선(먼저 침)</span></div>
+      <div class="gs-sunp a">${g.seat === 0 ? avatar({ me:true }) : oppAv(g.oppNick)}<b>${nm(0)}</b><small>먼저 뒤집기</small></div>
+      <div class="gs-sunp b">${g.seat === 1 ? avatar({ me:true }) : oppAv(g.oppNick)}<b>${nm(1)}</b><small>다음에 뒤집기</small></div>
+      ${g.sunCards.map((id, i) => `<button class="gs-c sunc" data-i="${i}" style="${px(SUNX + i * (SUNW + SUNG), 300, SUNW, SUNH)}" aria-label="엎어 둔 패 ${i + 1}">${BACK}</button>`).join('')}
+      <div class="gs-sunm" id="gsSunM"></div><div class="gs-sunt" id="gsSunT"><i></i></div>
+      <button class="gs-sunx" id="gsSunX">나가기</button>`;
+    box.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { if(!g.sunBusy && g.sunPicks.length === g.seat && !g.sunPicks.includes(+b.dataset.i)){ sfx('gsPick', {}); sunPick(+b.dataset.i, 'me'); } });
+    $('#gsSunX').onclick = () => confirmQuit();
+    X(() => { if(!FXR.reduce) box.querySelectorAll('.sunc').forEach((el, i) => el.animate([{ transform:'translateY(-60px) rotate(-8deg)', opacity:0 }, { transform:'none', opacity:1 }], { duration:380, delay:i * 45, easing:'cubic-bezier(.2,1.3,.4,1)', fill:'backwards' })); });
+    X(() => GX.event('deal', { n:8 }));
+    const r0 = g.sunR; setTimeout(() => { if(GS() === g && g.phase === 'sun' && g.sunR === r0 && !g.sunPicks.length && !g.sunBusy) sunTurn(); }, 700);
+  }
+  function sunTurn(){
+    const g = GS(), j = g.sunPicks.length, mine = j === g.seat;
+    g.sunT0 = Date.now(); g.sunBusy = false;
+    const m = $('#gsSunM'); if(m) m.innerHTML = mine ? '<b>내 차례</b> · 패 한 장을 눌러 뒤집어요' : `<b>${esc(g.oppNick)}</b> 고르는 중…`;
+    $('#gsSun').querySelectorAll('.sunc').forEach((b, i) => b.classList.toggle('can', mine && !g.sunPicks.includes(i)));
+    clearInterval(g.sunIv);
+    g.sunIv = setInterval(() => {
+      if(GS() !== g || g.phase !== 'sun'){ clearInterval(g.sunIv); return; }
+      const left = Math.max(0, SUN_SEC - (Date.now() - g.sunT0) / 1000), t = $('#gsSunT');
+      if(t){ t.firstChild.style.width = (left / SUN_SEC * 100) + '%'; t.classList.toggle('hurry', left < 2); t.dataset.s = Math.ceil(left); }
+      if(left <= 0 && mine && !g.sunBusy){ clearInterval(g.sunIv); sunPick(sunAuto(), 'me'); }
+    }, 100);
+    if(!mine && g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.phase === 'sun') sunPick(sunAuto(), 'ai'); }, 1000);
+    if(!mine && g.mode === 'pvp') sync();
+  }
+  function sunAuto(){
+    const g = GS(), j = g.sunPicks.length, rng = mulberry(seedFrom(g.seed0 + ':sun:' + g.sunR + ':' + j)), free = [...Array(8).keys()].filter(i => !g.sunPicks.includes(i));
+    return free[Math.floor(rng() * free.length)];
+  }
+  function sunPick(i, from){
+    const g = GS(); if(!g || G.over || g.phase !== 'sun' || g.sunBusy) return;
+    const j = g.sunPicks.length; if(j >= 2) return;
+    if(!(i >= 0 && i < 8) || g.sunPicks.includes(i)) i = sunAuto();
+    g.sunBusy = true; clearInterval(g.sunIv); clearTimeout(g.turnT);
+    if(g.mode === 'pvp' && (from === 'me' || from === 'proxy')) publish([-1, g.sunR * 2 + j, 2, i]);
+    g.sunPicks.push(i);
+    const el = $('#gsSun').querySelector(`[data-i="${i}"]`), id = g.sunCards[i];
+    if(el){
+      el.classList.remove('can'); el.classList.add('open', j === g.seat ? 'mine' : 'opp');
+      el.innerHTML = cardSvg(id) + `<span class="gs-sunl">${j === g.seat ? '나' : esc(g.oppNick)} · ${C[id].m}월</span>`;
+      X(() => { if(!FXR.reduce) el.animate([{ transform:'rotateY(90deg) scale(1.1)' }, { transform:'rotateY(0) scale(1.12)', offset:.6 }, { transform:'none' }], { duration:520, easing:'cubic-bezier(.2,1.2,.4,1)' }); });
+      X(() => GX.event('sunFlip'));
+      setTimeout(() => X(() => GX.land(el, 1)), 300);
+    }
+    $('#gsSun').querySelectorAll('.sunc').forEach(b => b.classList.remove('can'));
+    const r0 = g.sunR, n0 = g.sunPicks.length;
+    setTimeout(() => {
+      if(GS() !== g || G.over || g.phase !== 'sun' || g.sunR !== r0 || g.sunPicks.length !== n0) return;   /* 지난 뒤집기의 늦은 예약은 무시 */
+      if(n0 < 2){ sunTurn(); return; }
+      const m = g.sunPicks.map(x => C[g.sunCards[x]].m), mm = $('#gsSunM');
+      if(m[0] === m[1]){
+        if(mm) mm.innerHTML = `<b>둘 다 ${m[0]}월!</b> 같은 월이라 다시 뽑아요`;
+        banner('같은 월! 다시', 'stop');
+        setTimeout(() => { if(GS() === g && g.phase === 'sun'){ g.sunR++; sunRound(); } }, 1600);
+        return;
+      }
+      g.first = m[0] > m[1] ? 0 : 1;
+      const meFirst = g.first === g.seat;
+      if(mm) mm.innerHTML = `<b>${m[0]}월 vs ${m[1]}월</b> · ${meFirst ? '내가 선! 먼저 쳐요' : esc(g.oppNick) + '님이 선이에요'}`;
+      const win = $('#gsSun').querySelector(`[data-i="${g.sunPicks[g.first]}"]`); if(win) win.classList.add('sun');
+      X(() => GX.event('sun', { who:meFirst ? 'me' : 'op' }));
+      g.phase = 'sunDone';
+      setTimeout(() => { if(GS() === g && g.phase === 'sunDone'){ g.gi = 0; startPlay(); } }, 2000);
+    }, 800);
+  }
+
+  /* ----- 끝: 한 판 결과 → 대전이면 잠깐 뒤 바로 다음 판(나가기 예약이면 대전 끝) ----- */
   function endGame(){
     const g = GS(); if(!g || g.ended) return;
-    g.ended = true; timerStop(); clearTimeout(g.turnT);
+    g.ended = true; g.inGame = false; g.phase = 'between'; clockStop(); clearTimeout(g.turnT); closeAsk();
     const S = g.S, r = S.result || { w:-1, final:0, rows:[], mults:[], why:'나가리' };
     g.res = r;
-    draw(liveView());
     const win = r.w === g.me, draw0 = r.w < 0;
     const pay = settle() || { d:0, bonus:0, got:[], after:wallet().pt };
+    if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d; if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt - pay.d); }
+    g.lastW = r.w;
     draw(liveView());
     const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>점당 ${fmtP(g.room.stake)}</span><b>${pay.d > 0 ? '+' : ''}${fmtP(pay.d)}</b></div>` : '<div class="gs-pay"><span>연습 판</span><b>포인트 변화 없음</b></div>')
       + (pay.bonus ? `<div class="gs-pay up sm"><span>솔로 새 판 첫 클리어</span><b>+${fmtP(pay.bonus)}</b></div>` : '')
       + pay.got.map(a => `<div class="gs-pay up sm"><span>업적 · ${a.name}</span><b>+${fmtP(a.pt)}</b></div>`).join('')
       + `<p class="gs-after">보유 포인트 <b>${fmtP(pay.after)}</b>${pay.after < ROOMS[1].min ? ' · 다음 판 전에 파산 구제를 받을 수 있어요' : ''}</p>`;
     const mult = r.mults && r.mults.length ? r.mults.map(m => `<div><span>${m[0]}</span><b>×${m[1]}</b></div>`).join('') : '';
+    const t = g.tot;
     const box = $('#gsAsk');
-    const html = `<div class="gs-askc gs-end ${draw0 ? 'd' : win ? 'w' : 'l'}"><b class="gs-et">${draw0 ? '나가리' : win ? '이겼어요!' : '졌어요'}</b>
-      <p class="gs-ew">${draw0 ? '아무도 7점을 못 내고 패가 다 떨어졌어요(무승부)' : (win ? '내가 ' : esc(g.oppNick) + '님이 ') + (r.why === '스톱' ? '스톱했어요' : r.why === '마지막 패' ? '마지막 패로 났어요' : r.why === '기권' ? '이겼어요(상대 기권)' : r.why + '로 이겼어요')}</p>
+    const html = `<div class="gs-askc gs-end ${draw0 ? 'd' : win ? 'w' : 'l'}">${g.sess ? `<span class="gs-eno">${t.n}판째 · ${t.w}승 ${t.l}패${t.d ? ' ' + t.d + '무' : ''}</span>` : ''}<b class="gs-et">${draw0 ? '나가리' : win ? '이겼어요!' : '졌어요'}</b>
+      <p class="gs-ew">${draw0 ? '아무도 7점을 못 내고 패가 다 떨어졌어요(무승부)' : (win ? '내가 ' : esc(g.oppNick) + '님이 ') + (r.why === '스톱' ? '스톱했어요' : r.why === '마지막 패' ? '마지막 패로 났어요' : r.why + '로 이겼어요')}</p>
       ${draw0 ? '' : `<div class="gs-erows">${(r.rows || []).map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}${mult}<div class="tot"><span>최종</span><b>${fmt(r.final)}점</b></div></div>`}
       ${payHtml}
-      <div class="gs-askb"><button class="pri" id="gsEndOk">결과 보기</button></div></div>`;
+      ${g.sess ? `<div class="gs-nx" id="gsNx"><i></i><span id="gsNxT"></span></div><div class="gs-askb"><button class="${g.bye ? 'on' : ''}" id="gsEndBye">${g.bye ? '나가기 예약 취소' : '나가기 예약'}</button></div>`
+        : '<div class="gs-askb"><button class="pri" id="gsEndOk">결과 보기</button></div>'}</div>`;
     if(box){ box.innerHTML = html; box.hidden = false; }
-    sfx(draw0 ? 'gsStop' : win ? 'gsWin' : 'gsLose');
-    if(win) try{ fxConfetti(); }catch(_){}
+    /* 연출: 총통·3뻑 → 박 → 승패 */
+    const who = r.w === g.me ? 'me' : 'op';
+    let at = 0;
+    if(r.why === '총통' || r.why === '3뻑'){ X(() => GX.event(r.why === '총통' ? 'chongtong' : 'ppuk3', { who })); at = 1300; }
+    (r.mults || []).filter(m => /피박|광박|고박|멍따/.test(m[0])).slice(0, 2).forEach(m => { setTimeout(() => X(() => GX.event('bak', { who, text:m[0].replace(/\(.*\)/, '') })), at); at += 900; });
+    setTimeout(() => { if(GS() === g) X(() => GX.event(draw0 ? 'draw' : win ? 'win' : 'lose', { who })); }, at);
+    if(!draw0){ faceFor(r.w, 'joy', 5000); faceFor(1 - r.w, 'sad', 5000); }
+    if(g.sess){
+      const eb = $('#gsEndBye'); if(eb) eb.onclick = () => toggleBye();
+      const t0 = Date.now() + at, tot = NEXT_SEC * 1000;
+      clearInterval(g.nxIv);
+      g.nxIv = setInterval(() => {
+        if(GS() !== g || G.over || g.phase !== 'between'){ clearInterval(g.nxIv); return; }
+        const left = Math.max(0, tot - Math.max(0, Date.now() - t0)), n = $('#gsNx'), tx = $('#gsNxT');
+        if(n) n.firstChild.style.width = (100 - left / tot * 100) + '%';
+        if(!g.nxSent){
+          if(tx) tx.textContent = g.bye ? `나가기 예약 · ${Math.ceil(left / 1000)}초 뒤 대전을 마쳐요` : `${Math.ceil(left / 1000)}초 뒤 다음 판을 시작해요`;
+          if(left <= 0) nxSend();
+        } else if(tx && g.phase === 'between') tx.textContent = `${esc(g.oppNick)}님을 기다리는 중…`;
+      }, 150);
+      return;
+    }
     const done = () => {
       if(GS() !== g || G.over) return;
       if(box){ box.hidden = true; box.innerHTML = ''; }
-      if(G.duel){
-        G.duel.r = draw0 ? 'd' : win ? 'w' : 'l';
-        G.duel.a = { sc:win ? r.final : null, pg:null }; G.duel.b = { sc:!win && !draw0 ? r.final : null, pg:null };
-        G.duel.why = draw0 ? '나가리 · 무승부예요' : r.why === '기권' ? (win ? '상대가 떠나 기권승이에요' : '기권패예요') : (win ? '내가 ' : '상대가 ') + fmt(r.final) + '점으로 났어요';
-      }
       finish(win);
     };
     const ok = $('#gsEndOk'); if(ok) ok.onclick = done;
-    g.endT = setTimeout(done, g.mode === 'pvp' ? 12000 : 30000);
+    g.endT = setTimeout(done, 30000);
+  }
+  /* 다음 판 할지 알리기: [판, 999, 3, 나가기 예약, 포인트]. 두 사람 기록이 모두 있어야 결정(같은 결론) */
+  function nxSend(){
+    const g = GS(); if(!g || g.nxSent) return;
+    g.nxSent = true; g.nxT = Date.now(); g.nxBye = !!g.bye;
+    if(g.mode === 'pvp' && !g.nxBye){ publish([g.gi, 999, 3, 0, wallet().pt]); sync(); }
+    else { if(g.mode === 'pvp') publish([g.gi, 999, 3, 1, wallet().pt]); decideNext(false, null); }
+  }
+  function nxSync(){
+    const g = GS(); if(!g.nxSent || g.phase !== 'between') return;
+    const oe = fe(g.oev, g.gi, 999);
+    if(oe){ decideNext(!!oe[3], oe[4]); return; }
+    if(!g.oppHere && g.oppGone && Date.now() - g.oppGone > GONE_SEC * 1000){ decideNext(true, null, '상대가 나가서 대전을 마쳐요'); return; }
+    if(Date.now() - g.nxT > 15000) decideNext(true, null, '상대 응답이 없어서 대전을 마쳐요');
+  }
+  function decideNext(oppBye, oppPt, why){
+    const g = GS(); if(!g || g.phase !== 'between') return;
+    g.phase = 'decide'; clearInterval(g.nxIv);
+    if(typeof oppPt === 'number') g.oppPt = oppPt;
+    const room = g.room || ROOMS[0], myPt = wallet().pt;
+    let end = '';
+    if(g.nxBye) end = '나가기 예약대로 대전을 마쳐요';
+    else if(oppBye) end = why || '상대가 나가기를 예약해서 대전을 마쳐요';
+    else if(myPt < room.min) end = '포인트가 모자라 대전을 마쳐요';
+    else if(g.mode === 'pvp' && g.oppPt != null && g.oppPt < room.min) end = '상대 포인트가 모자라 대전을 마쳐요';
+    if(end){ sessionEnd(end); return; }
+    /* 다음 판 선 = 이번 판 이긴 사람(나가리면 그대로) */
+    if(g.lastW >= 0) g.first = seatOf(g.lastW);
+    g.gi++;
+    startPlay();
+  }
+  function sessionEnd(why){
+    const g = GS(); if(!g || G.over) return;
+    g.phase = 'done'; clockStop(); clearInterval(g.nxIv);
+    const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
+    const t = g.tot;
+    if(G.duel){
+      G.duel.r = t.w > t.l ? 'w' : t.w < t.l ? 'l' : 'd';
+      G.duel.a = { sc:t.w, pg:null }; G.duel.b = { sc:t.l, pg:null };
+      G.duel.why = `${t.n}판 ${t.w}승 ${t.l}패${t.d ? ' ' + t.d + '무' : ''} · 포인트 ${t.pt > 0 ? '+' : ''}${fmtP(t.pt)}${why ? ' · ' + why : ''}`;
+    }
+    if(why) X(() => toast(why));
+    finish(t.w > t.l || (t.w === t.l && t.pt > 0));
+  }
+  function toggleBye(){
+    const g = GS(); if(!g || !g.sess) return;
+    g.bye = !g.bye; sfx('gsPick', {});
+    X(() => toast(g.bye ? (g.nxSent ? '나가기 예약! 다음 판이 끝나면 나가요' : '나가기 예약! 이번 판이 끝나면 나가요 · 다시 누르면 취소') : '나가기 예약을 취소했어요'));
+    byeUI();
+    if(g.nr) X(() => g.nr.presence({ bye:g.bye ? 1 : 0 }).catch(() => {}));
+  }
+  function byeUI(){
+    const g = GS(); if(!g) return;
+    const b = $('#gsOut'); if(b && g.sess){ b.textContent = g.bye ? '예약 취소' : '나가기 예약'; b.classList.toggle('on', !!g.bye); }
+    const e = $('#gsEndBye'); if(e){ e.textContent = g.bye ? '나가기 예약 취소' : '나가기 예약'; e.classList.toggle('on', !!g.bye); }
+    if(g.S && g.phase === 'play' && !g.busy) draw(liveView());
   }
 
   /* ----- 고스톱 포인트(이 게임 전용, 무료로만 얻음 · 구매·환전·선물 없음) ----- */
@@ -722,7 +991,9 @@ NG.gostop = (() => {
         </div></div>`;
       if(msg) try{ toast(msg); }catch(_){}
       box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; sfx('gsPick', {}); g.room = r; box.hidden = true; box.innerHTML = '';
-        if(g.mode === 'pvp') search(); else startPlay('gs:' + (G.adv ? 'solo:' + G.adv : 'ai') + ':' + g.seedBase); });
+        if(g.mode === 'pvp') search();
+        else if(g.sess){ g.seed0 = 'gs:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판 */
+        else { g.seed0 = 'gs:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 */
       const rb = $('#gsRescue'); if(rb) rb.onclick = () => { const b = rescue(); if(b){ sfx('gsWin'); draw0(`파산 구제 +${fmtP(b)}! 다시 도전해요`); } };
       const fb = $('#gsFree'); if(fb) fb.onclick = () => { const b = freeCharge(); if(b){ sfx('gsCap'); draw0(`무료 충전 +${fmtP(b)}`); } };
     };
@@ -735,7 +1006,7 @@ NG.gostop = (() => {
     g.paid = true;
     const r = g.S.result, room = g.room || ROOMS[0], w = wallet(), win = r && r.w === g.me, lose = r && r.w >= 0 && !win;
     let d = 0;
-    if(room.stake && win) d = Math.min(r.final * room.stake, g.mode === 'pvp' ? (g.oppPt0 ?? Infinity) : Infinity);
+    if(room.stake && win) d = Math.min(r.final * room.stake, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : Infinity);
     else if(room.stake && lose) d = -Math.min(r.final * room.stake, w.pt);
     w.pt += d; w.games = (w.games || 0) + 1; if(win) w.wins = (w.wins || 0) + 1; saveW(w);
     const keys = [];
@@ -748,7 +1019,7 @@ NG.gostop = (() => {
   }
   /* 판 도중 나가면 기권 벌점(점당 × 10, 가진 만큼까지) */
   function quitPenalty(){
-    const g = GS(); if(!g || !g.began || g.ended || g.paid || !g.room || !g.room.stake) return;
+    const g = GS(); if(!g || !g.inGame || g.paid || !g.room || !g.room.stake) return;
     g.paid = true; const w = wallet(), p = Math.min(w.pt, g.room.stake * 10); w.pt -= p; saveW(w);
     try{ toast(`판 도중에 나가서 ${fmtP(p)}을 잃었어요`); }catch(_){}
   }
@@ -784,13 +1055,14 @@ NG.gostop = (() => {
     $('#mGo').onclick = () => { store.set(AGE_KEY, 1); closeModal(); go(); };
   }
 
-  /* ----- 실시간 대전(턴제): 상대 찾기 · 수 주고받기 ----- */
-  const enc = a => [a.c, a.a == null ? -1 : a.a, a.b == null ? -1 : a.b, a.s || 0, a.g == null ? -1 : a.g];
-  const dec = v => ({ c:v[0], a:v[1], b:v[2], s:v[3], g:v[4] });
-  function publish(act){
+  /* ----- 실시간 대전(턴제): 상대 찾기 · 기록 주고받기 -----
+     둘만의 방에서 각자 presence.ev에 기록을 쌓는다([판, 번호, 종류, …]). 상대 차례에 기록이 안 오면
+     (8초 + 여유 3초, 연결이 끊겼으면 2.5초) 내가 비풍초똥팔삼 자동 수로 대신 두고 그 기록도 올린다 → 상대가 나가도 판 끝까지 진행. */
+  function publish(e){
     const g = GS(); if(!g || g.mode !== 'pvp' || !g.nr) return;
-    g.mv.push(enc(act));
-    try{ g.nr.presence({ mv:g.mv }).catch(() => {}); }catch(_){}
+    g.ev.push(e);
+    g.ev = g.ev.filter(x => x[0] >= g.gi - 1 && !(x[0] === -1 && g.gi >= 1));
+    X(() => g.nr.presence({ ev:g.ev, bye:g.bye ? 1 : 0, pt:wallet().pt }).catch(() => {}));
   }
   function searchUI(){
     const g = GS();
@@ -814,15 +1086,16 @@ NG.gostop = (() => {
     const g = GS(); g.phase = 'search'; g.mmT0 = Date.now(); searchUI();
     const room = ROOM; if(!room){ switchAI(); return; }
     g.dt = Date.now();
-    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k }).catch(() => {});
+    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:2 }).catch(() => {});
     const check = () => {
       if(GS() !== g || G.over || (g.phase !== 'search' && g.phase !== 'nobody')) return;
       let ps; try{ ps = room.peers(); }catch(_){ return; }
       const me = ps.find(p => p.sameTab); if(!me) return;
       g.myPeer = me.peer;
-      const claim = ps.find(p => !p.sameTab && p.presence && p.presence.du === 'play' && p.presence.dg === ID && p.presence.dp === me.peer && p.presence.dr === g.room.k);
+      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 2;   /* dv:2 = 연속 판·자동 진행 기록 방식이 같은 판끼리만 */
+      const claim = ps.find(p => !p.sameTab && ok(p) && p.presence.du === 'play' && p.presence.dp === me.peer);
       if(claim){ match(claim); return; }
-      const list = ps.filter(p => p.presence && p.presence.du === 'wait' && p.presence.dg === ID && p.presence.dr === g.room.k && typeof p.presence.dt === 'number')
+      const list = ps.filter(p => ok(p) && p.presence.du === 'wait' && typeof p.presence.dt === 'number')
         .sort((a, b) => a.presence.dt - b.presence.dt || (a.peer < b.peer ? -1 : 1));
       const i = list.findIndex(p => p.sameTab); if(i < 0) return;
       const opp = list[i % 2 ? i - 1 : i + 1]; if(opp) match(opp);
@@ -836,14 +1109,15 @@ NG.gostop = (() => {
     }, 500);
   }
   function stopSearch(){ const g = GS(); if(!g) return; clearInterval(g.mmIv); if(g.mmUn) try{ g.mmUn(); }catch(_){} g.mmUn = null; }
-  function lobbyClear(){ if(ROOM) ROOM.presence({ du:null, dg:null, dt:null, dp:null, nk:null, dr:null }).catch(() => {}); }
+  function lobbyClear(){ if(ROOM) ROOM.presence({ du:null, dg:null, dt:null, dp:null, nk:null, dr:null, dv:null }).catch(() => {}); }
   function switchAI(){
     const g = GS(); if(!g || g.began) return;
     stopSearch(); roomClose(); lobbyClear();
-    g.mode = 'ai'; G.mode = 'ai'; g.ai = 'normal'; g.oppNick = 'AI 고수';
+    g.mode = 'ai'; G.mode = 'ai'; g.ai = 'normal'; g.oppNick = 'AI 고수'; g.seat = 0;
     if(G.duel){ G.duel.mode = 'ai'; G.duel.opp = { nick:'AI 고수' }; }
     $('#gsSearch').hidden = true;
-    startPlay('gs:ai:' + g.seedBase + ':' + Date.now());
+    g.seed0 = 'gs:ai:' + g.seedBase + ':' + Date.now();
+    sunStart();
   }
   async function match(opp){
     const g = GS(); if(g.phase !== 'search' && g.phase !== 'nobody') return;
@@ -855,14 +1129,14 @@ NG.gostop = (() => {
     let nr;
     try{ nr = await ROOM.join(('fl-g-' + a[0] + '-' + a[1]).slice(0, 50)); }catch(_){ if(GS() === g) matchFail(); return; }
     if(GS() !== g || g.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
-    g.nr = nr; g.joinT = Date.now(); g.mv = []; g.oc = 0;
-    nr.presence({ v:1, nk:g.nick, mv:[], pt:wallet().pt }).catch(() => {});
+    g.nr = nr; g.joinT = Date.now(); g.ev = []; g.oev = [];
+    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt }).catch(() => {});
     g.seat = g.myPeer < opp.peer ? 0 : 1;
     try{ g.nrUn = nr.onPeers(ch => {
         if(GS() !== g) return;
-        if(g.oppSeen && ch.left.some(p => p.peer === g.oppPeer)){ if(!g.began){ matchFail(); return; } if(!g.oppGone){ g.oppGone = Date.now(); toast('상대 연결이 끊겼어요 · 15초 기다려요'); } }
-        else sync();
-      }, () => { if(GS() === g && !G.over && g.began && !g.ended){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); forfeit(false); } }); }catch(_){}
+        if(g.oppSeen && ch.left.some(p => p.peer === g.oppPeer) && !g.began){ matchFail(); return; }
+        sync();
+      }, () => { if(GS() === g && !G.over && g.began && g.phase !== 'done'){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); sessionEnd('내 연결이 끊겼어요'); } }); }catch(_){}
     g.syncIv = setInterval(() => { if(GS() === g) sync(); }, 250);
   }
   function matchFail(){ const g = GS(); roomClose(); g.oppSeen = false; if(G.over) return; toast('상대와 연결하지 못했어요. 다시 찾을게요'); search(); }
@@ -875,55 +1149,57 @@ NG.gostop = (() => {
     const g = GS(); if(!g || !g.nr) return null;
     let ps; try{ ps = g.nr.peers(); }catch(_){ return null; }
     const o = ps.find(p => !p.sameTab && (p.peer === g.oppPeer || (p.presence && p.presence.nk === g.oppNick)));
-    if(o && o.peer !== g.oppPeer){ g.oppPeer = o.peer; g.oppGone = 0; }   /* 상대가 다시 연결하면 새 peer id */
+    if(o && o.peer !== g.oppPeer) g.oppPeer = o.peer;   /* 상대가 다시 연결하면 새 peer id */
     return o ? o.presence || {} : null;
   }
+  const oppLate = (t0, sec) => (Date.now() - (t0 || 0)) / 1000 > (GS().oppHere ? sec + GRACE : GONE_SEC);
   function sync(){
-    const g = GS(); if(!g || G.over || g.ended) return;
+    const g = GS(); if(!g || G.over || g.mode !== 'pvp' || g.phase === 'done') return;
     const o = oppPres();
-    if(o && o.nk){ g.oppSeen = true; g.oppGone = 0; }
+    const was = (g.oppHere ? 1 : 0) + (g.oppBye ? 2 : 0);
+    if(o && o.nk){ g.oppSeen = true; g.oppHere = true; g.oppGone = 0; if(Array.isArray(o.ev)) g.oev = o.ev; g.oppBye = !!o.bye; }
+    else { g.oppHere = false; if(g.oppSeen && !g.oppGone){ g.oppGone = Date.now(); if(g.began) X(() => toast('상대 연결이 끊겼어요 · 판 끝까지 자동으로 대신 쳐요')); } }
     if(!g.began){
       if(g.phase === 'joining' && o && o.nk){
-        lobbyClear(); g.mode = 'pvp'; g.oppPt0 = typeof o.pt === 'number' ? o.pt : 0;
+        lobbyClear(); g.mode = 'pvp'; g.oppPt = typeof o.pt === 'number' ? o.pt : 0;
         const a = [g.myPeer, g.oppPeer].map(String).sort();
-        g.me = g.seat;
+        g.seed0 = 'gs:pvp:' + a[0] + ':' + a[1];
         $('#gsSearch').hidden = true;
-        startPlay('gs:pvp:' + a[0] + ':' + a[1]);
-        g.lastOpp = Date.now();
+        sunStart();
       } else if(g.phase === 'joining' && Date.now() - g.joinT > 9000) matchFail();
       return;
     }
-    if(g.oppGone && Date.now() - g.oppGone > 15000){ forfeit(true); return; }
-    const S = g.S;
-    if(!S || S.over) return;
-    const mv = o && Array.isArray(o.mv) ? o.mv : [];
-    if(!g.busy && S.turn !== g.me && S.pendingGS < 0 && mv.length > g.oc){
-      const act = dec(mv[g.oc++]); g.lastOpp = Date.now();
-      commit(1 - g.me, act);
-      return;
-    }
-    if(S.turn !== g.me && !g.busy){
-      const left = OPP_WAIT - (Date.now() - Math.max(g.lastOpp || 0, g.turnAt || 0)) / 1000;
-      if(left < 20) setMsg(`<b>${esc(g.oppNick)}</b> 차례… 응답이 없으면 ${Math.max(0, Math.ceil(left))}초 뒤 기권승`, 'op');
-      if(left <= 0){ forfeit(true); }
-    }
+    if(was !== (g.oppHere ? 1 : 0) + (g.oppBye ? 2 : 0) && g.phase === 'play' && !g.busy && g.S) draw(liveView());
+    if(g.phase === 'sun') sunSync();
+    else if(g.phase === 'play') playSync();
+    else if(g.phase === 'between') nxSync();
   }
-  function forfeit(iWin){
-    const g = GS(); if(!g || g.ended) return;
-    const S = g.S;
-    if(S){ S.over = true; S.result = { w:iWin ? g.me : 1 - g.me, final:iWin ? Math.max(7, scoreOf(S.P[g.me].cap).total) : 0, base:0, why:'기권', rows:[['상대 기권', '']], mults:[] }; }
-    g.busy = false; const box = $('#gsAsk'); if(box){ box.hidden = true; }
-    endGame();
+  function sunSync(){
+    const g = GS(); if(g.sunBusy || !g.sunCards) return;
+    const j = g.sunPicks.length; if(j >= 2) return;
+    const oe = fe(g.oev, -1, g.sunR * 2 + j);
+    if(oe){ sunPick(oe[3], 'opp'); return; }
+    if(j !== g.seat && oppLate(g.sunT0, SUN_SEC)) sunPick(sunAuto(), 'proxy');
+  }
+  function playSync(){
+    const g = GS(), S = g.S; if(!S || g.busy) return;
+    /* 내 결정인데 상대가 대신 둔 기록이 있고 내가 둔 것과 다르면 → 다시 맞추기 */
+    for(const e of g.oev || []) if(Array.isArray(e) && e[0] === g.gi && e[1] < g.k && e[2] <= 1 && g.own[e[1]] && g.src[e[1]] === 'mine' && !sameX(D(e), g.raw[e[1]])){ rebuild(); return; }
+    if(S.over) return;
+    const k = g.k, p = owner(S), oe = fe(g.oev, g.gi, k);
+    if(oe && oe[2] <= 1){ if(p === g.me) X(() => toast('연결이 늦어 상대 쪽에서 자동으로 낸 수로 이어 가요')); step(k, D(oe), 'opp'); return; }
+    if(p !== g.me && oppLate(g.stepT0, S.pendingGS >= 0 ? GS_SEC : TURN_SEC)) step(k, autoAct(S, p), 'proxy');
   }
   function cleanup(){
     const g = G && G.gs; if(!g) return;
     quitPenalty();
-    clearInterval(g.tIv); clearTimeout(g.turnT); clearTimeout(g.endT); clearInterval(g.mmIv); clearInterval(g.syncIv);
+    clearInterval(g.tIv); clearTimeout(g.turnT); clearTimeout(g.endT); clearInterval(g.mmIv); clearInterval(g.syncIv); clearInterval(g.sunIv); clearInterval(g.nxIv);
     if(g.mmUn) try{ g.mmUn(); }catch(_){}
     if(g.nrUn) try{ g.nrUn(); }catch(_){}
     const nr = g.nr; g.nr = null;
     if(nr) setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1200);
     lobbyClear();
+    X(() => GX.clear());
     if(g.onRs){ removeEventListener('resize', g.onRs); removeEventListener('orientationchange', g.onRs); }
     document.body.classList.remove('gs-full');
   }
@@ -933,8 +1209,10 @@ NG.gostop = (() => {
     const mode = lv === 'pvp' ? 'pvp' : 'ai';
     const n = (store.get('hp:gs:n', 0) || 0) + 1; store.set('hp:gs:n', n);   /* 같은 스테이지라도 판마다 다른 패(문제 공유가 없는 게임) */
     const seedBase = Math.floor(rng() * 1e9) + ':' + n;
-    const me = mode === 'pvp' ? 0 : G.adv ? (cfg.aiFirst ? 1 : 0) : (rng() < .5 ? 0 : 1);   /* 0번 자리 = 선(먼저 둠·바닥 보너스패) */
-    G.gs = { mode, ai:cfg.ai || 'normal', me, seat:0, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : 'AI 고수'), seedBase, mv:[], oc:0, sel:null, busy:false, began:false };
+    /* 자리(seat): 대전은 peer 순서, AI와는 나 0 · AI 1. 판마다 선 자리(first)가 S의 0번 자리가 된다.
+       솔로는 스테이지가 선을 정하고(aiFirst), 대전은 선 뽑기 → 다음 판부터 이긴 사람이 선 */
+    G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:G.adv && cfg.aiFirst ? 1 : 0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : 'AI 고수'),
+      seedBase, ev:[], oev:[], tot:{ n:0, w:0, l:0, d:0, pt:0 }, bye:false, epoch:0, sel:null, busy:false, began:false, inGame:false, phase:'lobby' };
     G.mode = mode;
     G.cleanup = cleanup;
   }
@@ -952,7 +1230,7 @@ NG.gostop = (() => {
         <div class="gs-side">
           <div class="gs-prof op" id="gsOpp"></div>
           <div class="gs-info" id="gsInfo"></div>
-          <div class="gs-btns"><button id="gsHelpB" aria-label="게임 방법">?</button><button class="out" id="gsOut">나가기</button></div>
+          <div class="gs-btns"><button id="gsHelpB" aria-label="게임 방법">?</button><button class="out" id="gsOut">${GS() && GS().sess ? '나가기 예약' : '나가기'}</button>${GS() && GS().sess ? '<button class="q" id="gsQuit" aria-label="지금 바로 나가기(기권)">✕</button>' : ''}</div>
           <div class="gs-prof me" id="gsMe"></div>
           <div class="gs-msg" id="gsMsg"></div>
         </div>
@@ -962,13 +1240,15 @@ NG.gostop = (() => {
       <div class="gs-ban" id="gsBan" aria-live="polite"></div>
       <div class="gs-lobby" id="gsLobby" hidden></div>
       <div class="gs-search" id="gsSearch" hidden></div>
+      <div class="gs-sunb" id="gsSun" hidden></div>
       <div class="gs-ask" id="gsAsk" hidden></div>
     </div>${ageOk() ? '' : gateHtml()}</div>`;
     document.body.classList.add('gs-full');
     const g0 = GS(); if(g0){ g0.onRs = () => { fit(); const g = GS(); if(g && !g.rot && g.turnOff) g.turnOff(); }; addEventListener('resize', g0.onRs); addEventListener('orientationchange', g0.onRs); }
     fit();
     $('#gsHelpB').onclick = () => openHelp(ID);
-    $('#gsOut').onclick = () => confirmQuit();
+    $('#gsOut').onclick = () => { const g = GS(); if(g && g.sess) toggleBye(); else confirmQuit(); };   /* 대전: 누르면 나가기 예약, 다시 누르면 취소 */
+    const qb = $('#gsQuit'); if(qb) qb.onclick = () => confirmQuit();   /* 바로 나가기(기권 · 남은 판은 상대 쪽에서 자동으로 끝까지) */
     $('#gsAuto').onclick = () => autoHand();
     const go = () => {
       const g = GS(); if(!g || G.over) return;
@@ -1007,9 +1287,9 @@ NG.gostop = (() => {
         ${[[0, 36, 32, -15], [28, 60, 23, -1], [44, 84, 28, 13]].map(([id, x, y, a], k) => `<clipPath id="${u}c${k}"><rect width="176" height="287" rx="11"/></clipPath><g transform="translate(${x} ${y}) rotate(${a}) scale(.22)"><g clip-path="url(#${u}c${k})">${cardInner(id)}</g></g>`).join('')}
         <g transform="translate(112 19)"><circle r="14" fill="#fff" stroke="#D7263D" stroke-width="4"/><text y="5.5" font-size="15" font-weight="900" text-anchor="middle" fill="#1A0F45" font-family="system-ui,sans-serif">19</text></g></svg>`;
     },
-    helpExtra:() => [['그림 출처', '화투 그림: Marcus Richert(Louie Mantia, Jr.의 Hanafuda 그래픽 기반), Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스. 48장을 한 장 그림판으로 합쳐 씀.']],
+    helpExtra:() => [['대전 규칙', '시작 전 선 뽑기(엎어 둔 패를 한 장씩 뒤집어 높은 월이 선, 같으면 다시, 5초 지나면 자동). 내 차례는 8초 — 넘기면 비(12월)·풍(10월)·초(5월)·똥(11월)·팔(8월)·삼(3월) 순서로 자동으로 내요. 한 판이 끝나면 바로 다음 판(이긴 사람이 선). 그만하려면 나가기 예약(다시 누르면 취소), 판 도중 나가거나 끊기면 남은 판은 자동으로 끝까지 진행돼요.'], ['그림 출처', '화투 그림: Marcus Richert(Louie Mantia, Jr.의 Hanafuda 그래픽 기반), Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스. 48장을 한 장 그림판으로 합쳐 씀.']],
     help:[
-      ['같은 월끼리 먹어요', '내 패 한 장을 내고 더미에서 한 장을 뒤집어요. 바닥에 같은 월(왼쪽 위 숫자)이 있으면 둘 다 가져와요. 패를 누르면 들리고, 한 번 더 누르면 내요.'],
+      ['같은 월끼리 먹어요', '내 패 한 장을 내고 더미에서 한 장을 뒤집어요. 바닥에 같은 월(왼쪽 위 숫자)이 있으면 둘 다 가져와요. 손패를 한 번 누르면 바로 내요.'],
       ['7점 나면 고? 스톱?', '광 3장 3점(비광 끼면 2점)·4장 4점·5장 15점 · 열끗 5장 1점(고도리 5점) · 띠 5장 1점(홍단·청단·초단 3점) · 피 10장 1점. 7점이 나면 스톱해서 이기거나, 고를 불러 점수를 더 키워요(1고 +1, 2고 +2, 3고부터 2배씩). 고를 했는데 상대가 먼저 나면 고박!'],
       ['뻑·쪽·따닥·쓸', '뻑: 낸 패와 뒤집은 패가 바닥 패와 같은 월이면 세 장이 바닥에 묶여요(나중에 먹으면 피 1장, 내 뻑이면 2장). 쪽·따닥·쓸을 하면 상대 피 1장을 가져와요. 흔들기·폭탄은 점수 2배, 3뻑·총통은 바로 승리.'],
       ['박과 배수', '피박(상대 피 1~5장)·광박(상대 광 0장)·고박·멍따(열끗 7장+)는 점수 ×2. 둘 다 못 내고 패가 떨어지면 나가리(무승부). 19세 이상 · 돈이나 상품은 걸 수 없어요.']
@@ -1039,7 +1319,7 @@ NG.gostop = (() => {
     duelHow:'1:1 맞고 · 점당 방 · 19세 이상',
     /* 고스톱은 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 마주 앉아 한 판. fleet:true = 엔진에 "게임이 대전을 직접 진행"이라고 알림 */
     duelLaunch(){ ageGate(() => { const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : 'AI 고수' } } }); }); },
-    sounds:{
+    sounds:Object.assign({
       gsSlap(){ aThump({ f:220, f2:90, d:.09, v:.22 }); aNoise({ ft:'highpass', f:2400, d:.05, v:.09 }); },
       gsFlip(){ aWhoosh({ f:1200, f2:3600, a:.01, d:.08, v:.05 }); aThump({ f:200, f2:90, t:.07, d:.08, v:.18 }); aNoise({ ft:'highpass', f:2600, t:.07, d:.04, v:.08 }); },
       gsCap(){ aMarimba(m2f(79), { v:.1 }); aMarimba(m2f(84), { t:.06, v:.09 }); },
@@ -1052,10 +1332,10 @@ NG.gostop = (() => {
       gsStop(){ aThump({ f:160, f2:60, d:.3, v:.3 }); aBell({ f:m2f(76), t:.05, d:.5, v:.05 }); },
       gsWin(){ [0, 4, 7, 12, 16].forEach((d, i) => aMarimba(m2f(72 + d), { t:i * .07, v:.14 })); aSparkle({ t:.4, n:6 }); },
       gsLose(){ aTone({ f:392, f2:262, type:'triangle', d:.5, v:.08 }); }
-    },
-    gate:{ gsSlap:40, gsPick:30, gsFlip:40, gsCap:60 },
+    }, GX.sounds || {}),
+    gate:Object.assign({ gsSlap:40, gsPick:30, gsFlip:40, gsCap:60 }, GX.gate || {}),
     /* 점검·도구용(화면에는 안 씀) */
-    _rules:{ C, gsDeal, gsApply, gsGoStop, scoreOf, tally, aiPick, aiGo, cloneS },
+    _rules:{ C, gsDeal, gsApply, gsGoStop, scoreOf, tally, aiPick, aiGo, cloneS, autoAct },
     _card:id => cardSvg(id), _back:BACK
   };
 })();
