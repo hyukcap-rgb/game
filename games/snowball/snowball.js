@@ -65,7 +65,7 @@ NG.snowball = (() => {
     const battle = !!(G.duel);
     S = { rng, battle, cfg:cfg || {}, t:0, foods:[], players:[], gold:null, nextGold:RULE.GOLD_EVERY, safeR:WORLD_R, floats:[],
       reviveUsed:false, reviveLeft:0, deathInfo:null, end:null, total:0, cam:{ x:0, y:0, z:1 }, W:0, H:0, DPR:1,
-      mouse:{ x:0, y:0, active:false, touching:false, last:'mouse' }, keys:{}, boostHeld:false, hudT:0, lt:0 };
+      mouse:{ x:0, y:0, active:false, last:'mouse' }, joy:{ on:false, cruise:false, dx:1, dy:0, thr:0 }, keys:{}, boostHeld:false, hudT:0, lt:0 };
     G.sn = S;
     const mul = (cfg && cfg.food) || 1;
     for(const [type, f] of Object.entries(FOOD)){
@@ -79,16 +79,19 @@ NG.snowball = (() => {
   }
 
   /* ---------------- 조작 ---------------- */
-  const maxSpeed = r => 300 * Math.pow(27 / r, .3);
+  const maxSpeed = r => 430 * Math.pow(27 / r, .22);   /* v1.1: 체감 속도 약 1.5배(큰 공도 덜 느려짐) */
   const zoomFor = r => 1.25 * Math.pow(40 / (r + 13), .55) * Math.min(S.W, S.H) / 700;
-  const toScreen = (x, y) => ({ x:(x - S.cam.x) * S.cam.z + S.W / 2, y:(y - S.cam.y) * S.cam.z + S.H / 2 });
+  /* v1.1: 내 공은 위·아래 판 사이 '보이는 곳' 한가운데에(아래 레버 판에 가리지 않게) */
+  const midY = () => S.safeTop && S.safeBot && S.H - S.safeBot > S.safeTop ? (S.safeTop - 10 + S.H - S.safeBot) / 2 : S.H / 2;
+  const toScreen = (x, y) => ({ x:(x - S.cam.x) * S.cam.z + S.W / 2, y:(y - S.cam.y) * S.cam.z + midY() });
 
   function humanControl(p){
     const K = S.keys, m = S.mouse; let dx = 0, dy = 0, thr = 0;
     const kx = (K.ArrowRight || K.KeyD ? 1 : 0) - (K.ArrowLeft || K.KeyA ? 1 : 0);
     const ky = (K.ArrowDown || K.KeyS ? 1 : 0) - (K.ArrowUp || K.KeyW ? 1 : 0);
     if(m.last === 'key' && (kx || ky)){ const l = Math.hypot(kx, ky); dx = kx / l; dy = ky / l; thr = 1; }
-    else if(m.active && (m.last === 'mouse' || m.touching)){
+    else if(S.joy.on || S.joy.cruise){ dx = S.joy.dx; dy = S.joy.dy; thr = S.joy.thr; }
+    else if(m.active && m.last === 'mouse'){
       const s = toScreen(p.x, p.y), vx = m.x - s.x, vy = m.y - s.y, d = Math.hypot(vx, vy);
       const dead = Math.max(14, radiusOf(p.mass) * S.cam.z * .55);
       if(d > dead){ dx = vx / d; dy = vy / d; thr = Math.min(1, (d - dead) / 110); }
@@ -151,7 +154,7 @@ NG.snowball = (() => {
     for(const p of alive){
       if(p.me) humanControl(p); else { botThink(p, dt); p.boosting = p.ai.boost && p.mass > RULE.BOOST_MIN; }
       const r = radiusOf(p.mass), vmax = maxSpeed(r) * (p.boosting ? RULE.BOOST_MUL : 1);
-      const k = Math.min(1, dt * 6);
+      const k = Math.min(1, dt * 9);
       p.vx += (p.dirx * vmax * p.throttle - p.vx) * k; p.vy += (p.diry * vmax * p.throttle - p.vy) * k;
       p.x += p.vx * dt; p.y += p.vy * dt;
       const d = Math.hypot(p.x, p.y), lim = WORLD_R - r * .5; if(d > lim){ p.x *= lim / d; p.y *= lim / d; }
@@ -167,7 +170,10 @@ NG.snowball = (() => {
       for(const f of S.foods){
         if(!f.alive) continue; const dx = f.x - p.x, dy = f.y - p.y;
         if(Math.abs(dx) > r || Math.abs(dy) > r) continue;
-        if(dx * dx + dy * dy < r * r && lv >= FOOD[f.type].lv) eat(p, f);
+        if(dx * dx + dy * dy < r * r){
+          if(lv >= FOOD[f.type].lv) eat(p, f);
+          else if(p.me && S.t > (S.lockMsg || 0)){ S.lockMsg = S.t + 3; addFloat(p.x, p.y, `${FOOD[f.type].label}는 Lv ${FOOD[f.type].lv}부터!`, '#6E5A82'); }   /* 못 먹는 사물에 닿으면 한 번 알려 줌 */
+        }
       }
       if(S.gold && Math.hypot(S.gold.x - p.x, S.gold.y - p.y) < r + 18){
         p.mass += RULE.GOLD_MASS; p.golds++; p.eaten.object += RULE.GOLD_MASS; S.gold = null;
@@ -368,7 +374,7 @@ NG.snowball = (() => {
   }
 
   function drawFood(c, type, x, y, s, locked){
-    c.save(); c.translate(x, y); c.globalAlpha = locked ? .55 : 1; c.lineJoin = 'round'; c.lineCap = 'round';
+    c.save(); c.translate(x, y); c.globalAlpha = locked ? .3 : 1; c.lineJoin = 'round'; c.lineCap = 'round';
     if(type === 'flake'){
       c.strokeStyle = '#8E63C9'; c.lineWidth = Math.max(1.6, s * .28);
       for(let i = 0; i < 3; i++){ const a = i * Math.PI / 3; c.beginPath(); c.moveTo(Math.cos(a) * s, Math.sin(a) * s); c.lineTo(-Math.cos(a) * s, -Math.sin(a) * s); c.stroke(); }
@@ -447,8 +453,7 @@ NG.snowball = (() => {
       if(!f.alive) continue; const p = toScreen(f.x, f.y);
       if(p.x < -pad || p.x > W + pad || p.y < -pad || p.y > H + pad) continue;
       const F = FOOD[f.type], s = Math.max(f.type === 'flake' ? 6 : f.type === 'crystal' ? 8 : 10, F.r * z), lock = lv < F.lv;
-      drawFood(c, f.type, p.x, p.y, s, lock);
-      if(lock && s > 9){ c.font = '700 10px "Noto Sans KR", sans-serif'; c.textAlign = 'center'; c.fillStyle = '#6E5A82'; c.fillText(`Lv${F.lv}`, p.x, p.y - s - 4); }
+      drawFood(c, f.type, p.x, p.y, s, lock);   /* 아직 못 먹는 사물은 흐리게만(필요 레벨은 아래 칩에만 표시) */
     }
     if(S.gold){ const p = toScreen(S.gold.x, S.gold.y); drawGold(c, p.x, p.y, Math.max(10, 22 * z)); }
     const list = S.players.filter(p => p.alive).sort((a, b) => a.mass - b.mass);
@@ -475,8 +480,9 @@ NG.snowball = (() => {
       for(const q of S.players){
         if(!q.alive || q.me || relation(me, q).k !== 'danger') continue;
         const d = Math.hypot(q.x - me.x, q.y - me.y); if(d > 1400) continue;
-        arrows.push({ x:q.x, y:q.y, txt:`Lv ${snLv(q.mass)} · ${Math.round(d * .02)}m`, bg:'#FF8A3D', fg:'#2A1300' });
+        arrows.push({ x:q.x, y:q.y, d, txt:`Lv ${snLv(q.mass)} · ${Math.round(d * .02)}m`, bg:'#FF8A3D', fg:'#2A1300' });
       }
+      arrows.sort((u, v) => u.d - v.d); arrows.length = Math.min(arrows.length, 2);   /* 가까운 위험 2개만(화면이 덮이지 않게) */
       if(S.gold){ const d = Math.hypot(S.gold.x - me.x, S.gold.y - me.y); arrows.push({ x:S.gold.x, y:S.gold.y, txt:`황금 눈사람 · ${Math.round(d * .02)}m`, bg:'#FFD43B', fg:'#3A2A00' }); }
       const top = S.safeTop, bot = H - S.safeBot;
       for(const a of arrows){
@@ -567,7 +573,8 @@ NG.snowball = (() => {
       <div class="sn-bot sn-pan">
         <div class="sn-cap"><span>지금 먹을 수 있는 것</span><span class="sn-unlock"></span></div>
         <div class="sn-chips">${CHIPS.map(([t, l]) => `<div class="sn-chip" data-t="${t}"><canvas width="44" height="44"></canvas><span>${l}</span><b></b></div>`).join('')}</div>
-        <div class="sn-ctl"><canvas class="sn-mini" width="144" height="144" aria-label="미니맵"></canvas><div class="sn-status"></div>
+        <div class="sn-ctl"><div class="sn-joy" role="slider" aria-label="이동 레버: 끌어서 방향 정하기"><i class="sn-knob"></i></div>
+          <div class="sn-mid"><div class="sn-status"></div><canvas class="sn-mini" width="144" height="144" aria-label="미니맵"></canvas></div>
           <button class="sn-boost" type="button" aria-label="부스트"><span>부스트</span><small>질량 −20/초</small></button></div>
       </div>
       <div class="snb-rv" hidden><div class="rv-box"><b class="rv-t">흡수됐어요</b><div class="rv-n">5</div><p class="rv-d"></p>
@@ -583,23 +590,36 @@ NG.snowball = (() => {
       S.DPR = Math.min(2, window.devicePixelRatio || 1);
       S.W = S.root.clientWidth; S.H = h;
       cv.width = Math.round(S.W * S.DPR); cv.height = Math.round(S.H * S.DPR);
-      S.safeTop = (S.root.querySelector('.sn-top').offsetHeight || 120) + 20;
+      S.safeTop = (S.root.querySelector('.sn-top').offsetHeight || 120) + 44;   /* 화살표 이름표가 순위표 밑으로 숨지 않게 */
       S.safeBot = (S.root.querySelector('.sn-bot').offsetHeight || 170) + 10;
     };
     size(); S.cam.z = zoomFor(radiusOf(20));
     /* 입력 */
     const M = S.mouse, rect = () => cv.getBoundingClientRect();
-    const pos = e => { const r = rect(); M.x = e.clientX - r.left; M.y = e.clientY - r.top; M.active = true; M.last = e.pointerType === 'mouse' ? 'mouse' : 'touch'; };
-    cv.addEventListener('pointermove', pos);
-    cv.addEventListener('pointerdown', e => { pos(e); M.touching = true; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
-    const up = () => { M.touching = false; };
-    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    const pos = e => { const r = rect(); M.x = e.clientX - r.left; M.y = e.clientY - r.top; M.active = true; M.last = 'mouse'; };
+    cv.addEventListener('pointermove', e => { if(e.pointerType === 'mouse'){ pos(e); S.joy.cruise = false; } });
+    /* 이동 레버(하단): 끌면 그 방향으로, 많이 끌수록 빠르게. 손을 떼도 마지막 방향으로 계속 굴러감 */
+    const joy = S.root.querySelector('.sn-joy'), knob = joy.querySelector('.sn-knob'), J = S.joy;
+    let jid = null;
+    const jmove = e => {
+      const r = joy.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, max = r.width * .34;
+      let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy);
+      if(d > max){ dx = dx / d * max; dy = dy / d * max; }
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+      if(d > 6){ J.dx = dx / Math.min(d, max); J.dy = dy / Math.min(d, max); const l = Math.hypot(J.dx, J.dy) || 1; J.dx /= l; J.dy /= l; J.thr = Math.min(1, .35 + .65 * Math.min(d, max) / max); }
+      else J.thr = 0;
+    };
+    joy.addEventListener('pointerdown', e => { jid = e.pointerId; J.on = true; M.last = 'joy'; try{ joy.setPointerCapture(jid); }catch(_){} jmove(e); e.preventDefault(); });
+    joy.addEventListener('pointermove', e => { if(J.on && e.pointerId === jid) jmove(e); });
+    const jup = e => { if(e.pointerId !== jid) return; J.on = false; jid = null; knob.style.transform = ''; if(J.thr > 0){ J.cruise = true; J.thr = 1; } };
+    joy.addEventListener('pointerup', jup); joy.addEventListener('pointercancel', jup);
+    joy.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
     cv.addEventListener('pointerleave', () => { if(M.last === 'mouse') M.active = false; });
     cv.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
     const KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
     const kd = e => { if(!G || G.over || G.id !== ID || document.body.classList.contains('modal-open')) return;
       if(e.code === 'Space'){ S.boostHeld = true; e.preventDefault(); }
-      if(KEYS.includes(e.code)){ S.keys[e.code] = true; M.last = 'key'; e.preventDefault(); } };
+      if(KEYS.includes(e.code)){ S.keys[e.code] = true; M.last = 'key'; S.joy.cruise = false; e.preventDefault(); } };
     const ku = e => { if(e.code === 'Space') S.boostHeld = false; S.keys[e.code] = false; };
     addEventListener('keydown', kd); addEventListener('keyup', ku); addEventListener('resize', size);
     const bb = S.root.querySelector('.sn-boost');
@@ -665,16 +685,20 @@ NG.snowball = (() => {
 .snb .sn-cap span:first-child{color:#D9C6EA; letter-spacing:1px}
 .snb .sn-unlock{color:#FFD43B; text-align:right}
 .snb .sn-chips{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px}
-.snb .sn-chip{background:#4E2D68; border-radius:13px; padding:5px 3px; display:flex; flex-direction:column; align-items:center; gap:1px; font-size:10px; color:#E6D8F2}
-.snb .sn-chip canvas{width:22px; height:22px}
+.snb .sn-chip{background:#4E2D68; border-radius:12px; padding:3px 3px; display:flex; flex-direction:column; align-items:center; gap:1px; font-size:10px; color:#E6D8F2}
+.snb .sn-chip canvas{width:18px; height:18px}
 .snb .sn-chip b{font-family:var(--disp); font-weight:400; font-size:13px; color:#FF9CC6}
 .snb .sn-chip.locked{background:#3F2356; outline:1px dashed #7F6A95; color:#BCA6D2}
 .snb .sn-chip.locked b{color:#FFD43B; font-family:var(--font); font-size:10px; font-weight:700}
 .snb .sn-ctl{display:flex; align-items:center; gap:10px}
-.snb .sn-mini{width:66px; height:66px; border-radius:16px; flex:none; background:#FFF3F8}
-.snb .sn-status{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; font-size:11px; color:#E6D8F2}
+.snb .sn-joy{position:relative; width:112px; height:112px; border-radius:50%; flex:none; background:radial-gradient(circle, #57386F 0 58%, #4E2D68 59%); box-shadow:inset 0 0 0 3px #7F6A95; touch-action:none; cursor:grab}
+.snb .sn-joy::before{content:''; position:absolute; inset:14px; border-radius:50%; border:2px dashed rgba(255,255,255,.18)}
+.snb .sn-knob{position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff, #FFD3E6 45%, #FF9CC6); box-shadow:0 4px 0 rgba(42,18,64,.45), 0 0 0 3px #fff; pointer-events:none; transition:transform .06s}
+.snb .sn-mid{flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:6px}
+.snb .sn-mini{width:56px; height:56px; border-radius:14px; flex:none; background:#FFF3F8}
+.snb .sn-status{width:100%; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:11px; color:#E6D8F2}
 .snb .sn-status b.p{color:#8FC8FF} .snb .sn-status b.d{color:#FFB07A}
-.snb .sn-boost{width:68px; height:68px; border-radius:50%; border:0; background:#FF8CC0; color:#3B2150; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; box-shadow:0 0 0 4px #57386F, inset 0 -5px 0 rgba(224,69,127,.35); flex:none; touch-action:none; font-family:var(--font)}
+.snb .sn-boost{width:84px; height:84px; border-radius:50%; border:0; background:#FF8CC0; color:#3B2150; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; box-shadow:0 0 0 4px #57386F, inset 0 -5px 0 rgba(224,69,127,.35); flex:none; touch-action:none; font-family:var(--font)}
 .snb .sn-boost span{font-size:12px; font-weight:900} .snb .sn-boost small{font-size:9px; font-weight:700}
 .snb .sn-boost.on{background:#fff} .snb .sn-boost:disabled{opacity:.45}
 .snb .snb-rv{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(42,18,64,.55)}
@@ -709,8 +733,8 @@ NG.snowball = (() => {
         <g transform="translate(82 38) rotate(18)"><ellipse cx="-4" cy="0" rx="5" ry="3.4" fill="#FF5C9A"/><ellipse cx="4" cy="0" rx="5" ry="3.4" fill="#FF5C9A"/><circle r="2" fill="#FF8CC0"/></g></svg>`;
     },
     help:[
-      ['굴려서 먹어요', '손가락(마우스)이 있는 쪽으로 굴러가요. 눈송이 +1 · 반짝 결정 +8 · 컵케이크 +25(Lv 5) · 곰인형 +60(Lv 10) · 푸드트럭 +150(Lv 18). 아래 줄에 지금 먹을 수 있는 것이 보여요.'],
-      ['멈추면 녹아요', '손을 떼거나 공 위에 두면 멈추고, 멈추면 초마다 0.5%씩 녹아요. 부스트(스페이스·버튼)는 1.8배 빠르지만 질량을 초당 20 써요. 질량이 15 아래로 녹으면 사라져요.'],
+      ['아래 레버로 굴려요', '왼쪽 아래 레버를 끌면 그 방향으로 굴러가고, 많이 끌수록 빨라요. 손을 떼도 마지막 방향으로 계속 굴러가요. (PC는 마우스·방향키도 돼요) 눈송이 +1 · 반짝 결정 +8 · 컵케이크 +25(Lv 5) · 곰인형 +60(Lv 10) · 푸드트럭 +150(Lv 18). 아래 줄에 지금 먹을 수 있는 것이 보여요.'],
+      ['멈추면 녹아요', '레버를 가운데에 잡고 있으면 멈추고, 멈추면 초마다 0.5%씩 녹아요. 부스트(스페이스·버튼)는 1.8배 빠르지만 질량을 초당 20 써요. 질량이 15 아래로 녹으면 사라져요.'],
       ['상대는 링과 표정으로', '지름이 1.2배 이상 크면 상대를 꿀꺽(질량 70% 획득)! 파란 링·겁먹은 얼굴 = 먹을 수 있음, 회색 = 비슷(부딪히면 튕김), 주황 링·자신만만 = 위험. 머리 위 ×숫자는 나와의 크기 비율이에요.'],
       ['3분과 해돋이', '2:00부터 해가 떠서 1분 동안 맵이 30%까지 좁아져요. 햇볕(주황) 구역에선 초마다 3%씩 녹아요. 솔로는 3:00에 끝난 순간 레벨로 별, 대전은 1명 남거나 3:00에 끝나요.']
     ],
