@@ -447,11 +447,10 @@ NG.omok = (() => {
   function oppName(m){ return m.mode === 'duel' && G.duel ? (G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : 'AI') : 'AI' + (m.mode === 'ai' ? '(' + AI_NAME[m.aiLv] + ')' : ''); }
   function hud(){
     const m = S(); if(!m) return;
-    const mv = $('#omMv'); if(mv) mv.textContent = m.mode === 'pz' ? m.myMoves + '/' + m.maxMoves : m.myMoves;
+    const mv = $('#omMv'); if(mv) mv.textContent = m.myMoves;   /* 묘수는 칩에 '/최대 수'가 따로 붙어 있음 */
     const h = $('#omHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || !myTurn(m); }
     const bk = $('#omBack'); if(bk){ const left = m.mode === 'pz' ? m.triesLeft - 1 : m.undoLeft; bk.querySelector('b').textContent = Math.max(0, left); bk.disabled = left <= 0 || m.over || m.busy || (m.mode === 'pz' ? m.myMoves === 0 : (m.turn !== m.me || m.myMoves === 0)); }
-    const lv = $('#omLives'); if(lv && m.mode === 'pz'){ const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
-      lv.innerHTML = Array.from({ length:m.tries }, (_, k) => `<i class="om-heart${k >= m.triesLeft ? ' off' : ''}">${HEART}</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + m.triesLeft + '번'); }
+    const lv = $('#omLives'); if(lv && m.mode === 'pz'){ lv.innerHTML = '기회 ' + Array.from({ length:m.tries }, (_, k) => `<i${k >= m.triesLeft ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + m.triesLeft + '번'); }
     const me = $('#omMe'), op = $('#omOp');
     if(me) me.classList.toggle('on', m.turn === m.me && !m.over);
     if(op) op.classList.toggle('on', m.turn !== m.me && !m.over);
@@ -461,11 +460,13 @@ NG.omok = (() => {
   /* ----- 배치 ----- */
   function layout(){
     const m = S(), wrap = $('#omBoard'), root = document.querySelector('.ng-omok'); if(!wrap || !root || !m) return;
-    const W = Math.min(root.clientWidth || 360, 520);
+    const W = Math.min((root.clientWidth || 360) + 16, 540);   /* 판은 양옆 여백을 8px씩 더 쓴다(.om-board 음수 여백) */
     const top = wrap.getBoundingClientRect().top + (window.scrollY || 0);
-    const H = (innerHeight || 760) - top - 78;
+    const H = (innerHeight || 760) - top - 112;   /* 아래 좌표 안내 + 조작 줄 자리 */
     const s = Math.max(250, Math.floor(Math.min(W, H)));
     wrap.style.width = s + 'px'; wrap.style.height = s + 'px';
+    /* 화면 높이 채우기(보이기만): 판은 가운데, 두기·힌트·다시 줄은 엄지 자리(아래)로 */
+    try{ const rt = root.getBoundingClientRect().top + (window.scrollY || 0); root.style.minHeight = Math.max(0, Math.floor((innerHeight || 760) - rt - 20)) + 'px'; }catch(_){}
   }
   function cellFromEvent(e){
     const m = S(), svg = $('#omSvg'); if(!svg) return -1;
@@ -673,19 +674,23 @@ NG.omok = (() => {
     };
     const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
     st.innerHTML = `<div class="ng-omok${pz ? ' is-pz' : ''}${duel ? ' is-duel' : ''}">
-      <div class="om-hud">
-        ${pz ? `<div class="om-pill om-goal" aria-label="목표"><span class="om-ic">${stoneIco(m.me)}</span><b>${m.N}수</b><small>묘수</small></div>
-          <div class="om-pill om-time" id="omTimeP" aria-label="남은 시간"><span class="om-ic">${ICO.clock}</span><b id="omTime">${mmss(G.limit)}</b></div>`
-        : `<div class="om-pill om-side" id="omMe" aria-label="나"><span class="om-ic">${stoneIco(m.me)}</span><b>나</b><small id="omMv">0</small></div>
-          <div class="om-pill om-time" id="omTimeP" aria-label="차례 시간"><span class="om-ic">${ICO.clock}</span><b id="omTime">${m.turnLim}초</b><i class="om-tbar"><i id="omTurnBar"></i></i></div>
-          <div class="om-pill om-side op" id="omOp" aria-label="상대"><span class="om-ic">${stoneIco(m.opp)}</span><b class="om-opn">${duel ? (G.duel && G.duel.mode === 'pvp' ? '상대' : 'AI') : 'AI'}</b></div>`}
-        ${duel ? '' : `<button class="om-pill om-btn" id="omHint" aria-label="힌트"><span class="om-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
-        <button class="om-pill om-btn" id="omBack" aria-label="${pz ? '처음부터 다시' : '무르기'}"><span class="om-ic">${pz ? ICO.retry : ICO.back}</span><b>0</b></button>`}
+      <div class="hud-row">
+        ${pz ? `<div class="hchip" aria-label="${m.N}수 안에 이기는 묘수"><span class="hv">${stoneIco(m.me)}<b>${m.N}수</b></span><em>${m.N}수 안에 이기기</em></div>
+          <div class="hchip" aria-label="둔 수"><span class="hv"><b id="omMv">0</b><small>/${m.maxMoves}</small></span><em>둔 수 / 최대</em></div>
+          <div class="hchip time" id="omTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="omTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`
+        : `<div class="hchip om-side" id="omMe" aria-label="나"><span class="hv">${stoneIco(m.me)}<b id="omMv">0</b><small>수</small></span><em>나 · ${CNAME(m.me)}</em></div>
+          <div class="hchip time" id="omTimeP" aria-label="차례 시간"><span class="hv">${ICO.clock}<b id="omTime">${m.turnLim}초</b></span><em>차례 시간</em><i class="om-tbar"><i id="omTurnBar"></i></i></div>
+          <div class="hchip om-side op" id="omOp" aria-label="상대"><span class="hv">${stoneIco(m.opp)}<b class="om-opn">${duel ? (G.duel && G.duel.mode === 'pvp' ? '상대' : 'AI') : 'AI'}</b></span><em>상대 · ${CNAME(m.opp)}</em></div>`}
       </div>
       ${chips}
-      <div class="om-row">${pz ? '<div class="om-lives" id="omLives" role="img"></div>' : ''}<div class="om-msg" id="omMsg"><span>판을 놓는 중…</span></div></div>
+      <div class="om-row">${pz ? '<div class="hlives" id="omLives" role="img"></div>' : ''}<div class="om-msg" id="omMsg"><span>판을 놓는 중…</span></div></div>
       <div class="om-board" id="omBoard">${boardSvg()}</div>
-      <div class="om-act"><p class="om-coord" id="omCoord" aria-live="polite"></p><button class="om-put" id="omPut" disabled>두기<small></small></button></div>
+      <p class="om-coord" id="omCoord" aria-live="polite"></p>
+      <div class="tools-row om-act">
+        ${duel ? '' : `<button class="tool item" id="omHint" aria-label="힌트">${ICO.hint}<span>힌트</span><b class="cnt">${m.hintLeft}</b></button>
+        <button class="tool" id="omBack" aria-label="${pz ? '처음부터 다시' : '무르기'}">${pz ? ICO.retry : ICO.back}<span>${pz ? '처음부터' : '무르기'}</span><b class="cnt">0</b></button>`}
+        <button class="btn primary om-put" id="omPut" disabled>두기<small></small></button>
+      </div>
     </div>`;
     drawStones(-1); hud(); layout(); drawPreview(); turnMsg();
     wire();
@@ -837,30 +842,17 @@ body[data-mode="omok"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.22) 0 3px, transparent 3.5px) 0 0/46px 46px,
   linear-gradient(180deg,#F1EBFF 0%,#D9CCF8 55%,#C3B1F0 100%) fixed}
 .ng-omok{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none}
-.ng-omok .om-hud{display:flex; gap:6px; width:100%; justify-content:space-between}
-.ng-omok .om-pill{position:relative; flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:4px; height:44px; padding:0 7px; border-radius:999px; font:inherit; overflow:hidden;
-  background:linear-gradient(180deg,#FFFFFF,#F3EEFF); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(80,60,160,.14), 0 3px 0 #1A0F45; color:#2E2260; white-space:nowrap}
-.ng-omok .om-pill b{font-family:var(--heavy); font-size:19px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-omok .om-pill small{font-family:var(--disp); font-size:13px; color:#6E62A0}
-.ng-omok .om-ic{width:22px; height:22px; flex:none; display:block}
-.ng-omok .om-ic svg{width:100%; height:100%; display:block}
-.ng-omok .om-time{flex:1.25 1 0}
-.ng-omok .om-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-omok .om-time.opp{background:linear-gradient(180deg,#F4F1FA,#E3DDF2); color:#6E62A0}
-.ng-omok .om-tbar{position:absolute; left:10px; right:10px; bottom:3px; height:4px; border-radius:9px; background:rgba(26,15,69,.12); overflow:hidden}
+.ng-omok .hud-row{margin:0}
+.ng-omok .hchip.time.hurry{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)} .ng-omok .hchip.time.hurry b{color:#E5484D}
+.ng-omok .hchip.time.opp{background:linear-gradient(180deg,#F4F1FA,#E3DDF2)}
+.ng-omok .om-tbar{position:absolute; left:12px; right:12px; bottom:3px; height:3px; border-radius:9px; background:rgba(26,15,69,.12); overflow:hidden}
 .ng-omok .om-tbar i{position:absolute; inset:0; transform-origin:left center; background:#8C6CF0; border-radius:9px}
-.ng-omok .om-time.hurry .om-tbar i{background:#fff}
-.ng-omok .om-side{flex:1 1 0; transition:transform .15s, background .15s}
-.ng-omok .om-side.on{background:linear-gradient(180deg,#FFF6C8,#FFD86B); transform:translateY(-2px); box-shadow:inset 0 -3px 0 rgba(160,110,0,.18), 0 5px 0 #1A0F45}
-.ng-omok .om-side .om-opn{font-size:16px; overflow:hidden; text-overflow:ellipsis}
-.ng-omok .om-btn{flex:.78 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-omok .om-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(80,60,160,.14), 0 1px 0 #1A0F45}
-.ng-omok .om-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
+.ng-omok .hchip.time.hurry .om-tbar i{background:#E5484D}
+.ng-omok .om-side{transition:transform .15s, background .15s}
+.ng-omok .om-side.on{background:linear-gradient(180deg,#FFF6C8,#FFD86B); transform:translateY(-2px); box-shadow:0 5px 0 #1A0F45}
+.ng-omok .om-side .om-opn{font-size:17px; overflow:hidden; text-overflow:ellipsis}
 .ng-omok .om-row{display:flex; align-items:center; gap:8px; width:100%; height:40px; margin-top:6px}
-.ng-omok .om-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-omok .om-heart{display:block; width:18px; height:18px; color:#FF4D6D}
-.ng-omok .om-heart svg{width:100%; height:100%; display:block}
-.ng-omok .om-heart.off{color:#DCD6E6}
+.ng-omok .hlives{flex:none}
 .ng-omok .om-msg{flex:1; min-width:0; overflow:hidden; height:40px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:14.5px; color:#3A2C78; white-space:nowrap}
 .ng-omok .om-msg > span{overflow:hidden; text-overflow:ellipsis}
 .ng-omok .om-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
@@ -873,7 +865,7 @@ body[data-mode="omok"]{background:
 .ng-omok .om-think i:nth-child(2){animation-delay:.15s} .ng-omok .om-think i:nth-child(3){animation-delay:.3s}
 @keyframes omok-dot{50%{transform:translateY(-4px); opacity:.4}}
 @keyframes omok-in{from{transform:scale(.6); opacity:0}}
-.ng-omok .om-board{position:relative; margin-top:4px; border-radius:16px; padding:0; touch-action:none; outline:none;
+.ng-omok .om-board{position:relative; margin:auto -8px; flex:none; border-radius:16px; padding:0; touch-action:none; outline:none;
   background:radial-gradient(120% 90% at 30% 20%, #FCE6B8 0%, #F2CB86 60%, #E4AE62 100%); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 3px rgba(255,255,255,.55), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,120,.22)}
 .ng-omok .om-board:focus-visible{box-shadow:inset 0 0 0 3px rgba(255,255,255,.55), 0 0 0 3px #FFE27A, 0 5px 0 #1A0F45}
@@ -891,23 +883,21 @@ body[data-mode="omok"]{background:
 .ng-omok .om-ring.ban{stroke:#E5484D}
 .ng-omok .om-hintring{fill:none; stroke:#FFD23F; stroke-width:1.4; stroke-dasharray:2 1.5; animation:omok-pulse .6s ease-in-out infinite alternate}
 @keyframes omok-pulse{to{opacity:.35}}
-.ng-omok .om-act{display:flex; align-items:center; gap:8px; width:100%; margin-top:10px; min-height:52px}
-.ng-omok .om-coord{flex:1; min-width:0; margin:0; font-family:var(--disp); font-size:13.5px; line-height:1.3; color:#4A3C8A; text-align:left}
+.ng-omok .om-coord{width:100%; margin:10px 0 0; min-height:20px; font-family:var(--disp); font-size:14px; line-height:1.35; color:#3A2C78; text-align:center}
 .ng-omok .om-coord b{font-family:var(--heavy); font-weight:400; font-size:16px; color:#1A0F45}
 .ng-omok .om-coord b.bad{color:#D0303A}
-.ng-omok .om-put{flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; width:118px; height:52px; border-radius:18px; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  font-family:var(--heavy); font-size:21px; color:#fff; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill; line-height:1;
-  background:linear-gradient(180deg,#FFB547 0%,#FF8A1F 100%); border:3px solid #1A0F45; box-shadow:inset 0 3px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(160,60,0,.25), 0 4px 0 #1A0F45}
-.ng-omok .om-put small{font-family:var(--disp); font-size:12px; -webkit-text-stroke:0; color:#5A2E00; margin-top:2px}
-.ng-omok .om-put:active{transform:translateY(3px); box-shadow:inset 0 3px 0 rgba(255,255,255,.45), 0 1px 0 #1A0F45}
-.ng-omok .om-put:disabled{background:linear-gradient(180deg,#E9E4F4,#CFC7E3); cursor:default; color:#F4F1FA}
-.ng-omok .om-put:disabled small{color:#8C82AE}
+.ng-omok .om-act{margin-top:8px; align-items:stretch}
+.ng-omok .om-act .tool{flex:1 1 0}
+.ng-omok .om-act .tool .cnt{font-style:normal}
+.ng-omok .om-put{flex:1.7 1 0; height:56px; min-width:0; flex-direction:column; gap:0; font-size:22px; line-height:1.05}
+.ng-omok .om-put small{font-family:var(--disp); font-size:13px; color:#fff; opacity:.95}
+.ng-omok .om-put small:empty{display:none}
 .ng-omok .om-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:8px 0 0; max-width:100%}
 .ng-omok .om-chip{font-family:var(--disp); font-size:13px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#2E2260; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
 .ng-omok .om-chip.mj{background:#FFF0DC; color:#9A5A12}
 .ng-omok .om-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-omok .om-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-omok .om-pill b{font-size:17px} .ng-omok .om-pill small{font-size:11.5px} .ng-omok .om-hud{gap:4px} .ng-omok .om-pill{padding:0 5px} .ng-omok .om-put{width:100px} .ng-omok .om-msg b{font-size:18px} }
+@media (max-width:370px){ .ng-omok .om-msg b{font-size:18px} }
 @media (prefers-reduced-motion: reduce){ .ng-omok .om-st.om-new, .ng-omok .om-ring, .ng-omok .om-hintring{animation:none} }
 `,
     sounds:{

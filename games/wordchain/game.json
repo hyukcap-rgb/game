@@ -1,7 +1,7 @@
 {
   "id": "wordchain",
   "name": "끝말잇기",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — AI와 잇기, 한방 낱말, 실시간 1:1 턴제 대전",
   "js": [
     "wordchain-words.js",

@@ -26,7 +26,6 @@ NG.mines = (() => {
   const FLAG = `<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="30" cy="54" rx="15" ry="5" fill="#5E9A26" ${O2}/><path d="M24 54V9" stroke="${OL}" stroke-width="6.5" stroke-linecap="round"/><path d="M24 54V9" stroke="#B07A45" stroke-width="3" stroke-linecap="round"/><path d="M26 10l25 9-25 10z" fill="#FF5A3C" ${O}/><path d="M29 15l10 4" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".7"/></svg>`;
   const STONE = `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M9 46l6-23 15-11 18 4 8 18-6 15-23 4z" fill="#9A94B2" ${O}/><path d="M16 26l12 6 6 16M30 32l18-12" fill="none" stroke="#625D80" stroke-width="2.4" stroke-linecap="round"/><path d="M18 27l8-6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg>`;
   const FOG = `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 46h34a10 10 0 0 0 2-19.8A14 14 0 0 0 23 22 10 10 0 0 0 14 46z" fill="#E4E0F2" ${O2}/><text x="32" y="43" font-size="22" font-weight="900" text-anchor="middle" fill="#7B70A8">?</text></svg>`;
-  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C6 17 2.5 13.6 2.5 9.2 2.5 6.3 4.7 4 7.4 4c1.9 0 3.5 1 4.6 2.6C13.1 5 14.7 4 16.6 4c2.7 0 4.9 2.3 4.9 5.2 0 4.4-3.5 7.8-9.5 11.8z" fill="currentColor" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg>';
   const ICO = {
     burr:`<svg viewBox="0 0 64 64" aria-hidden="true">${BURR_IN}</svg>`,
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
@@ -238,7 +237,7 @@ NG.mines = (() => {
     const h = $('#mnHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const lv = $('#mnLives');
     if(lv && !m.lives) lv.style.display = 'none';
-    else if(lv){ const left = Math.max(0, m.lives - m.hits); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i class="mn-heart${n >= left ? ' off' : ''}">${HEART}</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.hits); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
     document.querySelectorAll('.ng-mines .mn-mode button').forEach(b => { const on = b.dataset.m === m.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   }
   function msg(html, cls){ const e = $('#mnMsg'); if(!e) return; e.className = 'mn-msg ' + (cls || ''); e.innerHTML = html; }
@@ -251,14 +250,16 @@ NG.mines = (() => {
 
   function layout(){
     const m = S(), bd = $('#bd'), root = document.querySelector('.ng-mines'); if(!bd || !root) return;
-    const W = Math.min(root.clientWidth || 360, 480);
+    const W = Math.min((root.clientWidth || 360) + 16, 480);   /* 판은 양옆 여백을 8px씩 더 쓴다(.mn-board 음수 여백) */
     const top = bd.getBoundingClientRect().top + (window.scrollY || 0);
-    const H = Math.max(300, (innerHeight || 740) - top - 78);   /* 아래 모드 단추 자리 */
-    const gap = 2, pad = 7;
-    let cw = Math.min((W - pad * 2 - gap * (m.cols - 1) - 6) / m.cols, (H - pad * 2 - gap * (m.rows - 1) - 6) / m.rows, 48);
+    const H = Math.max(300, (innerHeight || 740) - top - 96);   /* 아래 열기·깃발 단추 자리 */
+    const gap = 2, pad = 5;
+    let cw = Math.min((W - pad * 2 - gap * (m.cols - 1) - 4) / m.cols, (H - pad * 2 - gap * (m.rows - 1) - 6) / m.rows, 52);
     cw = Math.max(30, Math.floor(cw));
     bd.style.setProperty('--cw', cw + 'px'); bd.style.setProperty('--gap', gap + 'px'); bd.style.setProperty('--pad', pad + 'px');
     bd.style.gridTemplateColumns = `repeat(${m.cols}, ${cw}px)`;
+    /* 화면 높이 채우기(보이기만): 판은 가운데, 열기·깃발 단추는 엄지 자리(아래)로 */
+    try{ const rt = root.getBoundingClientRect().top + (window.scrollY || 0); root.style.minHeight = Math.max(0, Math.floor((innerHeight || 740) - rt - 20)) + 'px'; }catch(_){}
   }
   function cellHtml(i){
     const m = S(), x = i % m.cols, y = (i - x) / m.cols, pos = `${y + 1}행 ${x + 1}열`, st = m.st[i];
@@ -340,8 +341,8 @@ NG.mines = (() => {
     sfx('minesBoom'); fxBuzz([40, 30, 40]);
     try{ const e = cellEl(i); if(e){ const q = fxCenter(e); fxBurst(q.x, q.y, ['#86C33A', '#8A4B1E', '#FFE27A', '#fff'], 14, { speed:260, size:5, kinds:['shard', 'dot', 'spark'], up:80, g:520, dur:.7 }); } fxShake($('#bd'), 5); }catch(_){}
     const left = m.lives ? Math.max(0, m.lives - m.hits) : -1;
-    const hs = document.querySelectorAll('.ng-mines .mn-heart'), lost = left >= 0 && hs[left];
-    if(lost){ lost.classList.add('lost'); try{ const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FF4D6D', '#FFB3C1', '#fff'], 10, { speed:200, size:4, kinds:['dot', 'spark'], up:60, g:500, dur:.6 }); }catch(_){} }
+    const hs = document.querySelectorAll('.ng-mines .hlives i'), lost = left >= 0 && hs[left];
+    if(lost){ lost.classList.add('lost'); try{ const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot', 'spark'], up:60, g:500, dur:.6 }); }catch(_){} }
     if(left < 0){
       /* 대전: 기회 제한 없이 잠깐 못 누름 */
       m.stunUntil = elapsed() + STUN;
@@ -397,7 +398,7 @@ NG.mines = (() => {
     if(sec !== m.lastSec){
       m.lastSec = sec;
       const e = $('#mnTime'); if(e) e.textContent = mmss(sec);
-      const p = $('#mnTimeP'); if(p) p.classList.toggle('hurry', sec <= 10);
+      const p = $('#mnTimeP'); if(p) p.classList.toggle('warn', sec <= 10);
       const b = $('#mnBarWrap'); if(b) b.classList.toggle('hurry', sec <= 10);
       if(sec <= 10 && sec > 0) sfx('minesTick', { hi:sec <= 5 });
     }
@@ -487,7 +488,7 @@ NG.mines = (() => {
     help:[
       ['숫자는 둘레 밤송이 수', '덮인 나뭇잎 칸 아래에 밤송이가 숨어 있어요. 연 칸의 숫자는 둘레 8칸에 있는 밤송이 수예요. 첫 칸은 미리 열어 뒀어요.'],
       ['열기 · 깃발', '아래 단추로 열기/깃발 모드를 바꿔요. 길게 누르면 지금 모드와 반대로(열기 모드면 깃발) 해요. 깃발을 다 꽂은 숫자를 누르면 둘레가 한꺼번에 열려요.'],
-      ['기회는 3번', '밤송이를 열면 기회(♥) 하나를 잃고 계속해요. 세 번이면 끝! 모든 판은 찍지 않고 논리로 풀 수 있어요. 확실한 칸만 여세요.'],
+      ['기회는 3번', '밤송이를 열면 기회(★) 하나를 잃고 계속해요. 세 번이면 끝! 모든 판은 찍지 않고 논리로 풀 수 있어요. 확실한 칸만 여세요.'],
       ['시간 안에 다 열어요', '밤송이가 아닌 칸을 모두 열면 성공. 막히면 💡힌트가 확실한 칸 하나를 알려 줘요(점수 조금 줄어요).'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 바위 칸·안개 칸·십자 숫자·넓은 숫자 같은 새 규칙과 번개·깃발 없이·외줄 타기 같은 변주가 5판마다 하나씩 나와요.']
     ],
@@ -541,18 +542,18 @@ NG.mines = (() => {
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-mines">
-        <div class="mn-hud">
-          <div class="mn-pill" aria-label="남은 밤송이"><span class="mn-ic">${ICO.burr}</span><b id="mnLeft">${m.mines}</b></div>
-          <div class="mn-pill mn-time" id="mnTimeP" aria-label="남은 시간"><span class="mn-ic">${ICO.clock}</span><b id="mnTime">${mmss(G.limit)}</b></div>
-          <button class="mn-pill mn-btn" id="mnHint" aria-label="힌트"><span class="mn-ic">${ICO.hint}</span><b>${m.hintLeft}</b></button>
+        <div class="hud-row">
+          <div class="hchip" aria-label="남은 밤송이"><span class="hv">${ICO.burr}<b id="mnLeft">${m.mines}</b></span><em>남은 밤송이</em></div>
+          <div class="hchip time" id="mnTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="mnTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <button class="hchip item" id="mnHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mn-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mn-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="mn-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mn-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="mn-barw" id="mnBarWrap"><i id="mnBar"></i></div>
-        <div class="mn-row"><div class="mn-lives" id="mnLives" role="img"></div><div class="mn-msg" id="mnMsg"><span>숲을 살피는 중…</span></div></div>
+        <div class="mn-row"><div class="hlives" id="mnLives" role="img"></div><div class="mn-msg" id="mnMsg"><span>숲을 살피는 중…</span></div></div>
         <div class="mn-board in" id="bd" role="grid" aria-label="밤숲 판"></div>
-        <div class="mn-mode${m.noflag ? ' noflag' : ''}" role="group" aria-label="누르기 모드">
-          <button data-m="open" aria-pressed="true"><span class="mn-ic">${ICO.dig}</span>열기</button>
-          <button data-m="flag" aria-pressed="false"${m.noflag ? ' disabled' : ''}><span class="mn-ic">${ICO.flag}</span>${m.noflag ? '깃발 없음' : '깃발'}</button>
+        <div class="tools-row mn-mode${m.noflag ? ' noflag' : ''}" role="group" aria-label="누르기 모드">
+          <button class="tool toggle" data-m="open" aria-pressed="true">${ICO.dig}<span>열기</span></button>
+          <button class="tool toggle" data-m="flag" aria-pressed="false"${m.noflag ? ' disabled' : ''}>${ICO.flag}<span>${m.noflag ? '깃발 없음' : '깃발'}</span></button>
         </div>
       </div>`;
       build(); wire(); hud();
@@ -572,34 +573,22 @@ NG.mines = (() => {
     },
     stars(){ const m = G.m, n = m.hits + m.hints; return n === 0 ? 3 : n <= 1 ? 2 : 1; },
     css:`
+body[data-mode="mines"] .ptitle{font-family:var(--heavy); font-size:20px; letter-spacing:.5px}   /* 제목 '지뢰찾기': Jua에서는 ㅚ가 작아 '지리찾기'처럼 읽힘 */
 body[data-mode="mines"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%),
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.22) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#FFF0D6 0%,#FFD29A 55%,#F2A55A 100%) fixed}
 .ng-mines{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
-.ng-mines .mn-hud{display:flex; gap:7px; width:100%; justify-content:space-between}
-.ng-mines .mn-pill{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px; height:44px; padding:0 8px; border-radius:999px; font:inherit;
-  background:linear-gradient(180deg,#FFFFFF,#FFF4E4); border:2.5px solid #1A0F45; box-shadow:inset 0 -3px 0 rgba(160,90,30,.14), 0 3px 0 #1A0F45; color:#5A2E0E; white-space:nowrap}
-.ng-mines .mn-pill b{font-family:var(--heavy); font-size:21px; font-weight:400; line-height:1; font-variant-numeric:tabular-nums}
-.ng-mines .mn-ic{width:24px; height:24px; flex:none; display:block}
-.ng-mines .mn-ic svg{width:100%; height:100%; display:block; overflow:visible}
-.ng-mines .mn-time{flex:1.3 1 0}
-.ng-mines .mn-time b{font-size:23px}
-.ng-mines .mn-time.hurry{background:linear-gradient(180deg,#FF8A8F,#E5484D); color:#fff}
-.ng-mines .mn-time.hurry b{text-shadow:0 2px 0 #8E0F2F}
-.ng-mines .mn-btn{flex:.8 1 0; cursor:pointer; -webkit-tap-highlight-color:transparent; background:linear-gradient(180deg,#FFF6C8,#FFE07A)}
-.ng-mines .mn-btn:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(160,90,30,.14), 0 1px 0 #1A0F45}
-.ng-mines .mn-btn:disabled{opacity:.45; background:#EDEDED; cursor:default}
+.ng-mines .hud-row{margin:0}
+.ng-mines .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
+.ng-mines .hchip .hv svg{overflow:visible}
 .ng-mines .mn-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-mines .mn-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#FFD27A,#F08A24); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-mines .mn-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-mines .mn-row{display:flex; align-items:center; gap:8px; width:100%; height:38px}
-.ng-mines .mn-lives{display:flex; gap:2px; flex:none; padding:4px 7px; border-radius:99px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45}
-.ng-mines .mn-heart{display:block; width:19px; height:19px; color:#FF4D6D}
-.ng-mines .mn-heart svg{width:100%; height:100%; display:block}
-.ng-mines .mn-heart.off{color:#DCD6E6}
-.ng-mines .mn-heart.lost{animation:mines-lost .5s ease-out}
-.ng-mines .mn-lives.last{background:#FFE3E3; animation:mines-last 1s ease-in-out infinite alternate}
+.ng-mines .hlives{flex:none}
+.ng-mines .hlives i.lost{animation:mines-lost .5s ease-out}
+.ng-mines .hlives.last{background:#FFE3E3; animation:mines-last 1s ease-in-out infinite alternate}
 @keyframes mines-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
 @keyframes mines-last{to{box-shadow:0 2px 0 #1A0F45, 0 0 10px 3px rgba(255,77,109,.6)}}
 .ng-mines .mn-msg{flex:1; min-width:0; overflow:hidden; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#6A3410; white-space:nowrap}
@@ -609,7 +598,7 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-msg.mn-pop, .ng-mines .mn-msg.mn-win{animation:mines-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-mines .mn-msg.mn-win b{font-size:22px; color:#FFE27A}
 @keyframes mines-in{from{transform:scale(.6); opacity:0}}
-.ng-mines .mn-board{position:relative; display:grid; width:max-content; gap:var(--gap); padding:var(--pad); border-radius:18px; justify-content:center;
+.ng-mines .mn-board{position:relative; display:grid; width:max-content; margin:auto -8px; max-width:calc(100% + 16px); gap:var(--gap); padding:var(--pad); border-radius:18px; justify-content:center;
   background:linear-gradient(180deg,#6B4425,#553319); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.18), 0 5px 0 #1A0F45, 0 14px 22px rgba(120,60,10,.25); touch-action:none}
 .ng-mines .mn-board.in .mn-cell{animation:mines-deal .4s cubic-bezier(.2,1.5,.4,1) both}
@@ -656,18 +645,15 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-cell.stone{background:#C9C3DA; border:2px solid rgba(26,15,69,.5); box-shadow:inset 0 2px 0 rgba(255,255,255,.4)}
 .ng-mines .mn-cell.hint{animation:mines-hint .6s ease-in-out infinite alternate; z-index:2}
 @keyframes mines-hint{to{box-shadow:0 0 0 3px #FFE27A, 0 0 14px 6px rgba(255,214,90,.95); transform:scale(1.06)}}
-.ng-mines .mn-mode{display:flex; gap:8px; margin:12px 0 0; width:min(100%, 330px)}
-.ng-mines .mn-mode button{flex:1; height:48px; display:flex; align-items:center; justify-content:center; gap:7px; border-radius:999px; font-family:var(--disp); font-size:17px; color:#5A2E0E; cursor:pointer;
-  background:#FFF8EC; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; -webkit-tap-highlight-color:transparent}
-.ng-mines .mn-mode button.on{background:linear-gradient(180deg,#FFC46B,#F08A24); color:#fff; text-shadow:0 1.5px 0 #8A3F0E; transform:translateY(2px); box-shadow:inset 0 3px 0 rgba(255,255,255,.35), 0 1px 0 #1A0F45}
-.ng-mines .mn-mode button[data-m="flag"].on{background:linear-gradient(180deg,#FF8A73,#E5484D); text-shadow:0 1.5px 0 #8E0F2F}
-.ng-mines .mn-mode button:disabled{opacity:.45; cursor:default}
+.ng-mines .mn-mode{margin:12px 0 0; width:min(100%, 360px)}
+.ng-mines .mn-mode .tool{flex-direction:row; gap:8px; min-height:54px; font-size:18px}
+.ng-mines .mn-mode .tool svg{width:24px; height:24px}
 .ng-mines .mn-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
 .ng-mines .mn-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#5A2E0E; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
 .ng-mines .mn-chip.mj{background:#FFF0DC; color:#A04A10}
 .ng-mines .mn-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-mines .mn-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-mines .mn-pill b{font-size:18px} .ng-mines .mn-time b{font-size:20px} .ng-mines .mn-hud{gap:5px} .ng-mines .mn-pill{padding:0 5px} .ng-mines .mn-msg b{font-size:18px} .ng-mines .mn-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-mines .mn-msg b{font-size:18px} .ng-mines .mn-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-mines .mn-cell.pop, .ng-mines .mn-board.in .mn-cell, .ng-mines .mn-cell.hint, .ng-mines .mn-cell.plant > svg{animation:none} }
 `,
     sounds:{
