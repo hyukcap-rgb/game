@@ -1,0 +1,160 @@
+/* 거꾸로 화살표 (arrow) · 밤 도로 표지판. 눈이 편하게: 낮은 밝기·약한 빛, 깜빡임·강한 대비 없음 */
+body[data-mode="arrow"]{background:
+  radial-gradient(90% 34% at 50% 104%, rgba(255,224,122,.10), rgba(255,224,122,0) 70%),
+  linear-gradient(180deg, var(--ar-s1, #121838) 0%, var(--ar-s2, #1B2350) 58%, var(--ar-s3, #26305E) 100%) fixed}
+.ng-arrow{position:relative; display:flex; flex-direction:column; align-items:stretch; height:640px; min-height:0; color:#fff;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none; --d:260px; --k:68px; --ring:#6FD6E8}
+.ng-arrow .hud-row{margin:0 0 6px; flex:none}
+.ng-arrow .hchip.warn{background:linear-gradient(180deg,#FFF1F1,#FFD3D6)}
+.ng-arrow .ar-lvchip .hlives{height:auto; padding:0; border:0; background:none; gap:2px}
+.ng-arrow .ar-lvchip .hlives i{font-size:19px}
+.ng-arrow .hlives i.lost{animation:ar-lost .5s ease-out}
+@keyframes ar-lost{0%{transform:scale(1.6); color:#FFE27A} 100%{transform:none}}
+
+/* 이번 판 규칙 칩 */
+.ng-arrow .ar-chips{flex:none; display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 0 6px}
+.ng-arrow .ar-chip{font-family:var(--disp); font-size:13px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#2A3270; box-shadow:0 2px 0 #0B0E2A; white-space:nowrap}
+.ng-arrow .ar-chip.mj{background:#DDF6FA; color:#0C5966}
+.ng-arrow .ar-chip.tw{background:#EFE7FF; color:#5B3FB5}
+.ng-arrow .ar-chip.boss{background:linear-gradient(180deg,#FFD0D6,#F58D9B); color:#6A0F22}
+
+/* 진행자 + 말풍선 */
+.ng-arrow .ar-hostrow{flex:none; display:flex; align-items:center; gap:10px; min-height:58px; padding:2px 4px; margin:0 0 4px; border-radius:16px}
+.ng-arrow.boss .ar-hostrow{background:linear-gradient(90deg, rgba(150,36,62,0), rgba(150,36,62,.58) 14%, rgba(150,36,62,.58) 86%, rgba(150,36,62,0))}
+.ng-arrow .ar-hostav{flex:none; width:58px; height:58px; border-radius:50%; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 38%, #3B468F, #232A62 70%); border:2.5px solid rgba(255,255,255,.22); box-shadow:0 3px 0 #0B0E2A}
+.ng-arrow .ar-hostimg{width:52px; height:52px; display:block}
+.ng-arrow .ar-say{position:relative; flex:1; min-width:0; min-height:50px; display:flex; flex-direction:column; justify-content:center; gap:1px;
+  padding:6px 12px; border-radius:16px; background:#FFF8EA; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #0B0E2A;
+  font-family:var(--disp); font-size:15px; line-height:1.2; color:#3A2261}
+.ng-arrow .ar-say::before{content:""; position:absolute; left:-9px; top:50%; margin-top:-7px; border:7px solid transparent; border-right:9px solid #1A0F45; border-left:0}
+.ng-arrow .ar-say::after{content:""; position:absolute; left:-5px; top:50%; margin-top:-5px; border:5px solid transparent; border-right:7px solid #FFF8EA; border-left:0}
+.ng-arrow .ar-say b{font-family:var(--heavy); font-weight:400; font-size:18px; color:#3F6FE0; letter-spacing:.3px}
+.ng-arrow .ar-say b.cb{color:#1F8F55}
+.ng-arrow .ar-say b.bd{color:#C8324A}
+.ng-arrow .ar-say b.bs{color:#B0263F; font-size:20px}
+.ng-arrow .ar-say span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ng-arrow .ar-say.pop{animation:ar-say .3s cubic-bezier(.2,1.5,.4,1)}
+@keyframes ar-say{from{transform:scale(.88); opacity:.3}}
+
+/* 표지판 원판 */
+.ng-arrow .ar-discwrap{position:relative; flex:1 1 auto; min-height:0; display:grid; place-items:center}
+.ng-arrow .ar-disc{position:relative; width:var(--d); height:var(--d); border-radius:50%;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0) 0 63%, rgba(255,255,255,.07) 63.6% 64.6%, rgba(255,255,255,0) 65.2%),
+    radial-gradient(circle at 50% 36%, #3A4592 0%, #2A3274 52%, #1E2457 100%);
+  box-shadow:0 0 0 4px #0E1236, 0 9px 0 #0B0E2A, 0 18px 30px rgba(0,0,0,.38); isolation:isolate}
+.ng-arrow .ar-disc::before{content:""; position:absolute; inset:5px; border-radius:50%; border:3px solid var(--ring); opacity:.5; box-shadow:0 0 12px var(--ring), inset 0 0 10px var(--ring); pointer-events:none}
+.ng-arrow .ar-disc::after{content:""; position:absolute; left:16%; right:16%; top:7%; height:22%; border-radius:50%; background:radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.13), rgba(255,255,255,0) 70%); pointer-events:none}
+.ng-arrow .ar-notch{position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; background:rgba(255,255,255,.16); box-shadow:inset 0 2px 0 rgba(0,0,0,.25)}
+.ng-arrow .ar-notch.n0{left:50%; top:7.5%} .ng-arrow .ar-notch.n1{left:92.5%; top:50%} .ng-arrow .ar-notch.n2{left:50%; top:92.5%} .ng-arrow .ar-notch.n3{left:7.5%; top:50%}
+.ng-arrow .ar-layer{position:absolute; inset:0; z-index:1}
+/* 표지판 기둥(디자인): 원판 뒤에서 아래로 */
+.ng-arrow .ar-pole{position:absolute; left:50%; top:50%; bottom:-14px; width:18px; margin-left:-9px; border-radius:5px 5px 0 0;
+  background:linear-gradient(90deg,#1A1F4C 0%,#3A4488 38%,#2A3270 62%,#161A42 100%); box-shadow:0 0 0 2px #0B0E2A}
+.ng-arrow .ar-disc{z-index:1}
+/* 판정 순간 테두리 색(초록 정답 · 빨강 실수). 도장·글자와 함께 나와 색만으로 구분하지 않음 */
+.ng-arrow .ar-disc.rk::before{animation:ar-rk .45s ease-out}
+.ng-arrow .ar-disc.rb::before{animation:ar-rb .6s ease-out}
+@keyframes ar-rk{0%,40%{border-color:#5BE39A; box-shadow:0 0 14px #5BE39A, inset 0 0 12px #5BE39A; opacity:.9}}
+@keyframes ar-rb{0%,50%{border-color:#FF6B78; box-shadow:0 0 14px #FF6B78, inset 0 0 12px #FF6B78; opacity:.9}}
+.ng-arrow.boss .ar-disc::before{border-color:#F08CA0; box-shadow:0 0 12px #F08CA0, inset 0 0 10px #F08CA0}
+/* 시작 전 '준비 · 시작!' 판 */
+.ng-arrow .ar-ready{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-family:var(--heavy); font-weight:400; font-size:max(30px, calc(var(--d) * .14)); color:#E8ECFF; opacity:.85;
+  -webkit-text-stroke:6px #0E1236; paint-order:stroke fill; letter-spacing:1px; white-space:nowrap; animation:ar-in .35s cubic-bezier(.2,1.5,.4,1)}
+.ng-arrow .ar-ready.go{color:#FFE07A; opacity:1}
+.ng-arrow .ar-slot{position:absolute; width:calc(var(--d) * var(--s)); height:calc(var(--d) * var(--s)); transform:translate(-50%,-50%)}
+.ng-arrow .ar-slot.arw::after{content:""; position:absolute; left:20%; right:20%; bottom:6%; height:12%; border-radius:50%; background:radial-gradient(ellipse, rgba(6,8,32,.5), rgba(6,8,32,0) 70%); z-index:-1}
+.ng-arrow .ar-img{position:relative; display:block; width:100%; height:100%; pointer-events:none; animation:ar-pop .22s cubic-bezier(.2,1.6,.4,1)}
+@keyframes ar-pop{from{transform:scale(.55); opacity:.2}}
+.ng-arrow .ar-slot.go .ar-img, .ng-arrow .ar-slot.go .ar-plate{animation:ar-fly .3s cubic-bezier(.5,0,.9,.6) forwards}
+@keyframes ar-fly{to{transform:translate(var(--fx,0), var(--fy,0)) scale(.8); opacity:0}}
+.ng-arrow .ar-layer.ghost .ar-slot{opacity:0; transition:opacity .08s}
+.ng-arrow .ar-layer.miss .ar-slot{opacity:.42; transition:opacity .15s}
+/* 두 개 중 하나: 금색 테두리 + "이거" 표시(색 말고도 크기·표시로 구분) */
+.ng-arrow .ar-slot.dim{opacity:.5}
+.ng-arrow .ar-slot.dim .ar-img{transform:scale(.78)}
+.ng-arrow .ar-slot.lit::before{content:""; position:absolute; inset:-6%; border-radius:50%; border:3px solid #FFD45A; background:rgba(255,212,90,.08);
+  box-shadow:0 0 12px rgba(255,212,90,.4), inset 0 0 10px rgba(255,212,90,.22)}
+.ng-arrow .ar-tag{position:absolute; left:50%; top:-20%; z-index:2; transform:translateX(-50%); font-style:normal; font-family:var(--disp); font-size:13px; line-height:1;
+  padding:3px 8px 4px; border-radius:99px; background:#FFD45A; color:#1A0F45; border:2px solid #1A0F45; white-space:nowrap}
+.ng-arrow .ar-tag::after{content:""; position:absolute; left:50%; top:100%; margin-left:-5px; border:5px solid transparent; border-top-color:#1A0F45}
+/* 글자 화살표 */
+.ng-arrow .ar-slot.wrd{display:grid; place-items:center}
+.ng-arrow .ar-shape{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+.ng-arrow .ar-plate{position:relative; display:inline-flex; align-items:center; gap:.18em; padding:.16em .5em .2em; border-radius:.36em;
+  background:#161B44; border:3px solid rgba(235,240,255,.85); box-shadow:0 0 0 3px #0E1236, 0 6px 0 #0B0E2A;
+  font-family:var(--disp); font-size:max(28px, calc(var(--d) * .15)); line-height:1.1; white-space:nowrap; animation:ar-pop .22s cubic-bezier(.2,1.6,.4,1)}
+.ng-arrow .ar-plate b{font-weight:400; color:#FFD84A}
+.ng-arrow .ar-plate.r b{color:#FF7A86}
+.ng-arrow .ar-slot.side .ar-plate{font-size:max(26px, calc(var(--d) * .1))}
+.ng-arrow .ar-slot.shp .ar-plate{font-size:max(26px, calc(var(--d) * .12))}
+.ng-arrow .ar-rev{display:grid; place-items:center; width:.95em; height:.95em; border-radius:50%; background:#fff; flex:none}
+.ng-arrow .ar-rev svg{width:72%; height:72%; display:block}
+
+/* 판정 도장 */
+.ng-arrow .ar-stamp{position:absolute; left:50%; top:50%; z-index:3; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; opacity:0; text-align:center}
+.ng-arrow .ar-stamp i{display:block; width:62px; height:62px; border-radius:50%; border:3px solid #1A0F45; box-shadow:0 4px 0 #0B0E2A; background-position:center; background-repeat:no-repeat; background-size:62%}
+.ng-arrow .ar-stamp i.ck{background-color:#2FBF71; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7' fill='none' stroke='%23fff' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.ng-arrow .ar-stamp i.x{background-color:#E5484D; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' fill='none' stroke='%23fff' stroke-width='3.8' stroke-linecap='round'/%3E%3C/svg%3E")}
+.ng-arrow .ar-stamp i.clk{background-color:#E5484D; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='none' stroke='%23fff' stroke-width='2.6'/%3E%3Cpath d='M12 7.5V12l3 2' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E")}
+.ng-arrow .ar-stamp b{font-family:var(--heavy); font-weight:400; font-size:21px; line-height:1.15; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; white-space:nowrap; letter-spacing:.3px}
+.ng-arrow .ar-stamp small{display:inline-flex; align-items:center; gap:6px; font-family:var(--disp); font-size:15px; padding:3px 10px 3px 12px; border-radius:99px; background:#2FBF71; color:#fff; border:2px solid #1A0F45}
+.ng-arrow .ar-ans{display:inline-block; width:20px; height:20px; transform:rotate(var(--r))}
+.ng-arrow .ar-ans svg{display:block; width:100%; height:100%}
+.ng-arrow .ar-stamp.ok{left:76%; top:24%; animation:ar-stamp .55s ease-out forwards}
+.ng-arrow .ar-stamp.ok i{width:48px; height:48px}
+.ng-arrow .ar-stamp.ok.stay{left:50%; top:50%}
+.ng-arrow .ar-stamp.bad{animation:ar-stampb .6s ease-out forwards}
+.ng-arrow .ar-stamp.done{opacity:1; animation:ar-in .35s cubic-bezier(.2,1.5,.4,1)}
+.ng-arrow .ar-stamp.done b{font-size:28px}
+@keyframes ar-stamp{0%{opacity:0; transform:translate(-50%,-50%) scale(1.6)} 25%{opacity:1; transform:translate(-50%,-50%) scale(1)} 75%{opacity:1} 100%{opacity:0; transform:translate(-50%,-60%) scale(1)}}
+@keyframes ar-stampb{0%{opacity:0; transform:translate(-50%,-50%) scale(1.5)} 22%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:1; transform:translate(-50%,-50%) scale(1)}}
+@keyframes ar-in{from{transform:translate(-50%,-50%) scale(.6); opacity:0}}
+.ng-arrow .ar-slow{position:absolute; left:50%; top:9%; z-index:4; transform:translate(-50%,0); padding:5px 14px; border-radius:99px; background:#FFB347; color:#3A1E00; border:2.5px solid #1A0F45;
+  font-family:var(--heavy); font-size:18px; white-space:nowrap; pointer-events:none; opacity:0}
+.ng-arrow .ar-slow.on{animation:ar-slow .7s ease-out forwards}
+@keyframes ar-slow{0%{opacity:0; transform:translate(-50%,6px) scale(.8)} 20%{opacity:1; transform:translate(-50%,0) scale(1)} 80%{opacity:1} 100%{opacity:0}}
+
+/* 판단 시간 막대(명령 바로 아래): 초록 → 노랑 → 빨강, 마지막 0.4초 살짝 떨림 */
+.ng-arrow .ar-tbar{flex:none; position:relative; width:min(100%, calc(var(--d) * 1.06)); height:14px; margin:12px auto 10px; border-radius:99px; overflow:hidden;
+  background:rgba(255,255,255,.12); border:2.5px solid #0E1236}
+.ng-arrow .ar-tbar i{display:block; width:100%; height:100%; transform-origin:left center; border-radius:99px; background:linear-gradient(180deg,#9DF2C2,#33C27A)}
+.ng-arrow .ar-tbar[data-st="y"] i{background:linear-gradient(180deg,#FFE79A,#F2B92F)}
+.ng-arrow .ar-tbar[data-st="r"] i{background:linear-gradient(180deg,#FFA6AE,#E5576A)}
+.ng-arrow .ar-tbar.hurry{animation:ar-shiv .14s linear infinite}
+@keyframes ar-shiv{25%{transform:translateX(-1.2px)} 75%{transform:translateX(1.2px)}}
+
+/* 십자 버튼(엄지 자리) */
+.ng-arrow .ar-pad{flex:none; display:grid; grid-template-columns:repeat(3, var(--k)); grid-template-rows:repeat(3, var(--k)); gap:4px 12px; justify-content:center; margin:0 auto 2px}
+.ng-arrow .ar-key{position:relative; width:var(--k); height:var(--k); border-radius:20px; display:grid; place-items:center; color:#2A3270;
+  background:linear-gradient(180deg,#FFFFFF 0%,#E9ECFF 55%,#D3D9FA 100%); border:3px solid #1A0F45; box-shadow:inset 0 -4px 0 rgba(60,70,150,.14), 0 5px 0 #1A0F45, 0 10px 16px rgba(0,0,0,.28);
+  touch-action:none; -webkit-tap-highlight-color:transparent; transition:transform .06s, box-shadow .06s}
+.ng-arrow .ar-key svg{width:52%; height:52%; display:block}
+.ng-arrow .ar-key:active, .ng-arrow .ar-key.hit{transform:translateY(4px); box-shadow:inset 0 -2px 0 rgba(60,70,150,.14), 0 1px 0 #1A0F45, 0 4px 8px rgba(0,0,0,.25)}
+.ng-arrow .ar-key.hit{animation:ar-key .2s ease-out forwards}
+@keyframes ar-key{0%{transform:translateY(4px)} 100%{transform:none}}
+.ng-arrow .ar-key.ok{background:linear-gradient(180deg,#B4F5D2,#33C27A); color:#fff}
+.ng-arrow .ar-key.bad{background:linear-gradient(180deg,#FFB3BA,#E5576A); color:#fff}
+.ng-arrow .ar-key.ans{background:linear-gradient(180deg,#E2FBEE,#A6EBC6); color:#0F6B3C; outline:3px dashed #8FF0C0; outline-offset:3px}
+.ng-arrow .ar-key.ok::after, .ng-arrow .ar-key.bad::after{position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; border:2px solid #1A0F45; display:grid; place-items:center;
+  font:15px/1 var(--heavy); color:#fff}
+.ng-arrow .ar-key.ok::after{content:"✓"; background:#2FBF71}
+.ng-arrow .ar-key.bad::after{content:"✕"; background:#E5484D}
+.ng-arrow .ar-key.k0{grid-area:1/2} .ng-arrow .ar-key.k3{grid-area:2/1} .ng-arrow .ar-key.k1{grid-area:2/3} .ng-arrow .ar-key.k2{grid-area:3/2}
+.ng-arrow .ar-hub{grid-area:2/2; place-self:center; width:calc(var(--k) * .74); height:calc(var(--k) * .74); border-radius:50%; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 35%, #323B80, #1B2052); border:2.5px solid rgba(255,255,255,.12); color:rgba(220,228,255,.42)}
+.ng-arrow .ar-hub svg{width:62%; height:62%}
+
+.ng-arrow .ar-vig{position:fixed; inset:0; z-index:3; pointer-events:none; opacity:0; background:radial-gradient(ellipse at 50% 50%, rgba(229,72,77,0) 52%, rgba(229,72,77,.34) 100%)}
+.ng-arrow .ar-vig.on{animation:ar-vig .55s ease-out forwards}
+@keyframes ar-vig{0%{opacity:0} 20%{opacity:1} 100%{opacity:0}}
+.ng-arrow .ar-sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0}
+.fxfloat.ar-plus{color:#C9FFE0; font-family:var(--heavy); font-weight:400; font-size:24px}
+
+@media (max-width:370px){ .ng-arrow .ar-say{font-size:14px; padding:5px 10px} .ng-arrow .ar-say b{font-size:17px} .ng-arrow .ar-hostav{width:52px; height:52px} .ng-arrow .ar-hostimg{width:46px; height:46px} .ng-arrow .ar-chip{font-size:12px; padding:4px 8px} }
+@media (prefers-reduced-motion: reduce){
+  .ng-arrow .ar-img, .ng-arrow .ar-plate, .ng-arrow .ar-say.pop, .ng-arrow .ar-tbar.hurry, .ng-arrow .ar-key.hit, .ng-arrow .hlives i.lost{animation:none}
+  .ng-arrow .ar-slot.go .ar-img, .ng-arrow .ar-slot.go .ar-plate{animation:none; opacity:.3}
+  .ng-arrow .ar-stamp.ok, .ng-arrow .ar-stamp.bad{animation:none; opacity:1}
+}
