@@ -1,5 +1,13 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
 registerGames(['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking']);   /* 사이트에 보일 게임과 순서 */
+const ADULT = ['gostop'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
+const isAdult = id => !!(NG[id] && NG[id].adult) || ADULT.includes(id);
+/* ===== 가상 숫자 스위치 (2026-10-04 UI 검수 결론) =====
+   서버 집계가 붙기 전까지: 기부액·참가자 수는 숨기고, 상위 %는 정수 + '예상', 예시 친구는 하트를 보내지 않고 추월 알림도 안 보낸다.
+   진짜 데이터가 오면 DEMO_NUMBERS = false 한 줄만 바꾸면 예전 표시로 돌아간다. */
+const DEMO_NUMBERS = true;
+/* 테스트 도구는 주소에 ?dev=1 이 있을 때만 */
+const DEV_TOOLS = /[?&]dev=1(&|$)/.test(location.search);
 const MAX_H = 5, REGEN_MS = 10*60*1000, AD_LIMIT = 5;
 const FRIENDS = [
   { name:'민지', av:'🐰' }, { name:'준호', av:'🐻' }, { name:'서연', av:'🐱' },
@@ -44,7 +52,7 @@ function friendScore(f){
   return Math.round(full * (p === 0 ? 0 : 0.45 + 0.55*p) / 10) * 10;
 }
 function giftsToday(){
-  if(typeof frReal === 'function' && frReal()) return [];
+  if(DEMO_NUMBERS || (typeof frReal === 'function' && frReal())) return [];   /* 예시 친구는 하트를 보내지 않음 */
   const rng = mulberry(seedFrom('gift' + dayKey()));
   return shuffle(FRIENDS.map(f=>f.name), rng).slice(0, 2 + Math.floor(rng()*2));
 }
@@ -158,7 +166,22 @@ function worldStat(score){
   const top = score ? Math.round(Math.max(0.3, Math.min(99, 100 / (1 + Math.exp((score - 2300) / 500)))) * 10) / 10 : null;
   return { n:cnt, top };
 }
-const topTxt = t => t == null ? '' : t <= 50 ? '상위 ' + t + '%' : '상위 ' + Math.round(t) + '% · 오늘 더 올려 봐요';
+/* 상위 % 표시: 시범 운영 중엔 정수 + '예상'(가짜 정밀도 금지) */
+const topLabel = t => t == null ? '' : DEMO_NUMBERS ? '예상 상위 ' + Math.max(1, Math.round(t)) + '%' : '상위 ' + t + '%';
+const topTxt = t => t == null ? '' : topLabel(t) + (t <= 50 ? '' : ' · 오늘 더 올려 봐요');
+const onlySample = () => !(typeof frReal === 'function' && frReal());   /* 진짜 친구가 없어 예시 친구만 보이는 상태 */
+/* 모두의 기부 한 줄(홈 띠·리그 카드): 시범 운영 중엔 금액 대신 안내 */
+function poolLine(idSuffix = ''){
+  return DEMO_NUMBERS ? `<b class="pl-t">모두의 기부</b><span class="pl-s">시범 운영 중 · 정식 오픈 후 기부해요</span>`
+    : `<b class="pl-t">이번 주 모두의 기부</b><b class="num pl-n" id="poolAmt${idSuffix}">${fmt(prizePool())}원</b>`;
+}
+function openDonateInfo(){
+  openModal(`<h3>모두의 기부</h3>
+    <p class="note">광고를 1번 볼 때마다 광고 수익 일부(12원)를 모아 매달 좋은 곳에 기부해요. 순위나 성적과는 상관없어요.</p>
+    ${DEMO_NUMBERS ? '<p class="note"><b>지금은 시범 운영 중이에요.</b> 아직 실제로 쌓이거나 기부되지 않아요. 정식 오픈부터 쌓이기 시작해요.</p>' : `<p class="note">이번 주 모인 금액 <b class="num">${fmt(prizePool())}원</b></p>`}
+    <div class="mbtns one"><button class="b1" id="mClose">알겠어요</button></div>`);
+  $('#mClose').onclick = closeModal;
+}
 function tierBadge(t){
   const [name, c, l] = TIERS[t], u = 'tb' + (++SVG_UID);
   return `<svg viewBox="0 0 64 70" aria-label="${name} 리그"><defs><linearGradient id="${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${c}"/></linearGradient></defs>
@@ -308,51 +331,75 @@ function renderHome(){
 }
 
 function renderToday(d, tl, P, lv){
-  const { b, pos } = P;
-  const tt = tl.today, ls = leagueState(), lb = leagueBoard(undefined, ls.tier, tl), lpos = lb.findIndex(x => x.me) + 1;
-  const pctNow = tt.st === 'att' ? tt.pct : bonusPct(tl.streak + 1);
   const ndone = d.set.filter(g => examDone(d, g) || d.tries[g] > 0).length;
-  $('#strip').innerHTML = `<span class="md">${medal(tl.score ? pos : 0, false)}</span><span><b class="num">오늘 ${fmt(tl.score)}점 <small>시험지 ${ndone}/${DAILY_N} · ${d.set.map(g => gradeOf(examTop(g, d.best[g]))).join(' ')}</small></b><span class="s2"><span>${tl.score ? '친구 중 ' + pos + '위' : ndone ? '시험 중 · ' + ndone + '과목 제출' : '오늘 첫 판 전'}</span>${tl.streak ? `<span class="hot">${ic('flame')}연속 ${tl.streak}일</span>` : ''}<span>${ic('trophy')}${TIERS[ls.tier][0]} ${lb[lpos - 1].score ? lpos + '위' : ''}</span><span>${ic('clock')}<span class="num" id="closing">${closingText()}</span></span></span></span><span class="go">${ic('chev')}</span>`;
-  $('#pool').innerHTML = `${ic('coin')}<span class="pt"><small>이번 주 모두의 기부</small><b class="num" id="poolAmt">${fmt(prizePool())}원</b></span><span class="pr">광고 1번 = +12원<br>매달 좋은 곳에 기부해요</span>`;
+  /* 상단 요약줄: 이름표가 붙은 세 칸(오늘 점수 · 시험지 · 마감까지) + 과목별 성적 */
+  $('#strip').innerHTML = `<span class="st3">
+      <span class="sc"><small>오늘 점수</small><b class="num">${fmt(tl.score)}<em>점</em></b></span>
+      <span class="sc"><small>시험지</small><b class="num">${ndone}<em>/${DAILY_N}</em></b></span>
+      <span class="sc"><small>마감까지</small><b class="num" id="closing">${closingText()}</b></span></span>
+    <span class="stgr">${d.set.map(g => { const gr = gradeOf(examTop(g, d.best[g])); return `<i class="${gr === '–' ? 'none' : ''}" style="--gcol:${GRADE_COL[gr]}">${subjOf(g)}<b>${gr}</b></i>`; }).join('')}</span>
+    <span class="go">${ic('chev')}</span>`;
+  $('#strip').setAttribute('aria-label', `오늘 점수 ${fmt(tl.score)}점, 시험지 ${ndone}/${DAILY_N}과목, 자정 마감. 내 정보 보기`);
+  $('#pool').innerHTML = `${ic('coin')}<span class="pt">${poolLine()}</span>${ic('chev')}`;
   const now = new Date();
-  $('#dayNote').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${examLabel()} · 전 국민 같은 문제 · 첫 판이 공식 답안(무료)`;
-  const nx = pickNext(), lx = lastLv(nx), nb = $('#nextBtn');
-  const nxDone = d.tries[nx] > 0, nxSub = nxDone ? '시험지 완료 · 같은 문제 연습(♥1)' : subjOf(nx) + ' 과목 · 첫 판 무료 · ' + GAME_META[nx].time;
-  nb.innerHTML = `<span class="cta-tile" style="--g2:${GCOL[nx][1]}">${ic(nx)}</span><span class="cta-txt"><i>${nxDone ? '연습' : '다음 과목'} · ${LV_KO[examLv()]}</i><b>${GAMES[nx].name}</b><small>${nxSub}</small></span><span class="cta-play">${SVG.play.replace('fill="currentColor"', 'fill="#C2410C"')}</span>`;
-  nb.setAttribute('aria-label', '바로 시작: ' + GAMES[nx].name + (nxDone ? ', 연습 하트 1개' : ', 공식 답안 무료'));
+  $('#dayNote').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${examLabel()}`;
+  const nx = pickNext(), nb = $('#nextBtn');
+  const nxDone = d.tries[nx] > 0, nxSub = nxDone ? '시험지 완료 · 다시 풀기는 ♥1, 기록 안 돼요' : subjOf(nx) + ' 과목 · 공식 답안 무료 · ' + GAME_META[nx].time;
+  nb.innerHTML = `<span class="cta-tile" style="--g2:${GCOL[nx][1]}">${ic(nx)}</span><span class="cta-txt"><i>${nxDone ? '다시 풀기' : '지금 풀 차례'} · ${LV_KO[examLv()]}</i><b>${GAMES[nx].name}</b><small>${nxSub}</small></span><span class="cta-play">${SVG.play.replace('fill="currentColor"', 'fill="#C2410C"')}</span>`;
+  nb.setAttribute('aria-label', '바로 시작: ' + GAMES[nx].name + (nxDone ? ', 다시 풀기 하트 1개' : ', 공식 답안 무료'));
   nb.onclick = () => quickStart(nx);
   const g = $('#games'); g.innerHTML = '';
   for(const id of d.set){
-    const best = d.best[id], tries = d.tries[id], gr = gradeOf(examTop(id, best));
-    const st = tries ? `공식 <em>${fmt(best)}점</em>${best ? ' · 성적 ' + gr : ''}${tries > 1 ? ' · 연습 ' + (tries - 1) + '판' : ''}` : `아직 안 풀었어요 · ${GAME_META[id].time}`;
-    const badge = tries ? `<span class="stamp grade" style="--gcol:${GRADE_COL[gr]}">${gr}</span>` : '<span class="newb">NEW</span>';
-    const row = document.createElement('div'); row.className = 'grow panel'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${badge}</span><span class="gr-mid"><b><span class="subj">${subjOf(id)}</span>${GAMES[id].name}</b><span>${st}</span><span class="lvchip ro">${LV_KO[examLv()]}</span></span><button class="gr-go${tries ? ' re' : ''}" aria-label="${GAMES[id].name} ${tries ? '같은 문제 연습, 하트 1개' : '공식 답안 시작, 무료'}">${tries ? '연습 ' + costTag() : '시작 <span class="freebadge">무료</span>'}</button>`;
+    const best = d.best[id], tries = d.tries[id], gr = gradeOf(examTop(id, best)), now1 = id === nx && !nxDone;
+    const st = tries ? `공식 답안 <em>${fmt(best)}점</em>` : now1 ? `<em class="nowtx">지금 풀 차례</em> · ${GAME_META[id].time}` : `아직 안 풀었어요 · ${GAME_META[id].time}`;
+    /* 꼬리표: 푼 과목 = 성적 도장, 한 번도 안 해 본 게임 = '처음'(매일 붙는 NEW 아님) */
+    const badge = tries ? `<span class="stamp grade" style="--gcol:${GRADE_COL[gr]}">${gr}</span>` : !store.get('hp:help:' + id, false) ? '<span class="newb">처음</span>' : '';
+    const row = document.createElement('div'); row.className = 'grow panel' + (now1 ? ' now' : '') + (tries ? ' done' : ''); row.style.setProperty('--gc', GCOL[id][1]);
+    row.innerHTML = `<span class="g-art">${ART[id]()}${badge}</span><span class="gr-mid"><b><span class="subj">${subjOf(id)}</span>${GAMES[id].name}</b><span>${st}</span></span><button class="gr-go soft${tries ? ' re' : ''}" aria-label="${GAMES[id].name} ${tries ? '다시 풀기, 하트 1개, 기록 안 됨' : '공식 답안 시작, 무료'}">${tries ? '다시 풀기 ' + costTag() : '시작 <span class="freebadge">무료</span>'}</button>`;
     row.querySelector('.gr-go').onclick = () => quickStart(id);
     row.querySelector('.g-art').onclick = () => quickStart(id);
     g.appendChild(row);
   }
-  $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>10게임 스테이지 · 5판마다 새 규칙 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
-  $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 오늘 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><small>같은 문제, 같은 시간, 1:1 · 대전 포인트는 대전 기록에</small></span>${ic('chev')}`;
+  $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>${GAME_IDS.length}가지 게임 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
+  $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 오늘 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><small>같은 문제를 같은 시간에, 1:1</small></span>${ic('chev')}`;
 }
 
 function renderAdv(lv){
   renderSoloPts();
   const nt = nextTitle(lv.L);
   $('#lvCard').innerHTML = `<span class="shield">${shieldSVG(lv.L)}</span><div><span class="t">솔로 레벨</span><b>Lv.${lv.L} ${lv.title}</b><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>Lv.${lv.L + 1}까지 별 ${lv.need - lv.cur}개${nt ? ` · 칭호 '${nt[1]}' Lv.${nt[0]}` : ''}</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
+  renderFilter('adv');
   const list = $('#advList'); list.innerHTML = '';
-  for(const id of GAME_IDS){
+  for(const id of filteredIds('adv')){
+    if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml()); continue; }
     const p = advProg(id), cur = p.max, c = chOf(cur), cs = (c - 1) * 10;
     let dots = ''; for(let k = 1; k <= 10; k++){ const n = cs + k, s = p.stars[n] || 0; dots += `<i class="${s ? 's' + s : n === cur ? 'cur' : ''}"></i>`; }
-    const el = document.createElement('div'); el.className = 'acard panel'; el.style.setProperty('--gc', GCOL[id][1]);
-    el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c}</span></span><div class="ac-mid"><div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
-      <div class="ac-stage">${chName(id, c)} · 스테이지 <em>${cur}</em></div><div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
-      <div class="ac-btns"><button class="map">${ic('map')} 맵</button><button class="gr-go adv">${cur} 시작 <span class="freebadge">무료</span></button></div></div>`;
+    const el = document.createElement('div'); el.className = 'acard tile panel'; el.style.setProperty('--gc', GCOL[id][1]);
+    el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c} · ${chName(id, c)}</span></span>
+      <div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
+      <div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
+      <div class="ac-btns"><button class="map" aria-label="${GAMES[id].name} 스테이지 맵">${ic('map')}</button><button class="gr-go adv" aria-label="${GAMES[id].name} 스테이지 ${cur} 시작, 무료">스테이지 ${cur}</button></div>`;
     el.querySelector('.map').onclick = () => openAdvMap(id);
     el.querySelector('.gr-go').onclick = () => startGame(id, null, { adv:cur });
     el.querySelector('.g-art').onclick = () => openAdvMap(id);
     list.appendChild(el);
   }
+}
+/* ---- 솔로·대전 목록: 과목 칩 필터 + 성인(19) 묶음 ---- */
+const SUBJ_OF_ABIL = { '논리력':'논리', '집중력':'집중', '공간지각':'공간', '전략력':'전략', '추리력':'추리' };
+const FILT_SUBJ = ['전체', '논리', '집중', '공간', '전략', '추리'];
+const FILT = { adv:'전체', duel:'전체' }, ADULT_SEP = '__adult__';
+const subjOfGame = id => SUBJ_OF_ABIL[ABIL[id]] || '';
+function filteredIds(kind){
+  const f = FILT[kind], main = GAME_IDS.filter(id => !isAdult(id) && (f === '전체' || subjOfGame(id) === f));
+  const adult = f === '전체' ? GAME_IDS.filter(isAdult) : [];
+  return adult.length ? main.concat([ADULT_SEP], adult) : main;
+}
+const adultSepHtml = () => `<div class="adultsec"><span class="a19">19</span>성인 게임 · 만 19세 이상</div>`;
+function renderFilter(kind){
+  const box = $('#' + kind + 'Filter'); if(!box) return;
+  box.innerHTML = FILT_SUBJ.map(s => `<button aria-pressed="${FILT[kind] === s}" data-f="${s}">${s}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => { FILT[kind] = b.dataset.f; if(kind === 'adv') renderAdv(lvInfo()); else renderDuel(dayState()); });
 }
 
 function renderLeague(d, P){
@@ -360,8 +407,8 @@ function renderLeague(d, P){
   $('#tabDay').setAttribute('aria-pressed', RANK_MODE === 'day'); $('#tabMonth').setAttribute('aria-pressed', RANK_MODE === 'week');
   if(RANK_MODE === 'week'){ renderWeek(d, r); return; }
   const tl = myTL(), ws = worldStat(tl.score);
-  $('#lgHead').innerHTML = `<div class="worldcard">${ic('globe')}<span>오늘 전 세계 <b class="num">${fmt(ws.n)}</b>명이 같은 문제를 풀었어요${ws.top != null ? `<br>나는 전 세계 <b>${topTxt(ws.top)}</b>` : ' · 첫 판을 끝내면 내 위치가 나와요'}</span></div>`;
-  $('#rankNote').textContent = '오늘 점수 = 오늘의 시험지 5과목 공식 기록(각 첫 판) 합 · 모두 같은 문제라 그대로 비교해요 · 현지 자정 마감';
+  $('#lgHead').innerHTML = `<div class="worldcard">${ic('globe')}<span>${DEMO_NUMBERS ? '전 국민이 오늘 같은 문제를 받았어요' : `오늘 전 국민 <b class="num">${fmt(ws.n)}</b>명이 같은 문제를 풀었어요`}${ws.top != null ? `<br>내 위치 <b>${topTxt(ws.top)}</b>` : '<br>첫 과목을 끝내면 내 위치가 나와요'}</span></div>`;
+  $('#rankNote').textContent = '오늘 점수 = 오늘의 시험지 5과목 공식 답안 합 · 모두 같은 문제라 그대로 비교해요 · 자정 마감';
   P.b.forEach((x, i) => {
     const row = document.createElement('div'); row.className = 'row' + (x.me ? ' me' : '');
     const stk = x.streak ? `<span class="streak">${ic('flame')}${x.streak}일</span>` : '';
@@ -394,7 +441,9 @@ function renderWeek(d, r){
   const closed = Date.now() >= weekDeadline(wk).getTime(), up = s.tier < 3, down = s.tier > 0;
   $('#lgHead').innerHTML = `<div class="lgcard"><span class="tbd">${tierBadge(s.tier)}</span><div><span class="t">${REGION} · 현지 시간 기준</span><b class="big">${TIERS[s.tier][0]} 리그${me.score ? ' ' + pos + '위' : ''}</b>
       <span class="s2"><span>이번 주 <b class="num">${fmt(me.score)}</b>점</span><span>${ic('clock')}${closed ? '마감 · 월요일에 결과 발표' : `일요일 21시 마감까지 <span class="num" id="lgClose">${weekLeft()}</span>`}</span></span></div>
-      <div class="lgpool"><span>${ic('coin')} 모두의 기부 · 성적과 상관없이 매달 기부</span><b class="num" id="poolAmt2">${fmt(prizePool())}원</b></div></div>`;
+      <button class="lgpool" id="lgPool">${ic('coin')}<span class="pt">${poolLine('2')}</span></button></div>
+      ${DEMO_NUMBERS ? '<div class="sampnote">주간 리그는 시범 운영 중이라 다른 참가자는 <b>예시</b>예요.</div>' : ''}`;
+  $('#lgPool').onclick = openDonateInfo;
   b.forEach((x, i) => {
     if(i === 0 && up) r.insertAdjacentHTML('beforeend', `<div class="zone up">▲ 승급 구역 · 1~5위는 다음 주 ${TIERS[s.tier + 1][0]} 리그</div>`);
     if(i === 25 && down) r.insertAdjacentHTML('beforeend', `<div class="zone down">▼ 강등 구역 · 26~30위는 다음 주 ${TIERS[s.tier - 1][0]} 리그</div>`);
@@ -425,29 +474,37 @@ function renderMe(d, tl, P, lv){
   const tt = tl.today, { b, pos } = P, me = b[pos - 1];
   $('#prof').innerHTML = `${avatar({ me:true })}<div><b>나</b><span class="ttlchip">Lv.${lv.L} ${lv.title}</span><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>솔로 별 ${lv.stars}개</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
   const nplay = d.set.filter(g => d.best[g] > 0).length, nextPct = bonusPct(tl.streak + 1), curPct = tt.st === 'att' ? tt.pct : 0;
-  $('#total').textContent = fmt(dailySum(d)) + '점';
-  const ng = nextGift(tl.streak);
-  $('#bq').textContent = fmt(tl.score); $('#bqSkill').textContent = fmt(myTotal(d)); $('#bqGrit').textContent = tl.streak;
+  const ng = nextGift(tl.streak), sampleOnly = DEMO_NUMBERS && onlySample();
+  $('#bq').textContent = fmt(tl.score); $('#bqSkill').textContent = nplay; $('#bqSkillU').textContent = '/' + DAILY_N + '과목'; $('#bqGrit').textContent = tl.streak;
+  $('#skillEx').innerHTML = '첫 판만 기록돼요';
   $('#barSkill').style.width = (nplay / DAILY_N * 100) + '%'; $('#barGrit').style.width = (ng ? Math.min(100, tl.streak / ng[0] * 100) : 100) + '%';
-  $('#lbSkill').innerHTML = ic('brain') + '시험지 점수'; $('#lbGrit').innerHTML = ic('flame') + '연속 출석';
+  $('#lbSkill').innerHTML = ic('brain') + '푼 과목'; $('#lbGrit').innerHTML = ic('flame') + '연속 출석';
   $('#gritEx').innerHTML = ng ? `${ng[0]}일째 선물 하트 <b>+${ng[1]}</b>` : '모든 선물을 받았어요';
-  $('#myMedal').innerHTML = medal(tl.score ? pos : 0, true);
+  $('#myMedal').innerHTML = medal(tl.score && !sampleOnly ? pos : 0, true);
   let line;
   if(!tl.score) line = `아직 오늘 기록이 없어요. <em>${examLabel()}</em> 시험지를 풀어 보세요!`;
+  else if(sampleOnly) line = `친구를 초대하면 <em>친구 순위</em>가 나와요`;   /* 예시 친구 기준 순위는 보이지 않음 */
   else if(pos === 1) line = `<em>1위</em>예요! 2위 ${b[1].name}님보다 ${fmt(me.score - b[1].score)}점 앞서요`;
   else { const a = b[pos - 2], gap = a.score - me.score; line = gap > 0 ? `${a.name}님까지 <em>${fmt(gap)}점</em> 남았어요` : `${a.name}님과 <em>동점</em>이에요`; }
   $('#rankLine').innerHTML = line;
   renderGritCard(tl);
   const played = d.set.filter(g => d.best[g] > 0).length;
   $('#dots').innerHTML = d.set.map(g => `<span class="gem${d.best[g] ? ' on' : ''}" style="--g1:${GCOL[g][0]};--g2:${GCOL[g][1]}" title="${GAMES[g].name}${d.best[g] ? ' · ' + fmt(d.best[g]) + '점' : ''}">${ic(g)}${d.best[g] ? `<i class="gem-ck">${ic('check')}</i>` : ''}</span>`).join('');
-  $('#progTxt').textContent = (played === DAILY_N ? '오늘의 ' + DAILY_N + '게임 완주!' : '오늘의 문제 ' + played + ' / ' + DAILY_N) + ` · 솔로 +${fmt(d.solo)} · 대전 +${fmt(d.duel)}`;
-  $('#growList').innerHTML = GAME_IDS.map(id => { const p = advProg(id), c = chOf(p.max);
-    return `<div class="grw" style="--gc:${GCOL[id][1]}"><span class="gi">${ic(id)}</span><span><b>${GAMES[id].name}</b><small>${p.max > 1 ? '스테이지 ' + (p.max - 1) + '까지 클리어 · ' : ''}지금 ${chName(id, c)}</small></span><span class="gs">★ ${advStarsOf(id)}</span></div>`; }).join('');
-  let bd = ''; for(const id of GAME_IDS) for(let c = 1; c <= 5; c++){ const on = chCleared(id, c);
-    bd += `<div class="bdg${on ? '' : ' off'}" title="${GAMES[id].name} 챕터 ${c} ${chName(id, c)}${on ? ' 클리어' : ' 아직'}">${badgeSVG(id, c)}<span>${chName(id, c)}</span></div>`; }
-  $('#badges').innerHTML = bd;
-  const nb = GAME_IDS.reduce((s, id) => { let k = 0; for(let c = 1; c <= 5; c++) if(chCleared(id, c)) k++; return s + k; }, 0);
-  $('#bdgCount').textContent = nb + ' / 25';
+  /* 결정 152: 오늘 점수 = 시험지 5과목 합. 솔로·대전은 따로(여기에 더하지 않음) */
+  $('#progTxt').textContent = played === DAILY_N ? `오늘의 시험지 ${DAILY_N}과목을 다 풀었어요!` : `오늘의 시험지 ${played} / ${DAILY_N}과목 · 솔로·대전은 따로 쌓여요`;
+  /* 솔로 성장: 별 많은 순 5개 + 나머지는 접기 */
+  const grw = id => { const p = advProg(id), c = chOf(p.max);
+    return `<div class="grw" style="--gc:${GCOL[id][1]}"><span class="gi">${ic(id)}</span><span><b>${GAMES[id].name}</b><small>${p.max > 1 ? '스테이지 ' + (p.max - 1) + '까지 클리어 · ' : ''}지금 ${chName(id, c)}</small></span><span class="gs">★ ${advStarsOf(id)}</span></div>`; };
+  const opn = sel => { const e = $(sel + ' details.more'); return e && e.open ? ' open' : ''; }, gOpen = opn('#growList'), bOpen = opn('#badges');   /* 다시 그려도 펼친 상태 유지 */
+  const byStars = GAME_IDS.slice().sort((a, b) => advStarsOf(b) - advStarsOf(a));
+  $('#growList').innerHTML = byStars.slice(0, 5).map(grw).join('') + (byStars.length > 5 ? `<details class="more"${gOpen}><summary>나머지 ${byStars.length - 5}개 게임 보기</summary>${byStars.slice(5).map(grw).join('')}</details>` : '');
+  /* 챕터 배지: 받은 것만 보이고 전체는 접기 */
+  const bdg = (id, c, on) => `<div class="bdg${on ? '' : ' off'}" title="${GAMES[id].name} 챕터 ${c} ${chName(id, c)}${on ? ' 클리어' : ' 아직'}">${badgeSVG(id, c)}<span>${chName(id, c)}</span></div>`;
+  let got = '', all = '', nb = 0; const total = GAME_IDS.length * 5;
+  for(const id of GAME_IDS) for(let c = 1; c <= 5; c++){ const on = chCleared(id, c); if(on){ nb++; got += bdg(id, c, true); } all += bdg(id, c, on); }
+  $('#badges').innerHTML = (nb ? `<div class="badges">${got}</div>` : '<p class="bd-empty">아직 받은 배지가 없어요. 솔로에서 챕터를 깨면 배지를 받아요.</p>')
+    + `<details class="more"${bOpen}><summary>배지 ${total}개 모두 보기</summary><div class="badges">${all}</div></details>`;
+  $('#bdgCount').textContent = nb + ' / ' + total;
 }
 
 /* ---- 난이도 시트(데일리): 고른 난이도는 기억해서 다음엔 바로 시작 ---- */
@@ -623,9 +680,9 @@ function openReport(){
       <div class="mrow"><span>순위</span><b>${lme.score ? '30명 중 ' + lpos + '위' : '아직 기록 없음'}</b></div>
       <div class="mrow"><span>오늘 점수(시험지 5과목 합)</span><b>${fmt(tl.score)}</b></div>
       <div class="mrow tot"><span>이번 주 점수</span><b>${fmt(lme.score)}</b></div>
-      <div class="mrow"><span>전 세계 오늘 참가자 중</span><b>${ws.top != null ? topTxt(ws.top) : '–'}</b></div>
+      <div class="mrow"><span>같은 문제 푼 사람 중</span><b>${ws.top != null ? topLabel(ws.top) : '–'}</b></div>
     </div>
-    <div class="mbtns"><button class="b2" id="mClose">닫기</button><button class="b1" id="mShare">${ic('share')} 결과 공유하기</button></div>`);
+    <div class="mbtns"><button class="b2" id="mClose">닫기</button><button class="b1" id="mShare">${ic('share')} 성적표 공유하기</button></div>`);
   $('#mClose').onclick = closeModal;
   $('#mShare').onclick = openShare;
 }
@@ -633,7 +690,9 @@ function shareText(){
   const d = dayState(), tl = myTL(), ab = abilities(), top = brainType(ab), dt = new Date();
   const ls = leagueState(), lb = leagueBoard(undefined, ls.tier, tl), lpos = lb.findIndex(x => x.me) + 1, ws = worldStat(tl.score);
   const card = d.set.map(g => subjOf(g) + ' ' + gradeOf(examTop(g, d.best[g]))).join(' · ');
-  return `하루퍼즐 ${dt.getMonth() + 1}/${dt.getDate()}(${WD_KO[dt.getDay()]}) 시험지 · ${LV_KO[examLv()]}\n${card}\n오늘 ${fmt(tl.score)}점${ws.top != null && ws.top <= 50 ? ` · 전국 상위 ${ws.top}%` : ''}${tl.streak ? ` · 🔥${tl.streak}일` : ''}${typeof frReal === 'function' && frReal() ? `\n🏆 ${TIERS[ls.tier][0]} 리그 ${lb[lpos - 1].score ? lpos + '위' : ''}` : ''}${top ? `\n나는 '${BTYPE[top][0]}'` : ''}\n같은 문제, 다른 점수. 너는 몇 점?`;
+  /* 시범 운영 중엔 예시 참가자 기반 리그 순위를 공유 글에 넣지 않음 */
+  const lgLine = (DEMO_NUMBERS || !(typeof frReal === 'function' && frReal())) ? (top ? `나는 '${BTYPE[top][0]}'` : '') : `🏆 ${TIERS[ls.tier][0]} 리그 ${lb[lpos - 1].score ? lpos + '위' : ''}${top ? ` · 나는 '${BTYPE[top][0]}'` : ''}`;
+  return `하루퍼즐 ${dt.getMonth() + 1}/${dt.getDate()}(${WD_KO[dt.getDay()]}) 오늘의 시험지 · ${LV_KO[examLv()]}\n${card}\n오늘 ${fmt(tl.score)}점${ws.top != null && ws.top <= 50 ? ` · ${topLabel(ws.top)}` : ''}${tl.streak ? ` · 🔥${tl.streak}일` : ''}\n${lgLine ? lgLine + '\n' : ''}같은 문제, 다른 점수. 너는 몇 점?`;
 }
 function openShare(back, opt){ viralShare(opt || cardToday(), back); }
 
@@ -658,10 +717,10 @@ function openHeartSheet(reason){
 }
 function runAd(){
   let s = 3;
-  openModal(`<h3>광고 재생 중</h3><div class="big num" id="adc">3</div><p class="note">보상형 광고 자리예요(시뮬레이션). 끝까지 보면 하트 1개를 받고, 광고 수익 12원이 모두의 기부에 쌓여요.</p>`);
+  openModal(`<h3>광고 재생 중</h3><div class="big num" id="adc">3</div><p class="note">보상형 광고 자리예요(시뮬레이션). 끝까지 보면 하트 1개를 받아요.${DEMO_NUMBERS ? ' 모두의 기부는 정식 오픈부터 쌓여요.' : ' 광고 수익 12원이 모두의 기부에 쌓여요.'}</p>`);
   const t = setInterval(() => {
     s--; const el = $('#adc'); if(el) el.textContent = s;
-    if(s <= 0){ clearInterval(t); const d = dayState(); d.ads++; saveDay(d); addHearts(1); const aw = store.get('hp:adsWeek', {}), wk = weekStartKey(); aw[wk] = (aw[wk] || 0) + 1; store.set('hp:adsWeek', aw); closeModal(); sfx('heartGet'); setTimeout(() => sfx('coin'), 250); fxPop($('#heartChip'), 'heart'); toast('하트 +1 · 모두의 기부 +12원, 고마워요!'); renderHome(); }
+    if(s <= 0){ clearInterval(t); const d = dayState(); d.ads++; saveDay(d); addHearts(1); const aw = store.get('hp:adsWeek', {}), wk = weekStartKey(); aw[wk] = (aw[wk] || 0) + 1; store.set('hp:adsWeek', aw); closeModal(); sfx('heartGet'); setTimeout(() => sfx('coin'), 250); fxPop($('#heartChip'), 'heart'); toast(DEMO_NUMBERS ? '하트 +1을 받았어요' : '하트 +1 · 모두의 기부 +12원, 고마워요!'); renderHome(); }
   }, 1000);
 }
 function openInbox(){
@@ -676,12 +735,12 @@ function openInbox(){
   if(pending.length) $('#mClaim').onclick = () => { fxPop($('#mClaim'), 'heart'); sfx('heartGet'); const dd = dayState(); dd.claimed.push(...pending); saveDay(dd); addHearts(pending.length); closeModal(); toast('하트 ' + pending.length + '개를 받았어요'); renderHome(); };
 }
 function welcome(){
-  openModal(`<p class="kick">TODAY'S EXAM</p><h3>오늘의 시험지가<br>도착했습니다</h3><p class="note"><b>같은 문제, 다른 점수.</b> 전 국민이 같은 퍼즐을 풀어요. 차이는 실력뿐!</p><div class="help">
-    <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>5과목 시험지</b><span>논리·집중·공간·전략·추리 과목마다 퍼즐 한 문제씩. 전 국민이 같은 문제를 풀고 자정에 바뀌어요.</span></div></div>
-    <div class="hstep"><span class="hn" style="background:var(--g-sudoku)">${ic('check')}</span><div><b>첫 판이 공식 답안(무료)</b><span>과목마다 처음 푼 점수만 기록돼요. 다시 풀기는 같은 문제로 연습(♥1)이에요.</span></div></div>
-    <div class="hstep"><span class="hn" style="background:var(--grit)">${ic('clock')}</span><div><b>요일 난이도</b><span>월·화 쉬움 → 수·목·금 보통 → 토·일 어려움. 오늘은 ${examLabel()}이에요.</span></div></div>
-    <div class="hstep"><span class="hn" style="background:var(--g-tower)">${ic('trophy')}</span><div><b>성적표와 도전장</b><span>같은 문제를 푼 사람 중 등수로 과목마다 수·우·미·양·가. 친구에게 같은 문제 도전장을 보내 보세요.</span></div></div></div>
-    <div class="mbtns"><button class="b2" id="wLater">둘러볼게요</button><button class="b1" id="wGo">시험 시작</button></div>`);
+  openModal(`<h3>오늘의 시험지가<br>도착했습니다</h3><p class="note"><b>같은 문제, 다른 점수.</b> 전 국민이 같은 퍼즐을 풀어요.</p><div class="help welcome">
+    <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>하루 5과목</b><span>과목마다 한 문제, 자정에 바뀌어요.</span></div></div>
+    <div class="hstep"><span class="hn" style="background:var(--g-sudoku)">${ic('check')}</span><div><b>첫 판이 공식 답안(무료)</b><span>다시 풀기는 ♥1, 기록은 안 돼요.</span></div></div>
+    <div class="hstep"><span class="hn" style="background:var(--grit)">${ic('clock')}</span><div><b>요일마다 난이도</b><span>오늘은 ${examLabel()}이에요.</span></div></div>
+    <div class="hstep"><span class="hn" style="background:var(--g-tower)">${ic('trophy')}</span><div><b>성적표와 도전장</b><span>과목마다 수·우·미·양·가로 나와요.</span></div></div></div>
+    <div class="mbtns one"><button class="b1" id="wGo">시험 시작</button></div><button class="btn ghost" id="wLater">둘러볼게요</button>`);
   const done = () => store.set('hp:welcome', 3);
   $('#wLater').onclick = () => { done(); closeModal(); };
   $('#wGo').onclick = () => { done(); closeModal(); quickStart(pickNext()); };
@@ -758,15 +817,22 @@ function renderSoloPts(){
 function renderDuel(d){
   const live = duelLive(), n = duelWaiting(), R = duelRec();
   $('#duelHead').innerHTML = `<div class="dh-top"><span class="dh-ico">${ic('duel')}</span><div><b>1:1 대전</b><small>상대와 같은 문제를 동시에 풀고 점수로 겨뤄요</small></div></div>
-    <div class="dh-rec"><div><b class="num">${d.dw}</b><span>승</span></div><div><b class="num">${d.dd}</b><span>무</span></div><div><b class="num">${d.dl}</b><span>패</span></div><div class="pts"><b class="num">+${fmt(d.duel)}</b><span>오늘 대전 점수</span></div></div>
+    <div class="dh-rec"><div><b class="num">${d.dw}</b><span>승</span></div><div><b class="num">${d.dd}</b><span>무</span></div><div><b class="num">${d.dl}</b><span>패</span></div><div class="pts"><b class="num">+${fmt(d.duel)}</b><span>오늘 대전 포인트</span></div></div>
     <div class="dh-rw"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무승부 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span><span class="c">한 판 ${ic('heart')}1</span></div>
     <div class="dh-live${live ? '' : ' off'}"><i></i>${live ? (n ? `지금 대전을 기다리는 사람 <b>${n}명</b>` : '실시간 서버 연결됨 · 상대가 없으면 AI와 겨뤄요') : '지금은 실시간 연결이 안 돼요 · AI와 겨뤄요'}</div>`;
+  /* 빠른 대전: 오늘 시험지 게임 중 하나(문제 씨앗과 무관한 게임 고르기라 시계로 골라도 됨) */
+  const qd = $('#quickDuel');
+  if(qd){ qd.innerHTML = `${ic('duel')} 빠른 대전 <small>오늘 시험지 게임 중 하나</small> ${costTag()}`;
+    qd.onclick = () => { const s = dayState().set.filter(g => !isAdult(g)); duelStart(s[Math.floor(Date.now() / 1000) % s.length]); }; }
+  renderFilter('duel');
   const list = $('#duelList'); list.innerHTML = '';
-  for(const id of GAME_IDS){
+  for(const id of filteredIds('duel')){
+    if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml()); continue; }
     const r = R[id] || { w:0, d:0, l:0 }, tot = r.w + r.d + r.l, wait = duelWaiting(id);
-    const how = NG[id].duelHow || '같은 문제 · 점수가 높으면 승리';
+    /* 게임마다 다른 한 줄: 게임 정의의 duelHow, 없으면 게임 방법 첫 줄 */
+    const how = NG[id].duelHow || (HELP[id] && HELP[id][0] && HELP[id][0][0]) || '점수가 높으면 승리';
     const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><span class="gr-mid"><b>${GAMES[id].name}</b><span>${how}</span><span class="drec">${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : '첫 대전을 해 보세요'}</span></span><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button>`;
+    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}${tot ? `<small class="drec">${r.w}승 ${r.d}무 ${r.l}패</small>` : ''}</b><button class="gr-go duel" aria-label="${GAMES[id].name} 대전 시작, 하트 1개">대전 ${costTag()}</button><span class="dhow">${escH(how)}</span>`;
     row.querySelector('.gr-go').onclick = () => duelStart(id);
     row.querySelector('.g-art').onclick = () => duelStart(id);
     list.appendChild(row);
@@ -868,12 +934,14 @@ function runNotice(){
 }
 setTimeout(runNotice, 1200);
 navInit();
+/* 화면 글자 용어집(대전 포인트) */
+HOST.duelQuitNote = '대전 포인트는 받지 못하고 쓴 하트도 돌아오지 않아요.';
 
 let lastSig = '', ABOVE = null;
 /* 추월 알림: 친구가 나를 제치면 여우가 알려줌 */
 function checkOvertake(){
   const d = dayState(); if(!myTotal(d)){ ABOVE = null; return; }
-  const b = board(d), mi = b.findIndex(x => x.me), above = b.slice(0, mi).filter(x => x.score > 0).map(x => x.name);
+  const b = board(d), mi = b.findIndex(x => x.me), above = b.slice(0, mi).filter(x => x.score > 0 && !(DEMO_NUMBERS && x.sample)).map(x => x.name);   /* 예시 친구는 추월 알림 안 함 */
   if(ABOVE){ const nw = above.filter(n => !ABOVE.includes(n)); if(nw.length) toast(nw[0] + '님이 당신을 제쳤어요! 가만있을 거예요? 🦊'); }
   ABOVE = above;
 }
@@ -893,7 +961,8 @@ playChromeInit();
 document.querySelectorAll('#dock button').forEach(b => { b.innerHTML = b.innerHTML.replace(/ICO_(\w+)/, (_, n) => ic(n)); b.onclick = () => setTab(b.dataset.tab); });
 $('#meBtn').onclick = () => setTab('me');
 $('#strip').onclick = () => setTab('me');
-$('#pool').onclick = () => { RANK_MODE = 'week'; setTab('league'); };
+$('#pool').onclick = openDonateInfo;
+{ const pr = $('#proto'); if(pr) pr.hidden = !DEV_TOOLS; }   /* 테스트 도구는 ?dev=1 일 때만 */
 $('#devWeek').onclick = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
 $('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
 $('#meSound').onclick = () => openSoundSheet(); $('#meFriends').onclick = () => frManage(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);

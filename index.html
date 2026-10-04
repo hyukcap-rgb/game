@@ -53,11 +53,11 @@
 
   <div class="pane" id="paneToday">
     <button class="strip" id="strip" aria-label="오늘 점수와 순위 자세히 보기"></button>
-    <button class="pool" id="pool" aria-label="이번 주 모두의 기부, 리그 보기"></button>
     <button class="cta" id="nextBtn"></button>
     <div class="sec"><h2>오늘의 시험지</h2></div>
     <p class="daynote" id="dayNote"></p>
     <div class="glist" id="games"></div>
+    <button class="pool" id="pool" aria-label="모두의 기부 안내 보기"></button>
     <button class="advpromo" id="advPromo" aria-label="솔로 모드로 가기"></button>
     <button class="advpromo duelpromo" id="duelPromo" aria-label="대전 모드로 가기"></button>
   </div>
@@ -65,21 +65,24 @@
   <div class="pane" id="paneAdv" hidden>
     <div class="sec"><h2>솔로</h2></div>
     <div class="lvcard" id="lvCard"></div>
-    <button class="solopts" id="soloPts" aria-label="오늘 솔로 점수"></button>
+    <button class="solopts" id="soloPts" aria-label="오늘 솔로 포인트"></button>
+    <div class="fchips" id="advFilter" role="group" aria-label="과목으로 고르기"></div>
     <div class="advlist" id="advList"></div>
-    <p class="advnote">솔로는 하트 없이 무료예요. 새 스테이지를 처음 깨면 점수를 받아요.<br>솔로 점수는 오늘 점수에 더해져요(하루 최대 1,000점).</p>
+    <p class="advnote">솔로는 하트 없이 언제나 무료예요. 새 스테이지를 처음 깨면 솔로 포인트를 받아요.<br>솔로 포인트는 오늘 점수(시험지)와 따로 쌓여요(하루 최대 1,000).</p>
   </div>
 
   <div class="pane" id="paneDuel" hidden>
     <div class="sec"><h2>대전</h2></div>
     <div class="duelhead" id="duelHead"></div>
+    <button class="btn primary block quickduel" id="quickDuel"></button>
+    <div class="fchips" id="duelFilter" role="group" aria-label="과목으로 고르기"></div>
     <div class="glist" id="duelList"></div>
-    <p class="advnote">대전은 상대와 같은 문제를 동시에 풀고 게임 점수로 승부해요.<br>함대 결전은 서로 포격하는 턴제 대전이에요. 실시간 상대가 없으면 AI와 겨뤄요.</p>
+    <p class="advnote">대전은 상대와 같은 문제를 동시에 풀고 게임 점수로 승부해요.<br>번갈아 두는 게임은 차례대로 겨뤄요. 실시간 상대가 없으면 AI와 겨뤄요.</p>
   </div>
 
   <div class="pane" id="paneLeague" hidden>
     <div class="sec"><h2>리그</h2></div>
-    <div class="tabs" role="group" aria-label="순위 종류"><button id="tabDay" aria-pressed="true">오늘 · 친구</button><button id="tabMonth" aria-pressed="false">주간 리그</button></div>
+    <div class="tabs" role="group" aria-label="순위 종류"><button id="tabDay" aria-pressed="true">친구 순위</button><button id="tabMonth" aria-pressed="false">주간 리그</button></div>
     <div id="lgHead"></div>
     <div class="rank panel" id="rank"></div>
     <p class="rank-note" id="rankNote"></p>
@@ -88,13 +91,13 @@
   <div class="pane" id="paneMe" hidden>
     <div class="prof panel" id="prof"></div>
     <section class="hero" aria-label="오늘 점수">
-      <div class="ribbon"><span>오늘의 리그</span></div>
+      <div class="ribbon"><span>오늘의 성적</span></div>
       <div class="hero-in">
         <div class="medal-big" id="myMedal"></div>
         <div class="hero-score"><small>오늘 점수</small><div class="n"><span class="num" id="bq" aria-live="polite">0</span><em>점</em></div><p id="rankLine"></p></div>
       </div>
       <div class="bq-split">
-        <div class="bq-part"><span class="lb" id="lbSkill"></span><span class="v"><span id="bqSkill">0</span> <small>점</small></span><span class="ex">오늘의 문제 <b class="num" id="total">0</b></span><div class="bar"><i id="barSkill" style="width:0"></i></div></div>
+        <div class="bq-part"><span class="lb" id="lbSkill"></span><span class="v"><span id="bqSkill">0</span><small id="bqSkillU"></small></span><span class="ex" id="skillEx"></span><div class="bar"><i id="barSkill" style="width:0"></i></div></div>
         <div class="bq-part grit"><span class="lb" id="lbGrit"></span><span class="v"><span id="bqGrit">0</span><small>일</small></span><span class="ex" id="gritEx"></span><div class="bar"><i id="barGrit" style="width:0"></i></div></div>
       </div>
       <div class="gems" id="dots"></div>
@@ -102,12 +105,12 @@
     </section>
     <p class="tagline">같은 문제, <b>다른 점수</b>.</p>
     <button class="panel gritcard" id="gritCard" aria-label="내 두뇌 리포트 열기"></button>
-    <div class="me-links"><button id="meFriends">친구</button><button id="meReport">두뇌 리포트</button><button id="meShare">결과 공유</button><button id="meSound">소리·진동</button></div>
+    <div class="me-links"><button id="meFriends">친구</button><button id="meReport">두뇌 리포트</button><button id="meShare">성적표 공유</button><button id="meSound">소리·진동</button></div>
     <div class="sec"><h2>솔로 성장</h2></div>
     <div class="panel growlist" id="growList"></div>
     <div class="sec"><h2>챕터 배지 <small class="num" id="bdgCount" style="font-size:14px;-webkit-text-stroke:3px var(--outline2)"></small></h2></div>
-    <div class="panel badges" id="badges"></div>
-    <details class="proto"><summary>테스트 도구</summary>
+    <div class="panel bdwrap" id="badges"></div>
+    <details class="proto" id="proto" hidden><summary>테스트 도구</summary>
       <p>진짜 친구가 없으면 예시 친구를 보여 줘요. 게임 기록은 이 브라우저에 저장되고, 친구·친구 점수는 친구 서버에 저장돼요.</p>
       <button class="btn small secondary" id="devFill">하트 5개 채우기</button><button class="btn small secondary" id="devReset">오늘 기록 초기화</button><button class="btn small secondary" id="devWelcome">첫 안내 다시 보기</button><button class="btn small secondary" id="devHist">지난 2주 출석 기록 만들기</button><button class="btn small secondary" id="devHistClr">출석 기록 모두 지우기</button><button class="btn small secondary" id="devWeek">주간 결과 발표 보기</button><button class="btn small secondary" id="devAdv">솔로 초기화</button><button class="btn small secondary" id="devLvUp">레벨업 연출 보기</button><button class="btn small secondary" id="devCh">챕터 클리어 연출 보기</button>
     </details>
