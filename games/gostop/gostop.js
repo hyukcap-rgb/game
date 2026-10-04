@@ -344,7 +344,7 @@ NG.gostop = (() => {
 
   /* ---------- 화면: 온라인 맞고식 가로 판(기준 1630×923, 화면에 맞춰 확대·축소, 세로 화면이면 90° 돌림) ---------- */
   const BW = 1630, BH = 923, MAINW = 1262;
-  const CW = { hand:[142, 232], floor:[84, 137], cap:[44, 72], deck:[92, 150] };
+  const CW = { hand:[142, 232], floor:[90, 147], cap:[64, 104], deck:[92, 150] };   /* v1.5: 먹은 패 44→64(전략용으로 잘 보이게), 바닥 84→90 */
   const GS = () => G && G.gs;
   const myTurn = () => { const g = GS(); return g && g.S && g.phase === 'play' && !g.S.over && g.S.turn === g.me && g.S.pendingGS < 0; };
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -367,20 +367,59 @@ NG.gostop = (() => {
   /* 먹은 패 줄: 광 · 열끗 · 띠 · 피 묶음(겹쳐 놓기), 묶음마다 장수 */
   function capHtml(cap, y){
     const g = capGroups(cap), s = scoreOf(cap), cnt = { g:s.gN, y:s.yN, t:s.tN, p:s.piV };
-    const [w, h] = CW.cap, step = { g:20, y:16, t:16, p:11 };
-    let x = 170, out = '';
-    for(const k of ['g', 'y', 't', 'p']){
-      const L = g[k]; if(!L.length) continue;
-      L.forEach((id, i) => { out += `<div class="gs-c mini" data-cid="${id}" style="${px(x + i * step[k], y, w, h)};z-index:${i + 1}">${cardSvg(id)}</div>`; });
-      const gw = w + (L.length - 1) * step[k];
-      out += `<span class="gs-cnt" style="left:${Math.round(x + gw - 14)}px;top:${y + h - 22}px">${cnt[k]}</span>`;
-      x += gw + 30;
+    const [w, h] = CW.cap, X0 = 26, X1 = 1094, GAP = 30;
+    const ks = ['g', 'y', 't', 'p'].filter(k => g[k].length);
+    /* 겹침 간격: 기본(광은 넓게) → 줄이 넘치면 간격만 줄임(카드 크기는 그대로) */
+    const base = { g:34, y:26, t:26, p:19 };
+    const need = f => ks.reduce((t, k) => t + w + (g[k].length - 1) * base[k] * f, 0) + GAP * Math.max(0, ks.length - 1);
+    let f = 1; const room = X1 - X0;
+    if(need(1) > room){ const fixed = need(0); f = Math.max(.25, (room - fixed) / (need(1) - fixed)); }
+    let x = X0, out = '';
+    for(const k of ks){
+      const L = g[k], st = base[k] * f;
+      L.forEach((id, i) => { out += `<div class="gs-c mini" data-cid="${id}" style="${px(x + i * st, y, w, h)};z-index:${i + 1}">${cardSvg(id)}</div>`; });
+      const gw = w + (L.length - 1) * st;
+      out += `<span class="gs-cnt k${k}" style="left:${Math.round(x + gw - 18)}px;top:${y + h - 38}px">${cnt[k]}</span>`;
+      x += gw + GAP;
     }
     return out;
   }
+  /* ---------- 탈 캐릭터(v1.5): 프로필 얼굴. 직접 그린 평면 SVG — 나 = 선비탈(황토 얼굴·검은 갓), 상대 = 각시탈(흰 얼굴·연지 곤지·쪽머리, 색은 이름마다)
+     표정: '' 평소 · 'wow' 놀람(시계 5초 아래) · 'sad' 울상(2.5초 아래·짐) · 'joy' 웃음(큰 일·이김). 전통 탈을 바탕으로 새로 그린 오리지널 */
+  const INKM = '#241A3A';
+  const OPPC = [['#2E5E8C', '#C93A3A'], ['#5B3F8C', '#D9822B'], ['#2F7A5B', '#C93A6B'], ['#8C3A2E', '#3A6BC9']];
+  function maskSvg(kind, mood, tone){
+    const me = kind === 'me', face = me ? '#EDBF7A' : '#FBF1E2', cheek = me ? '#D9734A' : '#E0454F';
+    const eyes = mood === 'wow' ? `<ellipse cx="37" cy="54" rx="5.2" ry="6.4" fill="${INKM}"/><ellipse cx="63" cy="54" rx="5.2" ry="6.4" fill="${INKM}"/><circle cx="38.6" cy="52" r="1.7" fill="#fff"/><circle cx="64.6" cy="52" r="1.7" fill="#fff"/>`
+      : mood === 'sad' ? `<path d="M30 56q7 -5 14 0M56 56q7 -5 14 0" stroke="${INKM}" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="M67 61q2.5 5 0 8q-2.5 -3 0 -8z" fill="#7FC6F0" stroke="${INKM}" stroke-width="1.4"/>`
+      : mood === 'joy' ? `<path d="M29 56q8 -10 16 0M55 56q8 -10 16 0" stroke="${INKM}" stroke-width="4" fill="none" stroke-linecap="round"/>`
+      : `<path d="M30 53q7 6 14 0M56 53q7 6 14 0" stroke="${INKM}" stroke-width="3.6" fill="none" stroke-linecap="round"/>`;
+    const brows = mood === 'sad' ? `<path d="M29 44l14 -5M71 44l-14 -5" stroke="${INKM}" stroke-width="3.4" stroke-linecap="round"/>`
+      : mood === 'wow' ? `<path d="M29 40q8 -7 15 -2M71 40q-8 -7 -15 -2" stroke="${INKM}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`
+      : `<path d="M29 43q8 -5 15 -1M71 43q-8 -5 -15 -1" stroke="${INKM}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`;
+    const mouth = mood === 'wow' ? `<ellipse cx="50" cy="75" rx="5.5" ry="6.5" fill="#8C1D2A" stroke="${INKM}" stroke-width="2.4"/>`
+      : mood === 'sad' ? `<path d="M40 79q10 -8 20 0" stroke="${INKM}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`
+      : mood === 'joy' ? `<path d="M37 70q13 0 26 0q-2 12 -13 12q-11 0 -13 -12z" fill="#8C1D2A" stroke="${INKM}" stroke-width="2.6" stroke-linejoin="round"/><path d="M42 77q8 4 16 0" fill="#E87A86"/>`
+      : `<path d="M39 71q11 9 22 0" stroke="${INKM}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`;
+    let head, bg;
+    if(me){
+      bg = '#F3E3C3';
+      /* 검은 갓: 넓은 챙 + 모자 */
+      head = `<path d="M30 26q20 -4 40 0l-2 -12q-18 -6 -36 0z" fill="${INKM}"/><ellipse cx="50" cy="27" rx="38" ry="5.5" fill="${INKM}"/><path d="M31 21q19 -3 38 0" stroke="#5A4A7A" stroke-width="1.6" fill="none"/>`;
+    } else {
+      const [hb, rib] = OPPC[tone % OPPC.length]; bg = '#E8EEF6';
+      /* 쪽머리(가르마) + 댕기 */
+      head = `<path d="M18 52q-2 -34 32 -36q34 2 32 36q-6 -20 -32 -24q-26 4 -32 24z" fill="${INKM}"/><path d="M50 17v12" stroke="#3E3260" stroke-width="2"/><circle cx="50" cy="12" r="6" fill="${INKM}"/><path d="M53 9l9 -4l-2 8z" fill="${rib}"/><path d="M20 40q-4 6 -2 12" stroke="${hb}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+    }
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="${bg}"/>
+      <path d="M50 22c19 0 29 14 29 33c0 21-13 34-29 34s-29-13-29-34c0-19 10-33 29-33z" fill="${face}" stroke="${INKM}" stroke-width="3"/>
+      ${head}${brows}${eyes}<circle cx="31" cy="66" r="5.5" fill="${cheek}" opacity="${me ? .45 : .85}"/><circle cx="69" cy="66" r="5.5" fill="${cheek}" opacity="${me ? .45 : .85}"/>${me ? '' : `<circle cx="50" cy="37" r="2.6" fill="${cheek}"/>`}${mouth}</svg>`;
+  }
+  const maskTone = nick => seedFrom(String(nick || '')) % OPPC.length;
+  const maskAv = (me, mood) => { const g = GS(); return `<span class="av gs-mask" data-k="${me ? 'me' : 'op'}" data-md="${mood || ''}">${maskSvg(me ? 'me' : 'op', mood || '', maskTone(g && g.oppNick))}</span>`; };
   function profHtml(p, view){
     const g = GS(), S = g.S, P = S.P[p], me = p === g.me;
-    const name = me ? '나' : esc(g.oppNick), av = me ? avatar({ me:true }) : oppAv(g.oppNick);
+    const name = me ? '나' : esc(g.oppNick), av = maskAv(me);
     const bye = me ? g.bye : g.oppBye, off = !me && g.mode === 'pvp' && g.began && !g.oppHere;
     const st = [off ? '<b class="off">연결 끊김·자동</b>' : '', bye ? '<b class="bye">나가기 예약</b>' : '', P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
     return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
@@ -389,7 +428,9 @@ NG.gostop = (() => {
       <div class="gs-ps">${st}</div><span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>`;
   }
   /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
-  const SLOT = [...Array(13)].map((_, m) => { const a = (180 + (m - 1) * 30) * Math.PI / 180; return [630 + Math.cos(a) * 425, 334 + Math.sin(a) * 152]; });
+  /* v1.5: 바닥 12자리 = 두 줄 × 6칸(가운데 더미 자리 비움). 예전 타원 배치는 양 끝 자리끼리 겹쳤음 → 자리 사이 140px(카드 90 + 겹쳐 쌓기 3장까지) */
+  const SLOT_X = [200, 342, 484, 776, 918, 1060], SLOT = [null];
+  for(let m = 1; m <= 12; m++) SLOT.push([SLOT_X[(m - 1) % 6], m <= 6 ? 218 : 452]);
   function floorHtml(view){
     const by = {}; view.f.forEach(id => { const m = C[id].m; (by[m] = by[m] || []).push(id); });
     const [w, h] = CW.floor;
@@ -397,17 +438,18 @@ NG.gostop = (() => {
     for(let m = 1; m <= 12; m++){
       const L = by[m] || []; if(!L.length) continue;
       const [cx, cy] = SLOT[m], n = L.length;
-      L.forEach((id, i) => { out += `<div class="gs-c fl${view.hi.includes(id) ? ' glow' : ''}" data-cid="${id}" style="${px(cx - w / 2 + (i - (n - 1) / 2) * 18, cy - h / 2 + (i - (n - 1) / 2) * 7, w, h)};z-index:${i + 2}">${cardSvg(id)}</div>`; });
-      if(view.ppuk && view.ppuk[m] != null) out += `<span class="gs-ppk" style="left:${Math.round(cx + w / 2 + 6)}px;top:${Math.round(cy - h / 2 - 8)}px">뻑</span>`;
+      const dx = n > 1 ? Math.min(16, 46 / (n - 1)) : 0;
+      L.forEach((id, i) => { out += `<div class="gs-c fl${view.hi.includes(id) ? ' glow' : ''}" data-cid="${id}" style="${px(cx - w / 2 + (i - (n - 1) / 2) * dx, cy - h / 2 + (i - (n - 1) / 2) * 6, w, h)};z-index:${i + 2}">${cardSvg(id)}</div>`; });
+      if(view.ppuk && view.ppuk[m] != null) out += `<span class="gs-ppk" style="left:${Math.round(cx - 24)}px;top:${Math.round(cy - h / 2 - 16)}px">뻑</span>`;
     }
     return out;
   }
   function handHtml(view){
     const g = GS(), hand = view.h[g.me].slice().sort((a, b) => ((C[a] && C[a].m) || 99) - ((C[b] && C[b].m) || 99) || a - b);
     const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy && !g.picking, [w, h] = CW.hand, n = hand.length;
-    const step = n > 1 ? Math.min(152, (1452 - w) / (n - 1)) : 0;
+    const step = n > 1 ? Math.min(150, (1448 - 12 - w) / (n - 1)) : 0;   /* 오른쪽 끝 1448 < 자동 치기(1474) */
     return hand.map((id, i) => { const c = C[id], hit = c && !c.bonus && fm.has(c.m), bon = (c && c.bonus) || isDummy(id);
-      return `<button class="gs-c hd${mt && (hit || bon) ? ' match' : ''}${mt ? '' : ' off'}" data-cid="${id}" data-h="${id}" style="${px(12 + i * step, 683, w, h)};z-index:${i + 1}" aria-label="${cardName(id)}${hit ? ', 바닥에 같은 월 있음' : ''}">${cardSvg(id)}</button>`; }).join('');
+      return `<button class="gs-c hd${mt && (hit || bon) ? ' match' : mt ? ' nm' : ''}${mt ? '' : ' off'}" data-cid="${id}" data-h="${id}" style="${px(12 + i * step, 683, w, h)};z-index:${i + 1}" aria-label="${cardName(id)}${hit ? ', 바닥에 같은 월 있음' : ''}">${cardSvg(id)}</button>`; }).join('');
   }
   function liveView(){ const S = GS().S; return Object.assign(snap(S), { ppuk:S.ppuk }); }
   function infoHtml(view){
@@ -420,8 +462,8 @@ NG.gostop = (() => {
   function draw(view){
     const g = GS(); if(!g || !$('#gsb')) return;
     const op = 1 - g.me;
-    $('#gsCapOp').innerHTML = capHtml(view.c[op], 14);
-    $('#gsCapMe').innerHTML = capHtml(view.c[g.me], 584);
+    $('#gsCapOp').innerHTML = capHtml(view.c[op], 8);
+    $('#gsCapMe').innerHTML = capHtml(view.c[g.me], 558);
     $('#gsPtsOp').innerHTML = `<b>${scoreOf(view.c[op]).total}</b><small>점</small>`;
     $('#gsPtsMe').innerHTML = `<b>${scoreOf(view.c[g.me]).total}</b><small>점</small>`;
     $('#gsFloor').innerHTML = floorHtml(view);
@@ -552,7 +594,7 @@ NG.gostop = (() => {
     $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     $('#gsBody').hidden = false; fit();
-    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<span>고스톱 · ${(g.room || ROOMS[0]).stake ? '점당 ' + fmtP(g.room.stake) : '연습 판'}${g.sess ? ' · ' + (g.gi + 1) + '판째' : ''}</span>`;
+    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${(g.room || ROOMS[0]).stake ? '점당 ' + fmtP(g.room.stake) : '연습 판'}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
     const gate = $('#gsGate'); if(gate) gate.remove();
     byeUI();
     draw(liveView());
@@ -574,7 +616,7 @@ NG.gostop = (() => {
     if(p === g.me){
       if(gs){ askGS(k); return; }
       setMsg(`<b>내 차례</b> · ${S.P[g.me].hand.some(id => C[id] && C[id].bonus) ? '보너스패를 먼저 내도 돼요' : g.sess ? '8초 안에 낼 패를 누르세요' : '낼 패를 누르세요'}`, 'me');
-      X(() => GX.event('turn'));
+      sfx('gsfxTurn');   /* 내 차례: 소리만(바닥에 큰 원이 남아 보이지 않게) */
     } else {
       setMsg(`<b>${esc(g.oppNick)}</b> ${gs ? '고? 스톱? 고르는 중…' : '차례…'}${g.mode === 'pvp' && !g.oppHere ? ' <small>(연결 끊김 · 자동으로 대신 쳐요)</small>' : ''}`, 'op');
       if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy) step(k, gs ? { gs:aiGo(S, p, g.ai, g.rnd) ? 1 : 0 } : aiPick(S, p, g.ai, g.rnd), 'ai'); }, gs ? 800 : 650 + g.rnd() * 500);
@@ -599,10 +641,8 @@ NG.gostop = (() => {
   const MOODS = { calm:'', hurry:'wow', panic:'sad' };
   function setMood(el, mood){
     X(() => {
-      const im = el && el.querySelector('img.toy'); if(!im || im.dataset.md === mood) return;
-      let k = im.dataset.kind;
-      if(!k){ k = Object.keys(TOY.A).find(x => ['', 'joy', 'sad', 'wow'].some(m => toySrc(x, m) === im.getAttribute('src'))); if(!k) return; im.dataset.kind = k; }
-      im.src = toySrc(k, mood); im.dataset.md = mood;
+      const m = el && el.querySelector('.gs-mask'); if(!m || m.dataset.md === mood) return;
+      m.dataset.md = mood; m.innerHTML = maskSvg(m.dataset.k, mood, maskTone(GS().oppNick));
     });
   }
   function clockPaint(){
@@ -743,8 +783,8 @@ NG.gostop = (() => {
     const box = $('#gsSun'); box.hidden = false;
     const nm = s => s === g.seat ? '나' : esc(g.oppNick);
     box.innerHTML = `<div class="gs-sunh"><b>선 뽑기</b><span>${g.sunR ? '다시 뽑기 · ' : ''}엎어 둔 패 한 장씩 뒤집어 <em>높은 월</em>이 선(먼저 침)</span></div>
-      <div class="gs-sunp a">${g.seat === 0 ? avatar({ me:true }) : oppAv(g.oppNick)}<b>${nm(0)}</b><small>먼저 뒤집기</small></div>
-      <div class="gs-sunp b">${g.seat === 1 ? avatar({ me:true }) : oppAv(g.oppNick)}<b>${nm(1)}</b><small>다음에 뒤집기</small></div>
+      <div class="gs-sunp a">${maskAv(g.seat === 0)}<b>${nm(0)}</b><small>먼저 뒤집기</small></div>
+      <div class="gs-sunp b">${maskAv(g.seat === 1)}<b>${nm(1)}</b><small>다음에 뒤집기</small></div>
       ${g.sunCards.map((id, i) => `<button class="gs-c sunc" data-i="${i}" style="${px(SUNX + i * (SUNW + SUNG), 300, SUNW, SUNH)}" aria-label="엎어 둔 패 ${i + 1}">${BACK}</button>`).join('')}
       <div class="gs-sunm" id="gsSunM"></div><div class="gs-sunt" id="gsSunT"><i></i></div>
       <button class="gs-sunx" id="gsSunX">나가기</button>`;
@@ -828,12 +868,12 @@ NG.gostop = (() => {
     const mult = r.mults && r.mults.length ? r.mults.map(m => `<div><span>${m[0]}</span><b>×${m[1]}</b></div>`).join('') : '';
     const t = g.tot;
     const box = $('#gsAsk');
-    const html = `<div class="gs-askc gs-end ${draw0 ? 'd' : win ? 'w' : 'l'}">${g.sess ? `<span class="gs-eno">${t.n}판째 · ${t.w}승 ${t.l}패${t.d ? ' ' + t.d + '무' : ''}</span>` : ''}<b class="gs-et">${draw0 ? '나가리' : win ? '이겼어요!' : '졌어요'}</b>
+    const html = `<div class="gs-askc gs-end ${draw0 ? 'd' : win ? 'w' : 'l'}"><div class="gs-el">${g.sess ? `<span class="gs-eno">${t.n}판째 · ${t.w}승 ${t.l}패${t.d ? ' ' + t.d + '무' : ''}</span>` : ''}<b class="gs-et">${draw0 ? '나가리' : win ? '이겼어요!' : '졌어요'}</b>
       <p class="gs-ew">${draw0 ? '아무도 7점을 못 내고 패가 다 떨어졌어요(무승부)' : (win ? '내가 ' : esc(g.oppNick) + '님이 ') + (r.why === '스톱' ? '스톱했어요' : r.why === '마지막 패' ? '마지막 패로 났어요' : r.why + '로 이겼어요')}</p>
-      ${draw0 ? '' : `<div class="gs-erows">${(r.rows || []).map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}${mult}<div class="tot"><span>최종</span><b>${fmt(r.final)}점</b></div></div>`}
-      ${payHtml}
+      ${draw0 ? '' : `<div class="gs-erows">${(r.rows || []).map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}${mult}<div class="tot"><span>최종</span><b>${fmt(r.final)}점</b></div></div>`}</div>
+      <div class="gs-er">${payHtml}
       ${g.sess ? `<div class="gs-nx" id="gsNx"><i></i><span id="gsNxT"></span></div><div class="gs-askb"><button class="${g.bye ? 'on' : ''}" id="gsEndBye">${g.bye ? '나가기 예약 취소' : '나가기 예약'}</button></div>`
-        : '<div class="gs-askb"><button class="pri" id="gsEndOk">결과 보기</button></div>'}</div>`;
+        : '<div class="gs-askb"><button class="pri" id="gsEndOk">결과 보기</button></div>'}</div></div>`;
     if(box){ box.innerHTML = html; box.hidden = false; }
     /* 연출: 총통·3뻑 → 박 → 승패 */
     const who = r.w === g.me ? 'me' : 'op';
@@ -1220,7 +1260,7 @@ NG.gostop = (() => {
   function render(st){
     st.innerHTML = `<div class="gsg" id="gsg"><div class="gsb" id="gsb">
       <div id="gsBody" hidden>
-        <div class="gs-mat"></div><div class="gs-tray op"></div><div class="gs-tray me"></div>
+        <div class="gs-tray op"></div><div class="gs-tray me"></div>
         <div class="gs-tag" id="gsTag">${BADGE19}<span>고스톱</span></div>
         <div id="gsCapOp"></div>
         <div class="gs-pts op" id="gsPtsOp"></div>
@@ -1235,7 +1275,7 @@ NG.gostop = (() => {
           <div class="gs-msg" id="gsMsg"></div>
         </div>
         <div id="gsHand"></div>
-        <button class="gs-auto" id="gsAuto">자동<br>치기</button>
+        <button class="gs-auto" id="gsAuto" aria-label="자동 치기: 알맞은 패를 대신 골라 내요"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="10" width="17" height="26" rx="3" transform="rotate(-12 17 23)" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="9" width="17" height="26" rx="3" transform="rotate(10 30 22)" fill="currentColor"/><path d="M27 17l-3.5 7h5l-3.5 7" fill="none" stroke="#1D2B4F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="rotate(10 30 22)"/></svg><span>자동 치기</span></button>
       </div>
       <div class="gs-ban" id="gsBan" aria-live="polite"></div>
       <div class="gs-lobby" id="gsLobby" hidden></div>

@@ -265,3 +265,108 @@ body.gs-full{overflow:hidden}
 .gs-sunt.hurry i{background:#FF3B5C}
 .gs-sunx{position:absolute; right:30px; top:30px; padding:10px 26px; border-radius:28px; border:4px solid #1A0F45; background:#FFF7E6; color:#1A0F45; font-size:26px; font-weight:900; box-shadow:0 5px 0 #1A0F45; cursor:pointer}
 @media (prefers-reduced-motion: reduce){ .gs-prof.hurry .gs-pav .av, .gs-prof.panic .gs-pav .av, .gs-c.sunc.can{animation:none} }
+
+/* ===== v1.5 디자인 다듬기: 먹은 패 크게 · 바닥 두 줄 · 낼 수 있는 패 진한 테두리 · 타원 방석 없앰 · 탈 캐릭터 · 자동 치기 단추 =====
+   기준: 크림 패널·금색 동전·남색 뒷면(사용자 지시) 유지. 굵은 만화 테두리+딱딱한 그림자 대신 얇은 먹선(2.5px)과 부드러운 그림자로 정돈 */
+.gsb{background:
+  radial-gradient(120% 90% at 42% 42%, rgba(255,255,255,0) 55%, rgba(0,40,0,.28) 100%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 .15  0 0 0 0 0  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+  radial-gradient(90% 75% at 40% 40%, #8EE05C 0%, #5DBE34 45%, #37901E 100%)}
+.gs-mat{display:none}
+/* 먹은 패 쟁반: 판 위 홈처럼 */
+.gs-tray{left:10px; width:1090px; height:112px; border-radius:22px; background:rgba(8,46,4,.26); box-shadow:inset 0 2px 6px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.12)}
+.gs-tray.op{top:2px}
+.gs-tray.me{top:562px}
+.gsb .gs-c.mini svg{filter:drop-shadow(0 2px 2px rgba(10,4,40,.4))}
+.gs-cnt{min-width:34px; height:34px; border-radius:17px; font:900 22px/30px system-ui,sans-serif; border:2px solid #241A3A; background:#241A3A; color:#FFE9A8; box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.gs-ppk{border-radius:12px; border-width:2px; padding:2px 12px; box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.gs-dn{color:#FFF3D6; text-shadow:0 2px 4px rgba(0,40,0,.55)}
+/* 판 이름표: 두 줄 바닥 사이 왼쪽 */
+.gs-tag{top:308px; height:48px; padding:0 18px 0 8px; border-radius:24px; border:2.5px solid #241A3A; box-shadow:0 4px 10px rgba(0,30,0,.3); font-size:24px; font-weight:800; color:#241A3A}
+.gs-tag .gs19{width:32px; height:32px; border-width:3px; font-size:14px}
+/* 점수 동전 */
+.gs-pts{border:3px solid #241A3A; box-shadow:0 4px 0 #8A5A08, 0 8px 16px rgba(0,30,0,.35)}
+
+/* 손패: 낼 수 있는(먹을 수 있는) 패 = 진한 금테 + 살짝 올림, 못 먹는 패는 살짝 어둡게 */
+#gsHand .gs-c.hd::after{content:''; position:absolute; inset:-7px; border-radius:16px; pointer-events:none; opacity:0; transition:opacity .15s}
+#gsHand .gs-c.hd.match{margin-top:-18px}
+#gsHand .gs-c.hd.match::after{opacity:1; border:7px solid #FFC93C; box-shadow:0 0 0 3px #241A3A, 0 0 22px 4px rgba(255,201,60,.75)}
+#gsHand .gs-c.hd.match svg{filter:drop-shadow(0 6px 6px rgba(10,4,40,.5))}
+#gsHand .gs-c.hd.nm svg{filter:brightness(.86) saturate(.85) drop-shadow(0 4px 3px rgba(10,4,40,.45))}
+@media (hover:hover){ #gsHand .gs-c.hd:not(.off):hover{top:683px !important; margin-top:-26px} }
+@media (prefers-reduced-motion: no-preference){ #gsHand .gs-c.hd.match::after{animation:gs-mpulse 1.4s ease-in-out infinite} }
+@keyframes gs-mpulse{50%{box-shadow:0 0 0 3px #241A3A, 0 0 34px 8px rgba(255,201,60,.95)}}
+
+/* 오른쪽 패널: 같은 높이 칸에 딱 맞게(넘침 없음) */
+.gs-prof{border:2.5px solid #241A3A; border-radius:22px; box-shadow:0 2px 0 rgba(36,26,58,.55), 0 10px 22px rgba(0,30,0,.28); padding:14px 12px 0 142px !important; overflow:visible; height:150px}
+.gs-prof.on{background:#FFF1C9; box-shadow:0 2px 0 rgba(36,26,58,.55), 0 10px 22px rgba(0,30,0,.28), 0 0 0 5px #FFC93C}
+.gs-prof .gs-pn{font-size:30px; line-height:38px; height:38px}
+.gs-prof .gs-pl{margin-top:2px; line-height:32px; height:32px}
+.gs-prof .gs-sub{line-height:26px; height:26px; color:#7A6A92 !important; font-weight:700}
+.gs-prof .gs-ps{position:absolute; left:142px; right:10px; bottom:-15px; margin:0; height:30px; gap:6px; overflow:hidden; flex-wrap:nowrap}
+.gs-ps b{font-size:19px; line-height:24px; padding:1px 10px; border-radius:13px; border-width:2px; white-space:nowrap; flex:none}
+.gs-sun{width:36px; height:36px; font-size:20px; border:2px solid #241A3A}
+.gs-pav{left:12px; top:13px; width:118px; height:118px}
+.gs-pav .av{width:118px; height:118px}
+.gs-mask{display:block; border-radius:50%; overflow:hidden; box-shadow:0 0 0 2.5px #241A3A, 0 4px 10px rgba(36,26,58,.3); background:none !important}
+.gs-mask svg{display:block; width:100%; height:100%}
+.gs-ring{left:-10px; top:-10px; width:138px; height:138px}
+.gs-sec{right:-8px; bottom:-6px; border:2.5px solid #FFF7E6}
+.gs-sweat{left:96px; top:6px}
+.gs-info{border:2.5px solid #241A3A; border-radius:22px; background:#26184F; box-shadow:0 10px 22px rgba(0,30,0,.28); overflow:hidden}
+.gs-ir2{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.gs-btns button{border:2.5px solid #241A3A; border-radius:22px; box-shadow:0 3px 0 #241A3A, 0 8px 16px rgba(0,30,0,.25); font-size:27px; font-weight:800}
+.gs-btns button.out{background:#E8455E}
+.gs-btns button:active{transform:translateY(2px); box-shadow:0 1px 0 #241A3A}
+.gs-msg{border-radius:18px; background:rgba(8,46,4,.42); font-size:24px; overflow:hidden}
+
+/* 자동 치기: 남색 원판 + 금 실선 + 카드 그림, 글자는 아래 한 줄 */
+.gs-auto{left:1474px; top:704px; width:144px; height:144px; border:none; border-radius:50%; background:#1D2B4F; color:#FFF3D6; text-shadow:none;
+  box-shadow:inset 0 0 0 5px #1D2B4F, inset 0 0 0 7px #E9C46A, 0 4px 0 #0D1530, 0 12px 22px rgba(0,30,0,.35);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0; font:800 21px/1 'Noto Sans KR','Malgun Gothic',system-ui,sans-serif; letter-spacing:-.3px}
+.gs-auto svg{width:58px; height:58px}
+.gs-auto span{white-space:nowrap}
+.gs-auto:not(:disabled):hover{background:#24365F}
+.gs-auto:active{transform:translateY(3px); box-shadow:inset 0 0 0 5px #1D2B4F, inset 0 0 0 7px #E9C46A, 0 1px 0 #0D1530, 0 6px 12px rgba(0,30,0,.3)}
+.gs-auto:disabled{opacity:.42}
+.gs-auto:focus-visible{outline:4px solid #FFE27A; outline-offset:4px}
+/* 선 뽑기 얼굴 */
+.gs-sunp .gs-mask{width:110px; height:110px; margin:0 auto 6px}
+.gs-tray.me{top:554px}
+#gsHand .gs-c.hd.match{margin-top:-14px}
+/* 판 이름표: 위쪽 먹은 패 쟁반 오른쪽 끝(바닥·뻑 표시와 안 겹침), 세로로 작게 */
+.gs-tag{left:1108px; top:6px; width:150px; height:104px; padding:6px 4px; box-sizing:border-box; flex-direction:column; justify-content:center; gap:2px; border-radius:20px; text-align:center}
+.gs-tag b{font-size:22px; font-weight:800; white-space:nowrap}
+.gs-tag small{font-size:18px; font-weight:700; color:#7A6A92}
+.gs-tag .gs19{width:30px; height:30px; font-size:13px}
+
+/* ===== v1.5 테스트팀 검수 반영 ===== */
+/* 결과 창: 판 높이(923) 안에 들어오게 가로 두 칸(왼쪽 점수 · 오른쪽 포인트·다음 판), 넘치면 창 안에서만 스크롤 */
+.gs-ask{place-items:safe center}
+.gs-askc.gs-end{width:1180px; max-height:880px; overflow-y:auto; box-sizing:border-box; padding:26px 32px 24px; display:grid; grid-template-columns:1fr 1fr; column-gap:32px; align-items:start; text-align:left;
+  border:2.5px solid #241A3A; box-shadow:0 14px 36px rgba(0,20,0,.45)}
+.gs-end .gs-el{display:flex; flex-direction:column; align-items:flex-start}
+.gs-end .gs-er{display:flex; flex-direction:column; justify-content:flex-start; min-height:100%}
+.gs-end .gs-et{font-size:56px !important; line-height:1.15}
+.gs-end .gs-ew{margin:4px 0 12px; font-size:25px}
+.gs-end .gs-erows{width:100%; box-sizing:border-box; padding:6px 20px}
+.gs-end .gs-erows div{padding:6px 0; font-size:25px}
+.gs-end .gs-erows .tot{font-size:30px} .gs-end .gs-erows .tot b{font-size:38px}
+.gs-end .gs-pay{margin-top:0; margin-bottom:10px; font-size:26px} .gs-end .gs-pay b{font-size:38px}
+.gs-end .gs-pay.sm{margin-bottom:8px; font-size:22px; padding:6px 20px} .gs-end .gs-pay.sm b{font-size:26px}
+.gs-end .gs-after{margin:4px 0 0; font-size:23px}
+.gs-end .gs-nx{width:100%; margin:16px 0 0}
+.gs-end .gs-askb{margin-top:auto; padding-top:16px; position:sticky; bottom:0; background:#FFFBF2}
+.gs-end .gs-askb button{min-height:80px; font-size:30px}
+.gs-end.d{grid-template-columns:1fr 1fr}
+/* 오른쪽 패널: 알림 칸이 손패와 안 겹치게 위로(아래 끝 652 < 손패 669) */
+.gs-prof.me{top:420px}
+.gs-msg{top:588px; height:64px; font-size:23px; line-height:1.2}
+@media (hover:hover){ #gsHand .gs-c.hd:not(.off):hover{margin-top:-14px} }
+/* 점수 동전: 바닥 6·12월 자리 묶음과 안 겹치게 오른쪽으로(1138~1256 < 패널 1265) */
+.gs-pts{left:1138px}
+/* 프로필 상태 태그: 카드 아래 가장자리를 따라 오른쪽 정렬, 넓게 */
+.gs-prof .gs-ps{left:12px; right:12px; justify-content:flex-end}
+.gs-ps b{font-size:17px; padding:1px 8px}
+/* 선 뽑기 얼굴은 커진 선 패 이름표 아래로 */
+.gs-sunp{top:584px}
