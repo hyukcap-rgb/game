@@ -3,27 +3,28 @@
 function sudStage(st){
   const L = G.L;
   const ico = {
-    undo:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>',
-    erase:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.8l5.7 5.7-9.8 9.8H6.3l-3-3z" fill="rgba(255,255,255,.25)"/><path d="M8.6 9.7l5.7 5.7"/><path d="M13 20.3h7.5"/></svg>',
-    memo:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="13" height="17.5" rx="2.5" fill="rgba(255,255,255,.25)"/><path d="M7 8h6M7 12h4"/><path d="M20.5 9.5l-7.2 7.2-.8 3.1 3.1-.8 7.2-7.2z" fill="#fff"/></svg>',
+    undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>',
+    erase:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.8l5.7 5.7-9.8 9.8H6.3l-3-3z" fill="currentColor" fill-opacity=".14"/><path d="M8.6 9.7l5.7 5.7"/><path d="M13 20.3h7.5"/></svg>',
+    memo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="13" height="17.5" rx="2.5" fill="currentColor" fill-opacity=".14"/><path d="M7 8h6M7 12h4"/><path d="M20.5 9.5l-7.2 7.2-.8 3.1 3.1-.8 7.2-7.2z" fill="currentColor"/></svg>',
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6a6.6 6.6 0 0 0-3.9 11.9c.7.5 1.1 1.3 1.1 2.1v1h5.6v-1c0-.8.4-1.6 1.1-2.1A6.6 6.6 0 0 0 12 2.6z" fill="#FFF7D6" stroke="#4A2A00" stroke-width="2" stroke-linejoin="round"/><path d="M9.4 19.6h5.2v.6a1.9 1.9 0 0 1-1.9 1.9h-1.4a1.9 1.9 0 0 1-1.9-1.9z" fill="#4A2A00"/><path d="M9.9 8.4a2.8 2.8 0 0 1 2.1-1.5" stroke="#FFB020" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
     pause:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/></svg>'
   };
-  st.innerHTML = `<div class="shead">
-      <span class="sch"><small>실수</small><span class="smis" id="smis" role="img" aria-label="실수 0번, ${G.missCap || 3}번까지">${'<i></i>'.repeat(G.missCap || 3)}</span></span>
-      <span class="sch"><small>점수</small><b id="sscore">0</b></span>
-      <span class="sch"><small>시간</small><b id="sclock">00:00</b></span>
-      <button id="spause" aria-label="일시정지">${ico.pause}</button>
+  st.innerHTML = `<div class="sud-root"><div class="hud-row sud-hud">
+      <span class="hchip"><span class="hv"><b id="sscore">0</b></span><em>점수</em></span>
+      <span class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>시간</em></span>
+      <span class="hchip"><span class="hv"><span class="hlives" id="smis" role="img" aria-label="실수 0번, ${G.missCap || 3}번까지">${'<i>★</i>'.repeat(G.missCap || 3)}</span></span><em>기회</em></span>
+      <button class="hpause" id="spause" aria-label="일시정지">${ico.pause}</button>
     </div>${sudSxChips()}
     <div class="swrap"><div class="board s9" id="bd" role="grid" aria-label="스도쿠 판"></div>
       <div class="pcover" id="pcover"><span class="pc-ico">${ico.pause}</span><b>잠깐 쉬는 중</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
-    <div class="tools">
-      <button id="tUndo" aria-label="실행 취소"><span class="tc">${ico.undo}</span>실행 취소</button>
-      <button id="tErase" aria-label="지우기"><span class="tc">${ico.erase}</span>지우기</button>
-      <button id="tMemo" aria-label="메모 끄기 상태"><span class="tc">${ico.memo}<i class="tb off" id="memoBadge">OFF</i></span>메모</button>
-      <button id="tHint" aria-label="힌트 3번 남음"><span class="tc">${ico.hint}<i class="tb" id="hintBadge">3</i></span>힌트</button>
+    <div class="sud-ctl">
+    <div class="tools-row sud-tools">
+      <button class="tool" id="tUndo" aria-label="실행 취소">${ico.undo}<span>실행 취소</span></button>
+      <button class="tool" id="tErase" aria-label="지우기">${ico.erase}<span>지우기</span></button>
+      <button class="tool toggle" id="tMemo" aria-label="메모 꺼짐" aria-pressed="false">${ico.memo}<span>메모 <i class="tb off" id="memoBadge">OFF</i></span></button>
+      <button class="tool item" id="tHint" aria-label="힌트 3번 남음">${ico.hint}<span>힌트</span><i class="cnt" id="hintBadge">3</i></button>
     </div>
-    <div class="pad9" id="pad"></div>`;
+    <div class="pad9" id="pad"></div></div></div>`;
   const bd = $('#bd');
   for(let i=0;i<81;i++){
     const r = Math.floor(i/9), c = i%9;
@@ -343,8 +344,8 @@ function paintSud(){
     const v = +b.dataset.v; let n = 0; for(let i=0;i<81;i++) if(G.grid[i] === v && !G.wrong[i]) n++;
     b.classList.toggle('gone', n >= 9);
   });
-  const mis = $('#smis'), mn = 3 - G.paws;
-  if(mis){ [...mis.children].forEach((d, k) => d.classList.toggle('on', k < mn)); mis.setAttribute('aria-label', '실수 ' + mn + '번, ' + (G.missCap || 3) + '번까지'); }
+  const mis = $('#smis'), mn = 3 - G.paws, cap = G.missCap || 3;
+  if(mis){ [...mis.children].forEach((d, k) => d.classList.toggle('off', k >= cap - mn)); mis.setAttribute('aria-label', '실수 ' + mn + '번, ' + (G.missCap || 3) + '번까지'); }
   $('#sscore').textContent = fmt(Math.round(G.earned * G.L.mult));
   $('#memoBadge').textContent = G.memo ? 'ON' : 'OFF'; $('#memoBadge').classList.toggle('off', !G.memo);
   $('#tMemo').classList.toggle('on', G.memo); $('#tMemo').classList.toggle('used', !!G.noMemo); $('#tMemo').setAttribute('aria-pressed', G.memo); $('#tMemo').setAttribute('aria-label', '메모 ' + (G.memo ? '켜짐' : '꺼짐'));

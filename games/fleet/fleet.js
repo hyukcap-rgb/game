@@ -282,11 +282,11 @@ function flCleanup(){
 /* ----- 화면 ----- */
 function flStage(st){
   st.innerHTML = `<div class="flg" id="flg">
-    <div class="fl-top">
-      <button class="fl-rb" id="flBack" aria-label="그만하기">${FL_I.back}</button>
-      <div class="fl-vs"><b id="flVs"></b><span class="fl-turn" id="flTurn"><i></i>함대 배치</span>${flRuleNames() ? `<span class="fl-cx" aria-label="이번 판 규칙">${flRuleNames()}</span>` : ''}</div>
-      <button class="fl-rb" id="flSnd" aria-label="효과음"></button>
-      <button class="fl-rb" id="flHelp" aria-label="게임 방법">${FL_I.help}</button>
+    <div class="fl-top pbar">
+      <button class="iconbtn fl-rb" id="flBack" aria-label="그만하기">${FL_I.back}</button>
+      <div class="ptitle fl-vs"><b id="flVs"></b><span class="fl-turn" id="flTurn"><i></i>함대 배치</span>${flRuleNames() ? `<span class="fl-cx" aria-label="이번 판 규칙">${flRuleNames()}</span>` : ''}</div>
+      <button class="iconbtn fl-rb" id="flSnd" aria-label="효과음"></button>
+      <button class="iconbtn fl-rb" id="flHelp" aria-label="게임 방법">${FL_I.help}</button>
     </div>
     <div id="flBody"></div></div>`;
   $('#flBack').onclick = confirmQuit; $('#flHelp').onclick = () => openHelp('fleet');
@@ -311,7 +311,7 @@ function flRenderPlace(b){
       <div class="fl-head"><span><b>우리 함대 배치</b></span><span>끌면 이동 · 탭하면 회전</span></div>
       <div class="fl-board">${flLabels()}<div class="fl-sea" id="flMy"><div class="fl-radar"></div>${flRockLayer()}<div class="fl-ships edit" id="flMyShips"></div></div></div>
       <div class="fl-roster">${FL_SHIPS.map(s => `<span class="fl-chip">${flShipSvg(s.k, s.len, false, 'fl-mini', 10)}${s.n} ${s.len}칸</span>`).join('')}</div>
-      <div class="fl-pbtns"><button class="fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="fl-go" id="flGo">${G.mode === 'pvp' ? '출격 · 상대 찾기' : '출격!'}</button></div>
+      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn primary fl-go" id="flGo">${G.mode === 'pvp' ? '출격 · 상대 찾기' : '출격!'}</button></div>
     </div>
     <p class="fl-tip">${G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 AI와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : 'AI 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
   $('#flMy').classList.add('live');
@@ -366,7 +366,7 @@ function flRenderSearch(b){
   b.innerHTML = `<div class="fl-panel fl-searchp">
       <div class="fl-rbig${G.phase === 'joining' ? ' found' : ''}"><i></i><span class="fl-blip" style="left:30%;top:36%"></span><span class="fl-blip" style="left:68%;top:58%;animation-delay:1.1s"></span><span class="fl-blip" style="left:44%;top:76%;animation-delay:.6s"></span></div>
       <h3 class="fl-st" id="flSt"></h3><p class="fl-sn" id="flSn"></p>
-      <div class="fl-sbtns" id="flSBtns"><button class="fl-go" id="flAiNow">AI와 바로 대전</button><button class="fl-sbtn" id="flCancel">배치로 돌아가기</button></div>
+      <div class="fl-sbtns" id="flSBtns"><button class="btn primary fl-go" id="flAiNow">AI와 바로 대전</button><button class="btn secondary fl-sbtn" id="flCancel">배치로 돌아가기</button></div>
     </div>`;
   $('#flAiNow').onclick = flSwitchAI;
   $('#flCancel').onclick = () => { flStopSearch(); if(ROOM) ROOM.presence({ fl:null, ft:null, pr:null }).catch(() => {}); G.phase = 'place'; flRender(); };
@@ -489,9 +489,9 @@ function flRenderBattle(b){
   b.innerHTML = `<div class="fl-panel" id="flEnP">
       <div class="fl-head"><span>적 해역 · <b>${flEsc(G.oppNick)}</b></span><span class="fl-fleet" id="flEnFleet"></span></div>
       <div class="fl-board">${flLabels()}<div class="fl-sea" id="flEn"><div class="fl-radar"></div>${flRockLayer()}<div class="fl-ships" id="flEnShips"></div><div class="fl-rdl" id="flRdl"></div>${[...Array(100)].map((_, i) => `<button class="fl-c" data-i="${i}" aria-label="${flName(i)}"></button>`).join('')}</div></div>
-      <div class="fl-bar${G.fx && G.fx.radar ? ' rdr' : ''}"><div class="fl-stat"><small>${G.fx && G.fx.tight ? '남은 포탄' : '발사'}</small><b id="flShots">0</b></div><div class="fl-stat"><small>명중률</small><b id="flAcc">–</b></div>
-        ${G.fx && G.fx.radar ? `<button class="fl-rdb" id="flRdr" aria-pressed="false">${FL_I.radar}<span>레이더<b id="flRdrN">${G.radarN}</b></span></button>` : ''}
-        <button class="fl-fire" id="flFire" disabled>${FL_I.target}<span id="flFireL">${G.fx && G.fx.salvo ? '0/3 조준' : '발사'}</span> <small id="flAimT"></small></button></div>
+      <div class="fl-bar${G.fx && G.fx.radar ? ' rdr' : ''}"><span class="hchip fl-stat"><span class="hv"><b id="flShots">0</b></span><em>${G.fx && G.fx.tight ? '남은 포탄' : '쏜 포탄'}</em></span><span class="hchip fl-stat"><span class="hv"><b id="flAcc">–</b></span><em>명중률</em></span>
+        ${G.fx && G.fx.radar ? `<button class="tool toggle fl-rdb" id="flRdr" aria-pressed="false">${FL_I.radar}<span>레이더</span><b class="cnt" id="flRdrN">${G.radarN}</b></button>` : ''}
+        <button class="btn primary fl-fire" id="flFire" disabled>${FL_I.target}<span id="flFireL">${G.fx && G.fx.salvo ? '0/3 조준' : '발사'}</span> <small id="flAimT"></small></button></div>
     </div>
     <div class="fl-panel" id="flMeP"><div class="fl-mewrap">
       <div><div class="fl-head" style="margin-bottom:0"><span><b>우리 함대</b></span></div>

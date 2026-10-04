@@ -81,6 +81,7 @@ function ballShift(d){
 /* ---- 화면 ---- */
 const BICO = {
   pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></svg>',
+  fast:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.2v11.6a1 1 0 0 0 1.6.8L12 13v4.8a1 1 0 0 0 1.6.8l7.6-5.8a1 1 0 0 0 0-1.6l-7.6-5.8a1 1 0 0 0-1.6.8V11L4.6 5.4A1 1 0 0 0 3 6.2z"/></svg>',
   shield:'<svg viewBox="0 0 24 24"><path d="M12 2.5l7.5 3v6c0 4.6-3.2 8.3-7.5 10-4.3-1.7-7.5-5.4-7.5-10v-6z" fill="currentColor" stroke="#2A1650" stroke-width="2" stroke-linejoin="round"/><path d="M12 6.5l1.3 2.8 3 .4-2.2 2.1.6 3L12 13.3l-2.7 1.5.6-3-2.2-2.1 3-.4z" fill="#fff"/></svg>',
   pierce:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="4" width="11" height="7" rx="2" opacity=".55"/><rect x="9" y="13" width="11" height="7" rx="2" opacity=".55"/><path d="M2.5 21.5L20 4"/><circle cx="4.5" cy="19.5" r="2.4" fill="currentColor" stroke="none"/></svg>',
   scope:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14.5l13-7 2 3.8-13 7z"/><path d="M16 7.5l3.2-1.7 2 3.8-3.2 1.7"/><path d="M9 17l-2 4.5M11 16l2 5.5"/></svg>',
@@ -92,8 +93,8 @@ function ballHud(){
   if(!G || G.id !== 'ball') return;
   const s = (id, v) => { const e = $(id); if(e) e.textContent = v; };
   s('#bline', Math.max(0, G.rowsN - G.next)); s('#bscore', G.broken + '/' + G.total); s('#bballs', '×' + (G.balls + (G.phase === 'aim' ? 0 : G.gained)));
-  const sh = $('#bShield'); if(sh){ sh.classList.toggle('off', !G.shield); sh.setAttribute('aria-label', G.shield ? '별빛 방어막 있음' : '별빛 방어막 깨짐'); }
-  const fs = $('#bFast'); if(fs){ const v = Math.max(G.speed, G.phase === 'shoot' ? G.boost : 1); fs.querySelector('b').textContent = '×' + v; fs.classList.toggle('on', v > 1); }
+  const sh = $('#bShield'); if(sh){ sh.classList.toggle('off', !G.shield); sh.firstElementChild.classList.toggle('off', !G.shield); sh.setAttribute('aria-label', G.shield ? '별빛 방어막 있음' : '별빛 방어막 깨짐'); }
+  const fs = $('#bFast'); if(fs){ const v = Math.max(G.speed, G.phase === 'shoot' ? G.boost : 1); fs.querySelector('b').textContent = '×' + v; fs.classList.toggle('on', v > 1); fs.setAttribute('aria-pressed', v > 1); }
   const aim = G.phase === 'aim' && !G.over && !G.slide && !G.won;
   const it = (id, key, dis) => { const b = $(id); if(!b) return; b.disabled = dis; b.classList.toggle('on', !!G[key]); b.querySelector('i').textContent = G.items[key] > 0 ? '×' + G.items[key] : '씀'; };
   it('#bIPierce', 'pierce', !aim || (G.items.pierce < 1 && !G.pierce));
@@ -105,24 +106,24 @@ function ballHud(){
 }
 function ballStage(st){
   st.innerHTML = `<div class="sb" id="sbRoot">
-    <div class="sb-stat">
-      <button class="sb-ib" id="bPause" aria-label="일시정지">${BICO.pause}</button>
-      <span class="sb-p"><small>남은 줄</small><b id="bline">0</b></span>
-      <span class="sb-p"><small>깬 블록</small><b id="bscore">0</b></span>
-      <span class="sb-p"><small>구슬</small><b id="bballs">×0</b></span>
-      <span class="sb-sh" id="bShield" role="img">${BICO.shield}</span>
-      <button class="sb-ib sb-ff" id="bFast" aria-label="빠르게 보기">⏩<b>×1</b></button>
+    <div class="hud-row sb-hud">
+      <span class="hchip"><span class="hv"><b id="bscore">0</b></span><em>깬 블록</em></span>
+      <span class="hchip"><span class="hv"><b id="bline">0</b></span><em>남은 줄</em></span>
+      <span class="hchip"><span class="hv"><b id="bballs">×0</b></span><em>구슬</em></span>
+      <span class="hchip"><span class="hv"><span class="hlives sb-sh" id="bShield" role="img"><i>★</i></span></span><em>방어막</em></span>
+      <button class="hpause" id="bPause" aria-label="일시정지">${BICO.pause}</button>
     </div>
     <div class="sb-board"><canvas class="sb-cv" id="bcv" aria-label="별빛 구슬 판"></canvas></div>
     <div class="bfoot">
-      <div class="sb-items">
-        <button class="sb-it c1" id="bIPierce" aria-label="관통 구슬: 이번 턴 구슬이 블록을 뚫고 지나가요">${BICO.pierce}<span>관통 구슬</span><i>×1</i></button>
-        <button class="sb-it c2" id="bIScope" aria-label="망원경: 이번 턴 조준선이 두 번 튕긴 곳까지 보여요">${BICO.scope}<span>망원경</span><i>×1</i></button>
-        <button class="sb-it c3" id="bILift" aria-label="밀어 올리기: 모든 블록을 한 줄 위로">${BICO.lift}<span>밀어 올리기</span><i>×1</i></button>
+      <div class="tools-row sb-items">
+        <button class="tool item sb-it" id="bIPierce" aria-label="관통 구슬: 이번 턴 구슬이 블록을 뚫고 지나가요">${BICO.pierce}<span>관통 구슬</span><i class="cnt">×1</i></button>
+        <button class="tool item sb-it" id="bIScope" aria-label="망원경: 이번 턴 조준선이 두 번 튕긴 곳까지 보여요">${BICO.scope}<span>망원경</span><i class="cnt">×1</i></button>
+        <button class="tool item sb-it" id="bILift" aria-label="밀어 올리기: 모든 블록을 한 줄 위로">${BICO.lift}<span>밀어 올리기</span><i class="cnt">×1</i></button>
+        <button class="tool toggle sb-ff" id="bFast" aria-label="빠르게 보기" aria-pressed="false">${BICO.fast}<span>빠르게 <b>×1</b></span></button>
       </div>
       <div class="sb-aim">
         <button class="sb-arr" id="bLeft" aria-label="조준 왼쪽으로 조금">${BICO.left}</button>
-        <button class="b1 sb-go" id="bGo">발사</button>
+        <button class="btn primary sb-go" id="bGo">발사</button>
         <button class="sb-arr" id="bRight" aria-label="조준 오른쪽으로 조금">${BICO.right}</button>
       </div>
     </div></div>`;

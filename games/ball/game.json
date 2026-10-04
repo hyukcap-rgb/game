@@ -1,7 +1,7 @@
 {
   "id": "ball",
   "name": "별빛 구슬",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
   "js": [
     "ball.js"
