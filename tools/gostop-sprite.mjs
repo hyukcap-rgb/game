@@ -5,6 +5,9 @@
 // 출처·라이선스: Marcus Richert(Louie Mantia, Jr. Hanafuda 기반), CC BY-SA 4.0
 import { chromium } from 'playwright'; import fs from 'node:fs';
 const d = JSON.parse(fs.readFileSync(process.argv[3] || 'hwatu-commons.json', 'utf8'));
+/* v1.6: 새로 그린 화투(games/gostop/art/<같은 파일이름>.svg — 새 패·11월 똥, 오리지널)가 있으면 원본 대신 씀 */
+const ART = 'games/gostop/art';
+if(fs.existsSync(ART)) for(const f of fs.readdirSync(ART)) if(f.endsWith('.svg') && d[f]){ d[f] = fs.readFileSync(ART + '/' + f, 'utf8'); console.log('새 그림:', f); }
 const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 /* 게임 패 번호 순서(월마다 k0..k3) */
 const pick = m => { const n = M[m - 1], f = x => `Hwatu ${n} ${x}.svg`;
