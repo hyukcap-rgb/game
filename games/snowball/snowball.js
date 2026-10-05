@@ -8,7 +8,7 @@ NG.snowball = (() => {
   const RULE = {
     MATCH:180, SUNRISE_AT:120, SUNRISE_WARN:100, SAFE_MIN:.30,
     START_MASS:20, DEATH_MASS:15,
-    ABSORB_RATIO:1.2, ABSORB_GAIN:.7,
+    ABSORB_RATIO:1.2, ABSORB_GAIN:.7, ABSORB_OVERLAP:.5,   /* 작은 공 면적의 50% 이상이 덮이면 먹힘(2026-10-05) */
     IDLE_MELT:.005, SUN_MELT:.03, IDLE_SPEED:.2,
     BOOST_COST:20, BOOST_MIN:40, BOOST_MUL:1.8,
     REVIVE_WINDOW:5, REVIVE_BEFORE:120, REVIVE_KEEP:.3, INVULN:3,
@@ -22,6 +22,14 @@ NG.snowball = (() => {
   const snLv = m => { if(m < 20) return 1; const n = 1 + 14 * Math.pow((m - 20) / 1480, 1 / 2.65); return Math.max(1, Math.min(RULE.MAX_LV, Math.floor(n + 1e-9))); };
   const meters = m => .119 * Math.sqrt(m);
   const radiusOf = m => 6 * Math.sqrt(m);
+  /* 작은 원(반지름 r)이 큰 원(R)에 덮인 면적 비율 0~1 (중심 거리 d) */
+  function overlapFrac(d, R, r){
+    if(d >= R + r) return 0; if(d <= R - r) return 1;
+    const a = r * r * Math.acos(Math.max(-1, Math.min(1, (d * d + r * r - R * R) / (2 * d * r))))
+      + R * R * Math.acos(Math.max(-1, Math.min(1, (d * d + R * R - r * r) / (2 * d * R))))
+      - .5 * Math.sqrt(Math.max(0, (-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R)));
+    return a / (Math.PI * r * r);
+  }
   const starOf = lv => lv >= RULE.STAR[2] ? 3 : lv >= RULE.STAR[1] ? 2 : lv >= RULE.STAR[0] ? 1 : 0;
 
   const FOOD = {
@@ -116,7 +124,7 @@ NG.snowball = (() => {
     const fromC = Math.hypot(p.x, p.y);
     if(S.t > RULE.SUNRISE_WARN && fromC > S.safeR * .82 - r){ tx = -p.x; ty = -p.y; ai.mode = 'sun'; ai.boost = fromC > S.safeR && p.mass > 80; }
     else if(threat){ tx = fx_; ty = fy_; ai.mode = 'flee'; ai.boost = p.mass > 90 && S.rng() < .5 * ai.skill; }
-    else if(prey && preyD < 520 * ai.skill + r){ tx = prey.x - p.x; ty = prey.y - p.y; ai.mode = 'chase'; ai.boost = preyD < 240 + r && p.mass > 120 && S.rng() < .6 * ai.skill; }
+    else if(prey && preyD < 520 * ai.skill + r){ tx = prey.x - p.x; ty = prey.y - p.y; ai.mode = 'chase'; ai.boost = preyD > r + radiusOf(prey.mass) + 10 && preyD < 240 + r && p.mass > 120 && S.rng() < .45 * ai.skill;   /* v1.3: 이미 닿아 덮는 중엔 부스트 안 함 → 작은 공(더 빠름)이 피할 수 있음 */ }
     else {
       let best = null, bs = 0;
       for(const f of S.foods){
@@ -182,14 +190,16 @@ NG.snowball = (() => {
       if(p.mass > p.peak){ p.peak = p.mass; p.peakAt = S.t; }
     }
     /* 흡수(1.2배 이상) · 튕김(1.2배 미만) */
-    const deaths = [];
+    const deaths = []; S.meThreat = 0;
     for(let i = 0; i < alive.length; i++) for(let j = i + 1; j < alive.length; j++){
       const a = alive[i], b = alive[j]; if(!a.alive || !b.alive) continue;
       const ra = radiusOf(a.mass), rb = radiusOf(b.mass), dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01;
       if(d > ra + rb) continue;
       const [big, small, rB, rS] = ra >= rb ? [a, b, ra, rb] : [b, a, rb, ra];
       if(rB >= rS * RULE.ABSORB_RATIO && big.invuln <= 0 && small.invuln <= 0){
-        if(d < rB - rS * .4){
+        const ov = overlapFrac(d, rB, rS);
+        if(small.me) S.meThreat = Math.max(S.meThreat, ov);   /* 화면 경고용 */
+        if(ov >= RULE.ABSORB_OVERLAP){
           const pre = small.mass;
           big.mass += pre * RULE.ABSORB_GAIN; big.kills++; big.eaten.absorb += pre * RULE.ABSORB_GAIN;
           big.stickers.push(...small.stickers.slice(-3)); while(big.stickers.length > 14) big.stickers.shift();
@@ -550,6 +560,11 @@ NG.snowball = (() => {
       if(p.me){
         drawBall(c, s.x, s.y, r, p.skin, 'happy', p.stickers, { color:'#3B2150', width:3 }, p.invuln > 0, { vx:p.vx, vy:p.vy, vmax:maxSpeed(radiusOf(p.mass)), seed:0 });
         tags.push(() => pill(c, s.x, s.y - r - (p.skin.acc === 'ribbon' ? .3 * r : 0) - 24, `나 Lv ${snLv(p.mass)}`, '#3B2150', '#fff', null));
+        if(S.meThreat > 0){   /* 덮이는 만큼 빨간 고리가 차오름(50%가 되면 먹힘) */
+          const k = Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP), rr = r + Math.max(2.5, r * .075) + 9;
+          c.lineCap = 'round'; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 9; c.beginPath(); c.arc(s.x, s.y, rr, 0, Math.PI * 2); c.stroke();
+          c.strokeStyle = '#F0306A'; c.lineWidth = 6; c.beginPath(); c.arc(s.x, s.y, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); c.stroke();
+        }
       } else {
         const rel = me.alive ? relation(me, p) : { k:'same', ratio:1 }, R = REL[rel.k];
         drawBall(c, s.x, s.y, r, p.skin, R.mood, p.stickers, { color:R.ring, width:R.w, pulse:rel.k === 'danger' }, p.invuln > 0, { vx:p.vx, vy:p.vy, vmax:maxSpeed(radiusOf(p.mass)), seed:p.seed || (p.seed = seedOf(p.name)) });
@@ -611,8 +626,11 @@ NG.snowball = (() => {
     }
     q('.sn-board').innerHTML = html;
     const ban = q('.sn-ban');
-    if(S.t >= RULE.SUNRISE_AT){ ban.hidden = false; ban.textContent = me.alive && Math.hypot(me.x, me.y) > S.safeR ? '햇볕 구역! 녹고 있어요 −3%/초' : `해돋이 진행 중 · 안전 구역 ${Math.round(S.safeR / WORLD_R * 100)}%`; }
+    ban.classList.toggle('hot', !!(me.alive && S.meThreat > 0));
+    if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}% · 얼른 빠져나가요!`; }
+    else if(S.t >= RULE.SUNRISE_AT){ ban.hidden = false; ban.textContent = me.alive && Math.hypot(me.x, me.y) > S.safeR ? '햇볕 구역! 녹고 있어요 −3%/초' : `해돋이 진행 중 · 안전 구역 ${Math.round(S.safeR / WORLD_R * 100)}%`; }
     else if(S.t >= RULE.SUNRISE_WARN){ ban.hidden = false; ban.textContent = `해돋이 ${Math.ceil(RULE.SUNRISE_AT - S.t)}초 후 · 맵이 좁아져요`; }
+    else if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}% · 얼른 빠져나가요!`; }
     else if(me.invuln > 0){ ban.hidden = false; ban.textContent = `부활 무적 ${me.invuln.toFixed(1)}초`; }
     else ban.hidden = true;
     for(const el of q('.sn-chips').children){
@@ -771,6 +789,7 @@ NG.snowball = (() => {
 .snb .sn-st i{font-style:normal; color:#E9DDF0}
 .snb .sn-g{color:var(--sub)}
 .snb .sn-ban{position:absolute; left:50%; top:140px; transform:translateX(-50%); padding:6px 14px; border-radius:999px; font-size:12.5px; font-weight:900; white-space:nowrap; background:#FF8A3D; color:#2A1300; box-shadow:0 0 0 3px #fff, 0 4px 0 rgba(180,85,15,.35); pointer-events:none}
+.snb .sn-ban.hot{background:#F0306A; color:#fff; box-shadow:0 0 0 3px #fff, 0 4px 0 rgba(160,20,70,.4)}
 .snb .sn-ban[hidden]{display:none}
 .snb .sn-bot{position:absolute; left:0; right:0; bottom:0; padding:10px 12px 12px; border-radius:26px 26px 0 0; display:flex; flex-direction:column; gap:8px}
 .snb .sn-cap{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:11.5px; font-weight:700}
@@ -841,7 +860,7 @@ NG.snowball = (() => {
     help:[
       ['아래 레버로 굴려요', '왼쪽 아래 레버를 끌면 그 방향으로 굴러가고, 많이 끌수록 빨라요. 손을 떼도 마지막 방향으로 계속 굴러가요. (PC는 마우스·방향키도 돼요) 눈송이 +1 · 반짝 결정 +8 · 컵케이크 +25(Lv 5) · 곰인형 +60(Lv 10) · 푸드트럭 +150(Lv 18). 아래 줄에 지금 먹을 수 있는 것이 보여요.'],
       ['멈추면 녹아요', '레버를 가운데에 잡고 있으면 멈추고, 멈추면 초마다 0.5%씩 녹아요. 부스트(스페이스·버튼)는 1.8배 빠르지만 질량을 초당 20 써요. 질량이 15 아래로 녹으면 사라져요.'],
-      ['상대는 링과 표정으로', '지름이 1.2배 이상 크면 상대를 꿀꺽(질량 70% 획득)! 파란 링·겁먹은 얼굴 = 먹을 수 있음, 회색 = 비슷(부딪히면 튕김), 주황 링·자신만만 = 위험. 머리 위 ×숫자는 나와의 크기 비율이에요.'],
+      ['상대는 링과 표정으로', '지름이 1.2배 이상 크고, 작은 공이 절반 넘게 덮이면 꿀꺽(질량 70% 획득)! 닿기만 해선 안 먹혀요 — 덮이기 시작하면 빨간 고리가 차오르니 얼른 빠져나가요. 파란 링·겁먹은 얼굴 = 먹을 수 있음, 회색 = 비슷(부딪히면 튕김), 주황 링·자신만만 = 위험. 머리 위 ×숫자는 나와의 크기 비율이에요.'],
       ['3분과 해돋이', '2:00부터 해가 떠서 1분 동안 맵이 30%까지 좁아져요. 햇볕(주황) 구역에선 초마다 3%씩 녹아요. 솔로는 3:00에 끝난 순간 레벨로 별, 대전은 1명 남거나 3:00에 끝나요.']
     ],
     helpExtra:() => S && S.battle ? [['대전 판정', `나 + 봇 ${RULE.BOTS}명. 흡수당하거나 녹으면 탈락, 2:00 전 탈락이면 5초 안에 한 번 부활(질량 30%, 3초 무적). 순위는 늦게 탈락할수록 높고, 끝까지 남으면 질량 순. ${RULE.WIN_RANK}위 안에 들면 승리예요.`]] : [],
