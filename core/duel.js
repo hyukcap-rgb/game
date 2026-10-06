@@ -380,6 +380,7 @@ function duelCmp(D, A, B){
     if(a.ok && b.ok){ const fa = num(a, 'ft'), fb = num(b, 'ft'); if(fa != null && fb != null && fa !== fb) return fa - fb; if(a.sc !== b.sc) return (b.sc || 0) - (a.sc || 0); }
   }
   const va = val(a), vb = val(b); if(va !== vb) return vb - va;
+  if(num(a, 'tb') != null && num(b, 'tb') != null && a.tb !== b.tb) return a.tb - b.tb;   /* 게임이 주는 동점 가르기(작을수록 앞, 예: 쏜 턴·움직인 수) */
   if((a.mis || 0) !== (b.mis || 0)) return (a.mis || 0) - (b.mis || 0);
   if(lt(a) !== lt(b)) return lt(a) < lt(b) ? -1 : 1;
   return 0;
@@ -577,6 +578,14 @@ function duelAiTick(D){
     duelOnDone(D, P);
   } else if(H.smooth && t >= a.T){ /* 끝나지 않는 컴퓨터(게임이 끝을 정함) */ }
   duelSyncOpp(D);
+}
+
+/* 게임이 컴퓨터 상대를 sec초 늦춤(예: 짝 잇기 얼음 공격을 받은 컴퓨터). 아직 오지 않은 계단과 끝나는 시각을 뒤로 민다 */
+function duelAiDelay(sec){
+  try{ const D = G && G.duel; if(!D || !D.ai || !D.P.ai || D.P.ai.st.dn || G.over || !(sec > 0)) return false;
+    const t = elapsed(); D.ai.T += sec;
+    if(D.aiS && Array.isArray(D.aiS.at)) D.aiS.at = D.aiS.at.map(x => x > t ? x + sec : x);
+    return true; }catch(_){ return false; }
 }
 
 /* ======================================================================
@@ -790,7 +799,7 @@ function duelRender(){
     c.querySelector('.dm-val').innerHTML = P.left && !s.dn ? '나감' : duelValShort(id, s, D);
     c.classList.toggle('left', !!(P.left || P.gone)); c.classList.toggle('first', rk[P.pid] === 1 && D.go);
     const b = c.querySelector('.dm-board');
-    if(b._s !== P.mv){ b._s = P.mv; try{ mini.draw(b, P.mv || '', duelPub3(D, P, rk)); }catch(_){} }
+    if(b._s !== P.mv || P.ai){ b._s = P.mv; try{ mini.draw(b, P.mv || '', duelPub3(D, P, rk)); }catch(_){} }   /* 컴퓨터는 판 글자가 없어 매번(게임이 진행 st로 그림) */
   });
   const r = $('#dmRank'); if(r){ r.textContent = D.go ? rk[D.myPid] + '위' : '-'; r.classList.toggle('first', rk[D.myPid] === 1 && D.go); }
 }
@@ -904,7 +913,7 @@ function duelRead(){
     if(!D.go) continue;
     const st = P.st, prevV = st.v != null ? st.v : 0, prevLf = st.lf;
     if(typeof q.pg === 'number') st.pg = Math.max(st.pg || 0, Math.min(1, q.pg));
-    for(const k of D.kind === 'shared' ? ['t', 'lf', 'mis', 'sc', 'ft'] : ['v', 't', 'lf', 'mis', 'la', 'sc', 'ft']) if(typeof q[k] === 'number') st[k] = q[k];
+    for(const k of D.kind === 'shared' ? ['t', 'lf', 'mis', 'sc', 'ft'] : ['v', 't', 'lf', 'mis', 'la', 'sc', 'ft', 'tb']) if(typeof q[k] === 'number') st[k] = q[k];
     if(q.ok) st.ok = 1;
     if(D.kind === 'shared' && q.cl && typeof q.cl === 'object'){ const s2 = JSON.stringify(q.cl); if(s2 !== P.clSig){ P.clSig = s2; P.cl = Object.assign({}, q.cl); dirty = true; } }
     if(typeof q.mv === 'string') P.mv = q.mv.slice(0, 400);
@@ -930,7 +939,7 @@ function duelSyncOpp(D){
 /* 다른 사람이 끝남 */
 function duelOnDone(D, P){
   if(!G.over){
-    if(P.st.ok && D.end === 'first') duelPing('oppDone', `${esc(P.nick)}님이 다 풀었어요!`, P);
+    if(P.st.ok && D.end === 'first'){ let tx = ''; try{ const f = duelNG(G.id).duelDoneMsg; if(f) tx = f(esc(P.nick)) || ''; }catch(_){} duelPing('oppDone', tx || `${esc(P.nick)}님이 다 풀었어요!`, P); }
     else if(!P.st.ok && D.kind === 'race') duelPing('oppFail', `${esc(P.nick)}님이 멈췄어요 · ${duelRowTxt(D, P.st, false)}`, P);
   } else try{ sfx(P.st.ok ? 'flPing' : 'toggle'); }catch(_){}
   duelJudge(D);
@@ -1173,14 +1182,21 @@ function duelResult(r, a, b, res){
   HOST.duelResult(r, a, b, res || null);
 }
 /* 결과 창 공통 조각: 2명은 양쪽 얼굴·기록·순위, 3명 이상은 순위 목록 */
+/* 게임이 결과 창에 덧붙이는 조각(선택 NG.duelResHtml(rows, res) → HTML 글자열): 끝 판 나란히·풀이 다시 보기 등.
+   rows = res.rows(순위 순) + mv(그 사람의 마지막 미니 화면 글자열, 나는 게임이 직접 읽음). 오류가 나면 빈 글자 */
+function duelResX(){
+  try{ const D = G.duel, f = duelNG(G.id).duelResHtml; if(!f || !D || !D.res) return '';
+    const rows = D.res.rows.map(x => Object.assign({}, x, { mv:x.me ? (D.mv || '') : ((D.P[x.pid] || {}).mv || '') }));
+    const h = f(rows, D.res); return typeof h === 'string' && h ? `<div class="dres-x">${h}</div>` : ''; }catch(_){ return ''; }
+}
 function duelSidesHtml(r, a, b){
   const D = G.duel;
   if(D.v === 3 && D.res){
     const R = D.res;
-    if(R.n > 2) return `<ol class="dres-list">${R.rows.map(x => `<li class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}${x.left ? ' left' : ''}" style="--sc:${x.col}"><span class="dl-rank num">${x.rank}위</span>${x.me ? avatar({ me:true }) : oppAv(x.nick)}${duelShapeSvg(x.shape, x.col, 14)}<b>${x.me ? '나' : esc(x.nick)}${x.ai ? ' <em class="aitag">컴퓨터</em>' : ''}</b><span class="dl-txt">${esc(x.txt)}</span></li>`).join('')}</ol>`;
+    if(R.n > 2) return `<ol class="dres-list">${R.rows.map(x => `<li class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}${x.left ? ' left' : ''}" style="--sc:${x.col}"><span class="dl-rank num">${x.rank}위</span>${x.me ? avatar({ me:true }) : oppAv(x.nick)}${duelShapeSvg(x.shape, x.col, 14)}<b>${x.me ? '나' : esc(x.nick)}${x.ai ? ' <em class="aitag">컴퓨터</em>' : ''}</b><span class="dl-txt">${esc(x.txt)}</span></li>`).join('')}</ol>` + duelResX();
     const me = R.rows.find(x => x.me), op = R.rows.find(x => !x.me);
     const side = x => `<div class="dr-side${x.rank === 1 && !R.tie ? ' win' : ''}">${x.rank === 1 && !R.tie ? '<span class="crown">👑</span>' : ''}${x.me ? avatar({ me:true }) : oppAv(x.nick)}<b>${x.me ? '나' : esc(x.nick)}${x.ai ? ' <em class="aitag">컴퓨터</em>' : ''}</b><span class="num drank">${x.rank}위</span><small>${esc(x.txt)}</small></div>`;
-    return `<div class="dres">${side(me)}<div class="dr-vs">VS</div>${side(op)}</div>`;
+    return `<div class="dres">${side(me)}<div class="dr-vs">VS</div>${side(op)}</div>` + duelResX();
   }
   const nick = D.opp ? D.opp.nick : '상대';
   const side = (me, sc, won) => `<div class="dr-side${won ? ' win' : ''}">${won ? '<span class="crown">👑</span>' : ''}${me ? avatar({ me:true }) : oppAv(nick)}<b>${me ? '나' : esc(nick)}</b>${sc == null ? '' : `<span class="num">${sc ? fmt(sc) + '점' : '멈춤'}</span>`}</div>`;
