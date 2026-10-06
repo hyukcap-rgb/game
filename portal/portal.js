@@ -23,7 +23,7 @@ function dayState(){
   d.solo = d.solo || 0; d.duel = d.duel || 0; d.dw = d.dw || 0; d.dd = d.dd || 0; d.dl = d.dl || 0;
   if(!d.set) d.set = todaySet();
   /* 오늘 시험지에 사이트에서 못 푸는 게임(은퇴한 숲 지킴이 등)이 있으면 그날 과목만 다시 뽑는다. 이미 푼 다른 과목 기록(best·tries)은 그대로 */
-  else if(d.set.some(g => !examReady(g))){ d.set = todaySet(); saveDay(d); }
+  else if(d.set.some(g => !examReady(g)) || d.set.length < todaySet().length){ d.set = todaySet(); saveDay(d); }   /* 과목이 늘어난 날(순발 추가)도 다시 뽑음: 앞 과목은 같은 게임이라 기록 그대로 */
   return d;
 }
 function saveDay(d){ store.set('hp:day:' + dayKey(), d); }
@@ -59,7 +59,7 @@ function giftsToday(){
   return shuffle(FRIENDS.map(f=>f.name), rng).slice(0, 2 + Math.floor(rng()*2));
 }
 function dailySum(d){ return (d.set || todaySet()).reduce((a, g) => a + (d.best[g] || 0), 0); }
-function myTotal(d){ return dailySum(d); }   /* v9: 오늘 점수 = 시험지 5과목 공식 점수 합 */
+function myTotal(d){ return dailySum(d); }   /* v9: 오늘 점수 = 시험지 그날 과목 공식 점수 합 */
 
 /* ===== 점수·리그 v5 (마케팅팀 설계) =====
    (v6) 오늘 점수 = (10게임 중 날짜별 5게임 오늘 최고점 합 + 솔로 점수 + 대전 점수) × (1 + 끈기 보너스). 끈기 보너스 = 연속 출석 하루당 +1%, 최대 +10%
@@ -135,7 +135,7 @@ function rivalDay(o, k){
   const r = mulberry(seedFrom('rd:' + k + o.name)); if(r() > o.p) return 0;
   let v = o.skill * (0.7 + r() * 0.6);
   if(k === today){ const st = 7 + r() * 12, sp = 2 + r() * 5, n = new Date(), h = n.getHours() + n.getMinutes() / 60, q = Math.max(0, Math.min(1, (h - st) / sp)); v = q ? v * (0.45 + 0.55 * q) : 0; }
-  return Math.round(v * 1.05 / 10) * 10;
+  return Math.round(v * 1.05 * subjN(k) / 5 / 10) * 10;   /* 과목 수만큼(6과목 날은 ×1.2) */
 }
 function leagueBoard(wk = weekStartKey(), tier = leagueState().tier, tl = myTL()){
   const days = []; for(let i = 0; i < 7; i++) days.push(addDays(wk, i));
@@ -165,7 +165,7 @@ function prizePool(){
 function worldStat(score){
   const n = new Date(), h = n.getHours() + n.getMinutes() / 60;
   const cnt = Math.round(4200 + 118000 * Math.min(1, Math.max(0.05, (h - 5) / 17)));
-  const top = score ? Math.round(Math.max(0.3, Math.min(99, 100 / (1 + Math.exp((score - 2300) / 500)))) * 10) / 10 : null;
+  const top = score ? Math.round(Math.max(0.3, Math.min(99, 100 / (1 + Math.exp((score - 2300 * subjN() / 5) / (500 * subjN() / 5))))) * 10) / 10 : null;
   return { n:cnt, top };
 }
 /* 상위 % 표시: 시범 운영 중엔 정수 + '예상'(가짜 정밀도 금지) */
@@ -204,18 +204,20 @@ function board(d){
 }
 const meScore = b => b.find(x => x.me).score;
 /* 모드 v6: 오늘 = 10게임 중 날짜별 5개, 솔로 = 새 스테이지 첫 클리어 점수, 대전 = 승패 점수 */
-const DAILY_N = 5, SOLO_CAP = 1000;   /* 대전 보상(DUEL_PTS 등)은 portal/duel-ui.js */
+const SOLO_CAP = 1000;
+/* 시험지 과목 수 = 그날 과목 수(2026-10-07부터 순발 더해 6). 여러 파일이 같은 이름으로 읽게 전역 getter */
+Object.defineProperty(globalThis, 'DAILY_N', { configurable:true, get:() => subjN() });   /* 대전 보상(DUEL_PTS 등)은 portal/duel-ui.js */
 /* ===================== 오늘의 시험지 v9 (기획팀 × 마케팅팀 "같은 문제, 다른 점수.", 2026-09-30) =====================
-   · 매일 5과목(논리·집중·공간·전략·추리) — 과목마다 게임 2개 중 1개, 같은 게임 3일 넘게 연속 금지
+   · 매일 6과목(논리·집중·공간·전략·추리·순발, 2026-10-06까지는 5과목) — 과목마다 게임 2개 중 1개, 같은 게임 3일 넘게 연속 금지
    · 전 국민 같은 문제: 문제 씨앗 = 날짜 + 게임(판 번호·난이도 없음). 난이도는 요일로 고정(월·화 쉬움 · 수·목·금 보통 · 토·일 어려움), 배율 없음
    · 공식 답안 = 게임마다 그날 첫 판(무료). 다시 풀기는 같은 문제 연습(♥1, 기록 없음). 실패·그만하기는 진행률 × 300 부분 점수
-   · 오늘 점수 = 5과목 공식 점수 합(솔로·대전·출석 보너스를 더하지 않음 → 누구와도 그대로 비교)
+   · 오늘 점수 = 그날 과목 공식 점수 합(솔로·대전·출석 보너스를 더하지 않음 → 누구와도 그대로 비교)
    · 성적표: 같은 문제를 푼 사람 중 등수로 과목마다 수·우·미·양·가 (서버 전까지는 분포 가정)
    · 출석은 점수가 아니라 선물(연속 3·7·14·30…일 하트)과 휴식권으로만 */
 /* '전략' = 숫자 합치기 + 오목 묘수풀이(결정 220). 'tower'(숲 지킴이, 삭제됨)는 지난 날짜 뽑기를 그대로 두려고 목록 맨 앞에 이름만 남긴다(SUBJ_UNTIL) */
-const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge','omok']], ['추리', ['fleet','match']]];
+const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge','omok']], ['추리', ['fleet','match']], ['순발', ['flag','mole','twin','arrow','rps']]];   /* '순발'(6번째 과목)은 2026-10-07부터(결정 231). 그 전 날짜는 5과목 그대로 */
 /* 과목에 새로 들어온 게임은 이 날짜부터 시험지에 나온다(그 전 날짜의 시험지는 그대로 → 이미 푼 사람과 같은 문제) */
-const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06', omok:'2026-10-07' };
+const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06', omok:'2026-10-07', flag:'2026-10-07', mole:'2026-10-07', twin:'2026-10-07', arrow:'2026-10-07', rps:'2026-10-07' };
 /* 과목에서 빠진 게임은 이 날짜 전까지만 뽑기에 들어간다(지난 날짜 시험지가 바뀌지 않게). 적용일 다음 날 0시부터 빠짐 */
 const SUBJ_UNTIL = { tower:'2026-10-07' };
 /* 은퇴한 게임: 코드는 없고 지난 기록 표시용 이름만 */
@@ -227,6 +229,8 @@ const hasMode = (g, md) => { const m = NG[g]; return !!m && (m.examMode === md |
 const examReady = g => !!GAMES[g] && (!EXAM_MODE[g] || hasMode(g, EXAM_MODE[g]));
 const examOpt = (id, o = {}) => EXAM_MODE[id] ? Object.assign({ mode:EXAM_MODE[id] }, o) : o;
 const subjGames = (i, kk) => SUBJ[i][1].filter(g => (!SUBJ_FROM[g] || kk >= SUBJ_FROM[g]) && (!SUBJ_UNTIL[g] || kk < SUBJ_UNTIL[g]));
+/* 그날 시험지 과목 수(게임이 하나도 없는 과목은 그날 없음): 2026-10-06까지 5, 10-07부터 6 */
+const subjN = (k = dayKey()) => SUBJ.filter((x, i) => subjGames(i, k).length).length;
 const subjOf = id => { const x = SUBJ.find(q => q[1].includes(id)); return x ? x[0] : ''; };
 const LV_KO = { easy:'쉬움', normal:'보통', hard:'어려움' }, WD_KO = ['일','월','화','수','목','금','토'];
 function wdOf(k = dayKey()){ const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getDay(); }
@@ -254,16 +258,17 @@ function todaySet(k = dayKey()){
   if(TSET_MEMO[k]) return TSET_MEMO[k].slice();
   /* 40일 전부터 차례로 뽑으며 같은 게임이 3일 넘게 이어지면 바꾼다(날짜만으로 결정 → 전 국민 같음) */
   /* 과목마다 그날 쓸 수 있는 게임 중 하나(게임 2개면 예전과 똑같이 뽑힘) */
-  const base = (kk, i) => { const L = subjGames(i, kk); return L[Math.floor(mulberry(seedFrom('subj:' + kk + ':' + i))() * L.length)]; };
+  const base = (kk, i) => { const L = subjGames(i, kk); if(!L.length) return null; return L[Math.floor(mulberry(seedFrom('subj:' + kk + ':' + i))() * L.length)]; };
   const last = SUBJ.map(() => [null, 0]); let out = null;
   for(let j = 40; j >= 0; j--){
     const kk = addDays(k, -j);
-    out = SUBJ.map((x, i) => { let g = base(kk, i); if(last[i][0] === g && last[i][1] >= 3){ const L = subjGames(i, kk).filter(y => y !== g); g = L[seedFrom('subj2:' + kk + ':' + i) % L.length]; }
+    out = SUBJ.map((x, i) => { let g = base(kk, i); if(g == null){ last[i] = [null, 0]; return null; } if(last[i][0] === g && last[i][1] >= 3){ const L = subjGames(i, kk).filter(y => y !== g); g = L[seedFrom('subj2:' + kk + ':' + i) % L.length]; }
       last[i] = [g, last[i][0] === g ? last[i][1] + 1 : 1]; return g; });
   }
   /* 오늘·앞으로의 시험지에 사이트에서 못 푸는 게임(은퇴했거나 시험지 모드가 아직 없는 게임)이 뽑히면 같은 과목의 풀 수 있는 게임으로 대신한다.
      지난 날짜는 뽑힌 그대로(은퇴 게임은 이름만 보임) */
-  if(k >= dayKey()) out = out.map((g, i) => examReady(g) ? g : (subjGames(i, k).concat(SUBJ[i][1]).find(examReady) || g));
+  if(k >= dayKey()) out = out.map((g, i) => g == null || examReady(g) ? g : (subjGames(i, k).concat(SUBJ[i][1]).find(examReady) || g));
+  out = out.filter(g => g != null);   /* 그날 아직 없는 과목(순발 이전 날짜) 빼기 */
   TSET_MEMO[k] = out; return out.slice();
 }
 
@@ -431,7 +436,7 @@ function renderLeague(d, P){
   if(RANK_MODE === 'week'){ renderWeek(d, r); return; }
   const tl = myTL(), ws = worldStat(tl.score);
   $('#lgHead').innerHTML = `<div class="worldcard">${ic('globe')}<span>${DEMO_NUMBERS ? '전 국민이 오늘 같은 문제를 받았어요' : `오늘 전 국민 <b class="num">${fmt(ws.n)}</b>명이 같은 문제를 풀었어요`}${ws.top != null ? `<br>내 위치 <b>${topTxt(ws.top)}</b>` : '<br>첫 과목을 끝내면 내 위치가 나와요'}</span></div>`;
-  $('#rankNote').textContent = '오늘 점수 = 오늘의 시험지 5과목 공식 답안 합 · 모두 같은 문제라 그대로 비교해요 · 자정 마감';
+  $('#rankNote').textContent = '오늘 점수 = 오늘의 시험지 ' + subjN() + '과목 공식 답안 합 · 모두 같은 문제라 그대로 비교해요 · 자정 마감';
   P.b.forEach((x, i) => {
     const row = document.createElement('div'); row.className = 'row' + (x.me ? ' me' : '');
     const stk = x.streak ? `<span class="streak">${ic('flame')}${x.streak}일</span>` : '';
@@ -513,7 +518,7 @@ function renderMe(d, tl, P, lv){
   renderGritCard(tl);
   const played = d.set.filter(g => d.best[g] > 0).length;
   $('#dots').innerHTML = d.set.map(g => `<span class="gem${d.best[g] ? ' on' : ''}" style="--g1:${GCOL[g][0]};--g2:${GCOL[g][1]}" title="${GAMES[g].name}${d.best[g] ? ' · ' + fmt(d.best[g]) + '점' : ''}">${ic(g)}${d.best[g] ? `<i class="gem-ck">${ic('check')}</i>` : ''}</span>`).join('');
-  /* 결정 152: 오늘 점수 = 시험지 5과목 합. 솔로·대전은 따로(여기에 더하지 않음) */
+  /* 결정 152: 오늘 점수 = 시험지 그날 과목 합. 솔로·대전은 따로(여기에 더하지 않음) */
   $('#progTxt').textContent = played === DAILY_N ? `오늘의 시험지 ${DAILY_N}과목을 다 풀었어요!` : `오늘의 시험지 ${played} / ${DAILY_N}과목 · 솔로·대전은 따로 쌓여요`;
   /* 솔로 성장: 별 많은 순 5개 + 나머지는 접기 */
   const grw = id => { const p = advProg(id), c = chOf(p.max);
@@ -708,7 +713,7 @@ function openReport(){
     </div>
     <div class="rp-sec"><h4>이번 주 리그 <small>${TIERS[ls.tier][0]} · ${REGION}</small></h4>
       <div class="mrow"><span>순위</span><b>${lme.score ? '30명 중 ' + lpos + '위' : '아직 기록 없음'}</b></div>
-      <div class="mrow"><span>오늘 점수(시험지 5과목 합)</span><b>${fmt(tl.score)}</b></div>
+      <div class="mrow"><span>오늘 점수(시험지 ${subjN()}과목 합)</span><b>${fmt(tl.score)}</b></div>
       <div class="mrow tot"><span>이번 주 점수</span><b>${fmt(lme.score)}</b></div>
       <div class="mrow"><span>같은 문제 푼 사람 중</span><b>${ws.top != null ? topLabel(ws.top) : '–'}</b></div>
     </div>
@@ -766,7 +771,7 @@ function openInbox(){
 }
 function welcome(){
   openModal(`<h3>오늘의 시험지가<br>도착했습니다</h3><p class="note"><b>같은 문제, 다른 점수.</b> 전 국민이 같은 퍼즐을 풀어요.</p><div class="help welcome">
-    <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>하루 5과목</b><span>과목마다 한 문제, 자정에 바뀌어요.</span></div></div>
+    <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>하루 ${subjN()}과목</b><span>과목마다 한 문제, 자정에 바뀌어요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--g-sudoku)">${ic('check')}</span><div><b>첫 판이 공식 답안(무료)</b><span>다시 풀기는 ♥1, 기록은 안 돼요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--grit)">${ic('clock')}</span><div><b>요일마다 난이도</b><span>오늘은 ${examLabel()}이에요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:${(GAME_META.merge && GAME_META.merge.col) || 'var(--g-fleet)'}">${ic('trophy')}</span><div><b>성적표와 도전장</b><span>과목마다 수·우·미·양·가로 나와요.</span></div></div></div>
@@ -792,14 +797,14 @@ function examFinish(win){
     const q = calcScore(); const { base, time, paw, l1, l2, l3 } = q; score = q.score;
     const prev = d.best[id];
     if(official){ d.best[id] = score; saveDay(d); newRec = true; }
-    if(!d.itemDone && d.set && d.set.every(g => d.best[g] > 0)){ d.itemDone = 1; saveDay(d); itemReward([['foxAuto', 1]], '오늘의 시험지 5과목 완주'); }
+    if(!d.itemDone && d.set && d.set.every(g => d.best[g] > 0)){ d.itemDone = 1; saveDay(d); itemReward([['foxAuto', 1]], '오늘의 시험지 ' + d.set.length + '과목 완주'); }
     const d2 = dayState(), r1 = myPos(d2), tl2 = myTL();
     const passed = realFr ? r1.b.filter(x => !x.me && x.score < meScore(r1.b)).map(x => x.name).filter(n => !before.includes(n)) : [];
     const bits = [attTxt, firstToday && STREAK_MS.includes(tl2.streak) ? `연속 ${tl2.streak}일 달성!` : '',
       realFr ? (r1.pos < r0.pos ? `친구 순위 ${r0.pos}위 → ${r1.pos}위` : `친구 ${r1.n}명 중 ${r1.pos}위`) : '',
       passed.length ? `${passed.map(esc).join(', ')}님을 제쳤어요` : '',
       d2.set.every(g => d2.tries[g] > 0) && worldStat(tl2.score).top != null ? `오늘 시험지 예상 상위 ${Math.max(1, Math.round(worldStat(tl2.score).top))}%` : ''];
-    brk = `<details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(5과목 공식 답안 합)</span><b>${fmt(tl2.score)}점</b></div></details>`;
+    brk = `<details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(${subjN()}과목 공식 답안 합)</span><b>${fmt(tl2.score)}점</b></div></details>`;
     html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${NG[id].winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
       <p class="note">${official ? '공식 답안으로 기록됐어요' : `다시 풀기 판이에요 · 공식 기록 ${fmt(prev)}점은 그대로예요`}</p>
       ${sumCard(gradeLine(score), bits)}${typeof rpFriendLine === 'function' ? rpFriendLine(id, d.best[id] || score) : ''}${brk}${chalBox(score)}`;

@@ -117,7 +117,7 @@ body[data-mode="ball"]{background:linear-gradient(180deg,#2A1B6E 0%,#1C1250 55%,
 .hero-score .n em{font-style:normal; font-family:var(--heavy); font-size:20px; color:var(--gold); -webkit-text-stroke:5px var(--outline2); paint-order:stroke fill}
 .hero-score p{margin:6px 0 0; font-family:var(--disp); font-size:15px; line-height:1.35; color:#EDE7FF; text-wrap:balance}
 .hero-score p em{font-style:normal; color:#FFD86B}
-.gems{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:16px 0 0}
+.gems{display:grid; grid-auto-flow:column; grid-auto-columns:1fr;   /* 과목 수만큼 한 줄(5·6과목) */ gap:8px; margin:16px 0 0}
 .gem{position:relative; aspect-ratio:1; max-width:56px; justify-self:center; width:100%; border-radius:14px; display:grid; place-items:center; color:rgba(255,255,255,.28);
   background:#170C45; box-shadow:inset 0 3px 6px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.18)}
 .gem .ico{width:52%; height:52%}
