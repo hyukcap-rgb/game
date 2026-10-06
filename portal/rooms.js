@@ -636,7 +636,7 @@ function frTogether(f){
   if(!duelLive()){ frInvitePlay(f); return; }   /* 실시간이 안 되면 예전처럼 오늘의 시험지로 부르기 */
   const set = dayState().set, ids = GAME_IDS.filter(g => rmOk(g) && !isAdult(g)).sort((a, b) => (set.includes(b) ? 1 : 0) - (set.includes(a) ? 1 : 0));
   openModal(`<div class="frpickg"><p class="kick">${escH(f.nick)}님과 같이 하기</p><h3>어떤 게임으로 붙을까요?</h3>
-    <div class="gpick">${ids.map(g => `<button data-tg="${g}" style="--gc:${GCOL[g][1]}"><span class="g-art">${ART[g]()}</span><b>${GAMES[g].name}</b>${duelMaxOf(g) > 2 ? `<em class="mx5">${duelMaxOf(g)}명</em>` : set.includes(g) ? '<em>오늘</em>' : ''}</button>`).join('')}</div>
+    <div class="gpick">${ids.map(g => `<button data-tg="${g}" style="--gc:${GCOL[g][1]}"><span class="g-art">${ART[g]()}</span><b>${GAMES[g].name}</b><em class="mx5">${duelMaxOf(g) > 2 ? duelMaxOf(g) + '명' : '2명'}</em>${set.includes(g) ? '<em class="tdy">오늘</em>' : ''}</button>`).join('')}</div>
     <div class="mbtns one"><button class="b2" id="tgBack">뒤로</button></div></div>`);
   $('#tgBack').onclick = frHub;
   document.querySelectorAll('[data-tg]').forEach(b => b.onclick = () => rmCreateSheet(b.dataset.tg, { friend:f, back:() => frTogether(f) }));
