@@ -59,6 +59,32 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임) |
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 
+## 대전 v3 (선택, `core/duel.js`, docs/21 3절) — 2~5명 · 순위 · 사건 · 선점 · 차례
+아무것도 안 넣으면 지금처럼 **1:1 경주**(먼저 다 푼 사람이 1위, 그 순간 0.7초 뒤 모두 끝)로 돈다.
+
+| 칸 | 기본값 | 뜻 |
+|---|---|---|
+| `duelKind` | `'race'` | `'race'` 경주 · `'score'` 점수(정해진 횟수 뒤 점수) · `'shared'` 선점(한 판을 같이 보고 먼저 누른 사람이 차지) · `'turn'` 차례. 자기 방식은 지금처럼 `duelLaunch` |
+| `duelMax` | `2` | 최대 인원 2~5. 빠른 대전은 이만큼 모으거나, 2명 이상 + 두 번째 입장 6초, 또는 12초에 시작(12초에 혼자면 컴퓨터 1:1) |
+| `duelCfg(o)` | 그 난이도 `levels` | 대전 판 설정을 돌려줌. `o = { n:인원, pace:'n'|'s', avoid:[최근 본 열쇠], diff:'easy'|'normal'|'hard' }`. **문제 내용은 여기서 rng로 만들지 않는다**(init의 rng로만). `avoid`는 `G.duel.avoid`로도 읽을 수 있음 |
+| `duelSlow(cfg)` | `limit × 2` | '느긋하게'일 때 설정 바꾸기(차례 게임은 차례 시간 ×2 등). 없으면 엔진이 limit만 2배, `duelTurn.timeout`도 2배 |
+| `duelStat.get()` | | 돌려주는 값에 `mis`(틀린 횟수)를 **더함**. 경주·선점 게임은 넣는 것을 권함(없으면 엔진이 `lf`가 줄어든 횟수로 셈). `v`가 오른 시각(`la`)은 엔진이 셈 |
+| `duelRank(a, b)` | 엔진 기본 | 순위 비교를 바꿀 때만. `a`·`b` = `{ pg, v, t, lf, mis, la, dn, ok, sc, ft, left }`, 앞서면 음수 |
+| `duelEnd` | 종류별 | `'first'`(경주 기본: 누가 다 풀면 모두 끝) · `'all'`(점수 기본: 모두 끝나거나 시간) · `'game'`(선점·차례 기본: 게임이 `duelEndNow()`) |
+| `onDuelEvent(ev, from)` | | 다른 사람이 `duelSend`로 보낸 사건. `ev = { n, kind, data, at }`, `from` = 참가자 |
+| `onDuelClaim(key, owner, info)` | | 선점 주인이 정해지거나 바뀔 때(내 것 포함). `info = { mine, lost, at, sure }`(`lost` = 내 것으로 보였다가 더 이른 사람에게 뺏김 → "간발의 차" 알림은 엔진이 띄움, 게임은 표시·점수만 되돌림. `sure` = 0.4초 확인 끝) |
+| `duelKeys()` | | 선점 게임의 차지할 수 있는 열쇠 목록(컴퓨터 상대가 계단마다 하나씩 차지). 없으면 컴퓨터는 수만 올라감 |
+| `duelMini` | | 미니 화면 `{ get:() => 글자열(400B 이하), draw:(el, s, p) => void }`. 있으면 칩 줄 대신 상대 카드(72×64, 그림 칸 약 60×42) |
+| `duelAi(rng, o)` | 엔진 사람 흉내 | 게임 전용 컴퓨터 결과 `{ ok, T(초), sc, fail(못 끝낼 때 멈추는 진행 0~1), pts? }`. `o = { pace, cfg }`. `T`를 getter로 주면 예전처럼 연속으로 움직임(오목) |
+| `duelAvoidKey()` | | 이번 판을 나타내는 열쇠(예: 숨은그림 장면 이름). 엔진이 최근 3개를 저장해 다음 대전 `avoid`로 넘김(빠른 대전은 방장 목록을 모두가 씀) |
+| `duelLaunch(o)` | | 자기 방식 대전(함대·고스톱·끝말잇기). 지금은 `o = { pace }`를 받음(무시해도 됨) |
+| `duelPlace` | `'bar'` | `'top'`이면 막대·칩 줄을 늘 맨 위에(상단 바 안에 넣지 않음) |
+
+**엔진이 주는 함수(전역)**: `duelPlayers()`(자리 순서 `[{ pid, seat, nick, me, ai, col, shape, st, left, gone, rank }]`, 색·모양은 내 화면 기준: 나는 늘 분홍 원) · `duelMe()` · `duelIsHost()` ·
+`duelSend(kind, data)`(200B 이하, 나에게는 안 옴) · `duelClaim(key)` → `{ ok }` · `duelOwner(key)` · `duelEndNow(why)` · `duelNotify(text, { from, kind:'good'|'bad'|'info' })` · `duelSeed()` · `duelRound()` → `{ r, series, freeLeft }` ·
+`duelTurn = { order(), cur(), n(), mine(), act(kind, data, { next:false로 차례 유지 }), onAct(cb), timeout(sec), left() }`(`onAct`는 다른 사람의 수와 엔진의 대신 하기 `{ kind:'timeout'|'skip', auto:true, rng }`만 부름, 내 수는 게임이 바로 그림).
+게임 상태는 같은 씨앗·같은 사건 순서로 모든 기기가 같게 계산한다. `G.duel.opp`·`G.duel.oppPeer`·`G.duel.nr`(1:1 게임이 쓰던 이름)은 그대로 있다.
+
 ## 새 게임 추가
 1. `games/<id>/` 만들기: `<id>.js`(마지막에 `NG.<id> = {…}`), 필요하면 `<id>.css`, `game.json`(`order`는 마지막 번호), `CLAUDE.md`(다른 게임 것을 본떠 같은 제목 순서로).
 2. 사이트에 보이려면 `portal/portal.js` 맨 위 `registerGames([...])`에 id를 더하고, 오늘의 시험지 과목(`SUBJ`)에 넣을지 사용자에게 묻는다.

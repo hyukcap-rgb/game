@@ -18,7 +18,7 @@ let esbuild = null; try{ esbuild = require('esbuild'); }catch(_){ console.warn('
 
 /* 엔진·사이트 파일(순서 중요) */
 const CORE_CSS = ['core/base.css', 'core/effects.css'];
-const PLAY_CSS = ['core/play.css'];
+const PLAY_CSS = ['core/play.css', 'core/duel.css'];   /* duel.css: 대전 v3 화면(칩 줄·알림·찾기 창) */
 const CORE_JS = ['core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/scene.js', 'core/net.js', 'core/duel.js'];
 const PORTAL_CSS = ['portal/portal.css'];
 const PORTAL_JS = ['portal/portal.js', 'portal/viral.js', 'portal/friends.js', 'portal/events.js', 'portal/rooms.js', 'portal/start.js'];
