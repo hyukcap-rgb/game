@@ -326,20 +326,20 @@ NG.omok = (() => {
     order:['rock', 'white', 'tiny', 'pre'],
     info:{
       rock:{ name:'바위 칸', desc:'판 곳곳에 아무도 둘 수 없는 바위가 있어요. 바위는 줄을 끊어요 — 바위 너머로는 이어지지 않아요.' },
-      white:{ name:'백으로 두기', desc:'이번엔 내가 백이에요. AI 흑이 먼저 두고, 3·3 금지는 흑에게만 있어요. 묘수풀이도 백으로 풀어요.' },
+      white:{ name:'백으로 두기', desc:'이번엔 내가 백이에요. 컴퓨터 흑이 먼저 두고, 3·3 금지는 흑에게만 있어요. 묘수풀이도 백으로 풀어요.' },
       tiny:{ name:'작은 판', desc:'11×11 작은 판이에요. 칸이 커서 두기 쉽지만 공격과 수비가 금방 부딪혀요.' },
-      pre:{ name:'먼저 깔린 돌', desc:'AI 대국이 판 가운데에 흑·백 돌이 몇 개 놓인 채로 시작해요. 처음부터 수 싸움이에요.' }
+      pre:{ name:'먼저 깔린 돌', desc:'컴퓨터 대국이 판 가운데에 흑·백 돌이 몇 개 놓인 채로 시작해요. 처음부터 수 싸움이에요.' }
     },
     twists:['flash', 'bare', 'tight', 'deep', 'fog'],
     twInfo:{
-      flash:{ name:'번개', desc:'AI 대국은 한 수 10초! 묘수풀이는 제한 시간이 짧아요.' },
+      flash:{ name:'빠른 판', desc:'컴퓨터 대국은 한 수 15초! 묘수풀이는 제한 시간이 짧아요.' },
       bare:{ name:'맨손', desc:'힌트와 무르기 없이 실력으로만 둬요.' },
-      tight:{ name:'외줄 타기', desc:'묘수풀이는 다시 하기·여유 수 없이 딱 정해진 수 안에. AI 대국은 무르기 없이, 시간을 넘기면 바로 져요.' },
-      deep:{ name:'깊은 수', desc:'묘수는 한 수 더 길고, AI는 한 단계 더 세요.' },
+      tight:{ name:'외줄 타기', desc:'묘수풀이는 다시 하기·여유 수 없이 딱 정해진 수 안에. 컴퓨터 대국은 무르기 없이, 시간을 넘기면 바로 져요.' },
+      deep:{ name:'깊은 수', desc:'묘수는 한 수 더 길고, 컴퓨터는 한 단계 더 세요.' },
       fog:{ name:'안개', desc:'상대가 마지막에 둔 자리와 3·3 금지 표시가 보이지 않아요. 판을 잘 살펴요!' }
     }
   };
-  const RULE_TIP = { rock:'바위는 줄을 끊어요', white:'나는 백', tiny:'11×11 판', pre:'돌이 깔린 채 시작', flash:'한 수 10초', bare:'힌트·무르기 없음', tight:'한 번에 끝까지', deep:'더 깊은 수', fog:'마지막 수 표시 없음' };
+  const RULE_TIP = { rock:'바위는 줄을 끊어요', white:'나는 백', tiny:'11×11 판', pre:'돌이 깔린 채 시작', flash:'한 수 15초', bare:'힌트·무르기 없음', tight:'한 번에 끝까지', deep:'더 깊은 수', fog:'마지막 수 표시 없음' };
   /* 자리 k: 1 AI(새 규칙 소개) · 2 묘수 · 3 AI · 4 묘수 · 5 AI(어려움) · 6 묘수(변주 소개) · 7 AI · 8 묘수 · 9 묘수(쉬어가기) · 10 AI(보스) */
   const KIND = [null, 'ai', 'pz', 'ai', 'pz', 'ai', 'pz', 'ai', 'pz', 'pz', 'ai'];
   const AI_NAME = ['쉬움', '보통', '어려움'];
@@ -354,14 +354,14 @@ NG.omok = (() => {
     const rocks = has('rock') ? (size === 11 ? 4 : 6) + (p.boss ? 2 : 0) : 0;
     const tight = tw === 'tight', bare = tw === 'bare' || tight;
     const cfg = { kind, n:size, me, side:me, ai, rocks, pre:has('pre') && kind === 'ai' ? 3 : 0, fog:tw === 'fog',
-      turn:tw === 'flash' ? 10 : 30, tight, mj:mj.slice(), tw, boss:p.boss, hard:p.hard, stage:n };
+      turn:tw === 'flash' ? 15 : 30, tight, mj:mj.slice(), tw, boss:p.boss, hard:p.hard, stage:n };
     if(kind === 'pz') Object.assign(cfg, { N, extra:tight ? 0 : 2, tries:tight ? 1 : 3, hints:bare ? 0 : 1, limit:Math.round((60 + 40 * N) * (tw === 'flash' ? .6 : 1) / 5) * 5 });
     else Object.assign(cfg, { hints:bare ? 0 : 2, undos:bare ? 0 : 2, limit:0 });
     return cfg;
   }
   function stageText(c){
     const side = c.kind === 'pz' ? c.side : c.me;
-    return c.kind === 'pz' ? `묘수풀이 · ${CNAME(side)} ${c.N}수 안에 이기기 · ${mmss(c.limit)}${c.tries === 1 ? ' · 기회 1번' : ''}` : `AI 대국(${AI_NAME[c.ai]}) · 나는 ${CNAME(c.me)}${c.n === 11 ? ' · 11×11' : ''} · 한 수 ${c.turn}초`;
+    return c.kind === 'pz' ? `묘수풀이 · ${CNAME(side)} ${c.N}수 안에 이기기 · ${mmss(c.limit)}${c.tries === 1 ? ' · 기회 1번' : ''}` : `컴퓨터 대국(${AI_NAME[c.ai]}) · 나는 ${CNAME(c.me)}${c.n === 11 ? ' · 11×11' : ''} · 한 수 ${c.turn}초`;
   }
 
   /* ===================== 화면 상태 ===================== */
@@ -424,18 +424,22 @@ NG.omok = (() => {
     else if(last >= 0 && !m.fog){ const [x, y] = P(last); h += `<circle class="om-last" cx="${x}" cy="${y}" r="1.35" fill="${m.B.b[last] === BLACK ? '#FF5A6E' : '#E5484D'}"/>`; }
     /* 내 차례이고 내가 흑이면 3·3 금지 자리에 × */
     if(!m.fog && m.me === BLACK && m.turn === BLACK && !m.over && m.forbidAt !== m.hist.length){ m.forbidAt = m.hist.length; m.forbid = cands(m.B).filter(i => isForbidden(m.B, i)); }
-    if(!m.fog && m.me === BLACK && m.turn === BLACK && !m.over && m.forbid) m.forbid.forEach(i => { const [x, y] = P(i); h += `<path class="om-ban" d="M${x - 2.2} ${y - 2.2}l4.4 4.4M${x + 2.2} ${y - 2.2}l-4.4 4.4"/>`; });
+    if(!m.fog && m.me === BLACK && m.turn === BLACK && !m.over && m.forbid){
+      /* 처음 × 가 생기면 한 번만 손가락 안내: × 자리를 동그라미로 깜빡이고 "흑은 3·3 금지예요"(세대별 테스트 S-OM-6) */
+      if(m.forbid.length && m.tip33 == null && !store.get('hp:omok:tip33', 0)){ m.tip33 = m.hist.length; store.set('hp:omok:tip33', 1); try{ msg('<b class="sm">× 자리</b><span>흑은 3·3 금지예요 · 눌러 보면 알려 줘요</span>', 'om-pop'); T(turnMsg, 3600); }catch(_){} }
+      m.forbid.forEach(i => { const [x, y] = P(i); h += `<path class="om-ban" d="M${x - 2.2} ${y - 2.2}l4.4 4.4M${x + 2.2} ${y - 2.2}l-4.4 4.4"/>${m.tip33 === m.hist.length ? `<circle class="om-bantip" cx="${x}" cy="${y}" r="5.4"/>` : ''}`; });
+    }
     el.innerHTML = h;
   }
   function drawPreview(){
     const m = S(), el = $('#omPrev'), gd = $('#omGuide'), btn = $('#omPut'), co = $('#omCoord'); if(!el) return;
     const i = m.preview;
-    if(i == null || !myTurn(m)){ el.innerHTML = ''; if(gd) gd.innerHTML = ''; if(btn){ btn.disabled = true; btn.querySelector('small').textContent = ''; } if(co) co.innerHTML = myTurn(m) ? '자리를 눌러 골라요' : (m.over ? '' : '상대 차례'); return; }
+    if(i == null || !myTurn(m)){ el.innerHTML = ''; if(gd) gd.innerHTML = ''; if(btn){ btn.disabled = true; btn.querySelector('small').textContent = ''; } if(co) co.innerHTML = myTurn(m) ? (m.slowable && m.myMoves === 0 ? '자리를 눌러 골라요 · 시계를 누르면 한 수 시간을 바꿔요' : '자리를 눌러 골라요') : (m.over ? '' : '상대 차례'); return; }
     const [x, y] = P(i), W = m.B.n * 10, ban = m.me === BLACK && isForbidden(m.B, i);
     gd.innerHTML = `<path d="M5 ${y}H${W - 5}M${x} 5V${W - 5}" class="om-guide"/>`;
     el.innerHTML = `<g class="om-ghost${ban ? ' ban' : ''}">${stoneSvg(m.me, x, y)}</g><circle cx="${x}" cy="${y}" r="6.3" class="om-ring${ban ? ' ban' : ''}"/>`;
     if(btn){ btn.disabled = ban; btn.querySelector('small').textContent = cellName(m, i); }
-    if(co) co.innerHTML = ban ? '<b class="bad">3·3 금지 자리예요</b>' : '<b>' + cellName(m, i) + '</b> 맞으면 [두기] · 같은 자리를 한 번 더 눌러도 돼요';
+    if(co) co.innerHTML = ban ? '<b class="bad">3·3 금지 자리예요</b>' : '<b>' + cellName(m, i) + '</b> 분홍 자리가 맞으면 [두기] · 한 번 더 눌러도 돼요';
   }
   function msg(html, cls){ const e = $('#omMsg'); if(!e) return; e.className = 'om-msg ' + (cls || ''); e.innerHTML = html; }
   function turnMsg(){
@@ -444,7 +448,7 @@ NG.omok = (() => {
     if(m.turn === m.me) msg(`<span><b class="sm">내 차례</b> · ${CNAME(m.me)}${m.me === BLACK && !m.fog ? ' · × 자리는 3·3 금지' : ''}</span>`);
     else msg(`<span class="om-think">${oppName(m)} 생각 중<i></i><i></i><i></i></span>`);
   }
-  function oppName(m){ return m.mode === 'duel' && G.duel ? (G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : 'AI') : 'AI' + (m.mode === 'ai' ? '(' + AI_NAME[m.aiLv] + ')' : ''); }
+  function oppName(m){ return m.mode === 'duel' && G.duel ? (G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : '컴퓨터') : '컴퓨터' + (m.mode === 'ai' ? '(' + AI_NAME[m.aiLv] + ')' : ''); }
   function hud(){
     const m = S(); if(!m) return;
     const mv = $('#omMv'); if(mv) mv.textContent = m.myMoves;   /* 묘수는 칩에 '/최대 수'가 따로 붙어 있음 */
@@ -452,19 +456,24 @@ NG.omok = (() => {
     const bk = $('#omBack'); if(bk){ const left = m.mode === 'pz' ? m.triesLeft - 1 : m.undoLeft; bk.querySelector('b').textContent = Math.max(0, left); bk.disabled = left <= 0 || m.over || m.busy || (m.mode === 'pz' ? m.myMoves === 0 : (m.turn !== m.me || m.myMoves === 0)); }
     const lv = $('#omLives'); if(lv && m.mode === 'pz'){ lv.innerHTML = '기회 ' + Array.from({ length:m.tries }, (_, k) => `<i${k >= m.triesLeft ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + m.triesLeft + '번'); }
     const me = $('#omMe'), op = $('#omOp');
-    if(me) me.classList.toggle('on', m.turn === m.me && !m.over);
-    if(op) op.classList.toggle('on', m.turn !== m.me && !m.over);
+    if(me){ me.classList.toggle('on', m.turn === m.me && !m.over); me.classList.toggle('away', !!m.away); const e = me.querySelector('em'); if(e && m.mode !== 'pz') e.textContent = m.away ? '자리 비움' : CNAME(m.me) + ' · ' + m.myMoves + '수'; }
+    if(op){ op.classList.toggle('on', m.turn !== m.me && !m.over); op.classList.toggle('away', !!m.oppAway); const e = op.querySelector('em'); if(e) e.textContent = m.oppAway ? '자리 비움' : '상대 · ' + CNAME(m.opp); }
+    /* 가운데 칩 아래 줄: 첫 수 전(고를 수 있을 때)은 속도, 그다음은 수 번호 */
+    const no = $('#omNo'); if(no) no.textContent = m.over ? '끝' : m.slowable && m.myMoves === 0 ? (m.slow ? '느긋하게 ⇄' : '보통 ⇄') : (m.hist.length + 1) + '번째 수';
     m.best = bestLine(m.B, m.me); m.oppBest = bestLine(m.B, m.opp);
   }
 
   /* ----- 배치 ----- */
   function layout(){
     const m = S(), wrap = $('#omBoard'), root = document.querySelector('.ng-omok'); if(!wrap || !root || !m) return;
-    const W = Math.min((root.clientWidth || 360) + 16, 540);   /* 판은 양옆 여백을 8px씩 더 쓴다(.om-board 음수 여백) */
+    /* 판은 화면 폭 끝까지(양옆 3px만 남김, 390px 폭에서 교차점 약 25px). 판이 #stage보다 넓으면 가운데 맞춤으로 양옆에 같은 만큼 나간다 */
+    const vw = Math.min(document.documentElement.clientWidth || innerWidth || 390, innerWidth || 9999);
+    const W = Math.min(Math.max((root.clientWidth || 360) + 16, vw - 6), 560);
     const top = wrap.getBoundingClientRect().top + (window.scrollY || 0);
     const H = (innerHeight || 760) - top - 112;   /* 아래 좌표 안내 + 조작 줄 자리 */
     const s = Math.max(250, Math.floor(Math.min(W, H)));
     wrap.style.width = s + 'px'; wrap.style.height = s + 'px';
+    wrap.style.marginLeft = wrap.style.marginRight = Math.min(0, Math.floor(((root.clientWidth || s) - s) / 2)) + 'px';
     /* 화면 높이 채우기(보이기만): 판은 가운데, 두기·힌트·다시 줄은 엄지 자리(아래)로 */
     try{ const rt = root.getBoundingClientRect().top + (window.scrollY || 0); root.style.minHeight = Math.max(0, Math.floor((innerHeight || 760) - rt - 20)) + 'px'; }catch(_){}
   }
@@ -476,12 +485,36 @@ NG.omok = (() => {
     return y * n + x;
   }
 
+  /* ----- 돋보기(세대별 테스트 S-OM-2): 판을 누르고 있는 동안 손가락 위 120px 원 안에 3배로 크게 + 반투명 돌.
+     보이기만 한다(판 상태·대전과 무관, pointer-events:none). 판 SVG를 그대로 복사해 viewBox만 고른 자리로 옮긴다 ----- */
+  const LOUPE = 120, LOUPE_Z = 3;
+  function loupeShow(e){
+    try{
+      const m = S(), svg = $('#omSvg'); if(!svg || m.preview == null) return;
+      let el = document.getElementById('omLoupe');
+      if(!el){ el = document.createElement('div'); el.id = 'omLoupe'; el.className = 'om-loupe'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
+      const r = svg.getBoundingClientRect(), k = r.width / (m.B.n * 10), w = LOUPE / (LOUPE_Z * k), [x, y] = P(m.preview);
+      if(el.dataset.v !== m.uid + ':' + m.hist.length + ':' + m.preview){
+        el.dataset.v = m.uid + ':' + m.hist.length + ':' + m.preview;
+        el.innerHTML = `<svg viewBox="${x - w / 2} ${y - w / 2} ${w} ${w}" width="${LOUPE}" height="${LOUPE}">${svg.innerHTML.replace(/ id="om(Guide|Stones|Marks|Prev)"/g, '')}</svg><i class="om-lx"></i>`;
+      }
+      const cx = e ? e.clientX : r.left + x * k, cy = e ? e.clientY : r.top + y * k;
+      const vw = document.documentElement.clientWidth || innerWidth;
+      let lx = Math.max(4, Math.min(vw - LOUPE - 4, cx - LOUPE / 2)), ly = cy - LOUPE - 34;
+      if(ly < 4) ly = cy + 40;   /* 판 맨 위 줄이면 손가락 아래로 */
+      el.style.transform = `translate(${Math.round(lx)}px, ${Math.round(ly)}px)`; el.classList.add('on');
+    }catch(_){}
+  }
+  function loupeHide(){ try{ const el = document.getElementById('omLoupe'); if(el) el.classList.remove('on'); }catch(_){} }
+
   /* ----- 두기 ----- */
-  function playerPut(i){
+  function playerPut(i, auto){
     const m = S();
     if(!myTurn(m) || G.over || G.paused || (isDuel() && !G.duel.go)) return;
     if(m.B.b[i] !== EMPTY){ return; }
     if(m.me === BLACK && isForbidden(m.B, i)){ sfx('omokBan'); msg('<b class="bad">3·3 금지</b><span>흑은 열린 3을 두 줄 만들 수 없어요</span>', 'om-pop'); try{ fxShake($('#omBoard'), 3); }catch(_){} T(turnMsg, 1400); return; }
+    if(!auto && (m.awayRun || m.away)){ m.awayRun = 0; m.away = false; if(m.mode === 'duel' && duelLive()) pubMoves(); }   /* 직접 두면 '자리 비움'이 풀림 */
+    loupeHide();
     m.preview = null; m.myMoves++;
     if(m.mode === 'duel' && duelLive()){ m.myMv.push(i); pubMoves(); }
     put(i, m.me);
@@ -492,7 +525,7 @@ NG.omok = (() => {
     m.B.b[i] = c; m.hist.push(i); m.turnUsed = 0; m.oppWait = 0;
     drawStones(i); drawPreview();
     sfx(c === m.me ? 'omokPut' : 'omokPutOpp', { c }); fxBuzz(10);
-    try{ const svg = $('#omSvg'); if(svg && !FXR.reduce){ const r = svg.getBoundingClientRect(), [x, y] = P(i), k = r.width / (m.B.n * 10); fxRing(r.left + x * k, r.top + y * k, c === BLACK ? '#6B5BD6' : '#FFFFFF', 14, .35, 3); } }catch(_){}
+    try{ const svg = $('#omSvg'); if(svg && !FXR.reduce){ const r = svg.getBoundingClientRect(), [x, y] = P(i), k = r.width / (m.B.n * 10); fxRing(r.left + x * k, r.top + y * k, c === BLACK ? '#6B5BD6' : '#FFFFFF', 22, .4, 3); } }catch(_){}
     if(line){ m.win = line; m.winner = c; drawStones(-1); end(c === m.me ? 'win' : 'lose'); return; }
     if(isFull(m.B)){ end('draw'); return; }
     m.turn = other(c); hud(); turnMsg(); drawMarks();
@@ -584,30 +617,60 @@ NG.omok = (() => {
     m.turn = m.me; m.myMoves--; m.undoLeft--; m.undos++; m.preview = null; m.forbidAt = null;
     sfx('omokUndo'); drawStones(-1); drawPreview(); hud(); turnMsg();
   }
-  /* 차례 시간 초과: 대신 둠(보통 AI) — 외줄 타기는 바로 짐 */
+  /* 차례 시간 초과(세대별 테스트 S-OM-7): 처음 한 번만 '대신 두기'(보통 컴퓨터) 안내,
+     두 번째부터는 '자리 비움' 표시(판이 멈추지 않게 계속 대신 둠), 세 번 연속이면 기권패. 외줄 타기는 바로 짐 */
   function timeOut(){
     const m = S(); if(!myTurn(m)) return;
     if(m.tight){ m.fail = 'turn'; m.result = 'lose'; m.over = true; msg('<b class="bad">시간 초과</b><span>외줄 타기 — 이번 판은 여기까지</span>', 'om-pop'); sfx('omokLose'); T(() => finish(false), 1300); return; }
+    m.awayRun = (m.awayRun || 0) + 1;
+    if(m.awayRun >= 3){ forfeitAway(); return; }
     const i = m.preview != null && legal(m.B, m.preview, m.me) ? m.preview : aiPick(m.B, m.me, 1, aiRng(m));
     if(i < 0){ end('draw'); return; }
-    toast('시간이 다 돼서 대신 뒀어요'); m.autoPut++;
-    playerPut(i);
+    if(m.autoPut) m.away = true;
+    toast(m.away ? `자리 비움 · 한 번 더 시간을 넘기면 기권이에요` : '시간이 다 돼서 이번 한 번은 대신 뒀어요');
+    m.autoPut++;
+    if(m.mode === 'duel' && duelLive()) pubMoves();
+    playerPut(i, true); hud();
+  }
+  /* 세 번 연속 시간 초과 = 기권. 실시간 대전은 상대에게 먼저 알리고(ff) 조금 뒤 끝낸다 → 상대가 기권승으로 먼저 끝냄 */
+  function forfeitAway(){
+    const m = S(); if(m.over) return;
+    m.over = true; m.result = 'lose'; m.fail = 'away'; m.away = true; m.preview = null; loupeHide(); drawPreview(); hud();
+    msg('<b class="bad">기권</b><span>세 번 연속 시간을 넘겼어요</span>', 'om-pop'); sfx('omokLose');
+    if(G.duel){ G.duel.why = '세 번 연속 시간을 넘겨 기권했어요'; if(duelLive()){ m.ff = 1; pubMoves(); } }
+    T(() => finish(false), duelLive() ? 2200 : 1300);
+  }
+
+  /* 차례 시간 고르기(솔로 컴퓨터 대국): 보통 30초 ↔ 느긋하게 60초(빠른 판은 15 ↔ 30초). 첫 수 전에만, 이 기기에 기억 */
+  function togglePace(){
+    const m = S(); if(!m.slowable || m.over) return;
+    if(m.myMoves > 0){ toast('차례 시간은 첫 수를 두기 전에만 바꿀 수 있어요'); return; }
+    m.slow = !m.slow; store.set('hp:omok:slow', m.slow ? 1 : 0);
+    m.turnLim = m.turnBase * (m.slow ? 2 : 1); m.turnUsed = 0; m.lastSec = -1;
+    sfx('toggle');
+    const tp = $('#omTimeP'); if(tp) tp.classList.toggle('slow', m.slow);
+    hud();
+    toast(m.slow ? `느긋하게: 한 수 ${m.turnLim}초` : `보통: 한 수 ${m.turnLim}초`);
   }
 
   /* ----- 실시간 대전: 엔진 방(D.nr) presence.om.mv에 내 수를 쌓고, 상대 것을 읽어 차례대로 둔다 ----- */
-  function pubMoves(){ const D = G.duel, m = S(); try{ D.nr.presence({ om:{ v:1, c:m.me, mv:m.myMv.slice() } }).catch(() => {}); }catch(_){} }
+  function pubMoves(){ const D = G.duel, m = S(); try{ D.nr.presence({ om:{ v:1, c:m.me, mv:m.myMv.slice(), aw:m.away ? 1 : 0, ff:m.ff ? 1 : 0 } }).catch(() => {}); }catch(_){} }
   function readOpp(){
     const m = S(), D = G.duel; if(!D || !D.nr || m.over) return;
     let ps = []; try{ ps = D.nr.peers(); }catch(_){ return; }
     const o = ps.find(p => !p.sameTab && p.peer === D.oppPeer) || ps.find(p => !p.sameTab);
     const q = o && o.presence && o.presence.om; if(!q || !Array.isArray(q.mv)) return;
     if(typeof q.c === 'number' && q.c === m.me && !m.colorWarn){ m.colorWarn = 1; console.warn('omok: 두 사람이 같은 색으로 잡힘'); }
+    if(!!q.aw !== !!m.oppAway){ m.oppAway = !!q.aw; hud(); }
+    if(q.ff && !m.over){ m.forfeit = '상대가 세 번 연속 시간을 넘겨 기권승이에요'; m.winner = m.me; end('win'); return; }
     while(q.mv.length > m.oppMv.length && m.turn === m.opp && !m.over){
       const i = q.mv[m.oppMv.length];
       if(!(typeof i === 'number' && legal(m.B, i, m.opp))){ console.warn('omok: 상대 수가 맞지 않음', i); m.oppMv.push(i); continue; }
       m.oppMv.push(i); put(i, m.opp);
     }
   }
+  /* 대전 '느긋하게'(공용 대전 v3의 dk:'s' 또는 cfg.slow) — 두 기기가 같은 값을 보므로 차례 시간이 같다 */
+  function duelSlowNow(){ const D = G && G.duel; return !!(D && (D.pace === 's' || D.slow || (D.cf && D.cf.dk === 's'))); }
   function myColorInDuel(D, rng){
     const coin = rng() < .5;
     if(D.mode !== 'pvp') return coin ? BLACK : WHITE;
@@ -672,15 +735,15 @@ NG.omok = (() => {
       back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10H14a6 6 0 0 1 0 12h-3" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/></svg>',
       retry:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/><path d="M18.5 2.5v4.5H14" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     };
-    const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
+    const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
     st.innerHTML = `<div class="ng-omok${pz ? ' is-pz' : ''}${duel ? ' is-duel' : ''}">
       <div class="hud-row">
         ${pz ? `<div class="hchip" aria-label="${m.N}수 안에 이기는 묘수"><span class="hv">${stoneIco(m.me)}<b>${m.N}수</b></span><em>${m.N}수 안에 이기기</em></div>
           <div class="hchip" aria-label="둔 수"><span class="hv"><b id="omMv">0</b><small>/${m.maxMoves}</small></span><em>둔 수 / 최대</em></div>
           <div class="hchip time" id="omTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="omTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`
-        : `<div class="hchip om-side" id="omMe" aria-label="나"><span class="hv">${stoneIco(m.me)}<b id="omMv">0</b><small>수</small></span><em>나 · ${CNAME(m.me)}</em></div>
-          <div class="hchip time" id="omTimeP" aria-label="차례 시간"><span class="hv">${ICO.clock}<b id="omTime">${m.turnLim}초</b></span><em>차례 시간</em><i class="om-tbar"><i id="omTurnBar"></i></i></div>
-          <div class="hchip om-side op" id="omOp" aria-label="상대"><span class="hv">${stoneIco(m.opp)}<b class="om-opn">${duel ? (G.duel && G.duel.mode === 'pvp' ? '상대' : 'AI') : 'AI'}</b></span><em>상대 · ${CNAME(m.opp)}</em></div>`}
+        : `<div class="hchip om-side" id="omMe" aria-label="나 · ${CNAME(m.me)}"><span class="hv">${stoneIco(m.me)}<b class="om-opn">나</b></span><em>${CNAME(m.me)} · 0수</em></div>
+          <${m.slowable ? 'button type="button"' : 'div'} class="hchip time${m.slow ? ' slow' : ''}" id="omTimeP" aria-label="차례 시간${m.slowable ? ' · 눌러서 30초·60초 바꾸기' : ''}"><span class="hv">${ICO.clock}<b id="omTime">${m.turnLim}초</b></span><em id="omNo">1번째 수</em><i class="om-tbar"><i id="omTurnBar"></i></i></${m.slowable ? 'button' : 'div'}>
+          <div class="hchip om-side op" id="omOp" aria-label="상대 · ${CNAME(m.opp)}"><span class="hv">${stoneIco(m.opp)}<b class="om-opn">${duel && G.duel && G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : '컴퓨터'}</b></span><em>상대 · ${CNAME(m.opp)}</em></div>`}
       </div>
       ${chips}
       <div class="om-row">${pz ? '<div class="hlives" id="omLives" role="img"></div>' : ''}<div class="om-msg" id="omMsg"><span>판을 놓는 중…</span></div></div>
@@ -708,18 +771,21 @@ NG.omok = (() => {
       e.preventDefault(); try{ bd.setPointerCapture(e.pointerId); }catch(_){}
       confirmOk = m.preview === i; downCell = i;
       if(!confirmOk){ m.preview = i; sfx('omokPick'); drawPreview(); }
+      if(e.pointerType !== 'mouse') loupeShow(e);   /* 손가락이 가리는 자리를 크게 보여 줌 */
     };
     bd.onpointermove = e => {
       if(downCell < 0) return;
-      const i = cellFromEvent(e); if(i < 0 || i === m.preview || m.B.b[i] !== EMPTY) return;
-      m.preview = i; confirmOk = false; downCell = i; drawPreview();
+      const i = cellFromEvent(e);
+      if(i >= 0 && i !== m.preview && m.B.b[i] === EMPTY){ m.preview = i; confirmOk = false; downCell = i; drawPreview(); }
+      if(e.pointerType !== 'mouse') loupeShow(e);
     };
     bd.onpointerup = e => {
+      loupeHide();
       if(downCell < 0) return;
       const i = cellFromEvent(e), ok = confirmOk && i === m.preview; downCell = -1; confirmOk = false;
       if(ok) playerPut(i);
     };
-    bd.onpointercancel = () => { downCell = -1; confirmOk = false; };
+    bd.onpointercancel = () => { downCell = -1; confirmOk = false; loupeHide(); };
     bd.tabIndex = 0;
     bd.onkeydown = e => {
       if(!myTurn(m)) return;
@@ -730,6 +796,7 @@ NG.omok = (() => {
     };
     $('#omPut').onclick = () => { if(m.preview != null) playerPut(m.preview); };
     const h = $('#omHint'); if(h) h.onclick = useHint;
+    const tp = $('#omTimeP'); if(tp && m.slowable) tp.onclick = togglePace;
     const b = $('#omBack'); if(b) b.onclick = useBack;
   }
 
@@ -759,30 +826,51 @@ NG.omok = (() => {
       ['5개를 먼저 이어요', '흑이 먼저, 번갈아 줄이 만나는 점에 둬요. 가로·세로·대각선으로 내 돌 정확히 5개를 먼저 이으면 승리(6개 이상은 승리 아님).'],
       ['흑은 3·3 금지', '흑은 열린 3을 두 줄 한꺼번에 만드는 자리(판에 ×)에 둘 수 없어요. 4·4와 4·3은 괜찮아요. 백은 금지 자리가 없어요.'],
       ['누르고 [두기]', '자리를 누르면 반투명 돌과 안내선이 보여요. 끌어서 고치고, [두기]나 같은 자리를 한 번 더 눌러 확정해요.'],
-      ['묘수풀이 · 솔로 · 대전', '오늘의 문제는 N수 안에 이기는 묘수풀이(상대는 늘 같은 방식으로 막음, 기회 3번). 솔로는 AI 대국과 묘수가 섞여 나오고, 대전은 실시간 1:1(한 수 30초).']
+      ['묘수풀이 · 솔로 · 대전', '오늘의 문제는 N수 안에 이기는 묘수풀이(상대는 늘 같은 방식으로 막음, 기회 3번). 솔로는 컴퓨터 대국과 묘수가 섞여 나오고, 대전은 실시간 1:1(한 수 30초).']
     ],
+    /* 도움말 v2(공용 WP3): 첫 화면 3줄, 나머지는 '더 알아보기' */
+    howto:{
+      lines:[
+        ['내 돌 5개를 먼저 이어요', '가로·세로·대각선으로 정확히 5개(6개 이상은 아님)'],
+        ['누르면 분홍 자리가 보여요', '맞으면 [두기], 같은 자리를 한 번 더 눌러도 돼요'],
+        ['흑은 × 자리에 못 둬요', '열린 3을 두 줄 만드는 3·3 금지 자리예요']
+      ],
+      more:[
+        ['오늘의 문제 = 묘수풀이', '정해진 수 안에 이기는 문제예요. 상대는 늘 같은 방식으로 막아요. 기회 3번, 힌트 1번.'],
+        ['솔로 · 대전', '솔로는 컴퓨터 대국과 묘수가 섞여 나와요(시계를 누르면 한 수 30초 ↔ 60초). 대전은 실시간 1:1, 한 수 30초.'],
+        ['시간을 넘기면', '처음 한 번은 대신 둬 줘요. 그다음부터는 "자리 비움"이 보이고, 세 번 연속이면 기권이에요.'],
+        ['3·3 금지 자세히', '흑은 열린 3을 두 줄 한꺼번에 만드는 자리에 둘 수 없어요. 4·4와 4·3은 괜찮아요. 백은 금지 자리가 없어요.']
+      ]
+    },
     helpExtra(){ const m = G && G.id === 'omok' && G.m; if(!m) return []; const tips = [].concat(m.mj || [], m.tw ? [m.tw] : []).map(k => RULE_TIP[k]).filter(Boolean); return tips.length ? [['이번 판 규칙', tips.join(' · ')]] : []; },
     chapters:['나무 그늘 쉼터', '돌담 골목', '달빛 정자', '바람 언덕', '별빛 대국장'],
     starRule:'★ 이기기 · ★★ 도움 1번 이하로 빨리 · ★★★ 도움 없이 가장 짧게',
     levels:{
-      easy:{ kind:'pz', n:15, N:2, side:BLACK, extra:2, tries:3, hints:1, limit:150 },
-      normal:{ kind:'pz', n:15, N:3, side:BLACK, extra:2, tries:3, hints:1, limit:180 },
-      hard:{ kind:'pz', n:15, N:4, side:BLACK, extra:2, tries:3, hints:1, limit:210 }
+      /* 오늘의 문제(= 오늘의 시험지 '전략' 과목) = 묘수풀이(mode:'puzzle'). 날짜 씨앗으로 만들고 games/omok/puzzle-check.mjs로 풀리는지 확인 */
+      easy:{ kind:'pz', mode:'puzzle', n:15, N:2, side:BLACK, extra:2, tries:3, hints:1, limit:150 },
+      normal:{ kind:'pz', mode:'puzzle', n:15, N:3, side:BLACK, extra:2, tries:3, hints:1, limit:180 },
+      hard:{ kind:'pz', mode:'puzzle', n:15, N:4, side:BLACK, extra:2, tries:3, hints:1, limit:210 }
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
     stageDesc(n){ return stageText(stageCfg(n)); },
+    /* 오늘의 시험지 연결용: 묘수풀이 판 설정(난이도별). startGame('omok', lv)의 오늘의 문제가 곧 묘수풀이 */
+    dailyMode:'puzzle',
+    puzzleCfg(lv){ return Object.assign({}, this.levels[lv] || this.levels.normal); },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `묘수풀이 · 흑 ${c.N}수 안에 이기기`; },
     init(cfg, rng){
       const duel = !!G.duel;
-      const mode = duel ? 'duel' : cfg.kind === 'ai' ? 'ai' : 'pz';
+      const mode = duel ? 'duel' : cfg.kind === 'ai' && cfg.mode !== 'puzzle' ? 'ai' : 'pz';   /* mode:'puzzle'이면 늘 묘수풀이 */
       const m = G.m = { mode, hist:[], myMoves:0, hints:0, undos:0, retries:0, autoPut:0, preview:null, busy:false, over:false, win:null, winner:0,
         mj:cfg.mj || [], tw:cfg.tw || null, boss:!!cfg.boss, fog:!!cfg.fog, tight:!!cfg.tight, timers:new Set(), lt:0, turnUsed:0, oppWait:0, lastSec:-1,
         hintLeft:duel ? 0 : cfg.hints == null ? 1 : cfg.hints, undoLeft:cfg.undos || 0, turnLim:cfg.turn || 30, myMv:[], oppMv:[], best:0, oppBest:0, uid:'o0' };
       const t0 = performance.now();
       if(mode === 'pz') initPuzzle(cfg, rng, m);
       else if(mode === 'ai') initMatch(cfg, rng, m);
-      else { initMatch({ n:15, ai:1 }, rng, m); m.me = myColorInDuel(G.duel, rng); m.opp = other(m.me); m.turnLim = 30; }
+      else { initMatch({ n:15, ai:1 }, rng, m); m.me = myColorInDuel(G.duel, rng); m.opp = other(m.me); m.slow = !!(cfg.slow || duelSlowNow()); m.turnLim = m.slow ? 60 : 30; }
+      /* 솔로 컴퓨터 대국은 차례 시간을 고를 수 있음(외줄 타기 제외) */
+      m.turnBase = m.turnLim;
+      if(mode === 'ai' && !m.tight){ m.slowable = true; m.slow = !!store.get('hp:omok:slow', 0); m.turnLim = m.turnBase * (m.slow ? 2 : 1); }
       m.genMs = performance.now() - t0;
       m.seedStr = 'om' + Math.floor(rng() * 1e9);
       G.limit = mode === 'pz' ? cfg.limit : 0;
@@ -790,6 +878,7 @@ NG.omok = (() => {
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.onResize) removeEventListener('resize', m.onResize);
+        try{ const el = document.getElementById('omLoupe'); if(el) el.remove(); }catch(_){}
         if(G && G.raf) cancelAnimationFrame(G.raf);
       };
       /* 테스트·도구용: 묘수 정답 순서대로 두기 */
@@ -816,6 +905,7 @@ NG.omok = (() => {
       const m = G.m;
       if(m.mode === 'pz') return (m.fail === 'time' ? '시간이 다 됐어요. ' : '기회를 다 썼어요. ') + `${CNAME(m.me)} ${m.N}수 묘수였어요.`;
       if(m.fail === 'turn') return '차례 시간을 넘겼어요.';
+      if(m.fail === 'away') return '세 번 연속 시간을 넘겨 기권했어요.';
       return m.result === 'draw' ? '판이 가득 차서 무승부예요.' : `상대가 먼저 5목을 만들었어요. 내 수 ${m.myMoves}개.`;
     },
     score(){
@@ -835,7 +925,8 @@ NG.omok = (() => {
       const help = m.hints + m.undos;
       return !help && m.myMoves <= 15 ? 3 : help <= 1 && m.myMoves <= 22 ? 2 : 1;
     },
-    duelHow:'실시간 1:1 · 번갈아 두기 · 한 수 30초',
+    duelHow:'실시간 1:1 · 번갈아 두기 · 한 수 30초(느긋하게 60초)',
+    duelSlow(cfg){ return Object.assign({}, cfg, { slow:1 }); },   /* 공용 대전 v3 '느긋하게': 차례 시간 ×2 */
     css:`
 body[data-mode="omok"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%),
@@ -897,12 +988,35 @@ body[data-mode="omok"]{background:
 .ng-omok .om-chip.mj{background:#FFF0DC; color:#9A5A12}
 .ng-omok .om-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-omok .om-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
+/* 세대별 테스트(2026-10-06): 칩 글자 13px, 시간 고르기, 자리 비움, [두기] 진한 핑크, 놓을 자리 분홍, 돋보기 */
+.ng-omok .hchip em{font-size:13px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ng-omok .om-side .om-opn{max-width:74px; white-space:nowrap}
+.ng-omok button.hchip{font:inherit; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-omok button.hchip:active{transform:translateY(2px)}
+.ng-omok .hchip.time.slow em{color:#137A43}
+.ng-omok .om-side.away{background:linear-gradient(180deg,#FFF0F0,#FFD0D3)} .ng-omok .om-side.away em{color:#B3202A}
+.ng-omok .om-put:not(:disabled){--c1:#FF4FA0; --c2:#D81B72; --c3:#7A0A40}
+.ng-omok .om-put:disabled{filter:none; opacity:1; --c1:#FFD3E7; --c2:#F6A9CB; --c3:#C27399}
+.ng-omok .om-put:disabled, .ng-omok .om-put:disabled small{color:#fff}
+.ng-omok .om-guide{stroke:#F0368A}
+.ng-omok .om-ring{stroke:#F0368A; stroke-width:1.1}
+.ng-omok .om-bantip{fill:none; stroke:#E5484D; stroke-width:1; animation:omok-pulse .55s ease-in-out infinite alternate}
+body[data-mode="omok"] .om-loupe{position:fixed; left:0; top:0; z-index:60; width:120px; height:120px; border-radius:50%; overflow:hidden; pointer-events:none; opacity:0; transition:opacity .08s;
+  background:#F2CB86; border:3px solid #1A0F45; box-shadow:0 0 0 3px #fff, 0 8px 18px rgba(26,15,69,.35)}
+body[data-mode="omok"] .om-loupe.on{opacity:1}
+body[data-mode="omok"] .om-loupe svg{display:block; width:120px; height:120px}
+body[data-mode="omok"] .om-loupe .om-ghost{opacity:.6}
+body[data-mode="omok"] .om-loupe .om-ring{fill:none; stroke:#F0368A; stroke-width:.7}
+body[data-mode="omok"] .om-loupe .om-guide{stroke:#F0368A; stroke-width:.3; stroke-dasharray:1.6 1.4}
+body[data-mode="omok"] .om-loupe .om-ban{stroke:#E5484D; stroke-width:.9; stroke-linecap:round; opacity:.75}
+body[data-mode="omok"] .om-loupe .om-winline, .om-loupe .om-bantip{display:none}
+body[data-mode="omok"] .om-loupe .om-lx{position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#F0368A; box-shadow:0 0 0 2px #fff}
 @media (max-width:370px){ .ng-omok .om-msg b{font-size:18px} }
-@media (prefers-reduced-motion: reduce){ .ng-omok .om-st.om-new, .ng-omok .om-ring, .ng-omok .om-hintring{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-omok .om-st.om-new, .ng-omok .om-ring, .ng-omok .om-hintring, .ng-omok .om-bantip{animation:none} }
 `,
     sounds:{
       omokPick(){ aNoise({ ft:'bandpass', f:2600, q:2, d:.03, v:.04 }); aTone({ f:880, type:'triangle', d:.05, v:.035 }); },
-      omokPut(){ aThump({ f:260, f2:120, d:.09, v:.22 }); aNoise({ ft:'bandpass', f:3200, q:3, d:.04, v:.09 }); aMarimba(m2f(79), { t:.02, v:.08 }); },
+      omokPut(){ aNoise({ ft:'highpass', f:4200, q:1, d:.018, v:.16 }); aThump({ f:280, f2:120, d:.08, v:.24 }); aNoise({ ft:'bandpass', f:3200, q:3, d:.04, v:.1 }); aMarimba(m2f(79), { t:.02, v:.08 }); },   /* '딱' — 짧고 높은 딸깍 + 나무 울림 */
       omokPutOpp(){ aThump({ f:220, f2:100, d:.09, v:.2 }); aNoise({ ft:'bandpass', f:2600, q:3, d:.04, v:.08 }); },
       omokBan(){ aTone({ f:330, f2:220, type:'triangle', d:.18, v:.09 }); },
       omokHint(){ aSparkle({ root:79, n:5, v:.04 }); },
@@ -920,7 +1034,8 @@ body[data-mode="omok"]{background:
 Object.assign(NG.omok, {
   duelPace:[200, .5],
   duelAi(){ return { ok:false, sc:0, get T(){ return (G && G.duel && G.duel.go ? elapsed() : 0) + .01; }, get fail(){ const m = G && G.m; return m ? Math.min(.99, ((m.oppBest || 0) + .05) / 5) : 0; } }; },
-  duelStat:{ unit:'목', get:() => ({ v:G.m.best || 0, t:5 }) }
+  /* 대전 막대 값 = 내가 둔 수 / 지금까지 모두 둔 수(세대별 테스트 S-OM-5: '4/5목' 막대가 헷갈림 → 수 번호). 4목 알림은 progress(최고 줄 길이)로 그대로 */
+  duelStat:{ unit:'수', get:() => ({ v:G.m.myMoves || 0, t:Math.max(1, G.m.hist.length) }) }
 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.omok.scene = { kind:'petals', colors:['#FFFFFF', '#FFE3B8', '#E2D6FF'], density:.8 };

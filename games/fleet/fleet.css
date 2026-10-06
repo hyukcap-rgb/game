@@ -25,9 +25,9 @@ body.flmode #play > .pbar, body.flmode #play > .stats{display:none!important}
 .fl-mini{display:block; height:13px; transition:opacity .3s, filter .3s}
 .fl-mini.dead{opacity:.2; filter:grayscale(1)}
 .fl-board{position:relative; margin:18px 0 0 22px}
-.fl-lx, .fl-ly{position:absolute; display:grid; font-family:var(--disp); font-size:12px; color:#8DB4D4; pointer-events:none}
+.fl-lx, .fl-ly{position:absolute; display:grid; font-family:var(--disp); font-size:13px; color:#8DB4D4; pointer-events:none}
 .fl-lx{left:0; right:0; top:-17px; height:16px; grid-template-columns:repeat(10,1fr); text-align:center; line-height:16px}
-.fl-ly{top:0; bottom:0; left:-22px; width:20px; padding-right:4px; box-sizing:border-box; grid-template-rows:repeat(10,1fr); align-items:center; text-align:right; white-space:nowrap}
+.fl-ly{top:0; bottom:0; left:-22px; width:20px; padding-right:4px; box-sizing:border-box; grid-template-rows:repeat(10,minmax(0,1fr)); line-height:1; align-items:center; text-align:right; white-space:nowrap}
 .fl-sea{position:relative; display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); grid-template-rows:repeat(10,minmax(0,1fr)); aspect-ratio:1; border-radius:10px; overflow:hidden; touch-action:manipulation; transition:filter .4s;
   background:radial-gradient(130% 90% at 25% 0%,#1C73AE 0%,#0F4A7A 45%,#0A2C4E 100%); box-shadow:inset 0 0 0 1.5px rgba(140,210,255,.35), inset 0 0 28px rgba(0,0,0,.45)}
 .fl-sea::before{content:""; position:absolute; inset:0; z-index:2; pointer-events:none; background-image:linear-gradient(rgba(170,225,255,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(170,225,255,.13) 1px,transparent 1px); background-size:10% 10%}
@@ -124,6 +124,20 @@ button.fl-c{cursor:crosshair}
 .fl-pbtns .btn{padding:0 10px; white-space:nowrap}
 .fl-sbtn{font-size:17px}
 .fl-sbtn svg{width:20px; height:20px; flex:none}
+/* 2026-10-06 세대별 테스트: [자동으로 놓고 출격] 주 버튼 · 방향 버튼 · 속도 고르기 · 고른 배 */
+.fl-auto{display:flex; width:100%; height:58px; margin:0 0 14px; font-size:20px; gap:8px}
+.fl-auto svg{width:24px; height:24px; flex:none}
+.fl-go2{font-size:16px}
+.fl-dpad{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:12px}
+.fl-dk{height:52px; border-radius:14px; font-size:20px; line-height:1; color:#06213A; background:linear-gradient(180deg,#E9F6FF,#B9DDF7); box-shadow:inset 0 -3px 0 rgba(0,0,0,.12), 0 3px 0 #04192C; -webkit-tap-highlight-color:transparent}
+.fl-dk:active{transform:translateY(2px); box-shadow:inset 0 -2px 0 rgba(0,0,0,.12), 0 1px 0 #04192C}
+.fl-dk.rot{background:linear-gradient(180deg,#FFF3C4,#FFD45A); font-size:24px}
+.fl-ship.sel svg{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px rgba(255,228,92,.95))}
+.fl-pace{display:flex; align-items:center; justify-content:center; gap:6px; width:100%; min-height:44px; margin-top:10px; border-radius:12px; font-family:var(--disp); font-size:15px; color:#DDEEFF; background:rgba(140,200,255,.12); box-shadow:inset 0 0 0 1.5px rgba(140,200,255,.35)}
+.fl-pace b{font-weight:400; color:#fff}
+.fl-pace span{font-size:13px; color:#8FD3FF}
+.fl-pace.on{background:rgba(34,211,166,.18); box-shadow:inset 0 0 0 2px #22D3A6}
+.fl-pace.on b{color:#7CFFD9}
 .fl-tip{font-size:14px; color:#A9CBE6; text-align:center; margin:6px 4px 0; line-height:1.5}
 .fl-tip b{color:#FFD84A}
 /* 솔로 개념 사이클: 규칙 칩 · 섬 · 배 없음 · 안개 · 레이더 · 침묵 */

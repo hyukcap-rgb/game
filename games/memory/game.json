@@ -1,7 +1,7 @@
 {
   "id": "memory",
   "name": "카드 짝 맞추기",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "summary": "보여 준 카드를 기억해 짝을 찾는 집중력 게임",
   "js": [
     "memory.js"
