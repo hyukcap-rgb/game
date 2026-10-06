@@ -217,7 +217,7 @@ function embDuelResult(r, a, b, res){
     <p class="dz-rec">대전 기록 1위 ${x.w}번 · 판 ${tot}번</p><p class="dz-again" id="dzAgain" aria-live="polite"></p>`;
   const quickAgain = R.room && R.room.canAgain && !R.ai;
   const pri = EMB.room ? ['한 판 더', () => embRoomDuel(EMB.roomRd + 1), '같은 방 코드로 새 문제']
-    : quickAgain ? ['한 판 더', () => embDuelAgain(), '같은 상대와 새 문제로'] : ['다시 대전', () => { embMenu(); embStart('duel'); }, quickAgain ? '' : '새 상대를 찾아요'];
+    : quickAgain ? ['한 판 더', () => embDuelAgain(), '같은 상대와 새 문제로'] : ['새 상대 찾기', () => { embMenu(); embStart('duel'); }, '새 문제로 다시 대전해요'];
   const sc = ['처음으로', embMenu], ex = quickAgain ? [{ id:'mNew', label:'새 상대 찾기', fn:() => { embMenu(); duelStart(id); } }] : [];
   const RB = embRes(pri, sc, ex); if(quickAgain) RB.pri.keep = true;
   setTimeout(() => {

@@ -39,7 +39,7 @@ NG.flag = (() => {
     },
     twists:['flash', 'mimic', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'판단 시간이 평소보다 짧아요. 침착하게, 하지만 빠르게!' },
+      flash:{ name:'빠른 판', desc:'판단 시간이 평소보다 짧아요. 침착하게, 하지만 빠르게!' },
       mimic:{ name:'흉내쟁이', desc:'가끔 진행자 대신 흉내쟁이 너구리가 옆에서 명령해요. 진행자 명령만 따르고, 너구리 명령은 가만히!' },
       tight:{ name:'외줄 타기', desc:'기회가 2번뿐이에요. 두 번 틀리면 끝나요.' }
     }
@@ -521,13 +521,13 @@ NG.flag = (() => {
           <div class="fl-card" id="flCard" aria-hidden="true"></div>
           <div class="fl-bub" id="flBub" role="status" aria-live="assertive">
             <div class="fl-who" id="flWho">${whoHtml(m.host)}</div>
-            ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="fl-rules" aria-label="켜진 규칙">${m.boss ? '<span class="fl-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="fl-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="fl-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
-            <div class="fl-cmd" id="flCmd"><span class="fl-cardt">${m.boss ? '보스 판!' : '준비~'}</span></div>
+            ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="fl-rules" aria-label="켜진 규칙">${m.boss ? '<span class="fl-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="fl-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="fl-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+            <div class="fl-cmd" id="flCmd"><span class="fl-cardt">${m.boss ? '대장 판!' : '준비~'}</span></div>
             <div class="fl-foot"><div class="fl-win" id="flWinW"><i id="flWin"></i></div><div class="fl-res info" id="flRes">${m.boss ? '끝까지 집중!' : talk(m.host, 'ready')}</div></div>
             <div class="fl-stamp" id="flStamp" aria-hidden="true"></div>
             <span class="fl-flipb" aria-hidden="true">반대로!</span>
           </div>
-          ${m.boss ? '<div class="fl-bossband" aria-hidden="true"><b>보스!</b></div>' : ''}
+          ${m.boss ? '<div class="fl-bossband" aria-hidden="true"><b>대장 판!</b></div>' : ''}
           <div class="fl-note" id="flNote" aria-hidden="true"></div>
         </div>
         <div class="fl-deck${m.third ? ' third' : ''}">

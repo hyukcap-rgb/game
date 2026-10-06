@@ -130,7 +130,7 @@ NG.twin = (() => {
     },
     twists:['flash', 'blink', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'판단 시간이 짧아요. 침착하게, 그래도 빠르게!' },
+      flash:{ name:'빠른 판', desc:'판단 시간이 짧아요. 침착하게, 그래도 빠르게!' },
       blink:{ name:'깜빡', desc:'카드가 0.6초 보였다가 0.3초 덮여요. 보이는 동안 눈에 담아 두세요.' },
       tight:{ name:'외줄 타기', desc:'실수는 딱 한 번까지! 두 번 틀리면 끝나요.' }
     }
@@ -196,7 +196,7 @@ NG.twin = (() => {
   const reduce = () => { try{ return FXR.reduce || matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(_){ return false; } };
 
   function say(html, cls){ const e = $('#twSay'); if(!e) return; e.className = 'tw-say ' + (cls || ''); e.innerHTML = html; }
-  function sayIdle(){ const m = S(); if(m && m.phase !== 'done') say(m.boss ? '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>' : '<span>' + (m.tips.length ? m.tips.slice(0, 2).join(' · ') : m.H.hi) + '</span>'); }
+  function sayIdle(){ const m = S(); if(m && m.phase !== 'done') say(m.boss ? '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>' : '<span>' + (m.tips.length ? m.tips.slice(0, 2).join(' · ') : m.H.hi) + '</span>'); }
   function hostMood(mood, ms){
     const m = S(), im = $('#twHostImg'); if(!m || !im) return;
     im.src = toySrc(m.host, mood); im.classList.remove('bop'); void im.offsetWidth; if(mood) im.classList.add('bop');
@@ -512,7 +512,7 @@ NG.twin = (() => {
           <span class="tw-hostbox"><img class="toy tw-hostimg" id="twHostImg" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></span>
           <div class="tw-say" id="twSay" role="status" aria-live="polite"><span>카드를 섞는 중…</span></div>
           <div class="hlives" id="twLives" role="img"></div>
-          ${m.boss ? '<b class="tw-bossband" aria-hidden="true">보스!</b>' : ''}
+          ${m.boss ? '<b class="tw-bossband" aria-hidden="true">대장 판!</b>' : ''}
         </div>
         <div class="tw-wbar" id="twBar" aria-hidden="true"><i id="twBarI"></i></div>
         <div class="tw-table" id="twTable"></div>

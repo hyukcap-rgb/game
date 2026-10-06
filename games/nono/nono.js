@@ -779,7 +779,7 @@ NG.nono = (() => {
       const maxR = { easy:4, mid:5, hard:6, boss:8 }[tier] + (N >= 10 ? 1 : 0);   /* 가리다가 너무 깊어지면(줄 풀이 라운드) 그만 가린다 */
       return { N, fill, boss:p.boss, limit, want, rank, easy:tier === 'easy', mj:p.mj.slice(), tw:p.tw, q, mh, maxR };
     },
-    stageDesc(n){ const s = this.stage(n); return s.N + '×' + s.N + ' 판' + (s.boss ? ' · 보스' : ''); },
+    stageDesc(n){ const s = this.stage(n); return s.N + '×' + s.N + ' 판' + (s.boss ? ' · 대장 판' : ''); },
     levelDesc(lv){ const s = this.levels[lv] || this.levels.normal; return s.N + '×' + s.N + ' 판 · ' + Math.round(s.limit / 60) + '분'; },
 
     /* 대전 전용 작은 판(WP10): 7×7, 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
@@ -1089,3 +1089,41 @@ function nonoResWatch(){
 Object.assign(NG.nono, { duelPace:[90,.85], duelStat:{ unit:'칸', get:() => { if(G.duel && G.duel.v === 3) nonoResWatch(); return { v:G.found, t:G.total, mis:G.miss || 0 }; } } });   /* 7×7 판: 컴퓨터 평균 90초. 대전은 기회가 없어 lf 대신 틀린 횟수(mis) */
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.nono.scene = { kind:'shapes', colors:['#8E6BD1','#5B8DEF','#F0368A'], density:1, alpha:.9 };
+/* 첫 판 손가락 안내(엔진 coach, 세대별 테스트 P5·S-NONO-4): 왼쪽 숫자를 짚고 → 그 줄 묶음 하나를 손가락으로 끌어 칠하기.
+   처음 한 번만(hp:coach:nono), 대전에는 안 나옴(엔진). 엔진이 시계를 멈춘 채 보여 주고, 마지막 끌기를 시작하는 순간 시계를 다시 감아
+   그 끌기는 판에 그대로 들어간다(오늘의 문제 시간에 안내 시간이 들어가지 않음). 판 상태·문제는 읽기만 한다 */
+NG.nono.coach = (() => {
+  let P = null;
+  const pick = () => {   /* 가로줄 묶음 하나: 줄 전체가 정해지는 줄(묶음 합 + 틈 = N)을 먼저, 없으면 가장 긴 묶음. 두 가지 색 판은 보라 묶음만 */
+    if(P && P.g === G) return P.v;
+    let v = null;
+    try{
+      const N = G.N; let best = null;
+      for(let r = 0; r < N; r++){
+        const runs = []; let s = -1;
+        for(let c = 0; c <= N; c++){
+          const x = c < N ? G.sol[r * N + c] : 0;
+          if(s >= 0 && x !== G.sol[r * N + s]){ runs.push([s, c - 1, G.sol[r * N + s]]); s = -1; }
+          if(x && s < 0) s = c;
+        }
+        const tight = runs.reduce((a, q) => a + q[1] - q[0] + 1, 0) + runs.length - 1 === N;
+        for(const q of runs){
+          if(q[2] !== 1) continue;
+          let empty = true; for(let c = q[0]; c <= q[1]; c++) if(G.cells[r * N + c]) empty = false;
+          if(!empty) continue;
+          const len = q[1] - q[0] + 1, sc = (tight ? 100 : 0) + len;
+          if(!best || sc > best.sc) best = { sc, r, a:q[0], b:q[1] };
+        }
+      }
+      v = best;
+    }catch(_){ v = null; }
+    P = { g:G, v }; return v;
+  };
+  const cell = (r, c) => G.nnEls && G.nnEls[r * G.N + c];
+  return [
+    { act:'tap', text:'왼쪽 숫자 = 이 줄에 이어 칠할 칸 수예요',
+      at:() => { const p = pick(); return p ? document.querySelector('#nnRC .nn-cl[data-k="' + p.r + '"]') : null; } },
+    { act:'drag', text:'손가락을 대고 그대로 끌어 칠해요',
+      at:() => { const p = pick(); return p ? cell(p.r, p.a) : null; }, to:() => { const p = pick(); return p ? cell(p.r, p.b) : null; } }
+  ];
+})();

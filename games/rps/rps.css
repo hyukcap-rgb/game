@@ -10,7 +10,7 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 .ng-rps .hlives i.lost{animation:rpLost .5s ease-out}
 @keyframes rpLost{0%{transform:scale(1.6); color:#E5484D}100%{transform:scale(1)}}
 .ng-rps .rp-tags{margin-left:auto; display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; min-width:0}
-.ng-rps .rp-tag{font-family:var(--disp); font-size:12px; line-height:1; padding:6px 9px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#3A2261; white-space:nowrap}
+.ng-rps .rp-tag{font-family:var(--disp); font-size:13px; line-height:1; padding:6px 9px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#3A2261; white-space:nowrap}
 .ng-rps .rp-tag.tw{background:#FFE07A; color:#5A3300}
 .ng-rps .rp-tag.boss{background:#E5484D; color:#fff}
 

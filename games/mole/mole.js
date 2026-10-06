@@ -23,7 +23,7 @@ NG.mole = (() => {
     },
     twists:['flash', 'dark', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'두더지가 더 짧게 나와요. 침착하게, 그리고 재빨리!' },
+      flash:{ name:'빠른 판', desc:'두더지가 더 짧게 나와요. 침착하게, 그리고 재빨리!' },
       dark:{ name:'밤의 들판', desc:'들판이 어두워져요. 두더지가 나올 때만 구멍에 불이 켜져요.' },
       tight:{ name:'외줄 타기', desc:'기회가 2개뿐이에요. 폭탄 두더지를 특히 조심해요.' }
     }
@@ -563,7 +563,7 @@ NG.mole = (() => {
         </div>
         <div class="ml-top">
           <div class="ml-hostw"><img class="toy ml-host" id="mlHost" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></div>
-          <div class="ml-say" id="mlSay" aria-live="polite"><b>${m.boss ? '보스 판!' : '준비…'}</b><span>${playSub(m)}</span></div>
+          <div class="ml-say" id="mlSay" aria-live="polite"><b>${m.boss ? '대장 판!' : '준비…'}</b><span>${playSub(m)}</span></div>
           <div class="hlives" id="mlLives" role="img"></div>
         </div>
         <div class="hbar ml-wbar idle" id="mlBarW" aria-hidden="true"><i id="mlBar"></i></div>
@@ -572,7 +572,7 @@ NG.mole = (() => {
           <img class="ml-ham" id="mlHam" src="${S0.ham}" alt="" draggable="false">
           <div class="ml-lock" id="mlLock" aria-live="assertive"></div>
           <div class="ml-banner" id="mlBanner" aria-hidden="true"></div>
-          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>보스!</b><span>끝까지 침착하게</span></div>' : ''}
+          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>대장 판!</b><span>끝까지 침착하게</span></div>' : ''}
         </div>
       </div>`;
       const f = $('#mlField');

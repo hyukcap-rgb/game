@@ -185,7 +185,7 @@ NG.hidden = (() => {
     },
     twists:['flash', 'tiny', 'bare', 'order', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'제한 시간이 아주 짧아요. 빠르게 훑어보세요!' },
+      flash:{ name:'빠른 판', desc:'제한 시간이 아주 짧아요. 빠르게 훑어보세요!' },
       tiny:{ name:'깨알', desc:'물건이 더 작고 꾸밈이 더 빽빽해요. 대신 시간은 넉넉해요. 확대해서 찾아요!' },
       bare:{ name:'맨손', desc:'힌트 없이 오직 눈으로 찾아요.' },
       order:{ name:'차례대로', desc:'목록 순서대로만 찾을 수 있어요. 반짝이는 물건부터!' },
@@ -397,7 +397,7 @@ NG.hidden = (() => {
   function msg(html, cls){ const e = $('#hdMsg'); if(!e) return; e.className = 'hd-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>' + m.sc.T.name + '에서 아래 물건을 찾아 눌러요</span>';
   }
@@ -850,7 +850,7 @@ NG.hidden = (() => {
           <div class="hchip time" id="hdTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="hdTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
           <button class="hchip item" id="hdHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="hd-rules" aria-label="켜진 규칙">${m.boss ? '<span class="hd-chipr boss">보스</span>' : ''}${m.mj.map(k => `<span class="hd-chipr mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="hd-chipr tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="hd-rules" aria-label="켜진 규칙">${m.boss ? '<span class="hd-chipr boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="hd-chipr mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="hd-chipr tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar hd-tbar" id="hdBarWrap"><i id="hdBar"></i></div>
         <div class="hd-row"><div class="hlives" id="hdLives" role="img" hidden></div><div class="hd-msg" id="hdMsg">${playMsg()}</div></div>
         <div class="hd-wrap in" id="hdWrap">
@@ -968,7 +968,7 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-ci{width:28px; height:28px; flex:none; display:block}
 .ng-hidden .hd-ci svg{width:100%; height:100%; display:block; overflow:visible}
 .ng-hidden .hd-cn{max-width:100%; font-family:var(--disp); font-size:13px; line-height:1.1; color:#4A2A10; overflow:hidden; text-overflow:clip; white-space:nowrap; letter-spacing:-.6px}
-.ng-hidden .hd-chip em{position:absolute; top:-8px; right:-3px; font-style:normal; font-family:var(--heavy); font-size:12px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
+.ng-hidden .hd-chip em{position:absolute; top:-8px; right:-3px; font-style:normal; font-family:var(--heavy); font-size:13px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
 .ng-hidden .hd-chip em.ok{background:#2BB673}
 .ng-hidden .hd-chip.done{background:#E3FAEC}
 .ng-hidden .hd-chip.done em{background:#2BB673}

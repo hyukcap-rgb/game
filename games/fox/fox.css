@@ -70,9 +70,10 @@ body[data-mode="fox"] .pbar.has-duel .dping{top:calc(100% + 66px)}
 .fx-tip{text-align:center; font-size:14px; line-height:1.45; color:#E4DCFF; margin:10px 4px 0; text-shadow:0 1px 0 var(--outline2)}
 /* 솔로 난이도 v2: 이번 판 규칙 칩 · 바위 칸 · 여우 굴 숫자 */
 .fx-rules{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:-4px 0 10px}
-.fx-rule{display:inline-flex; align-items:center; gap:4px; font-size:13.5px; font-weight:800; line-height:1; padding:6px 11px; border-radius:999px; color:#3B1D96; background:#EFE7FF; border:2px solid var(--outline); box-shadow:0 2px 0 var(--outline2)}
-.fx-rule.tw{color:#7A3300; background:#FFE3C2}
-.fx-rule b{font-family:var(--heavy); font-weight:400; font-size:13px}
+/* 새 규칙 칩 크게(세대별 테스트 S-FOX-8: 이름 띠가 작아 바뀐 걸 놓침) — 16px 굵게, 노랑(새 규칙)·주황(변주) 칩 */
+.fx-rule{display:inline-flex; align-items:center; gap:5px; min-height:36px; font-family:var(--disp); font-size:16px; font-weight:400; line-height:1; padding:7px 14px; border-radius:999px; color:#1A0F45; background:#FFE27A; border:2.5px solid var(--outline); box-shadow:0 3px 0 var(--outline2)}
+.fx-rule.tw{color:#4A1E00; background:#FFB86B}
+.fx-rule b{font-family:var(--heavy); font-weight:400; font-size:16px}
 .fxc.rock{cursor:default; background:linear-gradient(180deg,#6E6688,#4A4263); box-shadow:inset 0 2px 0 rgba(255,255,255,.22), inset 0 -3px 0 rgba(0,0,0,.25)}
 .fxc.rock svg{width:82%; height:82%}
 .fxc.clue{cursor:default}

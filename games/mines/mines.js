@@ -59,7 +59,7 @@ NG.mines = (() => {
     },
     twists:['flash', 'noflag', 'tight', 'dense', 'bare'],
     twInfo:{
-      flash:{ name:'번개', desc:'판은 같은데 제한 시간이 아주 짧아요. 확실한 칸부터 빠르게!' },
+      flash:{ name:'빠른 판', desc:'판은 같은데 제한 시간이 아주 짧아요. 확실한 칸부터 빠르게!' },
       noflag:{ name:'깃발 없이', desc:'이번 판은 깃발을 꽂을 수 없어요. 밤송이 자리를 머리로 기억하며 풀어요.' },
       tight:{ name:'외줄 타기', desc:'기회가 딱 한 번! 밤송이를 건드리면 바로 끝나요.' },
       dense:{ name:'빽빽한 숲', desc:'밤송이가 평소보다 훨씬 많아요. 대신 시간은 조금 더 줘요.' },
@@ -245,7 +245,7 @@ NG.mines = (() => {
   function msg(html, cls){ const e = $('#mnMsg'); if(!e) return; e.className = 'mn-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>숫자 = 둘레 밤송이 수</span>';
   }
@@ -569,7 +569,7 @@ NG.mines = (() => {
           <div class="hchip time" id="mnTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="mnTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
           <button class="hchip item" id="mnHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mn-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mn-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="mn-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mn-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mn-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mn-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mn-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mn-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="mn-barw" id="mnBarWrap"><i id="mnBar"></i></div>
         <div class="mn-row"><div class="hlives" id="mnLives" role="img"></div><div class="mn-msg" id="mnMsg"><span>숲을 살피는 중…</span></div></div>
         <div class="mn-board in" id="bd" role="grid" aria-label="밤숲 판"></div>
