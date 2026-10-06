@@ -1,7 +1,8 @@
 /* 숨은그림 찾기 */
 /* ===== 숨은그림 찾기 (hidden) · 하루퍼즐 리그 게임 모듈 =====
-   씨앗 난수(rng)로 장면(SVG)을 그린다: 배경(숲·바닷속·다락방·장터·꽃밭·눈 마을) 위에 꾸밈 도형·선·무늬를 잔뜩 깔고,
-   그 사이에 찾을 물건(직접 그린 단순 SVG 26종)을 작게·기울여·배경과 같은 색과 선으로 섞어 숨긴다.
+   v1.1: 장면은 손으로 그린 그림책 장면 12개(hidden-art.js). 장면마다 숨길 자리 30여 곳 중 씨앗 난수로 몇 곳을 골라
+   찾을 물건(직접 그린 SVG 26종)을 그 자리 바탕색과 비슷한 색(밝기만 조금 다르게)·장면과 같은 선으로 숨긴다.
+   (2026-10-06 전 날짜의 오늘의 문제·연습은 예전 장면(legacy: 꾸밈 도형을 흩뿌린 테마 6개)을 그대로 쓴다 — 이미 푼 사람과 같은 문제)
    아래 목록의 물건을 장면에서 찾아 누르면 동그라미. 빗나간 누르기는 실수(잠깐 못 누름 + 감점).
    그림은 모두 직접 그린 오리지널. 문제 내용은 rng로만 만든다. */
 NG.hidden = (() => {
@@ -23,8 +24,8 @@ NG.hidden = (() => {
     glasses:['안경', (F, A, K, w) => `<path d="M-2.5 0Q0-3 2.5 0M-16 0L-19-7M16 0L19-7" fill="none" ${st(K, w * 1.2)}/><circle cx="-9" cy="2" r="7" fill="${F}" ${st(K, w * 1.2)}/><circle cx="9" cy="2" r="7" fill="${F}" ${st(K, w * 1.2)}/>`],
     pencil:['연필', (F, A, K, w) => `<path d="M-13-4.5H9L17.5 0L9 4.5H-13z" fill="${F}" ${st(K, w)}/><path d="M9-4.5L17.5 0L9 4.5z" fill="${A}" ${st(K, w)}/><path d="M14-1.6L17.5 0L14 1.6z" fill="${K}"/><rect x="-18.5" y="-4.5" width="5.5" height="9" rx="1.6" fill="${A}" ${st(K, w)}/><path d="M-13 0H8" ${st(K, w * .6)}/>`],
     sock:['양말', (F, A, K, w) => `<path d="M-7-17H6V1Q6 5 10 7.5L14 10Q18.5 13 15.5 17Q13 19.5 8.5 18L-2 14Q-8.5 11.5-7.5 4z" fill="${F}" ${st(K, w)}/><path d="M-7-17H6V-11H-7z" fill="${A}" ${st(K, w)}/>`],
-    moon:['초승달', (F, A, K, w) => `<path d="M6-16A17 17 0 1 0 6 16A20 20 0 0 1 6-16z" fill="${F}" ${st(K, w)}/>`],
-    cup:['머그컵', (F, A, K, w) => `<path d="M10-6H13.5Q18.5-6 18.5 1Q18.5 8 13.5 8H10" fill="none" ${st(K, w * 1.5)}/><path d="M-14-13H11V10Q11 16 5 16H-8Q-14 16-14 10z" fill="${F}" ${st(K, w)}/><path d="M-14-6H11" ${st(K, w * .8)}/>`],
+    moon:['달', (F, A, K, w) => `<path d="M6-16A17 17 0 1 0 6 16A20 20 0 0 1 6-16z" fill="${F}" ${st(K, w)}/>`],
+    cup:['컵', (F, A, K, w) => `<path d="M10-6H13.5Q18.5-6 18.5 1Q18.5 8 13.5 8H10" fill="none" ${st(K, w * 1.5)}/><path d="M-14-13H11V10Q11 16 5 16H-8Q-14 16-14 10z" fill="${F}" ${st(K, w)}/><path d="M-14-6H11" ${st(K, w * .8)}/>`],
     bell:['종', (F, A, K, w) => `<circle cx="0" cy="13" r="3.4" fill="${A}" ${st(K, w)}/><path d="M0-17.5Q-3-17.5-3-14.5Q-11-12.5-11 0V6L-15.5 11H15.5L11 6V0Q11-12.5 3-14.5Q3-17.5 0-17.5z" fill="${F}" ${st(K, w)}/>`],
     hammer:['망치', (F, A, K, w) => `<rect x="-3" y="-6" width="6" height="24" rx="2" fill="${A}" ${st(K, w)}/><path d="M-16-15H10Q16-15 16-10V-6H-16z" fill="${F}" ${st(K, w)}/>`],
     scissors:['가위', (F, A, K, w) => `<path d="M-2.5 1L9-18L4-1z" fill="${F}" ${st(K, w)}/><path d="M2.5 1L-9-18L-4-1z" fill="${F}" ${st(K, w)}/><circle cx="-6.5" cy="9" r="6" fill="none" ${st(K, w * 1.6)}/><circle cx="6.5" cy="9" r="6" fill="none" ${st(K, w * 1.6)}/><circle cx="0" cy="-1" r="1.6" fill="${K}"/>`],
@@ -33,7 +34,7 @@ NG.hidden = (() => {
     feather:['깃털', (F, A, K, w) => `<path d="M-13 15Q-12-4 13-17.5Q9 3-13 15z" fill="${F}" ${st(K, w)}/><path d="M-17 18.5L9-10M-4 5L2-3M-8 8L-1 9" fill="none" ${st(K, w * .9)}/>`],
     banana:['바나나', (F, A, K, w) => `<path d="M-16-7Q-12 14 14 10Q18 9 16 5.5Q-6 8-12-9Q-14.5-12-16-7z" fill="${F}" ${st(K, w)}/><path d="M-16-7L-17.5-11" ${st(K, w * 1.6)}/>`],
     apple:['사과', (F, A, K, w) => `<path d="M0-8Q-6-12-12-8Q-18-2-14 8Q-10 17-4 16Q0 14 4 16Q10 17 14 8Q18-2 12-8Q6-12 0-8z" fill="${F}" ${st(K, w)}/><path d="M0-8Q0-14 3-17.5" fill="none" ${st(K, w)}/><path d="M2-13Q8-18.5 12.5-14Q7-10 2-13z" fill="${A}" ${st(K, w * .8)}/>`],
-    candle:['양초', (F, A, K, w) => `<path d="M0-18.5Q5.5-12 0-7.5Q-5.5-12 0-18.5z" fill="${A}" ${st(K, w * .8)}/><path d="M0-7.5V-5" ${st(K, w)}/><rect x="-5.5" y="-5" width="11" height="21" rx="1.5" fill="${F}" ${st(K, w)}/><path d="M-9 16H9" ${st(K, w * 1.3)}/>`],
+    candle:['촛불', (F, A, K, w) => `<path d="M0-18.5Q5.5-12 0-7.5Q-5.5-12 0-18.5z" fill="${A}" ${st(K, w * .8)}/><path d="M0-7.5V-5" ${st(K, w)}/><rect x="-5.5" y="-5" width="11" height="21" rx="1.5" fill="${F}" ${st(K, w)}/><path d="M-9 16H9" ${st(K, w * 1.3)}/>`],
     kite:['연', (F, A, K, w) => `<path d="M0 10Q-5 13 0 15Q5 17 0 19.5" fill="none" ${st(K, w)}/><path d="M0-18L11.5-4L0 10L-11.5-4z" fill="${F}" ${st(K, w)}/><path d="M0-18V10M-11.5-4H11.5" fill="none" ${st(K, w * .8)}/><path d="M-3 15L3 15" ${st(A, w * 1.6)}/>`],
     bottle:['병', (F, A, K, w) => `<path d="M-3.5-15H3.5V-11Q8.5-8 8.5-2V15Q8.5 18.5 5 18.5H-5Q-8.5 18.5-8.5 15V-2Q-8.5-8-3.5-11z" fill="${F}" ${st(K, w)}/><rect x="-4.5" y="-19" width="9" height="4.5" rx="1.2" fill="${A}" ${st(K, w)}/><rect x="-8.5" y="2" width="17" height="8" fill="${A}" ${st(K, w * .8)}/>`],
     ring:['반지', (F, A, K, w) => `<path d="M0-6A11 11 0 1 1 0 16A11 11 0 1 1 0-6zM0-1.5A6.5 6.5 0 1 0 0 11.5A6.5 6.5 0 1 0 0-1.5z" fill="${F}" fill-rule="evenodd" ${st(K, w)}/><path d="M-5.5-10L0-17L5.5-10L0-4.5z" fill="${A}" ${st(K, w)}/>`],
@@ -42,9 +43,30 @@ NG.hidden = (() => {
     plane:['비행기', (F, A, K, w) => `<path d="M-18 2L17.5-13L4.5 14.5L-1 5.5z" fill="${F}" ${st(K, w)}/><path d="M17.5-13L-1 5.5L-2.5 13.5L4.5 14.5" fill="${A}" ${st(K, w)}/>`],
     flag:['깃발', (F, A, K, w) => `<path d="M-10-17V18.5" ${st(K, w * 1.5)}/><path d="M-10-16Q0-20 6-14Q11-9 17.5-12V4Q11 7 6 2Q0-4-10 0z" fill="${F}" ${st(K, w)}/><circle cx="-10" cy="-18" r="2.4" fill="${A}" ${st(K, w * .8)}/>`]
   };
-  const POOL = Object.keys(ITEMS);
+  /* v1.2 새 물건 12종(디자인팀 30종 목록: 지금 18종 + 아래 12종) — 예전 장면 POOL 순서를 바꾸지 않게 따로 더한다 */
+  Object.assign(ITEMS, {
+    button:['단추', (F, A, K, w) => `<circle cx="0" cy="0" r="15.5" fill="${F}" ${st(K, w)}/><circle cx="0" cy="0" r="10" fill="none" ${st(K, w * .7)}/><circle cx="-3.6" cy="-3.6" r="2.2" fill="${K}"/><circle cx="3.6" cy="-3.6" r="2.2" fill="${K}"/><circle cx="-3.6" cy="3.6" r="2.2" fill="${K}"/><circle cx="3.6" cy="3.6" r="2.2" fill="${K}"/>`],
+    heart:['하트', (F, A, K, w) => `<path d="M0 16C-6 11-17 4-17-5C-17-12-11.5-16-6-16C-3-16-1-14 0-11.5C1-14 3-16 6-16C11.5-16 17-12 17-5C17 4 6 11 0 16z" fill="${F}" ${st(K, w)}/>`],
+    bird:['새', (F, A, K, w) => `<path d="M-14 9L-18 15L-9 11z" fill="${A}" ${st(K, w)}/><path d="M-15 6Q-14-6-2-7Q1-15 8-14Q13-13 13-8L18-6L12-3.5Q12 9 0 10Q-9 11-15 6z" fill="${F}" ${st(K, w)}/><path d="M-8 2Q-2-6 5 1Q-1 7-8 2z" fill="${A}" ${st(K, w * .8)}/><circle cx="7.5" cy="-9.5" r="1.9" fill="${K}"/>`],
+    leaf:['나뭇잎', (F, A, K, w) => `<path d="M-14 14Q-17-9 15-16Q13 11-14 14z" fill="${F}" ${st(K, w)}/><path d="M-18 18L8-8M-7 7L-7-1M0 0L6 3M-3 3L-2-5" fill="none" ${st(K, w * .75)}/>`],
+    mushroom:['버섯', (F, A, K, w) => `<path d="M-6 1H6L7.5 15Q0 18.5-7.5 15z" fill="${F}" ${st(K, w)}/><path d="M-17.5 2Q-17-16 0-16Q17-16 17.5 2z" fill="${A}" ${st(K, w)}/><circle cx="-7" cy="-6" r="3" fill="${F}" ${st(K, w * .6)}/><circle cx="5" cy="-9" r="2.6" fill="${F}" ${st(K, w * .6)}/><circle cx="9" cy="-2" r="2" fill="${F}" ${st(K, w * .6)}/>`],
+    carrot:['당근', (F, A, K, w) => `<path d="M0-8Q-9-15-6-19Q-1-15 0-8Q1-18 7-19Q8-12 0-8" fill="${A}" ${st(K, w * .8)}/><path d="M-7-8Q0-12 7-8L1 17Q0 18.5-1 17z" fill="${F}" ${st(K, w)}/><path d="M-4-2H-1M1 4H3.5M-2.5 9H0" fill="none" ${st(K, w * .75)}/>`],
+    ribbon:['리본', (F, A, K, w) => `<path d="M-2 2L-9 16L-5 15L-3 18L1 3zM2 2L9 16L5 15L3 18L-1 3z" fill="${A}" ${st(K, w * .9)}/><path d="M-1-1Q-15-14-17-4Q-17 8-1 1z" fill="${F}" ${st(K, w)}/><path d="M1-1Q15-14 17-4Q17 8 1 1z" fill="${F}" ${st(K, w)}/><circle cx="0" cy="0" r="3.8" fill="${A}" ${st(K, w)}/>`],
+    shoe:['구두', (F, A, K, w) => `<path d="M-17 11V-3Q-17-9-11-9Q-6-9-5-4Q3-1 11 1Q17 3 17 9V11z" fill="${F}" ${st(K, w)}/><path d="M-17 11H17V15H-17z" fill="${A}" ${st(K, w)}/><path d="M-5-4Q-7 2-12 3" fill="none" ${st(K, w * .75)}/>`],
+    bulb:['전구', (F, A, K, w) => `<path d="M-6 6Q-13.5 0-13.5-6Q-13.5-17.5 0-17.5Q13.5-17.5 13.5-6Q13.5 0 6 6z" fill="${F}" ${st(K, w)}/><path d="M-3.5 4L-2-5L0-2L2-5L3.5 4" fill="none" ${st(K, w * .7)}/><path d="M-6 6H6V15Q0 18.5-6 15z" fill="${A}" ${st(K, w)}/><path d="M-6 10H6" ${st(K, w * .7)}/>`],
+    lock:['자물쇠', (F, A, K, w) => `<path d="M-8-2V-9Q-8-17.5 0-17.5Q8-17.5 8-9V-2" fill="none" ${st(K, w * 2.2)}/><path d="M-8-2V-9Q-8-17.5 0-17.5Q8-17.5 8-9V-2" fill="none" ${st(A, w * .9)}/><rect x="-13" y="-3" width="26" height="20" rx="3.5" fill="${F}" ${st(K, w)}/><circle cx="0" cy="5" r="2.8" fill="${K}"/><path d="M0 6V11" ${st(K, w * 1.1)}/>`],
+    clock:['시계', (F, A, K, w) => `<circle cx="-10" cy="-12" r="5" fill="${A}" ${st(K, w)}/><circle cx="10" cy="-12" r="5" fill="${A}" ${st(K, w)}/><path d="M-9 13L-12 18M9 13L12 18" ${st(K, w * 1.2)}/><circle cx="0" cy="2" r="14" fill="${F}" ${st(K, w)}/><path d="M0 2V-7M0 2L6 6" fill="none" ${st(K, w * 1.1)}/>`],
+    balloon:['풍선', (F, A, K, w) => `<path d="M0 12Q-5 15 0 17Q4 18.5 1 19.5" fill="none" ${st(K, w * .8)}/><path d="M0 10.5Q-13 6-13-5Q-13-17.5 0-17.5Q13-17.5 13-5Q13 6 0 10.5z" fill="${F}" ${st(K, w)}/><path d="M-3 13H3L0 10z" fill="${A}" ${st(K, w * .8)}/><path d="M-7-8Q-6-12-2-13" fill="none" ${st(K, w * .6)}/>`]
+  });
+  /* 예전 장면(legacy, 2026-10-07 전 날짜)의 물건 26종 — 순서를 바꾸면 그 날짜 문제가 달라진다 */
+  const POOL = ['spoon', 'key', 'umbrella', 'fish', 'star', 'glasses', 'pencil', 'sock', 'moon', 'cup', 'bell', 'hammer', 'scissors', 'mitten', 'hat', 'feather', 'banana', 'apple', 'candle', 'kite', 'bottle', 'ring', 'boot', 'hook', 'plane', 'flag'];
+  /* 새 장면(v1.2) 물건 30종(디자인팀 11-4 ④) */
+  const POOL2 = ['key', 'scissors', 'umbrella', 'cup', 'spoon', 'pencil', 'glasses', 'button', 'heart', 'star', 'moon', 'fish', 'bird', 'leaf', 'mushroom', 'apple', 'carrot', 'bell', 'sock', 'mitten', 'hat', 'ribbon', 'shoe', 'bulb', 'lock', 'clock', 'flag', 'balloon', 'hammer', 'candle'];
   const IR = 18;   /* 물건 기본 반지름(장면 단위) */
-  const ZX = 62, ZY = 114;   /* 오른쪽 아래 확대 단추 자리(장면 단위) — 물건을 두지 않는다 */
+  const ZX = 62, ZY = 114;   /* (예전 장면) 오른쪽 아래 확대 단추 자리(장면 단위) — 물건을 두지 않는다 */
+  const ART = window.HIDDEN_ART, SCN = ART.SC.map(s => s.key);
+  const NEW_FROM = '2026-10-07';   /* 이 날짜(0시)부터 모든 모드가 새 장면 — 적용한 날의 오늘의 문제는 바뀌지 않게 다음 날부터(결정 215) */
+  const sceneOf = k => ART.SC.find(s => s.key === k) || ART.SC[0];
   const itemSvg = (k, F, A, K, w) => ITEMS[k][1](F, A, K, w);
   const iconSvg = (k, shadow) => `<svg viewBox="-21 -21 42 42" aria-hidden="true">${shadow ? itemSvg(k, '#3B3160', '#3B3160', '#3B3160', 2.4) : itemSvg(k, '#FFF3D6', '#FFB84D', INK, 2.6)}</svg>`;
 
@@ -184,9 +206,16 @@ NG.hidden = (() => {
     spp:[0, 15, 14, 13, 12.5, 12, 11.5],
     kTime:[0, 1.15, 1.05, 1.0, 1.0, .9, 1.1, 1.0, 1.0, 1.1, .85],
     mjTime:{ shadow:1.15, many:1.0, swim:1.1, night:1.35 },
-    twTime:{ flash:.65, tiny:1.2, bare:1.1, order:1.1, tight:1.05 }
+    twTime:{ flash:.65, tiny:1.2, bare:1.1, order:1.1, tight:1.05 },
+    /* 새 장면(v1.1): 물건과 바탕의 밝기 차(클수록 잘 보임), 기울기 최대(도), 선이 많은 자리 선호(−면 빈 곳, +면 복잡한 곳), 외곽선을 바탕색 쪽으로 섞는 정도 */
+    tone:[0, [.25, .33], [.22, .3], [.19, .27], [.17, .24], [.15, .22], [.15, .2]],
+    rot:[0, 12, 15, 18, 22, 25, 25],   /* 기울기는 어려움·대장 판에만 */
+    busy:[0, -.5, -.3, 0, .2, .4, .5],
+    ink:[0, .1, .16, .22, .28, .32, .35]
   };
-  const CH_THEME = ['forest', 'sea', 'room', 'market', 'snow'];
+  const CH_THEME = ['forest', 'sea', 'room', 'market', 'snow'];   /* 예전 장면(legacy) */
+  /* 새 장면: 챕터마다 장면 2~3개를 돌아가며(같은 장면이 연달아 나오지 않게), 쉬어가기(k=9)는 공원 */
+  const CH_SCENE = [['park', 'camp'], ['beach', 'fun'], ['class', 'kitchen', 'library'], ['market', 'festival', 'kimchi'], ['snow', 'station']];
   function stageCfg(n){
     const p = planOf('hidden', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x), cc = Math.min(c, LT.spp.length - 1);
     let items = c === 1 ? LT.ch1[k - 1] : LT.base[cc] + LT.kOff[k];
@@ -200,7 +229,9 @@ NG.hidden = (() => {
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(45, Math.round(limit / 5) * 5);
     const theme = k === 9 ? 'garden' : CH_THEME[(c - 1) % CH_THEME.length];
-    return { items, many, swim, size:Math.round(size * 100) / 100, dens, limit, theme, hints:tw === 'bare' ? 0 : p.boss ? 2 : 3,
+    const cs = CH_SCENE[(c - 1) % CH_SCENE.length], scene = k === 9 ? 'park' : cs[(k - 1 + Math.floor((c - 1) / CH_SCENE.length)) % cs.length];
+    const tone = LT.tone[cc].map(v => Math.max(.15, Math.round((v + (p.easy ? .03 : 0) - (p.hard || p.boss ? .02 : 0)) * 100) / 100));
+    return { items, many, swim, size:Math.round(size * 100) / 100, dens, limit, theme, scene, tone, rot:p.hard || p.boss ? LT.rot[cc] : 0, minR:c === 1 || p.easy ? 16 : 14, busy:LT.busy[cc] + (p.hard || p.boss ? .2 : 0) - (p.easy ? .3 : 0), ink:LT.ink[cc], hints:tw === 'bare' ? 0 : p.boss ? 2 : 3,
       shadow:has('shadow'), night:has('night'), order:tw === 'order', lives:tw === 'tight' ? 2 : 0, boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
   }
 
@@ -266,16 +297,93 @@ NG.hidden = (() => {
     return { tk, T, bg:bg + deco, top, items, list, ok:check(items, list) };
   }
   /* 점검: 모든 물건이 장면 안에 있고 서로 겹치지 않으며 목록 개수와 맞는가 */
-  function check(items, list){
+  function check(items, list, zx = ZX, zy = ZY){
     for(const o of items){
       const ex = o.mv ? Math.abs(o.mv.ax) : 0, ey = o.mv ? Math.abs(o.mv.ay) : 0;
       if(o.x - ex - o.r < 0 || o.x + ex + o.r > W || o.y - ey - o.r < 0 || o.y + ey + o.r > H) return false;
-      if(!o.mv && o.x + o.r * .5 > W - ZX && o.y + o.r * .5 > H - ZY) return false;
+      if(!o.mv && o.x + o.r * .5 > W - zx && o.y + o.r * .5 > H - zy) return false;
     }
     for(let a = 0; a < items.length; a++) for(let b = a + 1; b < items.length; b++){
       const p = items[a], q = items[b]; if(!p.mv && !q.mv && Math.hypot(p.x - q.x, p.y - q.y) < (p.r + q.r) * .95) return false;
     }
     return list.every((L, li) => items.filter(o => o.li === li).length === L.need);
+  }
+
+  /* ===== 새 장면(v1.1): 그림책 장면 12개 + 숨길 자리 =====
+     물건 색 = 그 자리 바탕색에서 밝기만 tone만큼 바꾼 색(밝은 바탕엔 어둡게, 어두운 바탕엔 밝게) → 섞여 보이지만 모양은 또렷.
+     외곽선 = 장면과 같은 선 색(ink만큼 바탕색 쪽으로 섞음). 자리끼리 44 이상 떨어져 있어 어떤 자리를 골라도 물건이 겹치지 않는다. */
+  const hex2hsl = h => { const n = parseInt(h.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    if(!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); let hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(hh * 60 + 360) % 360, s, l]; };
+  const hsl2hex = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2, i = Math.floor(h / 60) % 6;
+    const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][i]; return '#' + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join(''); };
+  const mixHex = (a, b, t) => { const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16); return '#' + [16, 8, 0].map(sh => Math.round((p >> sh & 255) * (1 - t) + (q >> sh & 255) * t).toString(16).padStart(2, '0')).join(''); };
+  function toneOf(base, d){
+    const [h, sat, l] = hex2hsl(base), dir = l > .5 ? -1 : 1;
+    const s2 = Math.min(.55, Math.max(.08, sat)), F = hsl2hex(h, s2, Math.max(.08, Math.min(.95, l + dir * d)));
+    const A = hsl2hex((h + 14) % 360, Math.min(.6, s2 + .06), Math.max(.08, Math.min(.95, l + dir * (d + .1))));
+    return [F, A];
+  }
+  function pickScene(rng, avoid){ const ok = SCN.filter(k => !(avoid || []).includes(k)), a = ok.length ? ok : SCN; return a[Math.floor(rng() * a.length)]; }
+  function gen2(cfg, rng, key){
+    const sc = sceneOf(key), spots = ART.SPOTS[sc.key] || [];
+    const pool = POOL2.filter(k => !(sc.ban || []).includes(k));
+    const n = Math.max(1, Math.min(pool.length, cfg.items || 8)), many = Math.min(n, cfg.many || 0);
+    const keys = shuffle(pool.slice(), rng).slice(0, n);
+    const list = keys.map((k, i) => ({ k, need:i < many ? 3 : 1, got:0 }));
+    if(many) shuffle(list, rng);
+    const tone = cfg.tone || [.15, .25], rotMax = cfg.rot || 0, minR = cfg.minR || 14, busy = cfg.busy || 0, ink = cfg.ink || 0, s0 = cfg.size || .9;
+    /* 자리 순서: 난수 + 선 밀도 선호(쉬움은 빈 곳, 어려움은 복잡한 곳) */
+    const order = spots.map((p, i) => ({ p, w:rng() + busy * p[2] * 3 })).sort((a, b) => b.w - a.w).map(o => o.p);
+    const items = []; let oi = 0;
+    list.forEach((L, li) => {
+      for(let c = 0; c < L.need; c++){
+        const s = s0 * R(rng, .94, 1.06), r = Math.max(minR, Math.min(20, IR * s));
+        let it = null;
+        while(!it && oi < order.length){
+          const p = order[oi++], x = p[0] + R(rng, -3, 3), y = p[1] + R(rng, -3, 3);
+          if(items.some(o => Math.hypot(o.x - x, o.y - y) < (o.r + r) * 1.05 + 2)) continue;
+          const [F, A] = toneOf(p[3], R(rng, tone[0], tone[1]));
+          it = { i:items.length, li, k:L.k, x, y, s:r / IR, r, rot:Math.round(R(rng, -rotMax, rotMax)), F, A, K:mixHex(ART.K, p[3], ink) };
+        }
+        if(!it){   /* 자리가 모자라면(장면 자리 데이터가 없을 때만) 빈 곳에 */
+          for(let t = 0; t < 400 && !it; t++){
+            const x = R(rng, r + 6, W - r - 6), y = R(rng, r + 6, H - r - 6);
+            if(x + r * .5 > W - ART.ZX && y + r * .5 > H - ART.ZY) continue;
+            if(items.some(o => Math.hypot(o.x - x, o.y - y) < (o.r + r) * 1.05 + 2)) continue;
+            it = { i:items.length, li, k:L.k, x, y, s:r / IR, r, rot:0, F:'#E8D8B8', A:'#C9A46A', K:ART.K };
+          }
+        }
+        items.push(it);
+      }
+    });
+    const sw = Math.min(cfg.swim || 0, items.length);
+    shuffle(items.map(o => o.i), rng).slice(0, sw).forEach(i => {
+      const o = items[i], a = R(rng, 0, Math.PI), A = R(rng, 18, 30);
+      const ax = Math.cos(a) * A, ay = Math.sin(a) * A;
+      const kx = Math.min(1, Math.max(0, (Math.min(o.x, W - o.x) - o.r - 4) / Math.max(1, Math.abs(ax)))), ky = Math.min(1, Math.max(0, (Math.min(o.y, H - o.y) - o.r - 4) / Math.max(1, Math.abs(ay)))), kk = Math.min(kx, ky);
+      o.mv = { ax:ax * kk, ay:ay * kk, per:R(rng, 5, 9), ph:R(rng, 0, 6.28) };
+    });
+    const u = 'hd' + Math.floor(rng() * 1e6);
+    return { key:sc.key, tk:sc.key, T:{ name:sc.name, k:ART.K }, bg:ART.svgOf(sc, u), top:'', items, list, ok:check(items, list, ART.ZX, ART.ZY), v2:true };
+  }
+  /* 대전에서 같은 그림이 다시 나오지 않게
+     - 컴퓨터 대전: 이 기기에서 최근 본 장면 3개를 피한다.
+     - 실시간 대전: 같은 상대와 "다시 대전"하면 씨앗이 같을 수 있어서, 이 씨앗으로 몇 번째 판인지(두 기기가 똑같이 셈)를
+       씨앗에 붙이고, 앞 판들의 장면(두 기기가 똑같이 다시 계산)을 피한다. 공용 엔진이 avoid(방장 목록)를 주면 그것도 피한다. */
+  const SEEN_KEY = 'hp:hidden:seen', ROUND_KEY = 'hp:hidden:rounds';
+  const seenGet = () => { try{ const a = store.get(SEEN_KEY, []); return Array.isArray(a) ? a.filter(k => SCN.includes(k)).slice(-3) : []; }catch(_){ return []; } };
+  const seenAdd = k => { try{ store.set(SEEN_KEY, seenGet().filter(x => x !== k).concat(k).slice(-3)); }catch(_){} };
+  function duelRound(seed){
+    try{ const m = store.get(ROUND_KEY, {}) || {}, h = String(seedFrom(seed)), j = m[h] || 0; m[h] = j + 1; const ks = Object.keys(m); if(ks.length > 40) ks.slice(0, ks.length - 40).forEach(x => delete m[x]); store.set(ROUND_KEY, m); return j; }catch(_){ return 0; }
+  }
+  function duelBoard(rng, isNew = true){
+    const d = G.duel, shared = [].concat(d.avoid || (d.cf && d.cf.av) || []);
+    if(d.mode === 'ai' || !d.seed) return { rng, scene:isNew ? pickScene(rng, shared.concat(seenGet())) : null };
+    /* 판 번호: 공용 엔진이 주면(대전 v3 G.duel.round) 그것을, 없으면 이 씨앗으로 몇 번째 판인지 기기마다 센 값 */
+    const j = d.round != null && isFinite(+d.round) ? Math.max(0, Math.floor(+d.round)) : duelRound(String(d.seed)), seen = [];
+    let r = rng, k = null;
+    for(let i = 0; i <= j; i++){ r = mulberry(seedFrom(i ? d.seed + '#r' + i : String(d.seed))); if(isNew){ k = pickScene(r, shared.concat(seen.slice(-3))); seen.push(k); } }
+    return { rng:r, scene:k, round:j };
   }
 
   /* ===== 플레이 ===== */
@@ -313,7 +421,14 @@ NG.hidden = (() => {
     const nm = m.shadow && !done ? '???' : ITEMS[L.k][0];
     return `<div class="hd-chip${done ? ' done' : ''}${cur ? ' cur' : ''}${m.order && !done && !cur ? ' wait' : ''}" data-li="${li}" role="listitem" aria-label="${m.shadow && !done ? '그림자 물건' : ITEMS[L.k][0]}${L.need > 1 ? ' ' + L.got + '/' + L.need + '개' : ''}${done ? ' 찾음' : ''}"><span class="hd-ci">${iconSvg(L.k, m.shadow && !done)}</span><span class="hd-cn">${nm}</span>${L.need > 1 ? `<em>${done ? '✔' : '×' + (L.need - L.got)}</em>` : done ? '<em class="ok">✔</em>' : ''}</div>`;
   }
-  function drawList(){ const m = S(), el = $('#hdList'); if(!el) return; el.innerHTML = m.list.map(chipHtml).join(''); el.style.setProperty('--cols', m.list.length <= 6 ? 3 : 4); }
+  /* 찾을 목록: 한 줄 가로 칸(넘치면 옆으로 밀기). 아직 못 찾은 물건이 앞에 오고, 찾은 물건은 뒤로 → 보이는 칸이 늘 남은 물건 */
+  function drawList(){
+    const m = S(), el = $('#hdList'); if(!el) return;
+    const idx = m.list.map((L, li) => li), done = li => m.list[li].got >= m.list[li].need;
+    el.innerHTML = idx.filter(li => !done(li)).concat(idx.filter(done)).map(li => chipHtml(m.list[li], li)).join('');
+    try{ el.scrollLeft = 0; listFade(); }catch(_){}
+  }
+  function listFade(){ const el = $('#hdList'); if(!el) return; const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 6; el.classList.toggle('more', more); }
 
   /* 확대/이동: viewBox로 보이는 부분만 바꾼다(물건 자리·판정은 장면 좌표 그대로) */
   function applyView(){
@@ -367,11 +482,11 @@ NG.hidden = (() => {
     mk.setAttribute('class', 'hd-mark'); mk.dataset.i = o.i;
     const [px, py] = posOf(o, elapsed());
     mk.setAttribute('transform', `translate(${r1(px)} ${r1(py)})`);
-    mk.innerHTML = `<circle r="${r1(o.r + 5)}" class="o"/><circle r="${r1(o.r + 5)}" class="c"/>`;
+    mk.innerHTML = `<g class="p"><circle r="${r1(o.r + 8)}" class="o"/><circle r="${r1(o.r + 8)}" class="c"/></g>`;
     const ml = $('#hdMarks'); if(ml) ml.appendChild(mk);
     const ig = document.querySelector(`.ng-hidden .hd-it[data-i="${o.i}"]`); if(ig) ig.classList.add('got');
     drawList(); hud();
-    try{ const q = screenOf(px, py); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', o.F], 12, { speed:220, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); fxRing(q.x, q.y, '#FFE27A', 40, .45, 6);
+    try{ const q = screenOf(px, py); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', o.F], 12, { speed:220, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); fxRing(q.x, q.y, '#FFE27A', 56, .5, 7); fxRing(q.x, q.y, '#FFFFFF', 34, .35, 4);
       const ch = document.querySelector(`.ng-hidden .hd-chip[data-li="${o.li}"]`); if(ch) fxPunch(ch, 1.12); }catch(_){}
     sfx('hdFind', { n:Math.min(8, m.combo - 1) }); fxBuzz(12);
     if(m.combo >= 3) try{ fxCombo(m.combo); }catch(_){}
@@ -382,7 +497,7 @@ NG.hidden = (() => {
   function miss(x, y){
     const m = S();
     m.misses++; m.streak++; m.combo = 0;
-    const cool = 700 + 350 * Math.min(3, m.streak - 1);   /* 연속으로 빗나가면 더 오래 못 누름(마구 누르기 막기) */
+    const cool = (G.duel ? 1500 : 700) + 350 * Math.min(3, m.streak - 1);   /* 연속으로 빗나가면 더 오래 못 누름(마구 누르기 막기). 대전은 1.5초부터(막 누르기로 이기지 않게) */
     m.coolUntil = Date.now() + cool; m.coolLen = cool;
     const xg = document.createElementNS(SVGNS, 'g'); xg.setAttribute('class', 'hd-x');
     const sc = 1 / m.view.z; xg.setAttribute('transform', `translate(${r1(x)} ${r1(y)}) scale(${r1(sc * 100) / 100})`);
@@ -466,11 +581,21 @@ NG.hidden = (() => {
     try{ fxShake($('#hdWrap'), 6); }catch(_){}
     /* 못 찾은 물건 자리 보여 주기 */
     const ml = $('#hdMarks'), t = elapsed();
-    if(ml) m.items.filter(o => !m.got.has(o.i)).forEach(o => { const [px, py] = posOf(o, t); const g = document.createElementNS(SVGNS, 'g'); g.setAttribute('class', 'hd-mark miss'); g.setAttribute('transform', `translate(${r1(px)} ${r1(py)})`); g.innerHTML = `<circle r="${r1(o.r + 5)}" class="o"/><circle r="${r1(o.r + 5)}" class="c"/>`; ml.appendChild(g); });
+    if(ml) m.items.filter(o => !m.got.has(o.i)).forEach(o => { const [px, py] = posOf(o, t); const g = document.createElementNS(SVGNS, 'g'); g.setAttribute('class', 'hd-mark miss'); g.setAttribute('transform', `translate(${r1(px)} ${r1(py)})`); g.innerHTML = `<circle r="${r1(o.r + 8)}" class="o"/><circle r="${r1(o.r + 8)}" class="c"/>`; ml.appendChild(g); });
     if(m.night){ const ov = $('#hdNight'); if(ov) ov.classList.add('off'); }
     T_(() => finish(false), 1500);
   }
 
+  /* 첫 판 안내: 돋보기 단추 옆 말풍선(한 번 확대하거나 5초 지나면 사라짐, 이 기기에서 3판까지) */
+  function zoomTipOff(){ const t = $('#hdZtip'); if(t){ t.classList.add('off'); setTimeout(() => { try{ t.remove(); }catch(_){} }, 300); } try{ store.set('hp:hidden:ztip', 9); }catch(_){} }
+  function zoomTip(){
+    try{
+      const m = S(), n = +store.get('hp:hidden:ztip', 0) || 0; if(m.night || n >= 3 || !$('#hdWrap')) return;
+      store.set('hp:hidden:ztip', n + 1);
+      const t = document.createElement('div'); t.id = 'hdZtip'; t.className = 'hd-ztip'; t.innerHTML = '돋보기로<br>크게 볼 수 있어요'; t.setAttribute('aria-hidden', 'true');
+      $('#hdWrap').appendChild(t); T_(() => zoomTipOff(), 5000);
+    }catch(_){}
+  }
   function layout(){
     const m = S(), wrap = $('#hdWrap'), root = document.querySelector('.ng-hidden'), list = $('#hdList'); if(!wrap || !root) return;
     const RW = Math.min(root.clientWidth || 360, 480);
@@ -515,7 +640,8 @@ NG.hidden = (() => {
     svg.onpointerup = up; svg.onpointercancel = up;
     svg.onwheel = e => { if(m.night) return; e.preventDefault(); const c = scenePt(e.clientX, e.clientY); zoomBy(e.deltaY < 0 ? 1.25 : 1 / 1.25, c && c[0], c && c[1]); };
     const zi = $('#hdZin'), zo = $('#hdZout');
-    if(zi) zi.onclick = () => { zoomBy(1.6); sfx('hdZoom'); };
+    if(zi) zi.onclick = () => { zoomBy(1.6); sfx('hdZoom'); zoomTipOff(); };
+    const hl = $('#hdList'); if(hl) hl.onscroll = listFade;
     if(zo) zo.onclick = () => { if(m.view.z < 1.7) { m.view.z = 1; applyView(); } else zoomBy(1 / 1.6); sfx('hdZoom', { out:1 }); };
     const h = $('#hdHint'); if(h) h.onclick = useHint;
   }
@@ -524,42 +650,43 @@ NG.hidden = (() => {
     name:'숨은그림 찾기', abil:'집중력', col:['#FFD6A5', '#F08A24', '#9A4A08'], time:'약 2분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.5a7.5 7.5 0 0 1 6.1 11.9l5 5a1.5 1.5 0 0 1-2.1 2.1l-5-5A7.5 7.5 0 1 1 10 2.5zm0 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/><path d="M10 7.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 9.3l2-.3z"/></svg>',
     art(){
-      const u = 'hdA' + Math.floor(performance.now() * 1000 % 1e6), T = THEMES.forest, K = T.k;
-      const it = (k, x, y, rot, s, F, A) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">${itemSvg(k, F, A, K, 2.2 / s)}</g>`;
-      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
-        <linearGradient id="${u}1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4F7D6"/><stop offset="1" stop-color="#BDE6A6"/></linearGradient></defs>
-        <rect width="160" height="100" fill="url(#${u}1)"/>
-        <path d="M0 52Q40 38 80 50T160 46V100H0z" fill="#8FCB7C" stroke="${K}" stroke-width="1.6"/>
-        <rect x="18" y="30" width="7" height="26" rx="2" fill="#9C6B3E" stroke="${K}" stroke-width="1.6"/><circle cx="21.5" cy="24" r="15" fill="#5BAE4E" stroke="${K}" stroke-width="1.6"/>
-        <rect x="128" y="26" width="7" height="28" rx="2" fill="#9C6B3E" stroke="${K}" stroke-width="1.6"/><circle cx="131.5" cy="20" r="16" fill="#7CC36E" stroke="${K}" stroke-width="1.6"/>
-        ${it('key', 21, 22, -30, .45, '#7CC36E', '#E7D07A')}${it('spoon', 60, 76, 35, .55, '#A7D98C', '#E7D07A')}${it('sock', 132, 74, -15, .5, '#C9A06A', '#E8956B')}
-        <g fill="#E7D07A" stroke="${K}" stroke-width="1.2"><circle cx="40" cy="66" r="3"/><circle cx="100" cy="84" r="2.6"/><circle cx="118" cy="60" r="2.2"/></g>
-        <path d="M30 88q-2-6-5-8M30 88q0-7 1-10M150 92q-2-6-5-8M150 92q0-7 1-10" fill="none" stroke="${K}" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="60" cy="76" r="12" fill="none" stroke="#fff" stroke-width="5"/><circle cx="60" cy="76" r="12" fill="none" stroke="#FF3D7F" stroke-width="2.6"/>
-        <g transform="translate(96 30)"><circle r="16" fill="#E6F6FF" fill-opacity=".55" stroke="#1A0F45" stroke-width="4"/><path d="M11 11l13 13" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M11 11l13 13" stroke="#F08A24" stroke-width="3.4" stroke-linecap="round"/><path d="M-8-6a10 10 0 0 1 8-6" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/>
-        ${it('star', 0, 0, 10, .5, '#FFE27A', '#FFB84D')}</g></svg>`;
+      /* 썸네일: 공원 장면 한 부분 + 찾은 동그라미 + 돋보기 */
+      const u = 'hdA' + Math.floor(performance.now() * 1000 % 1e6), sc = sceneOf('park'), K = ART.K;
+      const it = (k, x, y, rot, s, F, A) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">${itemSvg(k, F, A, K, 2 / s)}</g>`;
+      return `<svg viewBox="150 300 192 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${ART.svgOf(sc, u)}
+        ${it('key', 268, 334, -24, .62, '#8FBF78', '#B9D99E')}${it('spoon', 178, 400, 30, .6, '#E3CBA0', '#F2E1BE')}
+        <circle cx="268" cy="334" r="15" fill="none" stroke="#fff" stroke-width="7"/><circle cx="268" cy="334" r="15" fill="none" stroke="#FF2E7E" stroke-width="3.6"/>
+        <g transform="translate(212 352)"><circle r="20" fill="#E6F6FF" fill-opacity=".45" stroke="#1A0F45" stroke-width="4.5"/><path d="M14 14l15 15" stroke="#1A0F45" stroke-width="8" stroke-linecap="round"/><path d="M14 14l15 15" stroke="#F08A24" stroke-width="4" stroke-linecap="round"/><path d="M-10-7a12 12 0 0 1 9-7" stroke="#fff" stroke-width="3.4" stroke-linecap="round" fill="none"/></g></svg>`;
     },
-    help:[
-      ['아래 물건을 찾아요', '장면 아래 목록에 있는 물건이 그림 속 어딘가에 작게 숨어 있어요. 기울어져 있거나 배경과 색이 비슷할 수 있어요.'],
-      ['찾으면 눌러요', '물건을 누르면 동그라미가 그려지고 목록에 ✔가 붙어요. 엉뚱한 곳을 누르면 실수 — 잠깐 못 누르고 점수가 줄어요. 마구 누르지 말고 잘 보고 눌러요!'],
-      ['확대해서 봐요', '오른쪽 아래 돋보기 단추(또는 두 손가락)로 확대하고, 끌어서 옮겨 볼 수 있어요. 막히면 💡힌트가 물건 근처를 잠깐 밝혀 줘요(점수 조금 줄어요).'],
-      ['시간 안에 모두 찾기', '제한 시간 안에 목록의 물건을 모두 찾으면 성공! 빨리 찾을수록 점수가 높아요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 그림자 목록·여러 개 찾기·움직이는 물건·밤 손전등 같은 새 규칙과 번개·깨알·차례대로 같은 변주가 5판마다 하나씩 나와요.']
-    ],
+    /* 도움말: 그림 1장 + 3줄(쉬운 말) */
+    get help(){
+      const u = 'hdH' + Math.floor(performance.now() * 1000 % 1e6), sc = sceneOf('park'), K = ART.K;
+      const pic = `<svg viewBox="186 236 168 100" style="display:block;width:100%;max-width:300px;margin:4px 0 8px;border-radius:12px;border:2px solid #1A0F45" aria-hidden="true">${ART.svgOf(sc, u)}<g transform="translate(220 316) rotate(-24) scale(.66)">${itemSvg('key', '#8FBF78', '#B9D99E', K, 3)}</g><circle cx="220" cy="316" r="17" fill="none" stroke="#fff" stroke-width="7"/><circle cx="220" cy="316" r="17" fill="none" stroke="#FF2E7E" stroke-width="3.6"/></svg>`;
+      return [
+        ['그림 속 물건 찾기', pic + '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미!'],
+        ['크게 보기', '두 손가락으로 벌리거나 돋보기 단추로 크게 볼 수 있어요.'],
+        ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 조금 줄고 잠깐 못 눌러요. 막히면 💡힌트!']
+      ];
+    },
     helpExtra(){ const m = G && G.id === 'hidden' && G.h; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
-    chapters:['숲속 소풍', '바닷속 탐험', '다락방 보물', '왁자지껄 장터', '눈꽃 마을'],
+    chapters:['공원 소풍', '바닷가 놀이', '학교와 집', '왁자지껄 장터', '눈꽃 마을'],
     starRule:'★ 클리어 · ★★ 힌트 1번·실수 4번 이하 · ★★★ 힌트 없이 실수 1번 이하',
     levels:{
-      easy:{ items:7, size:1.02, dens:90, limit:120, hints:3 },
-      normal:{ items:9, size:.9, dens:120, limit:150, hints:3 },
-      hard:{ items:11, size:.8, dens:150, limit:180, hints:3 }
+      /* 새 장면: tone = 물건과 바탕의 명도 차(쉬움 25~35%, 그 밖 15~25%), minR = 최소 반지름(화면 28px, 쉬움 32px), rot = 기울기(어려움만 ±25°) */
+      easy:{ items:7, size:1.02, dens:90, limit:120, hints:3, tone:[.25, .35], rot:0, minR:16, busy:-.5, ink:.1 },
+      normal:{ items:9, size:.9, dens:120, limit:150, hints:3, tone:[.17, .25], rot:0, minR:14, busy:0, ink:.25 },
+      hard:{ items:11, size:.8, dens:150, limit:180, hints:3, tone:[.15, .2], rot:25, minR:14, busy:.5, ink:.35 }
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return `${THEMES[c.theme].name} · 물건 ${c.items + c.many * 2}개 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
+    stageDesc(n){ const c = stageCfg(n); return `${dayKey() >= NEW_FROM ? sceneOf(c.scene).name : (THEMES[c.theme] || {}).name || ''} · 물건 ${c.items + c.many * 2}개 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `물건 ${c.items}개 · ${mmss(c.limit)}`; },
     init(cfg, rng){
-      const sc = gen(cfg, rng);
+      /* 오늘의 문제·연습: 2026-10-06 전 날짜는 예전 장면(이미 푼 사람과 같은 문제). 솔로·대전은 늘 새 장면 */
+      /* NEW_FROM 전 날짜는 오늘의 문제·연습·솔로·대전 모두 예전 장면(그날 이미 푼 사람과 같은 문제), 그 날부터는 새 장면 12개만 */
+      let sc; const isNew = dayKey() >= NEW_FROM;
+      if(G.duel){ const b = duelBoard(rng, isNew); sc = isNew ? gen2(cfg, b.rng, b.scene) : gen(cfg, b.rng); if(isNew) seenAdd(sc.key); }
+      else sc = isNew ? gen2(cfg, rng, cfg.scene || pickScene(rng, cfg.avoid)) : gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.h = { sc, items:sc.items, list:sc.list.map(L => Object.assign({}, L, { got:0 })), got:new Set(), found:0, misses:0, streak:0, combo:0, hints:0,
         hintLeft:cfg.hints == null ? 3 : cfg.hints, lives:G.duel ? 0 : cfg.lives || 0, coolUntil:0, shadow:!!cfg.shadow, night:!!cfg.night, order:!!cfg.order,
@@ -590,10 +717,10 @@ NG.hidden = (() => {
       });
     },
     _solveForTest(){ return G.h._solveForTest(); },
-    _gen:gen, _stage:stageCfg, _items:ITEMS, _themes:THEMES,
+    _gen:gen, _gen2:gen2, _stage:stageCfg, _items:ITEMS, _themes:THEMES, _scenes:SCN,
     render(st){
       const m = S(), sc = m.sc;
-      const items = m.items.map(o => `<g class="hd-it" data-i="${o.i}" transform="translate(${r1(o.x)} ${r1(o.y)})"><g transform="rotate(${o.rot}) scale(${r1(o.s * 100) / 100})">${itemSvg(o.k, o.F, o.A, sc.T.k, r1(2.2 / o.s * 100) / 100)}</g></g>`).join('');
+      const items = m.items.map(o => `<g class="hd-it" data-i="${o.i}" transform="translate(${r1(o.x)} ${r1(o.y)})"><g transform="rotate(${o.rot}) scale(${r1(o.s * 100) / 100})">${itemSvg(o.k, o.F, o.A, o.K || sc.T.k, r1((sc.v2 ? 2 : 2.2) / o.s * 100) / 100)}</g></g>`).join('');
       const night = m.night ? `<defs><radialGradient id="hdLg"><stop offset="0" stop-color="#000"/><stop offset=".72" stop-color="#000"/><stop offset="1" stop-color="#fff"/></radialGradient>
         <mask id="hdMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><circle id="hdLight" cx="${m.light[0]}" cy="${m.light[1]}" r="${LIGHT_R}" fill="url(#hdLg)"/></mask></defs>
         <g id="hdNight" class="hd-night"><rect width="${W}" height="${H}" fill="#0B0A2A" fill-opacity=".985" mask="url(#hdMask)"/><circle id="hdGlow" cx="${m.light[0]}" cy="${m.light[1]}" r="${LIGHT_R - 4}" fill="none" stroke="#FFE9A0" stroke-width="2" stroke-dasharray="5 6" opacity=".55"/></g>` : '';
@@ -616,7 +743,7 @@ NG.hidden = (() => {
         <div class="hd-list" id="hdList" role="list" aria-label="찾을 물건"></div>
       </div>`;
       m.items.forEach(o => { m.itEl[o.i] = document.querySelector(`.ng-hidden .hd-it[data-i="${o.i}"]`); });
-      drawList(); wire(); hud(); layout(); applyView();
+      drawList(); wire(); hud(); layout(); applyView(); zoomTip();
       T_(() => { const w = $('#hdWrap'); if(w) w.classList.remove('in'); }, 700);
       m.onResize = () => layout();
       addEventListener('resize', m.onResize);
@@ -665,9 +792,11 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-wrap.zoomed .hd-svg{cursor:grab}
 .ng-hidden .hd-it.got{opacity:1}
 .ng-hidden .hd-mark circle{fill:none}
-.ng-hidden .hd-mark .o{stroke:#fff; stroke-width:7}
-.ng-hidden .hd-mark .c{stroke:#FF2E7E; stroke-width:3.6}
-.ng-hidden .hd-mark circle{stroke-dasharray:200; stroke-dashoffset:200; animation:hidden-draw .35s ease-out forwards}
+.ng-hidden .hd-mark .o{stroke:#fff; stroke-width:9}
+.ng-hidden .hd-mark .c{stroke:#FF2E7E; stroke-width:4.6}
+.ng-hidden .hd-mark circle{stroke-dasharray:220; stroke-dashoffset:220; animation:hidden-draw .35s ease-out forwards}
+.ng-hidden .hd-mark .p{animation:hidden-ring .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes hidden-ring{from{transform:scale(1.7); opacity:.2}}
 .ng-hidden .hd-mark.miss .c{stroke:#2F7BFF; stroke-dasharray:6 5; stroke-dashoffset:0; animation:none}
 .ng-hidden .hd-mark.miss .o{stroke-dasharray:none; stroke-dashoffset:0; animation:none}
 @keyframes hidden-draw{to{stroke-dashoffset:0}}
@@ -684,10 +813,13 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-night.off{opacity:0}
 .ng-hidden .hd-zoom{position:absolute; right:8px; bottom:8px; display:flex; flex-direction:column; gap:7px}
 .ng-hidden .hd-zoom[hidden]{display:none}
-.ng-hidden .hd-zoom button{width:44px; height:44px; padding:7px; border-radius:50%; border:2.5px solid #1A0F45; background:rgba(255,255,255,.92); box-shadow:0 3px 0 #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-hidden .hd-zoom button{width:56px; height:56px; padding:9px; border-radius:50%; border:2.5px solid #1A0F45; background:rgba(255,255,255,.92); box-shadow:0 3px 0 #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-hidden .hd-zoom button svg{width:100%; height:100%; display:block}
 .ng-hidden .hd-zoom button:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .ng-hidden .hd-zoom button:disabled{opacity:.4; cursor:default}
+.ng-hidden .hd-ztip{position:absolute; right:74px; bottom:76px; padding:7px 11px; border-radius:12px; background:#1A0F45; color:#fff; font-family:var(--disp); font-size:14px; line-height:1.25; text-align:center; pointer-events:none; box-shadow:0 3px 0 rgba(0,0,0,.2); animation:hidden-in .35s cubic-bezier(.2,1.5,.4,1); transition:opacity .3s}
+.ng-hidden .hd-ztip::after{content:''; position:absolute; right:-7px; top:50%; margin-top:-7px; border:7px solid transparent; border-right:0; border-left-color:#1A0F45}
+.ng-hidden .hd-ztip.off{opacity:0}
 .ng-hidden .hd-cool{position:absolute; left:50%; top:10px; transform:translateX(-50%) scale(.6); opacity:0; pointer-events:none; transition:opacity .15s, transform .2s cubic-bezier(.2,1.5,.4,1)}
 .ng-hidden .hd-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:17px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:5px 13px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap; font-variant-numeric:tabular-nums}
 .ng-hidden .hd-cool i{display:block; height:6px; margin:5px 10px 0; border-radius:99px; background:rgba(26,15,69,.35); overflow:hidden}
@@ -696,12 +828,14 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-wrap.cool .hd-svg{filter:saturate(.55) brightness(.92)}
 .ng-hidden .hd-wrap.cleared{animation:hidden-cheer .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes hidden-cheer{40%{transform:scale(1.03)}}
-.ng-hidden .hd-list{--cols:4; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:5px; width:100%; margin:12px 0 0}
-.ng-hidden .hd-chip{position:relative; display:flex; align-items:center; gap:3px; height:40px; padding:0 5px 0 3px; border-radius:11px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0}
+.ng-hidden .hd-list{display:flex; gap:6px; width:100%; margin:4px 0 0; padding:9px 2px 6px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity}
+.ng-hidden .hd-list::-webkit-scrollbar{display:none}
+.ng-hidden .hd-list.more{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent); mask-image:linear-gradient(90deg,#000 82%,transparent)}
+.ng-hidden .hd-chip{position:relative; flex:0 0 64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; height:54px; padding:2px 1px 3px; border-radius:12px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0; scroll-snap-align:start}
 .ng-hidden .hd-ci{width:28px; height:28px; flex:none; display:block}
 .ng-hidden .hd-ci svg{width:100%; height:100%; display:block; overflow:visible}
-.ng-hidden .hd-cn{flex:1; min-width:0; font-family:var(--disp); font-size:13px; line-height:1.05; color:#4A2A10; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.3px}
-.ng-hidden .hd-chip em{position:absolute; top:-7px; right:-5px; font-style:normal; font-family:var(--heavy); font-size:12px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
+.ng-hidden .hd-cn{max-width:100%; font-family:var(--disp); font-size:13px; line-height:1.1; color:#4A2A10; overflow:hidden; text-overflow:clip; white-space:nowrap; letter-spacing:-.6px}
+.ng-hidden .hd-chip em{position:absolute; top:-8px; right:-3px; font-style:normal; font-family:var(--heavy); font-size:12px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
 .ng-hidden .hd-chip em.ok{background:#2BB673}
 .ng-hidden .hd-chip.done{background:#E3FAEC}
 .ng-hidden .hd-chip.done em{background:#2BB673}
@@ -715,7 +849,7 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-chipr.mj{background:#FFF0DC; color:#9A4A08}
 .ng-hidden .hd-chipr.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-hidden .hd-chipr.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-hidden .hd-msg b{font-size:18px} .ng-hidden .hd-cn{font-size:12px} .ng-hidden .hd-chipr{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-hidden .hd-msg b{font-size:18px} .ng-hidden .hd-chipr{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-hidden .hd-mark circle{animation:none; stroke-dashoffset:0} .ng-hidden .hd-wrap.in, .ng-hidden .hd-chip.cur{animation:none} }
 `,
     sounds:{
