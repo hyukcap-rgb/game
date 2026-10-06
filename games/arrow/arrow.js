@@ -627,6 +627,11 @@ NG.arrow = (() => {
 })();
 
 /* 대전: 같은 화살표(같은 씨앗·보통), 끝났을 때 점수가 높은 쪽 승. AI 상대 평균 시간·성공률(duelPace), 상대에게 보내는 수치(duelStat) */
-Object.assign(NG.arrow, { duelPace:[50, .75], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:G.m.lives, mis:G.m.wrong }) }, duelHow:'같은 화살표 · 누가 더 빠르고 정확하게' });
+Object.assign(NG.arrow, { duelPace:[50, .75], duelKind:'score', duelEnd:'all',
+  /* 대전은 점수전(모두 끝까지, 점수 순): 막대 값 = 지금까지 점수(결과 창과 같은 식, 남은 기회 점수는 진행만큼) */
+  duelStat:{ unit:'점', score:true, lfMax:3, get:() => {
+    let v = 0; try{ const q = NG.arrow.score(), pr = Math.max(0, Math.min(1, NG.arrow.progress() || 0)); v = Math.round((q.base + q.time + q.extra * pr) * ((G.L && G.L.mult) || 1)); }catch(_){}
+    return { v, t:100, lf:G.m.lives, mis:G.m.wrong };
+  } }, duelHow:'같은 화살표 · 끝났을 때 점수가 높은 쪽이 이겨요' });
 /* 움직이는 배경(core/scene.js): 밤 도로의 흐린 불빛 방울. 보이기만 하고 게임·대전에는 영향 없음 */
 NG.arrow.scene = { kind:'motes', colors:['#6FD6E8', '#9FB4FF', '#FFE07A'], density:.55, alpha:.45 };

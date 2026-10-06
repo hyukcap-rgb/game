@@ -615,7 +615,12 @@ NG.flag = (() => {
 /* 대전: 같은 명령을 동시에 · 끝났을 때 점수가 높은 쪽 승. AI 상대 평균 시간·성공률(duelPace), 상대에게 보내는 수치(duelStat) */
 Object.assign(NG.flag, {
   duelPace:[55, .75],
-  duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.fl.ok, t:G.fl.N, lf:G.fl.lives }) },
+  duelKind:'score', duelEnd:'all',
+  /* 대전은 점수전(모두 끝까지, 점수 순): 막대 값 = 지금까지 점수(결과 창과 같은 식, 남은 기회 점수는 진행만큼) */
+  duelStat:{ unit:'점', score:true, lfMax:3, get:() => {
+    let v = 0; try{ const q = NG.flag.score(), pr = Math.max(0, Math.min(1, NG.flag.progress() || 0)); v = Math.round((q.base + q.time + q.extra * pr) * ((G.L && G.L.mult) || 1)); }catch(_){}
+    return { v, t:100, lf:G.fl.lives, mis:(G.fl.res || []).filter(r => !r.ok).length };
+  } },
   duelHow:'같은 명령 · 끝났을 때 점수가 높은 쪽이 이겨요'
 });
 /* 움직이는 배경(core/scene.js): 보이기만 하고 게임·대전에는 영향 없음. 눈이 편하게 적고 느리게 */

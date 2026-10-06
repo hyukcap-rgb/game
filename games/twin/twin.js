@@ -770,6 +770,11 @@ body[data-mode="twin"]{background:
 })();
 
 /* 대전: 같은 카드 25장, 끝났을 때 점수가 높은 쪽 승(엔진 기본 대전). 상대 막대 = 정답 수 · 기회 점 */
-Object.assign(NG.twin, { duelPace:[60, .78], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:Math.max(0, G.m.lives), mis:G.m.wrong }) }, duelHow:'같은 카드 · 정확하고 빠르게 찾으면 승리' });
+Object.assign(NG.twin, { duelPace:[60, .78], duelKind:'score', duelEnd:'all',
+  /* 대전은 점수전(모두 끝까지, 점수 순): 막대 값 = 지금까지 점수(결과 창과 같은 식, 남은 기회 점수는 진행만큼) */
+  duelStat:{ unit:'점', score:true, lfMax:3, get:() => {
+    let v = 0; try{ const q = NG.twin.score(), pr = Math.max(0, Math.min(1, NG.twin.progress() || 0)); v = Math.round((q.base + q.time + q.extra * pr) * ((G.L && G.L.mult) || 1)); }catch(_){}
+    return { v, t:100, lf:Math.max(0, G.m.lives), mis:G.m.wrong };
+  } }, duelHow:'같은 카드 · 끝났을 때 점수가 높은 쪽이 이겨요' });
 /* 움직이는 배경(core/scene.js): 장난감 방 책상 위 햇빛 먼지. 보이기만 함 */
 NG.twin.scene = { kind:'motes', colors:['#FFFFFF', '#FFE9C7', '#F6D9FF'], density:.55, alpha:.8 };
