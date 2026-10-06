@@ -9,6 +9,7 @@
 //   npm run test:duel -- sudoku,link                         (몇 게임만, 쉼표나 띄어쓰기로)
 //   npm run test:duel -- fox memory --stress                 (느린 폰 흉내: CPU 4배 느리게 + 효과 폭주)
 //   npm run test:duel -- --no-multi | --only-multi           (여러 명 점검 빼기 / 그것만)
+//   npm run test:duel -- chosung crossword --only-word        (낱말 파티 선점 3명·컴퓨터 상대만)
 //
 // 공용 엔진(core)·효과·배경을 고친 뒤에는 꼭 돌린다. 실제 서버에는 연결하지 않는다.
 import { chromium } from 'playwright';
@@ -17,7 +18,7 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ARGS=process.argv.slice(2).filter(a=>!a.startsWith('--')).join(',').split(',').filter(Boolean);
 const HAS=g=>fs.existsSync(path.join(ROOT,'games',g,'game.json'));
 const GAMES=(ARGS.length?ARGS:'sudoku,link,match,merge,memory,block,nono,fox,ball'.split(',')).filter(HAS);
-const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYM=process.argv.includes('--only-multi');
+const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYM=process.argv.includes('--only-multi')||process.argv.includes('--only-word'), ONLYW=process.argv.includes('--only-word');   /* --only-word: 낱말 파티 선점 점검만(3절) */
 const SHOT=process.env.SHOT_DIR||'/tmp';
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
 const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(new URL(q.url,'http://x').pathname));if(!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'content-type':T[path.extname(p)]||'application/octet-stream'});fs.createReadStream(p).pipe(r);}).listen(0);
@@ -107,7 +108,7 @@ const ranksOf=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const R=G.duel.res;retu
 const bodyClean=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const t=(document.querySelector('#modal')||{}).textContent||'';return !/실패|진행 0%/.test(t);})));
 const start=async(L,gap=250)=>{for(const x of L){ await x.pg.evaluate(()=>duelStart('sudoku')); await w(gap);} };
 
-if(MULTI){
+if(MULTI&&!ONLYW){
   console.log('— 여러 명 대전(v3) —');
   /* (1) 3명 경주: 같은 방·같은 판·동시 시작 → 한 명이 다 풀면 0.7초 뒤 모두 끝, 순위 같음 */
   { const L=[await mk('A'),await mk('B'),await mk('C')];
@@ -244,4 +245,101 @@ if(MULTI){
     await L[1].pg.screenshot({path:SHOT+'/duel2-bar.png'});
     ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L); }
 }
+/* ================= 3) 낱말 파티 선점(WP11): 초성 버저 3명 · 낱말퀴즈 땅따먹기 3명 · 컴퓨터 상대 =================
+   게임 이름을 주지 않았거나(전체) chosung·crossword를 주면 돈다. --no-multi면 건너뜀 */
+const WANT=g=>HAS(g)&&(!ARGS.length||GAMES.includes(g));
+async function wordStart(L,g){ for(const x of L){ await x.pg.evaluate(g=>duelStart(g),g); await w(250); } return goAll(L,30000); }
+const ownersOf=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const D=G.duel,o={};for(const k in D.owners||{}) o[k]=D.owners[k];return JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));})));
+async function chosungShared3(){
+  console.log('— 초성 버저 3명 —');
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  const go=await wordStart(L,'chosung'), I=await info(L);
+  const pid=I.map(i=>i.me), kind=await L[0].pg.evaluate(()=>G.duel.kind+'/'+G.duel.pl.length+'/'+G.m.q+'/'+G.m.bz.qt);
+  const q0=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.m.qs.map(p=>p.n).join(','))));
+  ok(go&&I.every(i=>i.seed===I[0].seed)&&kind==='shared/3/8/15'&&q0.every(q=>q===q0[0]), `초성 3명: 선점·3명·8문제·문제당 15초=${kind} · 모두 같은 문제=${q0.every(q=>q===q0[0])}`);
+  const key=(x,k,ms)=>until(x,k=>G.m.bz.key===k,k,ms||20000);
+  const ans=(x,i)=>x.pg.evaluate(i=>{ if(G.m.i!==i||G.m.lock) return false; const inp=document.querySelector('#csIn'); inp.value=G.m.qs[i].ans[0]; document.querySelector('#csGo').click(); return true; },i);
+  /* 0번: B가 맞힘 → 모두 '0번 B 차지 · 정답 보여 주기' */
+  await key(L[1],'0:open:'); await w(700);
+  await L[1].pg.screenshot({path:SHOT+'/chosung3-play.png'});
+  const a0=await ans(L[1],0);
+  const s0=(await Promise.all(L.map(x=>key(x,'0:show:'+pid[1],6000)))).every(Boolean);
+  await w(250); await L[0].pg.screenshot({path:SHOT+'/chosung3-show.png'});
+  const mineB=await L[1].pg.evaluate(()=>document.querySelector('#csMine').textContent);
+  ok(a0&&s0&&mineB==='1', `0번: B가 먼저 맞힘 → 세 화면 모두 B 차지·정답 보여 줌=${s0} · B '내가 맞힘' ${mineB}`);
+  /* 1번: C가 틀림 → 0.8초 쉼 · 틀린 수 1 */
+  const o1=(await Promise.all(L.map(x=>key(x,'1:open:',8000)))).every(Boolean);
+  const bad=await L[2].pg.evaluate(()=>{ const inp=document.querySelector('#csIn'); inp.value='가가가가가가'; document.querySelector('#csGo').click(); return { lock:G.m.bz.lockUntil-Date.now(), mis:duelStatNow().mis, form:document.querySelector('#csForm').classList.contains('lock') }; });
+  const blocked=await L[2].pg.evaluate(()=>{ const inp=document.querySelector('#csIn'); inp.value=G.m.qs[G.m.i].ans[0]; document.querySelector('#csGo').click(); return !duelOwner('q'+G.m.i); });
+  ok(o1&&bad.lock>600&&bad.lock<=800&&bad.mis===1&&bad.form&&blocked, `오답: 0.8초 못 누름(${bad.lock}ms, 그 사이 정답도 안 받음=${blocked}) · 틀린 수 ${bad.mis}`);
+  await w(900);
+  /* 1번 간발의 차: A가 50ms 먼저 맞혔지만 A 소식이 0.3초 늦게 도착 → C는 잠깐 자기 것으로 보다가 A로 바뀜(모두 A) */
+  DELAY.A=STRESS?1500:300;
+  await ans(L[0],1); await w(50); await ans(L[2],1);
+  await w(STRESS?3000:1000); DELAY.A=0;
+  const s1=(await Promise.all(L.map(x=>until(x,k=>G.m.bz.key.startsWith(k),'1:show:'+pid[0],4000)))).every(Boolean);
+  const note=await L[2].pg.evaluate(()=>(document.querySelector('#dNote')||{}).textContent||'');
+  ok(s1, `1번 동시 정답(50ms 차): 세 화면 모두 A 차지=${s1} · C 알림 "${note.trim()}"`);
+  /* 2~7번: A가 차례로 맞힘 → 8문제가 끝나면 모두 끝 */
+  for(let i=2;i<8;i++){ await key(L[0],i+':open:',25000); await w(150); await ans(L[0],i); }
+  const res=(await Promise.all(L.map(x=>until(x,()=>G.duel.resolved,null,15000)))).every(Boolean); await w(1300);
+  const rk=await ranksOf(L), own=await ownersOf(L), cl=await bodyClean(L);
+  const R=await L[0].pg.evaluate(()=>({rank:G.duel.res.rank,why:G.duel.res.why,rows:G.duel.res.rows.map(r=>r.txt)}));
+  ok(res&&rk.every(x=>x===rk[0])&&own.every(x=>x===own[0])&&R.rank===1&&cl.every(Boolean)&&/차지/.test(R.rows[0])&&/8문제/.test(R.why), `초성 결과: 순위·주인 모두 같음 · A 1위 · "${R.why}" · ${R.rows.join(' / ')}`);
+  await L[2].pg.screenshot({path:SHOT+'/chosung3-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+async function crosswordShared3(){
+  console.log('— 낱말퀴즈 땅따먹기 3명 —');
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  const go=await wordStart(L,'crossword'), I=await info(L);
+  const pid=I.map(i=>i.me), kind=await L[0].pg.evaluate(()=>G.duel.kind+'/'+G.duel.pl.length+'/'+G.m.N+'/'+G.m.words.length+'/'+G.limit);
+  const bd=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.m.words.map(w=>w.w).join(','))));
+  ok(go&&kind==='shared/3/7/8/120'&&bd.every(b=>b===bd[0]), `낱말퀴즈 3명: 선점·3명·7×7·8낱말·2분=${kind} · 모두 같은 판=${bd.every(b=>b===bd[0])}`);
+  await Promise.all(L.map(x=>until(x,()=>G.m.phase==='play'&&G.duel.go)));
+  const word=k=>L[0].pg.evaluate(k=>G.m.words[k].w,k), type=(x,k,t)=>x.pg.evaluate(([k,t])=>NG.crossword._typeForTest(k,t),[k,t]);
+  /* 0번 낱말: B가 맞힘 → 모두의 판에 B 색으로 칠해지고 글자가 드러남 */
+  await type(L[1],0,await word(0));
+  const seen=(await Promise.all(L.map(x=>until(x,p=>duelOwner('w0')===p,pid[1],5000)))).every(Boolean); await w(300);
+  const cellA=await L[0].pg.evaluate(()=>{ const wd=G.m.words[0]; return wd.cells.every(i=>{ const el=document.querySelector(`.ng-crossword .cw-c[data-i="${i}"]`); return el.classList.contains('own')&&el.querySelector('b').textContent===G.m.cell[i].ch; }); });
+  const inpA=await L[0].pg.evaluate(()=>{ NG.crossword._typeForTest(0,G.m.words[0].w); return duelOwner('w0')!==G.duel.myPid; });
+  ok(seen&&cellA&&inpA, `0번: B 차지 → A·C 판에도 B 색 칸·글자 보임=${cellA} · 남의 땅은 다시 못 넣음=${inpA}`);
+  /* C 오답 → 틀린 수 1 */
+  const k1=1; const wrong=(await word(k1)).split('').reverse().join('');
+  await type(L[2],k1,wrong===await word(k1)?'가'.repeat(wrong.length):wrong);
+  const misC=await L[2].pg.evaluate(()=>duelStatNow().mis);
+  /* 1번 간발의 차: A가 50ms 먼저(소식은 0.3초 늦게) → 모두 A */
+  DELAY.A=STRESS?1500:300;
+  await type(L[0],k1,await word(k1)); await w(50); await type(L[2],k1,await word(k1));
+  await w(STRESS?3000:1000); DELAY.A=0;
+  const o1=(await Promise.all(L.map(x=>until(x,p=>duelOwner('w1')===p,pid[0],4000)))).every(Boolean);
+  const cC=await L[2].pg.evaluate(()=>({own:G.m.words[1].owner===G.m.words[1].owner&&G.m.words[1].owner!==G.duel.myPid,mine:G.m.solved}));
+  ok(misC===1&&o1&&cC.own&&cC.mine===0, `오답 틀린 수 ${misC} · 1번 동시 정답(50ms 차): 모두 A 차지=${o1} · C 칸 색 되돌림(C 차지 ${cC.mine})`);
+  await L[0].pg.screenshot({path:SHOT+'/crossword3-play.png'});
+  /* 나머지: A가 차례로 맞힘 → 승부가 정해지면(또는 다 차지) 모두 끝 */
+  const n=await L[0].pg.evaluate(()=>G.m.words.length);
+  for(let k=2;k<n;k++){ if(await L[0].pg.evaluate(()=>G.over)) break; await type(L[0],k,await word(k)); await w(250); }
+  const res=(await Promise.all(L.map(x=>until(x,()=>G.duel.resolved,null,15000)))).every(Boolean); await w(1300);
+  const rk=await ranksOf(L), own=await ownersOf(L), cl=await bodyClean(L);
+  const R=await L[1].pg.evaluate(()=>({rank:G.duel.res.rank,why:G.duel.res.why,rows:G.duel.res.rows.map(r=>r.txt)}));
+  const aR=await L[0].pg.evaluate(()=>G.duel.res.rank);
+  ok(res&&rk.every(x=>x===rk[0])&&own.every(x=>x===own[0])&&aR===1&&cl.every(Boolean)&&/차지/.test(R.rows[0]), `낱말퀴즈 결과: 순위·주인 모두 같음 · A 1위 · "${R.why}" · ${R.rows.join(' / ')}`);
+  await L[1].pg.screenshot({path:SHOT+'/crossword3-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+/* 컴퓨터 상대: 초성은 게임이 문제마다 차지시키고, 낱말퀴즈는 엔진이 계단마다 남은 낱말(duelKeys)을 차지 */
+async function wordAi(g,ms){
+  const x=await mk('S');
+  await x.pg.evaluate(g=>startGame(g,'normal',{duel:duelMakeAI(g,'나','n')}),g);
+  const go=await until(x,()=>G&&G.duel&&G.duel.go,null,15000);
+  const t0=Date.now(), got=await until(x,()=>Object.values(G.duel.owners||{}).includes('ai')||(G.m.bz&&G.m.i>=3),null,ms);
+  const st=await x.pg.evaluate(()=>({ai:Object.values(G.duel.owners||{}).filter(p=>p==='ai').length,i:G.m.i,chip:G.duel.P.ai.st.v||0}));
+  ok(go&&got&&(st.ai>0?st.chip===st.ai:true)&&!x.errs.length, `${g} 컴퓨터 상대: ${((Date.now()-t0)/1000).toFixed(1)}초 안에 컴퓨터 차지 ${st.ai}개(칩 값 ${st.chip})${st.ai?'':' · 맞힌 문제 없이 '+st.i+'번 문제까지 진행'} ${x.errs.join(' ')}`);
+  await closeAll([x]);
+}
+if(MULTI){
+  if(WANT('chosung')){ await chosungShared3(); await wordAi('chosung',60000); }
+  if(WANT('crossword')){ await crosswordShared3(); await wordAi('crossword',20000); }
+}
+
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);
