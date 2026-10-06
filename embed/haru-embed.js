@@ -6,7 +6,7 @@
  *
  *  코드로:
  *    const g = HaruPuzzle.mount('#box', {
- *      game:'fleet',                 // fox sudoku ball tower fleet match nono block memory merge link
+ *      game:'fleet',                 // fox sudoku ball fleet match nono block memory merge link …(embed/games.json)
  *      mode:'menu',                  // menu(첫 화면) | daily(오늘의 문제) | solo | practice | duel
  *      modes:['daily','solo'],       // 첫 화면에 보일 모드(생략하면 모두)
  *      level:'normal', stage:1,      // 연습 난이도 · 솔로 시작 스테이지
@@ -23,14 +23,16 @@
 (function(){
   'use strict';
   var me = document.currentScript, BASE = (me && me.src) ? me.src.replace(/[^\/]*$/, '') : 'https://hyukcap-rgb.github.io/game/embed/';
-  var GAMES = ['fox', 'sudoku', 'ball', 'tower', 'fleet', 'match', 'nono', 'block', 'memory', 'merge', 'link'];
+  var GAMES = ['fox', 'sudoku', 'ball', 'fleet', 'match', 'nono', 'block', 'memory', 'merge', 'link'];
+  /* 은퇴한 게임: 이미 붙여 쓰는 곳이 깨지지 않게 이름은 받아 주고, 모듈 주소는 "종료됐어요" 안내 화면(ready에 retired:true) */
+  var RETIRED = ['tower'];
   var list = [];
 
   function el(t){ return typeof t === 'string' ? document.querySelector(t) : t; }
   function mount(target, o){
     o = o || {};
     var box = el(target); if(!box) throw new Error('HaruPuzzle: 붙일 자리를 찾지 못했어요: ' + target);
-    if(GAMES.indexOf(o.game) < 0) throw new Error('HaruPuzzle: 게임 이름을 확인해 주세요: ' + o.game + ' (' + GAMES.join(', ') + ')');
+    if(GAMES.indexOf(o.game) < 0 && RETIRED.indexOf(o.game) < 0) throw new Error('HaruPuzzle: 게임 이름을 확인해 주세요: ' + o.game + ' (' + GAMES.join(', ') + ')');
     var q = new URLSearchParams();
     q.set('mode', o.mode || 'menu');
     if(o.modes) q.set('modes', [].concat(o.modes).join(','));

@@ -19,7 +19,6 @@
 | 여우 자리 찾기 | 논리력 |
 | 스도쿠 | 집중력 |
 | 별빛 구슬 | 공간지각 |
-| 숲 지킴이 | 전략력 |
 | 함대 결전 | 추리력 |
 | 동물 삼총사 (3개 맞추기) | 추리력 |
 | 네모 그림 (노노그램) | 논리력 |
@@ -46,7 +45,6 @@
 | 여우 자리 찾기 | `games/fox` | `embed/fox.html` |
 | 스도쿠 | `games/sudoku` | `embed/sudoku.html` |
 | 별빛 구슬 | `games/ball` | `embed/ball.html` |
-| 숲 지킴이 | `games/tower` | `embed/tower.html` |
 | 함대 결전 | `games/fleet` | `embed/fleet.html` |
 | 동물 삼총사 | `games/match` | `embed/match.html` |
 | 네모 그림 | `games/nono` | `embed/nono.html` |
@@ -54,6 +52,8 @@
 | 카드 짝 맞추기 | `games/memory` | `embed/memory.html` |
 | 숫자 합치기 | `games/merge` | `embed/merge.html` |
 | 짝 잇기 | `games/link` | `embed/link.html` |
+
+- 숲 지킴이(`tower`)는 2026-10-06에 삭제했어요(결정 220). 오늘의 시험지 '전략' 과목은 2026-10-07부터 숫자 합치기 + 오목(묘수풀이). `embed/tower.html` 주소는 2027-01-04까지 "종료됐어요" 안내 화면으로 남아요(`tools/build.js`의 `RETIRED`).
 
 ### 게임마다 프롬프트 달기
 각 게임 폴더의 `CLAUDE.md`가 그 게임의 프롬프트예요. 맨 위 **사용자 지시**에 바라는 점을 적어 두면, 개발팀(Claude)이 그 게임을 고칠 때마다 먼저 읽고 따라요. 개발팀 공통 규칙은 루트 `CLAUDE.md`, 게임 정의 규칙은 `games/CLAUDE.md`에 있어요.

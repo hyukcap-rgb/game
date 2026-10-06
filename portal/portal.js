@@ -1,5 +1,5 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
-registerGames(['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread']);   /* 사이트에 보일 게임과 순서 */
+registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread']);   /* 사이트에 보일 게임과 순서 */
 const ADULT = ['gostop'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
 const isAdult = id => !!(NG[id] && NG[id].adult) || ADULT.includes(id);
 /* ===== 가상 숫자 스위치 (2026-10-04 UI 검수 결론) =====
@@ -22,6 +22,8 @@ function dayState(){
   d.best = Object.assign(z(), d.best); d.tries = Object.assign(z(), d.tries);
   d.solo = d.solo || 0; d.duel = d.duel || 0; d.dw = d.dw || 0; d.dd = d.dd || 0; d.dl = d.dl || 0;
   if(!d.set) d.set = todaySet();
+  /* 오늘 시험지에 사이트에서 못 푸는 게임(은퇴한 숲 지킴이 등)이 있으면 그날 과목만 다시 뽑는다. 이미 푼 다른 과목 기록(best·tries)은 그대로 */
+  else if(d.set.some(g => !examReady(g))){ d.set = todaySet(); saveDay(d); }
   return d;
 }
 function saveDay(d){ store.set('hp:day:' + dayKey(), d); }
@@ -69,7 +71,7 @@ const BTYPE = {
   fox:['논리형 두뇌','규칙 사이의 빈틈을 정확히 찾아내요'],
   sudoku:['집중형 두뇌','긴 문제도 끝까지 흐트러지지 않아요'],
   ball:['공간형 두뇌','각도와 궤적을 머릿속으로 그려내요'],
-  tower:['전략형 두뇌','한 수 앞을 내다보고 자원을 배분해요'],
+  merge:['전략형 두뇌','한 수 앞을 내다보고 자원을 배분해요'],   /* 전략력 대표 게임: 숲 지킴이 삭제(결정 220) 뒤 숫자 합치기 */
   fleet:['추리형 두뇌','작은 단서로 숨은 답을 좁혀가요']
 };
 function addDays(k, n){ const [y, m, d] = k.split('-').map(Number); return dayKey(new Date(y, m - 1, d + n)); }
@@ -210,10 +212,21 @@ const DAILY_N = 5, SOLO_CAP = 1000, DUEL_PTS = { w:400, d:250, l:150 };
    · 오늘 점수 = 5과목 공식 점수 합(솔로·대전·출석 보너스를 더하지 않음 → 누구와도 그대로 비교)
    · 성적표: 같은 문제를 푼 사람 중 등수로 과목마다 수·우·미·양·가 (서버 전까지는 분포 가정)
    · 출석은 점수가 아니라 선물(연속 3·7·14·30…일 하트)과 휴식권으로만 */
-const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge']], ['추리', ['fleet','match']]];
+/* '전략' = 숫자 합치기 + 오목 묘수풀이(결정 220). 'tower'(숲 지킴이, 삭제됨)는 지난 날짜 뽑기를 그대로 두려고 목록 맨 앞에 이름만 남긴다(SUBJ_UNTIL) */
+const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge','omok']], ['추리', ['fleet','match']]];
 /* 과목에 새로 들어온 게임은 이 날짜부터 시험지에 나온다(그 전 날짜의 시험지는 그대로 → 이미 푼 사람과 같은 문제) */
-const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06' };
-const subjGames = (i, kk) => SUBJ[i][1].filter(g => !SUBJ_FROM[g] || kk >= SUBJ_FROM[g]);
+const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06', omok:'2026-10-07' };
+/* 과목에서 빠진 게임은 이 날짜 전까지만 뽑기에 들어간다(지난 날짜 시험지가 바뀌지 않게). 적용일 다음 날 0시부터 빠짐 */
+const SUBJ_UNTIL = { tower:'2026-10-07' };
+/* 은퇴한 게임: 코드는 없고 지난 기록 표시용 이름만 */
+const RETIRED = { tower:'숲 지킴이' };
+const gameName = id => GAMES[id] ? GAMES[id].name : RETIRED[id] ? '지난 게임(' + RETIRED[id] + ')' : id;
+/* 시험지에서 게임을 부를 때 쓰는 모드(게임 정의가 그 모드를 가져야 시험지에 나옴). 오목 = 묘수풀이 */
+const EXAM_MODE = { omok:'puzzle' };
+const hasMode = (g, md) => { const m = NG[g]; return !!m && (m.examMode === md || (Array.isArray(m.modes) && m.modes.includes(md)) || !!(m.modes && !Array.isArray(m.modes) && m.modes[md])); };
+const examReady = g => !!GAMES[g] && (!EXAM_MODE[g] || hasMode(g, EXAM_MODE[g]));
+const examOpt = (id, o = {}) => EXAM_MODE[id] ? Object.assign({ mode:EXAM_MODE[id] }, o) : o;
+const subjGames = (i, kk) => SUBJ[i][1].filter(g => (!SUBJ_FROM[g] || kk >= SUBJ_FROM[g]) && (!SUBJ_UNTIL[g] || kk < SUBJ_UNTIL[g]));
 const subjOf = id => { const x = SUBJ.find(q => q[1].includes(id)); return x ? x[0] : ''; };
 const LV_KO = { easy:'쉬움', normal:'보통', hard:'어려움' }, WD_KO = ['일','월','화','수','목','금','토'];
 function wdOf(k = dayKey()){ const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getDay(); }
@@ -248,6 +261,9 @@ function todaySet(k = dayKey()){
     out = SUBJ.map((x, i) => { let g = base(kk, i); if(last[i][0] === g && last[i][1] >= 3){ const L = subjGames(i, kk).filter(y => y !== g); g = L[seedFrom('subj2:' + kk + ':' + i) % L.length]; }
       last[i] = [g, last[i][0] === g ? last[i][1] + 1 : 1]; return g; });
   }
+  /* 오늘·앞으로의 시험지에 사이트에서 못 푸는 게임(은퇴했거나 시험지 모드가 아직 없는 게임)이 뽑히면 같은 과목의 풀 수 있는 게임으로 대신한다.
+     지난 날짜는 뽑힌 그대로(은퇴 게임은 이름만 보임) */
+  if(k >= dayKey()) out = out.map((g, i) => examReady(g) ? g : (subjGames(i, k).concat(SUBJ[i][1]).find(examReady) || g));
   TSET_MEMO[k] = out; return out.slice();
 }
 
@@ -277,7 +293,9 @@ function medal(n, big){
 /* ---- 모험 레벨: 별을 모아 레벨업 ---- */
 const TITLES = [[1,'새싹 퍼즐러'],[3,'견습 탐험가'],[5,'숙련 탐험가'],[8,'퍼즐 기사'],[12,'두뇌 마법사'],[16,'전설의 현자'],[20,'퍼즐 마스터']];
 function titleOf(L){ let t = TITLES[0][1]; for(const [k, v] of TITLES) if(L >= k) t = v; return t; }
-function lvInfo(stars = advTotal()){ let L = 1; while(stars >= 5 * L * (L + 1) / 2) L++; const a = 5 * L * (L - 1) / 2, b = 5 * L * (L + 1) / 2; return { L, cur:stars - a, need:b - a, stars, title:titleOf(L) }; }
+/* 은퇴한 게임의 솔로 별(지우지 않음): 솔로 레벨이 내려가지 않게 레벨 계산에 그대로 더한다 */
+function retiredStars(){ return Object.keys(RETIRED).reduce((s, g) => { const p = store.get('hp:adv:' + g, null); return s + (p && p.stars ? Object.values(p.stars).reduce((a, b) => a + (b || 0), 0) : 0); }, 0); }
+function lvInfo(stars = advTotal() + retiredStars()){ let L = 1; while(stars >= 5 * L * (L + 1) / 2) L++; const a = 5 * L * (L - 1) / 2, b = 5 * L * (L + 1) / 2; return { L, cur:stars - a, need:b - a, stars, title:titleOf(L) }; }
 function nextTitle(L){ const t = TITLES.find(([k]) => k > L); return t ? t : null; }
 function shieldSVG(L){
   const u = 'sh' + (++SVG_UID);
@@ -304,7 +322,7 @@ function badgeSVG(id, c){
     <circle cx="32" cy="50" r="8.5" fill="url(#gGold)" stroke="#1A0F45" stroke-width="2.2"/>
     <text x="32" y="54.5" text-anchor="middle" font-family="Black Han Sans, Jua, sans-serif" font-size="12" fill="#5A3300">${c}</text></svg>`;
 }
-function quickStart(id){ startGame(id, examLv()); }   /* v9: 오늘의 시험지는 요일 난이도 */
+function quickStart(id){ startGame(id, examLv(), examOpt(id)); }   /* v9: 오늘의 시험지는 요일 난이도 */
 
 
 /* ---- 탭 ---- */
@@ -498,7 +516,10 @@ function renderMe(d, tl, P, lv){
     return `<div class="grw" style="--gc:${GCOL[id][1]}"><span class="gi">${ic(id)}</span><span><b>${GAMES[id].name}</b><small>${p.max > 1 ? '스테이지 ' + (p.max - 1) + '까지 클리어 · ' : ''}지금 ${chName(id, c)}</small></span><span class="gs">★ ${advStarsOf(id)}</span></div>`; };
   const opn = sel => { const e = $(sel + ' details.more'); return e && e.open ? ' open' : ''; }, gOpen = opn('#growList'), bOpen = opn('#badges');   /* 다시 그려도 펼친 상태 유지 */
   const byStars = GAME_IDS.slice().sort((a, b) => advStarsOf(b) - advStarsOf(a));
-  $('#growList').innerHTML = byStars.slice(0, 5).map(grw).join('') + (byStars.length > 5 ? `<details class="more"${gOpen}><summary>나머지 ${byStars.length - 5}개 게임 보기</summary>${byStars.slice(5).map(grw).join('')}</details>` : '');
+  /* 은퇴한 게임: 별이 있으면 이름만 한 줄(솔로 레벨에 그대로 들어감) */
+  const old = Object.keys(RETIRED).map(g => { const p = store.get('hp:adv:' + g, null), s = p && p.stars ? Object.values(p.stars).reduce((a, b) => a + (b || 0), 0) : 0;
+    return s ? `<div class="grw retired"><span class="gi">${ic('trophy')}</span><span><b>${gameName(g)}</b><small>이제 없는 게임 · 모은 별은 레벨에 그대로 들어가요</small></span><span class="gs">★ ${s}</span></div>` : ''; }).join('');
+  $('#growList').innerHTML = byStars.slice(0, 5).map(grw).join('') + (byStars.length > 5 || old ? `<details class="more"${gOpen}><summary>나머지 ${byStars.length - 5}개 게임 보기</summary>${byStars.slice(5).map(grw).join('')}${old}</details>` : '');
   /* 챕터 배지: 받은 것만 보이고 전체는 접기 */
   const bdg = (id, c, on) => `<div class="bdg${on ? '' : ' off'}" title="${GAMES[id].name} 챕터 ${c} ${chName(id, c)}${on ? ' 클리어' : ' 아직'}">${badgeSVG(id, c)}<span>${chName(id, c)}</span></div>`;
   let got = '', all = '', nb = 0; const total = GAME_IDS.length * 5;
@@ -624,7 +645,7 @@ function renderGritCard(tl){
 }
 /* 능력 5가지(논리력·집중력·공간지각·전략력·추리력). 게임 10개가 능력마다 2개씩 들어가고, 최근 7일 오늘의 문제 점수 평균으로 0~100 */
 const AXES = ['논리력','집중력','공간지각','전략력','추리력'];
-const AX_GAME = { '논리력':'fox', '집중력':'sudoku', '공간지각':'ball', '전략력':'tower', '추리력':'fleet' };
+const AX_GAME = { '논리력':'fox', '집중력':'sudoku', '공간지각':'ball', '전략력':'merge', '추리력':'fleet' };
 function abilities(){
   const today = dayKey(), out = {};
   for(const ax of AXES){
@@ -740,7 +761,7 @@ function welcome(){
     <div class="hstep"><span class="hn" style="background:var(--primary)">${ic('brain')}</span><div><b>하루 5과목</b><span>과목마다 한 문제, 자정에 바뀌어요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--g-sudoku)">${ic('check')}</span><div><b>첫 판이 공식 답안(무료)</b><span>다시 풀기는 ♥1, 기록은 안 돼요.</span></div></div>
     <div class="hstep"><span class="hn" style="background:var(--grit)">${ic('clock')}</span><div><b>요일마다 난이도</b><span>오늘은 ${examLabel()}이에요.</span></div></div>
-    <div class="hstep"><span class="hn" style="background:var(--g-tower)">${ic('trophy')}</span><div><b>성적표와 도전장</b><span>과목마다 수·우·미·양·가로 나와요.</span></div></div></div>
+    <div class="hstep"><span class="hn" style="background:${(GAME_META.merge && GAME_META.merge.col) || 'var(--g-fleet)'}">${ic('trophy')}</span><div><b>성적표와 도전장</b><span>과목마다 수·우·미·양·가로 나와요.</span></div></div></div>
     <div class="mbtns one"><button class="b1" id="wGo">시험 시작</button></div><button class="btn ghost" id="wLater">둘러볼게요</button>`);
   const done = () => store.set('hp:welcome', 3);
   $('#wLater').onclick = () => { done(); closeModal(); };
@@ -787,7 +808,7 @@ function examFinish(win){
   const R = {
     pri: other ? { id:'mPri', label:'다음 과목 풀기', sub:`${subjOf(other)} · ${GAMES[other].name}`, fn:() => { goHome(); quickStart(other); } }
                : { id:'mPri', label:'오늘 성적표 보기', sub:'오늘 시험지를 모두 풀었어요', fn:() => { goHome(); openShare(closeModal); } },
-    pair:[ { id:'mSec', label:'다시 풀기 ' + costTag(), cls:'b2', fn:() => startGame(id, nextLv) },
+    pair:[ { id:'mSec', label:'다시 풀기 ' + costTag(), cls:'b2', fn:() => startGame(id, nextLv, examOpt(id)) },
       canChal() && chalScore > 0 ? { id:'mChal', label:`${ic('duel')} ${G.chal && G.chal.n ? '되갚기 도전장' : '친구에게 도전장'}`, cls:'gold', keep:true, fn:() => viralShare(cardChal(id, dayState().best[id] || score, nextLv), reopen) } : null ],
     links:[ { id:'mShareR', label:`${ic('share')}${brag ? '연속 ' + tl3.streak + '일 자랑하기' : '결과 카드 공유'}`, keep:true, fn:() => openShare(reopen) },
       { id:'mGh', label:'홈으로', fn:goHome } ]

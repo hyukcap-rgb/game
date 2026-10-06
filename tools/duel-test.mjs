@@ -10,7 +10,7 @@ import { chromium } from 'playwright';
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ARG=process.argv.slice(2).find(a=>!a.startsWith('--'));
-const GAMES=(ARG||'sudoku,link,match,merge,memory,block,nono,fox,ball,tower').split(',');
+const GAMES=(ARG||'sudoku,link,match,merge,memory,block,nono,fox,ball').split(',');
 const STRESS=process.argv.includes('--stress');
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
 const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(new URL(q.url,'http://x').pathname));if(!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'content-type':T[path.extname(p)]||'application/octet-stream'});fs.createReadStream(p).pipe(r);}).listen(0);
@@ -37,7 +37,7 @@ async function mk(tag){const ctx=await br.newContext({viewport:{width:390,height
   await ctx.routeWebSocket(/battle-production/,ws=>attach(ws));
   const pg=await ctx.newPage(); const errs=[]; if(STRESS){ const cdp=await ctx.newCDPSession(pg); await cdp.send('Emulation.setCPUThrottlingRate',{rate:4}); } pg.on('pageerror',e=>errs.push(tag+' '+String(e)));
   pg.on('console',m=>{if(m.type()==='error'&&!/WebSocket|favicon/.test(m.text()))errs.push(tag+' '+m.text())});
-  await pg.addInitScript(()=>{try{localStorage.setItem('hp:welcome','9');for(const g of ['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge','link'])localStorage.setItem('hp:help:'+g,'1')}catch(_){}});
+  await pg.addInitScript(()=>{try{localStorage.setItem('hp:welcome','9');for(const g of ['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link'])localStorage.setItem('hp:help:'+g,'1')}catch(_){}});
   await pg.goto(B+'index.html'); await pg.waitForFunction(()=>typeof ROOM_STATE!=='undefined'&&ROOM_STATE==='ok',null,{timeout:15000});
   await pg.evaluate(()=>closeModal&&closeModal()); return {ctx,pg,errs};}
 let fail=0;

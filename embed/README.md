@@ -7,7 +7,7 @@
 | 여우 자리 찾기 | `https://hyukcap-rgb.github.io/game/embed/fox.html` |
 | 스도쿠 | `…/embed/sudoku.html` |
 | 별빛 구슬 | `…/embed/ball.html` |
-| 숲 지킴이 | `…/embed/tower.html` |
+| ~~숲 지킴이~~ | `…/embed/tower.html` — **종료된 게임**(2026-10-06). 2027-01-04까지 "종료됐어요" 안내 화면과 다른 게임 링크만 보여요. `ready` 이벤트에 `retired:true` |
 | 함대 결전 | `…/embed/fleet.html` |
 | 동물 삼총사 | `…/embed/match.html` |
 | 네모 그림 | `…/embed/nono.html` |
@@ -32,7 +32,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 
 | 속성 | 값 | 기본 |
 |---|---|---|
-| `data-haru-game` | fox sudoku ball tower fleet match nono block memory merge link gostop | (필수) |
+| `data-haru-game` | fox sudoku ball fleet match nono block memory merge link gostop … (`embed/games.json`) | (필수) |
 | `data-mode` | `menu`(첫 화면) `daily`(오늘의 문제) `solo` `practice`(연습) `duel`(대전) | menu |
 | `data-modes` | 첫 화면에 보일 모드, 쉼표로: `daily,solo` | 모두 |
 | `data-level` | 연습 난이도 `easy` `normal` `hard` | 고르게 함 |
@@ -94,7 +94,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 
 | type | 언제 | 내용 |
 |---|---|---|
-| `ready` | 모듈 준비 | `name`, `modes` |
+| `ready` | 모듈 준비 | `name`, `modes` · 종료된 게임 주소면 `retired:true`(그리고 `until` 안내 기간, `games` 다른 게임 목록, `modes`는 빈 목록) |
 | `menu` | 첫 화면이 보일 때 | |
 | `start` | 한 판 시작 | `mode`, `level`, `stage`, `attempt` |
 | `finish` | 한 판 끝 | 오늘의 문제·연습: `win`, `score`, `level`, `attempt`, `official`(오늘 첫 판), `partial`(실패 부분 점수), `time`(초), `date`, `detail` · 솔로: `win`, `stage`, `stars`, `first`, `best`, `time` · 대전: `result`(w/d/l), `win`, `vs`(ai/live), `me`, `opp`, `record` |
