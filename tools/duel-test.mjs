@@ -9,6 +9,7 @@
 //   npm run test:duel -- sudoku,link                         (몇 게임만, 쉼표나 띄어쓰기로)
 //   npm run test:duel -- fox memory --stress                 (느린 폰 흉내: CPU 4배 느리게 + 효과 폭주)
 //   npm run test:duel -- --no-multi | --only-multi           (여러 명 점검 빼기 / 그것만)
+//   npm run test:duel -- memory wordchain --only-turn        (차례 게임 3명 점검만)
 //
 // 공용 엔진(core)·효과·배경을 고친 뒤에는 꼭 돌린다. 실제 서버에는 연결하지 않는다.
 import { chromium } from 'playwright';
@@ -17,7 +18,7 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ARGS=process.argv.slice(2).filter(a=>!a.startsWith('--')).join(',').split(',').filter(Boolean);
 const HAS=g=>fs.existsSync(path.join(ROOT,'games',g,'game.json'));
 const GAMES=(ARGS.length?ARGS:'sudoku,link,match,merge,memory,block,nono,fox,ball'.split(',')).filter(HAS);
-const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYM=process.argv.includes('--only-multi');
+const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYT=process.argv.includes('--only-turn'), ONLYM=process.argv.includes('--only-multi')||ONLYT;
 const SHOT=process.env.SHOT_DIR||'/tmp';
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
 const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(new URL(q.url,'http://x').pathname));if(!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'content-type':T[path.extname(p)]||'application/octet-stream'});fs.createReadStream(p).pipe(r);}).listen(0);
@@ -107,7 +108,7 @@ const ranksOf=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const R=G.duel.res;retu
 const bodyClean=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const t=(document.querySelector('#modal')||{}).textContent||'';return !/실패|진행 0%/.test(t);})));
 const start=async(L,gap=250)=>{for(const x of L){ await x.pg.evaluate(()=>duelStart('sudoku')); await w(gap);} };
 
-if(MULTI){
+if(MULTI&&!ONLYT){
   console.log('— 여러 명 대전(v3) —');
   /* (1) 3명 경주: 같은 방·같은 판·동시 시작 → 한 명이 다 풀면 0.7초 뒤 모두 끝, 순위 같음 */
   { const L=[await mk('A'),await mk('B'),await mk('C')];
@@ -244,4 +245,98 @@ if(MULTI){
     await L[1].pg.screenshot({path:SHOT+'/duel2-bar.png'});
     ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L); }
 }
+/* ================= 3) 차례 게임 3명(WP12 카드 짝 · WP11 끝말잇기): 모든 기기 같은 판·같은 결과, 시간 초과·나감 ================= */
+const turnStart=async(L,g)=>{for(const x of L){ await x.pg.evaluate(g=>duelStart(g),g); await w(250);} return goAll(L,30000);};
+const curIdx=async L=>{for(let i=0;i<L.length;i++){ if(await L[i].pg.evaluate(()=>!!(G&&G.duel&&!G.over&&duelTurn.mine()))) return i; } return -1;};
+const allTimeout=(L,s)=>Promise.all(L.map(x=>x.pg.evaluate(s=>duelTurn.timeout(s),s)));
+
+/* 카드 짝: 판 4×6 · 틀리면 다음 사람 · 맞히면 한 번 더 · 시간 초과 대신 뒤집기 · 차례인 사람이 나가면 건너뜀 · 끝까지 → 순위 같음 */
+async function memoryTurn3(){
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  const go=await turnStart(L,'memory'), I=await info(L);
+  const hash=xs=>Promise.all(xs.map(x=>x.pg.evaluate(()=>{const m=G.m,d=m.dd;return JSON.stringify([m.cards,m.st,d.own,G.duel.pl.map(p=>[d.pairs[p],d.miss[p]]),duelTurn.cur(),duelTurn.n()]);})));
+  const same=a=>a.every(h=>h===a[0]);
+  const board=await L[0].pg.evaluate(()=>[G.m.cols,G.m.rows,G.m.pairs,G.m.preview]);
+  ok(go&&I.every(i=>i.seed===I[0].seed)&&I[0].pl.split(',').length===3&&board.join()==='4,6,12,0',`카드 짝 3명 모임: 같은 방·판 4×6 12쌍 미리 보기 없음 (${board})`);
+  await w(1200);
+  ok(same(await hash(L)),'카드 짝 시작 판이 모든 기기에서 같음');
+  const tap=(x,i)=>x.pg.evaluate(i=>{const el=document.querySelector(`.mm-card[data-i="${i}"]`);if(el)el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));},i);
+  const pick=(x,hit)=>x.pg.evaluate(hit=>{const m=G.m,dn=m.st.map((s,i)=>s===0&&!m.open.includes(i)?i:-1).filter(i=>i>=0),a=dn[0];return [a,dn.find(j=>j!==a&&(hit?m.cards[j]===m.cards[a]:m.cards[j]!==m.cards[a]))];},hit);
+  /* 1) 틀림 → 다음 사람 */
+  let c=await curIdx(L); const pl=I[0].pl.split(','), who=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.myPid)));
+  let [a,b]=await pick(L[c],false); await tap(L[c],a); await w(350); await tap(L[c],b); await w(1300);
+  const seeOpen=await L[(c+1)%3].pg.evaluate(()=>document.querySelectorAll('.mm-card.up').length);
+  const h1=await hash(L), c1=await curIdx(L);
+  ok(same(h1)&&c1!==c&&who[c1]===pl[(pl.indexOf(who[c])+1)%3],`틀리면 다음 사람 차례(모든 기기 같은 상태) · 남이 뒤집은 카드 보임=${seeOpen>=0}`);
+  /* 2) 맞힘 → 한 번 더 */
+  c=c1; [a,b]=await pick(L[c],true); await tap(L[c],a); await w(350); await tap(L[c],b); await w(900);
+  const h2=await hash(L), c2=await curIdx(L), mine=await L[c].pg.evaluate(()=>G.m.dd.pairs[G.duel.myPid]);
+  ok(same(h2)&&c2===c&&mine===1,`맞히면 가져가고 한 번 더(같은 사람 차례) · 가져간 짝 ${mine}`);
+  /* 3) 시간 초과 → 모든 기기가 같은 카드를 대신 뒤집고 다음 사람 */
+  await allTimeout(L,1); await w(STRESS?6000:4200); await allTimeout(L,15);
+  const h3=await hash(L), c3=await curIdx(L);
+  ok(same(h3)&&c3!==c,`시간 초과 대신 뒤집기 → 다음 사람(모든 기기 같음)`);
+  /* 4) 차례인 사람이 나감 → 건너뜀 */
+  const lv=c3; await L[lv].pg.evaluate(()=>{ G.over=true; HOST.exit(); });
+  const rest=L.filter((_,i)=>i!==lv);
+  const skip=(await Promise.all(rest.map(x=>until(x,p=>!!G.duel.P[p].left&&duelTurn.cur()!==p,who[lv],20000)))).every(Boolean);
+  ok(skip,'차례인 사람이 나가면 다음 사람으로 넘어감');
+  /* 5) 남은 두 사람이 끝까지(아는 짝을 차례로) */
+  for(let k=0;k<200;k++){
+    if((await Promise.all(rest.map(x=>x.pg.evaluate(()=>G.over)))).every(Boolean)) break;
+    const ci=await curIdx(rest); if(ci<0){ await w(300); continue; }
+    const busy=await rest[ci].pg.evaluate(()=>Date.now()<G.m.dd.busyUntil); if(busy){ await w(250); continue; }
+    const [p,q]=await pick(rest[ci],true); if(p==null||q==null){ await w(300); continue; }
+    await tap(rest[ci],p); await w(200); await tap(rest[ci],q); await w(450);
+  }
+  const res=(await Promise.all(rest.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,15000)))).every(Boolean); await w(800);
+  const rows=await Promise.all(rest.map(x=>x.pg.evaluate(()=>JSON.stringify(G.duel.res.rows.map(r=>[r.pid,r.rank,r.v,r.left]).sort()))));
+  const last=await rest[0].pg.evaluate(()=>{const R=G.duel.res;return R.rows[R.rows.length-1].txt;});
+  const why=await rest[0].pg.evaluate(()=>G.duel.res.why);
+  ok(res&&same(rows)&&last==='나감'&&/짝을 모두 찾았어요/.test(why),`카드 짝 결과 순위 같음 · 나간 사람 맨 뒤 · "${why}"`);
+  await rest[0].pg.screenshot({path:SHOT+'/memory3-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+
+/* 끝말잇기: 같은 시작 낱말 · 돌아가며 잇기 · 시간 초과 탈락 · 탈락한 사람 차례는 넘김 · 차례인 사람이 나가면 탈락 → 마지막 남은 사람 1위 */
+async function wordchainTurn3(){
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  const go=await turnStart(L,'wordchain'), I=await info(L);
+  await Promise.all(L.map(x=>until(x,()=>G.m.phase==='play',null,8000)));
+  const st=()=>Promise.all(L.filter(x=>!x.gone).map(x=>x.pg.evaluate(()=>{const m=G.m,d=m.dw;return JSON.stringify([m.chain.map(c=>c.w),G.duel.pl.map(p=>[d.P[p].words,d.P[p].out,d.P[p].outN]),duelTurn.cur(),duelTurn.n()]);})));
+  const same=a=>a.every(h=>h===a[0]);
+  const s0=await st();
+  ok(go&&I.every(i=>i.seed===I[0].seed)&&I[0].pl.split(',').length===3&&same(s0),`끝말잇기 3명 모임: 같은 시작 낱말 ${JSON.parse(s0[0])[0][0]}`);
+  const say=async x=>x.pg.evaluate(()=>{const m=G.m,D=NG.wordchain._dict,C=D.cands(m,m.chain[m.chain.length-1].w),c=C.find(j=>D.follow(m,j)>3)??C[0];const inp=document.querySelector('#wcInput');inp.value=D.W[c];document.querySelector('#wcGo').click();return D.W[c];});
+  const who=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.myPid)));
+  /* 1) 첫 사람 → 둘째 사람이 잇기 */
+  let c=await curIdx(L); const w1=await say(L[c]); await w(700);
+  c=await curIdx(L); const w2=await say(L[c]); await w(700);
+  const s1=await st(); const ch=JSON.parse(s1[0])[0];
+  ok(same(s1)&&ch.length===3&&ch[1]===w1&&ch[2]===w2,`돌아가며 잇기: ${ch.join(' → ')} (모든 기기 같음)`);
+  /* 2) 셋째 사람이 시간 초과 → 탈락(모든 기기 같음) */
+  const third=await curIdx(L);
+  await allTimeout(L,1); await w(STRESS?6000:4200); await allTimeout(L,18);
+  const s2=await st(), outs=JSON.parse(s2[0])[1].filter(p=>p[1]);
+  ok(same(s2)&&outs.length===1&&outs[0][1]==='time',`시간 초과 → 탈락 ${JSON.stringify(outs)}`);
+  /* 3) 첫·둘째 사람이 한 번씩 더 → 탈락한 셋째 차례는 그 기기가 바로 넘김 */
+  c=await curIdx(L); await say(L[c]); await w(700);
+  c=await curIdx(L); await say(L[c]); await w(1500);
+  c=await curIdx(L); const s3=await st();
+  ok(same(s3)&&c>=0&&c!==third&&JSON.parse(s3[0])[0].length===5,'탈락한 사람 차례는 넘어감(차례 '+(c>=0?who[c]:'?')+')');
+  /* 4) 지금 차례인 사람이 나감 → 탈락 → 한 명만 남아 끝 */
+  const lv=c; await L[lv].pg.evaluate(()=>{ G.over=true; HOST.exit(); }); L[lv].gone=true;
+  const rest=L.filter((_,i)=>i!==lv);
+  const res=(await Promise.all(rest.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,30000)))).every(Boolean); await w(800);
+  const rows=await Promise.all(rest.map(x=>x.pg.evaluate(()=>JSON.stringify(G.duel.res.rows.map(r=>[r.pid,r.rank]).sort()))));
+  const R=await rest[0].pg.evaluate(()=>({why:G.duel.res.why,ord:G.duel.res.rows.map(r=>r.pid)}));
+  const survivor=who.find((p,i)=>i!==lv&&i!==third);
+  ok(res&&same(rows)&&R.ord[0]===survivor&&R.ord[1]===who[third]&&R.ord[2]===who[lv]&&/끝까지 남았어요/.test(R.why),`끝말잇기 순위 같음 · 1위 끝까지 남은 사람 · 2위 먼저 탈락 · 3위 나감 · "${R.why}"`);
+  await rest[0].pg.screenshot({path:SHOT+'/wordchain3-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+const TURN3=ARGS.length?GAMES:['memory','wordchain'];
+if(MULTI&&TURN3.includes('memory')&&HAS('memory')){ console.log('— 카드 짝 3명 차례 대전 —'); await memoryTurn3(); }
+if(MULTI&&TURN3.includes('wordchain')&&HAS('wordchain')){ console.log('— 끝말잇기 3명 차례 대전 —'); await wordchainTurn3(); }
+
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);
