@@ -1012,6 +1012,7 @@ NG.gostop = (() => {
   /* 방 고르기 + 포인트 얻기 화면(판 안) */
   function lobby(){
     const g = GS(); if(!g || G.over) return;
+    if(g.link && g.mode === 'pvp'){ const r = ROOMS[g.link.k] || ROOMS[0]; g.room = wallet().pt >= r.min ? r : ROOMS[0]; turnHint(); linkJoin(); return; }
     const att = attendance();
     const box = $('#gsLobby'); box.hidden = false; $('#gsBody').hidden = true;
     const draw0 = msg => {
@@ -1087,6 +1088,24 @@ NG.gostop = (() => {
       g.turnOff = off;
     }catch(_){}
   }
+  /* 공용 대전 방 정보 → 고스톱 방 연결(docs/21 3-7·10-2). o = { room, pl, host, seed, again, round, pace }.
+     room은 글자·숫자(방 번호) 또는 { id | code | name, r | rd, host, stake(판 크기 0~4) }. 둘이 같은 o를 받으면 같은 방 이름 → 상대 찾기 없이 바로 마주 앉음.
+     판 크기는 room.stake가 없으면 '연습 판'(포인트가 오가지 않음) */
+  let linkNext = null;
+  /* 사이트 대전 방: o = { room:'fl-d3-r-<코드>-<판>'(중계 방 이름), pl, me, host:이번 판 방장(pl[0]), seed, again, pace, n, lv, nick, info, onFail } → 그 중계 방에 바로 */
+  function linkOf(o){
+    if(!o || o.room == null || o.room === '') return null;
+    const R = o.room, I = o.info && typeof o.info === 'object' ? o.info : (typeof R === 'object' ? R : {});
+    const id = typeof R === 'object' ? (R.id != null ? R.id : R.code != null ? R.code : R.name) : R;
+    if(id == null || id === '') return null;
+    const num = v => typeof v === 'number' && isFinite(v) && v >= 1 ? Math.floor(v) : 0;
+    const tail = /-(\d+)$/.exec(String(id));
+    const r = num(I.rd) || num(I.r) || num(o.round) || num(o.again) || (tail ? +tail[1] : 0) || 1;
+    const host = typeof o.host === 'boolean' ? o.host : typeof I.host === 'boolean' ? I.host : null;
+    const k = typeof I.stake === 'number' ? Math.max(0, Math.min(4, I.stake | 0)) : 0;
+    const name = typeof R === 'string' && /^fl-/.test(R) ? R.slice(0, 60) : ('fl-g-r-' + (String(id).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 28) || 'x') + '-' + r).slice(0, 50);
+    return { id, r, host, k, name, room:o.info || R, nick:typeof o.nick === 'string' ? o.nick.slice(0, 12) : null, onFail:typeof o.onFail === 'function' ? o.onFail : null };
+  }
   function ageGate(go){
     if(ageOk()){ go(); return; }
     openModal(`<div class="gs-mgate"><span class="gs19 big">19</span><h3>19세 이상 이용 게임</h3><p class="note">고스톱은 만 19세 이상만 할 수 있어요. 돈이나 상품을 걸 수 없고, 점수는 게임 안에서만 써요.</p></div>
@@ -1117,6 +1136,7 @@ NG.gostop = (() => {
   function searchText(){
     const g = GS(), st = $('#gsSt'), sn = $('#gsSn'); if(!st || !g) return;
     const left = Math.max(0, 20 - Math.floor((Date.now() - g.mmT0) / 1000));
+    if(g.link && g.phase === 'joining'){ st.textContent = '방 친구와 연결하는 중'; sn.textContent = g.oppSeen ? esc(g.oppNick) + '님과 판을 까는 중…' : '친구가 들어오면 바로 시작해요'; return; }
     if(g.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${esc(g.oppNick)}</b>님과 연결하는 중…`; return; }
     if(g.phase === 'nobody'){ st.textContent = '지금 대전할 상대가 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 지금 컴퓨터와 겨룰 수도 있어요.'; return; }
     st.textContent = '상대를 찾는 중';
@@ -1179,7 +1199,33 @@ NG.gostop = (() => {
       }, () => { if(GS() === g && !G.over && g.began && g.phase !== 'done'){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); sessionEnd('내 연결이 끊겼어요'); } }); }catch(_){}
     g.syncIv = setInterval(() => { if(GS() === g) sync(); }, 250);
   }
-  function matchFail(){ const g = GS(); roomClose(); g.oppSeen = false; if(G.over) return; toast('상대와 연결하지 못했어요. 다시 찾을게요'); search(); }
+  function matchFail(){ const g = GS(); roomClose(); g.oppSeen = false; if(G.over) return;
+    if(g.link){
+      const L = g.link; g.link = null;
+      if(L.onFail){ G.over = true; try{ HOST.exit(); }catch(_){} try{ L.onFail('join'); }catch(_){} return; }   /* 사이트 방: 방 화면으로 돌아감 */
+      toast('방 친구와 연결하지 못했어요 · 컴퓨터와 겨뤄요'); switchAI(); return;
+    }
+    toast('상대와 연결하지 못했어요. 다시 찾을게요'); search(); }
+  /* 대전 방(사이트 방·한 판 더): 상대 찾기 없이 정해진 방에 들어감. 기록 방식(presence v:2 · ev · bye · pt)은 빠른 대전과 같음 */
+  async function linkJoin(){
+    const g = GS(), L = g && g.link; if(!L) return;
+    if(!ROOM){ g.link = null; switchAI(); return; }
+    g.phase = 'joining'; g.mmT0 = Date.now(); g.oppPeer = null; g.oppSeen = false; g.oppNick = '상대';
+    if(L.nick) g.nick = L.nick;   /* 방에서 쓰는 별명 그대로 */
+    searchUI();
+    let nr;
+    try{ nr = await ROOM.join(L.name); }catch(_){ if(GS() === g) matchFail(); return; }
+    if(GS() !== g || g.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
+    g.nr = nr; g.joinT = Date.now(); g.ev = []; g.oev = [];
+    try{ const mine = nr.peers().find(p => p.sameTab); if(mine) g.myPeer = mine.peer; }catch(_){}
+    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt }).catch(() => {});
+    try{ g.nrUn = nr.onPeers(ch => {
+        if(GS() !== g) return;
+        if(g.oppSeen && ch.left.some(p => p.peer === g.oppPeer) && !g.began){ g.oppSeen = false; g.oppPeer = null; searchText(); return; }
+        sync();
+      }, () => { if(GS() === g && !G.over && g.began && g.phase !== 'done'){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); sessionEnd('내 연결이 끊겼어요'); } }); }catch(_){}
+    g.syncIv = setInterval(() => { if(GS() === g){ sync(); if(g.phase === 'joining') searchText(); } }, 250);
+  }
   function roomClose(){
     const g = GS(); if(!g) return;
     clearInterval(g.syncIv); if(g.nrUn) try{ g.nrUn(); }catch(_){} g.nrUn = null;
@@ -1188,7 +1234,7 @@ NG.gostop = (() => {
   function oppPres(){
     const g = GS(); if(!g || !g.nr) return null;
     let ps; try{ ps = g.nr.peers(); }catch(_){ return null; }
-    const o = ps.find(p => !p.sameTab && (p.peer === g.oppPeer || (p.presence && p.presence.nk === g.oppNick)));
+    const o = ps.find(p => !p.sameTab && (p.peer === g.oppPeer || (p.presence && p.presence.nk === g.oppNick))) || (g.link && !g.began ? ps.find(p => !p.sameTab && p.presence && p.presence.v === 2 && p.presence.nk) : null);
     if(o && o.peer !== g.oppPeer) g.oppPeer = o.peer;   /* 상대가 다시 연결하면 새 peer id */
     return o ? o.presence || {} : null;
   }
@@ -1204,9 +1250,15 @@ NG.gostop = (() => {
         lobbyClear(); g.mode = 'pvp'; g.oppPt = typeof o.pt === 'number' ? o.pt : 0;
         const a = [g.myPeer, g.oppPeer].map(String).sort();
         g.seed0 = 'gs:pvp:' + a[0] + ':' + a[1];
+        if(g.link){
+          g.oppNick = String(o.nk).slice(0, 12);
+          /* 자리: 방장 정보가 있으면 방장 0번, 없으면 peer 순서. 씨앗 = 방 이름(+ 판 표지) → 두 기기가 같은 패 */
+          g.seat = typeof g.link.host === 'boolean' ? (g.link.host ? 0 : 1) : (String(g.myPeer) < String(g.oppPeer) ? 0 : 1);
+          g.seed0 = 'gs:room:' + g.link.name;
+        }
         $('#gsSearch').hidden = true;
         sunStart();
-      } else if(g.phase === 'joining' && Date.now() - g.joinT > 9000) matchFail();
+      } else if(g.phase === 'joining' && Date.now() - g.joinT > (g.link ? 30000 : 9000)) matchFail();
       return;
     }
     if(was !== (g.oppHere ? 1 : 0) + (g.oppBye ? 2 : 0) && g.phase === 'play' && !g.busy && g.S) draw(liveView());
@@ -1252,7 +1304,7 @@ NG.gostop = (() => {
     /* 자리(seat): 대전은 peer 순서, AI와는 나 0 · AI 1. 판마다 선 자리(first)가 S의 0번 자리가 된다.
        솔로는 스테이지가 선을 정하고(aiFirst), 대전은 선 뽑기 → 다음 판부터 이긴 사람이 선 */
     G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:G.adv && cfg.aiFirst ? 1 : 0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : '컴퓨터 고수'),
-      seedBase, ev:[], oev:[], tot:{ n:0, w:0, l:0, d:0, pt:0 }, bye:false, epoch:0, sel:null, busy:false, began:false, inGame:false, phase:'lobby' };
+      seedBase, ev:[], oev:[], tot:{ n:0, w:0, l:0, d:0, pt:0 }, bye:false, epoch:0, sel:null, busy:false, began:false, inGame:false, phase:'lobby', link:mode === 'pvp' ? linkNext : null };
     G.mode = mode;
     G.cleanup = cleanup;
     /* 아직 19세 확인 전이면 엔진의 첫 도움말을 막아 두고(이미 본 것으로 표시) 확인 뒤에 연다 → 확인 전에는 규칙 창이 뜨지 않음 */
@@ -1359,12 +1411,35 @@ NG.gostop = (() => {
     bodyClass:'gsmode',
     duelHow:'1:1 맞고 · 판 크기 고르기 · 19세 이상',
     /* 고스톱은 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 마주 앉아 한 판. fleet:true = 엔진에 "게임이 대전을 직접 진행"이라고 알림 */
-    duelLaunch(){ ageGate(() => { const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : '컴퓨터 고수' } } }); }); },
+    /* o = { pace, room, pl, host, seed, again }(공용 대전 v3). room이 있으면 사이트 방·한 판 더: 판 고르기·상대 찾기 없이 그 방 친구와 바로.
+       19세 확인이 먼저(확인 전에는 판·도움말을 만들지 않음). G.duel.room에 받은 방 정보를 그대로 둔다 */
+    duelRoom:true,   /* 사이트 대전 방(2명)에서 duelLaunch(o)로 시작할 수 있음 */
+    duelLaunch(o){ ageGate(() => {
+      const live = duelLive(), link = live ? linkOf(o) : null;
+      linkNext = link;
+      try{ startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : '컴퓨터 고수' }, room:link ? link.room : null } }); }
+      finally{ linkNext = null; }
+    }); },
     /* 시작 전 관문(공용 WP3 startGate): 19세 확인 → 확인된 뒤에만 도움말·판(솔로·대전·모듈 모두). 'gate'는 소리 간격 칸이라 이름이 다르다 */
     startGate(go){ ageGate(go); },
     /* 도움말 v2(공용 WP3): 첫 화면 3줄, 점수 계산 표는 '더 알아보기' */
     howto:{
-      lines:[['같은 달 패를 맞춰 먹어요', '패를 내고 더미를 뒤집어 같은 달이면 가져와요'], ['점수가 나면 고 또는 스톱', '7점부터 더 할지(고) 끝낼지(스톱) 골라요'], ['많이 낸 쪽이 이겨요', '돈·상품은 걸 수 없어요 · 19세 이상']],
+      /* 도움말 그림(320×180): 화투 그림은 지금 쓰는 패 그림 그대로(새로 그리지 않음). 손패 3월 패를 내서 바닥의 3월 패와 맞춰 먹는 움직임 */
+      pic(){
+        const card = (id, x, y) => `<svg x="${x}" y="${y}" width="46" height="75" style="width:46px;height:75px" viewBox="${GSART.VB}" overflow="hidden">${cardInner(id)}</svg>`;   /* 판 그림 그대로(크기만 줄임). 도움말 창의 svg 100% 규칙을 style로 막음 */
+        const D = '3.2s';
+        return `<svg viewBox="0 0 320 180" aria-hidden="true">
+          <rect x="4" y="4" width="312" height="172" rx="18" fill="#4FA82E" stroke="#1F5A12" stroke-width="3"/>
+          <rect x="16" y="14" width="288" height="86" rx="14" fill="rgba(8,46,4,.22)"/>
+          ${card(20, 40, 20)}${card(41, 236, 20)}
+          <g>${card(8, 137, 20)}<rect x="135" y="18" width="50" height="79" rx="8" fill="none" stroke="#FFC93C" stroke-width="4" opacity="0"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;.5;.55;.85;1"/></rect></g>
+          ${card(33, 70, 104)}${card(45, 200, 104)}
+          <g><animateTransform attributeName="transform" type="translate" dur="${D}" repeatCount="indefinite" values="0 0;0 0;14 -80;14 -80;0 0" keyTimes="0;.2;.5;.9;1"/>
+            <rect x="133" y="102" width="50" height="79" rx="8" fill="none" stroke="#FFC93C" stroke-width="4"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.2;.3;.9;1"/></rect>${card(9, 135, 104)}</g>
+        </svg>`;
+      },
+      /* 3줄은 글자열(줄마다 24자 이하, games/CLAUDE.md howto 계약) */
+      lines:['같은 달 패를 맞춰 먹어요', '점수가 나면 고 또는 스톱', '많이 낸 쪽이 이겨요'],
       more:null
     },
     sounds:Object.assign({

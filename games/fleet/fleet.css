@@ -91,7 +91,7 @@ button.fl-c{cursor:crosshair}
 .fl-pips i.x{background:#FF5E62}
 .fl-row.dead{opacity:.45}
 .fl-row.dead span{text-decoration:line-through}
-.fl-log{margin-top:8px; padding:7px 9px; border-radius:12px; background:rgba(0,0,0,.28); font-size:12.5px; line-height:1.5; color:#BFD8EE; min-height:62px}
+.fl-log{margin-top:8px; padding:7px 9px; border-radius:12px; background:rgba(0,0,0,.28); font-size:13px; line-height:1.5; color:#BFD8EE; min-height:62px}
 .fl-log div{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .fl-log div:first-child{color:#fff}
 .fl-log .h{color:#FF9A6B} .fl-log .m{color:#8FD3FF} .fl-log .s{color:#FFD84A}
@@ -141,7 +141,7 @@ button.fl-c{cursor:crosshair}
 .fl-tip{font-size:14px; color:#A9CBE6; text-align:center; margin:6px 4px 0; line-height:1.5}
 .fl-tip b{color:#FFD84A}
 /* 솔로 개념 사이클: 규칙 칩 · 섬 · 배 없음 · 안개 · 레이더 · 침묵 */
-.fl-cx{display:block; width:max-content; max-width:100%; margin:4px auto 0; padding:2px 9px; border-radius:999px; font-family:var(--disp); font-size:12px; font-weight:400; -webkit-text-stroke:0; color:#FFE8A3; background:rgba(255,200,60,.14); box-shadow:inset 0 0 0 1px rgba(255,210,90,.35); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.fl-cx{display:block; width:max-content; max-width:100%; margin:4px auto 0; padding:2px 9px; border-radius:999px; font-family:var(--disp); font-size:13px; font-weight:400; -webkit-text-stroke:0; color:#FFE8A3; background:rgba(255,200,60,.14); box-shadow:inset 0 0 0 1px rgba(255,210,90,.35); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .fl-rocks{position:absolute; inset:0; z-index:3; pointer-events:none}
 .fl-rocks .fl-isl{position:absolute; width:10%; height:10%; display:grid; place-items:center; background:radial-gradient(circle,rgba(120,200,190,.55) 30%,rgba(90,170,170,0) 72%)}
 .fl-rocks .fl-isl svg{width:94%; height:94%; filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
@@ -152,7 +152,7 @@ button.fl-c{cursor:crosshair}
 @keyframes flfade{to{opacity:0; transform:scale(1.8); filter:blur(3px)}}
 .fl-rdl{position:absolute; inset:0; z-index:5; pointer-events:none}
 .fl-rdo{position:absolute; box-sizing:border-box; border-radius:8px; display:flex; align-items:flex-start; justify-content:center}
-.fl-rdo span{margin-top:2px; padding:1px 6px; border-radius:7px; font-size:12px; font-weight:800; white-space:nowrap; line-height:16px}
+.fl-rdo span{margin-top:2px; padding:1px 6px; border-radius:7px; font-size:13px; font-weight:800; white-space:nowrap; line-height:16px}
 .fl-rdo.yes{border:2px dashed #FFB347; background:rgba(255,160,60,.1)}
 .fl-rdo.yes span{background:#FFB347; color:#3A1B00}
 .fl-rdo.no{border:2px solid rgba(150,220,255,.7); background:rgba(150,220,255,.12); opacity:0}
@@ -170,7 +170,7 @@ button.fl-c{cursor:crosshair}
 .fl-bar.rdr .fl-fire{font-size:16px; padding:0 6px}
 .fl-rdb{min-height:52px; padding:4px 2px; font-size:13px}
 .fl-rdb svg{width:22px; height:22px}
-.fl-sil{display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:800; color:#DDEEFF; background:rgba(140,200,255,.14); white-space:nowrap}
+.fl-sil{display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 8px; border-radius:999px; font-size:13px; font-weight:800; color:#DDEEFF; background:rgba(140,200,255,.14); white-space:nowrap}
 .fl-sil svg{width:14px; height:14px; opacity:1}
 .fl-sil b{color:#FFB347}
 .fl-searchp{text-align:center; padding:24px 16px 18px}

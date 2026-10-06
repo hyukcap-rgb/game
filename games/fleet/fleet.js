@@ -4,6 +4,22 @@ const FL_SHIPS = [{ k:'carrier', n:'항공모함', len:5 }, { k:'battle', n:'전
 const FL_TOTAL = 17, FL_TURN = 25, FL_TURN_PVP = 10, FL_TURN_SLOW = 30, FL_COLS = 'ABCDEFGHIJ';   /* 실시간 한 차례: 보통 10초 · 느긋하게 30초(2026-10-06 세대별 테스트, 예전 5초) */
 const flTurnSec = () => G && G.slow ? FL_TURN_SLOW : FL_TURN_PVP;
 let flPaceNext = null;   /* duelLaunch(o.pace)가 다음 판 속도를 넘김 */
+let flLinkNext = null;   /* duelLaunch(o.room …)가 넘긴 대전 방(사이트 방·한 판 더) */
+/* 공용 대전 방 정보 → 함대 방 연결 정보(docs/21 3-7·10-2, games/CLAUDE.md duelLaunch·duelRoom).
+   사이트 대전 방: o = { room:'fl-d3-r-<코드>-<판>'(중계 방 이름), pl, me, host:이번 판 방장(pl[0]), seed, again, pace, n, lv, nick, info:{ id, rd, … }, onFail }
+   → 그 중계 방에 바로 들어감. room이 객체({ id | code | name, r | rd, host })여도 받는다. 같은 o를 받은 두 기기 = 같은 방 이름 */
+function flLinkOf(o){
+  if(!o || o.room == null || o.room === '') return null;
+  const R = o.room, I = o.info && typeof o.info === 'object' ? o.info : (typeof R === 'object' ? R : {});
+  const id = typeof R === 'object' ? (R.id != null ? R.id : R.code != null ? R.code : R.name) : R;
+  if(id == null || id === '') return null;
+  const num = v => typeof v === 'number' && isFinite(v) && v >= 1 ? Math.floor(v) : 0;
+  const tail = /-(\d+)$/.exec(String(id));
+  const r = num(I.rd) || num(I.r) || num(o.round) || num(o.again) || (tail ? +tail[1] : 0) || 1;
+  const host = typeof o.host === 'boolean' ? o.host : typeof I.host === 'boolean' ? I.host : null;
+  const name = typeof R === 'string' && /^fl-/.test(R) ? R.slice(0, 60) : ('fl-r-' + (String(id).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 28) || 'x') + '-' + r).slice(0, 48);
+  return { id, r, host, name, room:o.info || R, nick:typeof o.nick === 'string' ? o.nick.slice(0, 12) : null, onFail:typeof o.onFail === 'function' ? o.onFail : null };
+}
 /* 대전 시계: 서버 시각 기준(두 기기가 같은 남은 시간을 보도록) */
 const flNow = () => Date.now() + ((ROOM && ROOM.clockOffset) || 0);
 const flShotN = () => G.sh.filter(x => x >= 0).length;
@@ -20,27 +36,47 @@ const FL_I = UI_ICON;   /* 버튼 아이콘(공용: core/effects-sound.js의 UI_
 const FL_XH = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="12.5" fill="none" stroke="#FF4D4D" stroke-width="2.6" stroke-dasharray="14 5.6"/><circle cx="20" cy="20" r="2.6" fill="#FF4D4D"/><path d="M20 2v8M20 30v8M2 20h8M30 20h8" stroke="#FF4D4D" stroke-width="2.6" stroke-linecap="round"/></svg>';
 const FL_FLAME = '<svg class="fl-flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c1.2 3.8 5.6 5.9 5.6 11.2A5.6 5.6 0 0 1 6.4 12.9c0-2.2 1.1-3.7 2.2-4.8.2 2 1.1 3.2 2.4 3.7C10.4 8.4 10.9 4.8 12 1.5z" fill="#FF6A1A"/><path d="M12 9c.7 2.2 3.1 3.3 3.1 5.9a3.1 3.1 0 0 1-6.2 0c0-1.6.9-2.6 1.6-3.3.2 1 .7 1.6 1.2 1.9-.2-1.8-.2-3.1.3-4.5z" fill="#FFD84A"/><circle cx="12" cy="16.2" r="1.3" fill="#FFF6D0"/></svg>';
 
-/* 함선 그림: 가로 기준(뱃머리 오른쪽), 세로는 90도 회전 */
+/* 함선 그림(오리지널, 위에서 본 모양): 가로 기준(뱃머리 오른쪽), 세로는 90도 회전.
+   2026-10-06 세대별 테스트(회색 막대처럼 보임): 크기별 5종이 한눈에 다르게 — 뾰족한 뱃머리·밝은 갑판·종류별 색 띠와 윗부분 */
+const FL_SHIP_COL = {
+  carrier:  { hull:'#7E90A3', deck:'#4E5C6B', acc:'#FFC93C' },
+  battle:   { hull:'#8496AA', deck:'#B9C6D2', acc:'#FF8A3D' },
+  cruiser:  { hull:'#90A4B6', deck:'#C9D5DF', acc:'#38C6B8' },
+  sub:      { hull:'#3B4C63', deck:'#2C3A4E', acc:'#FFD84A' },
+  destroyer:{ hull:'#9AAFC0', deck:'#D3DDE6', acc:'#7BD85A' }
+};
 function flShipBody(k, len){
-  const W = len * 100, pal = { carrier:['#8B9DAE','#3F4B56'], battle:['#8E9AA6','#46545F'], cruiser:['#9DAEBD','#4E5E6C'], sub:['#4E5D6A','#2A3640'], destroyer:['#A7B6C3','#56687A'] }[k];
-  const hull = k === 'sub'
-    ? `M6 50C8 29 32 26 70 26L${W-70} 26C${W-18} 26 ${W-6} 39 ${W-6} 50C${W-6} 61 ${W-18} 74 ${W-70} 74L70 74C32 74 8 71 6 50Z`
-    : `M10 50C10 29 27 19 56 17L${W-92} 15C${W-40} 18 ${W-14} 33 ${W-3} 50C${W-14} 67 ${W-40} 82 ${W-92} 85L56 83C27 81 10 71 10 50Z`;
-  const tur = x => `<g transform="translate(${x} 50)"><rect x="2" y="-4.5" width="44" height="9" rx="4" fill="#26313B"/><circle r="16" fill="${pal[1]}" stroke="#1B2630" stroke-width="4"/><circle r="5.5" fill="#8797A4"/></g>`;
-  let d = `<path d="${hull}" fill="${pal[0]}" stroke="#1B2630" stroke-width="5"/><path d="M${k === 'sub' ? 50 : 44} 33L${W - 96} 30" stroke="rgba(255,255,255,.28)" stroke-width="5" stroke-linecap="round"/>`;
+  const W = len * 100, c = FL_SHIP_COL[k] || FL_SHIP_COL.cruiser, OL = '#14202B';
+  /* 포탑: 둥근 받침 + 포신(dir 1 = 뱃머리 쪽, -1 = 뒤쪽) */
+  const tur = (x, dir) => `<g transform="translate(${x} 50)"><rect x="${dir > 0 ? 4 : -44}" y="-4.5" width="40" height="9" rx="4" fill="#2A3744" stroke="${OL}" stroke-width="2"/><circle r="15" fill="#5B6B7B" stroke="${OL}" stroke-width="4"/><circle r="5" fill="#9FB0BF"/></g>`;
+  const bridge = (x, w) => `<rect x="${x}" y="30" width="${w}" height="40" rx="10" fill="${c.acc}" stroke="${OL}" stroke-width="4"/><rect x="${x + w * .55}" y="36" width="${w * .28}" height="28" rx="5" fill="#fff" opacity=".75"/>`;
+  if(k === 'sub'){
+    /* 잠수함: 길쭉한 시가 모양 + 가운데 탑(돛) + 꼬리 날개 */
+    let d = `<path d="M${W - 6} 50C${W - 6} 38 ${W - 30} 28 ${W - 70} 28L64 28C30 28 12 38 12 50C12 62 30 72 64 72L${W - 70} 72C${W - 30} 72 ${W - 6} 62 ${W - 6} 50Z" fill="${c.hull}" stroke="${OL}" stroke-width="5"/>`;
+    d += `<path d="M14 50H2M24 36L8 28M24 64L8 72" stroke="${OL}" stroke-width="7" stroke-linecap="round"/><path d="M24 36L8 28M24 64L8 72" stroke="${c.hull}" stroke-width="3" stroke-linecap="round"/>`;
+    d += `<path d="M44 50H${W - 40}" stroke="rgba(255,255,255,.22)" stroke-width="4" stroke-linecap="round"/>`;
+    d += `<ellipse cx="${W * .56}" cy="50" rx="34" ry="14" fill="${c.deck}" stroke="${OL}" stroke-width="4"/><rect x="${W * .56 - 6}" y="44" width="22" height="12" rx="6" fill="${c.acc}" stroke="${OL}" stroke-width="2.5"/>`;
+    for(const x of [W * .22, W * .32, W * .82]) d += `<circle cx="${x}" cy="50" r="5" fill="${c.acc}" stroke="${OL}" stroke-width="2"/>`;
+    return d;
+  }
+  /* 물 위 배: 뒤는 둥글고 앞은 뾰족한 선체 + 밝은 갑판 + 꼬리 쪽 색 띠 */
+  let d = `<path d="M16 26C6 34 6 66 16 74L${W - 86} 84C${W - 40} 82 ${W - 12} 66 ${W - 3} 50C${W - 12} 34 ${W - 40} 18 ${W - 86} 16Z" fill="${c.hull}" stroke="${OL}" stroke-width="5"/>`;
+  d += `<path d="M26 34C20 40 20 60 26 66L${W - 88} 74C${W - 54} 72 ${W - 32} 62 ${W - 22} 50C${W - 32} 38 ${W - 54} 28 ${W - 88} 26Z" fill="${c.deck}"/>`;
+  d += `<path d="M34 33V67" stroke="${c.acc}" stroke-width="9"/><path d="M${W - 40} 50H${W - 14}" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/>`;
   if(k === 'carrier'){
-    d += `<rect x="30" y="27" width="${W - 118}" height="46" rx="8" fill="${pal[1]}"/><path d="M44 50H${W - 104}" stroke="#F1F5F8" stroke-width="3" stroke-dasharray="18 12"/>`;
-    d += `<rect x="${W * .56}" y="8" width="58" height="20" rx="4" fill="#C9D4DD" stroke="#1B2630" stroke-width="3"/>`;
-    for(const x of [W * .16, W * .3]) d += `<path d="M${x} 40l22 10-22 10 5-10z" fill="#E6EDF2"/>`;
+    /* 항공모함: 넓은 비행 갑판 + 하얀 활주로 줄 + 비스듬한 착륙 줄 + 한쪽 끝 관제탑 + 작은 비행기 2대 */
+    d += `<path d="M50 50H${W - 70}" stroke="#F1F5F8" stroke-width="3.5" stroke-dasharray="20 12"/><path d="M60 64L${W * .48} 38" stroke="${c.acc}" stroke-width="3" stroke-dasharray="12 9"/>`;
+    d += `<rect x="${W * .62}" y="6" width="64" height="24" rx="6" fill="${c.acc}" stroke="${OL}" stroke-width="4"/><rect x="${W * .62 + 38}" y="11" width="16" height="14" rx="3" fill="#fff" opacity=".8"/>`;
+    for(const x of [W * .2, W * .36]) d += `<g transform="translate(${x} 50)" fill="#F4F7FA" stroke="${OL}" stroke-width="2"><path d="M-14 -3h26l6 3-6 3h-26z"/><path d="M-2 -14l6 0 3 11h-9zM-2 14l6 0 3 -11h-9z"/></g>`;
   } else if(k === 'battle'){
-    d += `<rect x="${W * .42}" y="31" width="${W * .15}" height="38" rx="8" fill="#BCC7D0" stroke="#1B2630" stroke-width="3"/><circle cx="${W * .495}" cy="50" r="8" fill="#56636F"/>` + tur(W * .2) + tur(W * .32) + tur(W * .7);
+    /* 전함: 큰 포탑 3개(앞 2 · 뒤 1) + 가운데 함교 + 굴뚝 */
+    d += tur(W * .14, -1) + bridge(W * .3, W * .16) + `<circle cx="${W * .52}" cy="50" r="11" fill="#3A4652" stroke="${OL}" stroke-width="3.5"/>` + tur(W * .66, 1) + tur(W * .8, 1);
   } else if(k === 'cruiser'){
-    d += `<rect x="${W * .4}" y="32" width="${W * .18}" height="36" rx="8" fill="#C4CFD8" stroke="#1B2630" stroke-width="3"/>` + tur(W * .22) + tur(W * .72);
-  } else if(k === 'sub'){
-    d += `<rect x="${W * .4}" y="37" width="${W * .22}" height="26" rx="13" fill="#6D7C89" stroke="#1B2630" stroke-width="3"/><path d="M${W * .52} 37V22" stroke="#9AA8B4" stroke-width="4" stroke-linecap="round"/>`;
-    for(const x of [W * .2, W * .28, W * .75]) d += `<circle cx="${x}" cy="50" r="4" fill="#2A3640"/>`;
+    /* 순양함: 포탑 2개 + 함교 + 둥근 레이더 */
+    d += tur(W * .2, -1) + bridge(W * .38, W * .2) + `<g transform="translate(${W * .66} 50)"><circle r="12" fill="#fff" stroke="${OL}" stroke-width="3.5"/><path d="M-7 4a9 9 0 0 1 14 0" fill="none" stroke="${c.acc}" stroke-width="3.5" stroke-linecap="round"/></g>` + tur(W * .8, 1);
   } else {
-    d += `<rect x="${W * .26}" y="33" width="${W * .26}" height="34" rx="8" fill="#C9D4DD" stroke="#1B2630" stroke-width="3"/><circle cx="${W * .36}" cy="50" r="7" fill="#56687A"/>` + tur(W * .7);
+    /* 구축함: 작은 함교 + 굴뚝 + 앞 포탑 1개 */
+    d += bridge(W * .24, W * .22) + `<circle cx="${W * .56}" cy="50" r="9" fill="#3A4652" stroke="${OL}" stroke-width="3"/>` + tur(W * .74, 1);
   }
   return d;
 }
@@ -265,7 +301,8 @@ function flInit(lv, rng){
     my:flRandomFleet(Math.random, rocks), en, enMap:flMapOf(en), myMap:null, myShot:new Array(100).fill(0), enShot:new Array(100).fill(0),
     sh:[], an:[], shown:0, pending:-1, hitsN:0, myLeft:FL_TOTAL, enSunk:[], turn:null, lastTurn:null, aimI:-1, busy:false, busyIn:false,
     aiKnow:new Array(100).fill(0), aiSunk:[], log:[], opp:{ sh:[], an:[] }, nr:null, oppPeer:null, myPeer:null, oppRv:null, forfeit:false, ending:false,
-    slow:lv === 'pvp' && (flPaceNext != null ? !!flPaceNext : !!store.get('hp:fleet:slow', 0)), selShip:0 });   /* 실시간 '느긋하게'(한 차례 30초) */
+    slow:lv === 'pvp' && (flPaceNext != null ? !!flPaceNext : !!store.get('hp:fleet:slow', 0)), selShip:0, link:lv === 'pvp' ? flLinkNext : null });
+  if(G.link && G.link.nick) G.nick = G.link.nick;   /* 사이트 방: 방에서 쓰는 별명 그대로 */   /* 실시간 '느긋하게'(한 차례 30초) */
   G.fx = fx;
   if(fx){
     Object.assign(G, { radarN:fx.radar, aiRadarN:fx.aiRadar, aiHot:null, radarMode:false, radarMarks:[], salvoSel:[], myTurnN:0, aiTurnN:0, missAt:{}, fogged:new Set() });
@@ -318,13 +355,13 @@ function flRenderPlace(b){
       <div class="fl-dpad" role="group" aria-label="고른 배 옮기기">
         <button class="fl-dk" data-d="l" aria-label="왼쪽으로">◀</button><button class="fl-dk" data-d="u" aria-label="위로">▲</button><button class="fl-dk" data-d="d" aria-label="아래로">▼</button><button class="fl-dk" data-d="r" aria-label="오른쪽으로">▶</button><button class="fl-dk rot" data-d="o" aria-label="돌리기">⟳</button>
       </div>
-      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo">${G.mode === 'pvp' ? '이대로 · 상대 찾기' : '이대로 출격'}</button></div>
-      ${G.mode === 'pvp' ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}"><b>${G.slow ? '느긋하게' : '보통'}</b> · 한 차례 ${flTurnSec()}초 <span>바꾸기 ⇄</span></button>` : ''}
+      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo">${G.mode === 'pvp' && !G.link ? '이대로 · 상대 찾기' : '이대로 출격'}</button></div>
+      ${G.mode === 'pvp' && !G.link ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}"><b>${G.slow ? '느긋하게' : '보통'}</b> · 한 차례 ${flTurnSec()}초 <span>바꾸기 ⇄</span></button>` : ''}
     </div>
-    <p class="fl-tip">${G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br>컴퓨터 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
+    <p class="fl-tip">${G.link ? '<b>방 친구와 해전</b><br>배를 놓고 출격하면 친구가 출격하는 대로 바로 시작해요.' : G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br>컴퓨터 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
   $('#flMy').classList.add('live');
   flPlaceShips(true);
-  const go = () => { flSound('fire'); if(G.mode === 'pvp') flSearch(); else flStartBattle(); };
+  const go = () => { flSound('fire'); if(G.mode === 'pvp') (G.link ? flRoomJoin() : flSearch()); else flStartBattle(); };
   const shuf = () => { G.my = flRandomFleet(Math.random, G.fx ? G.fx.rocks : undefined); flPlaceShips(true); flSound('splash'); G.my.forEach((sh, k) => setTimeout(() => flSound('aim'), k * 60)); };
   $('#flShuf').onclick = shuf;
   $('#flGo').onclick = go;
@@ -409,6 +446,7 @@ function flSearchText(){
   const st = $('#flSt'), sn = $('#flSn'); if(!st) return;
   const left = Math.max(0, 20 - Math.floor((Date.now() - (G.mmT0 || Date.now())) / 1000));
   if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 AI와 겨뤄 보세요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
+  if(G.link && G.phase === 'joining'){ st.textContent = '방 친구를 기다리는 중'; sn.innerHTML = '친구가 배를 놓고 출격하면 바로 시작해요' + (G.oppSeen ? ' · <b>' + flEsc(G.oppNick) + '</b> 선장 들어옴' : ''); const cb = $('#flCancel'); if(cb) cb.style.display = 'none'; return; }
   if(G.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${flEsc(G.oppNick)}</b> 선장과 연결하는 중…`; $('#flSBtns').style.display = 'none'; return; }
   if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 컴퓨터 대전은 보통 난이도 점수로 계산돼요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
   st.textContent = '상대 선장을 찾는 중'; const n = flWaitingCount();
@@ -478,8 +516,41 @@ async function flMatch(opp){
 function flMatchFail(){
   flCleanupRoom(); G.oppSeen = false;
   if(G.over) return;
+  if(G.link){
+    const L = G.link; G.link = null;
+    if(L.onFail){ G.over = true; try{ HOST.exit(); }catch(_){} try{ L.onFail('join'); }catch(_){} return; }   /* 사이트 방: 방 화면으로 돌아감 */
+    toast('방 친구와 연결하지 못했어요 · 이 배치 그대로 컴퓨터와 겨뤄요'); if(G.duel) G.duel.mode = 'ai'; flSwitchAI(); return;
+  }
   toast('상대와 연결하지 못했어요. 다시 찾을게요');
   flSearch();
+}
+/* 대전 방(사이트 방·한 판 더): 상대 찾기 없이 정해진 방에 들어가 상대가 출격(v:1)하면 시작. 프로토콜(sh·an·td·rv)은 그대로 */
+async function flRoomJoin(){
+  const L = G.link; if(!L || G.phase !== 'place') return;
+  if(!ROOM){ G.link = null; flSwitchAI(); return; }
+  G.phase = 'joining'; G.oppPeer = null; G.oppSeen = false; G.oppNick = '방 친구'; G.joinT = Date.now();
+  flRender(); flSound('lock');
+  const me = G; let nr;
+  try{ nr = await ROOM.join(L.name); }catch(_){ if(G === me) flMatchFail(); return; }
+  if(G !== me || G.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
+  G.nr = nr; G.joinT = Date.now();
+  try{ const mine = nr.peers().find(p => p.sameTab); if(mine) G.myPeer = mine.peer; }catch(_){}
+  nr.presence({ v:1, nk:G.nick, sh:[], an:[] }).catch(() => {});
+  try{ G.nrUn = nr.onPeers(ch => {
+      if(G !== me) return;
+      if(G.oppSeen && G.oppPeer && ch.left.some(p => p.peer === G.oppPeer)){
+        if(G.phase !== 'battle'){ G.oppSeen = false; G.oppPeer = null; flSearchText(); return; }   /* 출격 전이면 다시 기다림 */
+        if(!G.oppGone){ G.oppGone = Date.now(); toast('상대 연결이 끊겼어요 · 15초 기다려요'); }
+      } else flSync();
+    }, () => { if(G === me && !G.over && G.phase === 'battle'){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); flEnd(false); } }); }catch(_){}
+  G.syncIv = setInterval(() => { if(G === me){ flSync(); flTimerTick(); } }, 250);
+}
+/* 방에서 누가 먼저 쏘나: 방장 정보가 있으면 1판 방장 → 다음 판은 바꿔서(판 번호로 번갈아), 없으면 예전처럼 peer가 작은 쪽 */
+function flLinkFirst(oppPeer){
+  const L = G.link;
+  if(L && typeof L.host === 'boolean') return L.host !== (L.r % 2 === 0);
+  if(!G.myPeer) try{ const mine = G.nr.peers().find(p => p.sameTab); if(mine) G.myPeer = mine.peer; }catch(_){}
+  return String(G.myPeer) < String(oppPeer);
 }
 function flOppLeft(){
   if(G.over || G.ending) return;
@@ -571,9 +642,9 @@ function flPaintAim(){
 function flFleetUI(){
   const ef = $('#flEnFleet');
   if(ef && G.fx && G.fx.silent && !G.ending) ef.innerHTML = `<span class="fl-sil" title="침묵 함대: 격침을 알려 주지 않아요">${FL_I.mute}<span>격침 비공개 · 명중 <b>${G.hitsN}</b>/${FL_TOTAL}</span></span>`;
-  else if(ef){ const used = G.enSunk.map(sp => sp.idx); ef.innerHTML = FL_SHIPS.map((S, j) => flShipSvg(S.k, S.len, false, 'fl-mini' + (used.includes(j) ? ' dead' : ''), 10)).join(''); }
+  else if(ef){ const used = G.enSunk.map(sp => sp.idx); ef.innerHTML = FL_SHIPS.map((S, j) => flShipSvg(S.k, S.len, false, 'fl-mini' + (used.includes(j) ? ' dead' : ''), 11)).join(''); }
   const ml = $('#flMyList');
-  if(ml) ml.innerHTML = G.my.map(s => `<div class="fl-row${s.hits >= s.len ? ' dead' : ''}">${flShipSvg(s.k, s.len, false, 'fl-mini', 10)}<span>${s.n === '항공모함' ? '항모' : s.n}</span><span class="fl-pips">${[...Array(s.len)].map((_, k) => `<i class="${k < s.hits ? 'x' : ''}"></i>`).join('')}</span></div>`).join('');
+  if(ml) ml.innerHTML = G.my.map(s => `<div class="fl-row${s.hits >= s.len ? ' dead' : ''}">${flShipSvg(s.k, s.len, false, 'fl-mini', 12)}<span>${s.n === '항공모함' ? '항모' : s.n}</span><span class="fl-pips">${[...Array(s.len)].map((_, k) => `<i class="${k < s.hits ? 'x' : ''}"></i>`).join('')}</span></div>`).join('');
 }
 function flStats(){
   const n = flShotN(), s = $('#flShots'), a = $('#flAcc');
@@ -981,12 +1052,17 @@ function flSync(){
     if(opp){ G.oppGone = 0; toast('상대가 다시 연결됐어요'); }
     else if(Date.now() - G.oppGone > 15000){ G.oppGone = 0; flOppLeft(); return; }
   }
-  if(!opp){ if(G.phase === 'joining' && Date.now() - G.joinT > 12000) flMatchFail(); return; }
+  if(!opp){ if(G.phase === 'joining' && Date.now() - G.joinT > (G.link ? 120000 : 12000)) flMatchFail(); return; }
   const o = opp.presence || {};
   if(Array.isArray(o.rv)) G.oppRv = o.rv;
   if(G.phase === 'joining'){
-    if(o.v === 1){ G.oppSeen = true; if(typeof o.nk === 'string') G.oppNick = o.nk.slice(0, 12); flStartBattle(); }
-    else if(Date.now() - G.joinT > 12000) flMatchFail();
+    if(G.link && !G.oppSeen){ G.oppSeen = true; if(typeof o.nk === 'string') G.oppNick = o.nk.slice(0, 12); flSearchText(); }
+    if(o.v === 1){
+      G.oppSeen = true; if(typeof o.nk === 'string') G.oppNick = o.nk.slice(0, 12);
+      if(G.link) G.first = flLinkFirst(opp.peer);
+      flStartBattle();
+    }
+    else if(Date.now() - G.joinT > (G.link ? 120000 : 12000)) flMatchFail();   /* 방: 친구가 배를 놓는 동안 넉넉히 기다림 */
     return;
   }
   if(G.phase !== 'battle' || G.ending) return;
@@ -1070,8 +1146,29 @@ NG.fleet = {
   help:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 차례 10초(느긋하게 30초), 조준해 둔 칸이 있으면 시간이 다 될 때 그 칸에 쏴요. 상대가 없으면 컴퓨터와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.'],['솔로는 5판마다 새 규칙','섬·레이더·연발 포격·침묵 함대, 그리고 빠른 판·안개 같은 변주가 차례로 나와요. 이번 판 규칙은 위쪽 작은 표시에 보여요. 솔로에선 격침한 적 배 둘레가 자동으로 "배 없음"으로 칠해져요(적 배는 서로 붙어 있지 않아요).']],
   /* 도움말 v2(공용 WP3): 첫 화면 3줄(레이더·연발 포격·침묵 함대는 솔로 개념 카드로), 나머지는 '더 알아보기' */
   howto:{
-    lines:[['배를 놓고 출격', '[자동으로 놓고 출격]을 누르면 바로 시작'], ['번갈아 적 바다를 쏴요', '칸을 눌러 조준 → [발사]'], ['맞히면 한 번 더', '적 배를 먼저 모두 가라앉히면 승리']],
-    more:[['배 옮기기', '배를 끌어 옮기고, 누르면 방향이 바뀌어요. 배를 누른 뒤 ◀▲▼▶·⟳ 버튼으로도 옮길 수 있어요.'],
+  /* 도움말 그림(320×180, 오리지널 도형, 글자 없음): 왼쪽 우리 배가 쏘면 포탄이 날아가 오른쪽 적 바다 칸에 명중 */
+  pic(){
+    let grid = ''; for(let k = 0; k <= 5; k++) grid += `M${176 + k * 24} 34V130`; for(let k = 0; k <= 4; k++) grid += `M176 ${34 + k * 24}H296`;
+    const cell = (c, r) => [176 + c * 24 + 12, 34 + r * 24 + 12];
+    const miss = [[0, 0], [3, 3], [1, 2], [4, 1]].map(([c, r]) => { const [x, y] = cell(c, r); return `<circle cx="${x}" cy="${y}" r="4" fill="#DDF1FF" opacity=".85"/>`; }).join('');
+    const [tx, ty] = cell(3, 1), D = '3s';
+    return `<svg viewBox="0 0 320 180" aria-hidden="true">
+      <rect x="4" y="4" width="312" height="172" rx="18" fill="#0E3A5E" stroke="#06213A" stroke-width="3"/>
+      <path d="M14 150q12-6 24 0t24 0 24 0 24 0 24 0" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M20 128q12-6 24 0t24 0 24 0 24 0" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="3" stroke-linecap="round"/>
+      <g><animateTransform attributeName="transform" type="translate" dur="2.4s" repeatCount="indefinite" values="0 0;0 -3;0 0"/><g transform="translate(22 82) scale(.3)">${flShipBody('battle', 4)}</g></g>
+      <rect x="170" y="28" width="132" height="108" rx="10" fill="#0B4A6E" stroke="#8FD3FF" stroke-width="2"/>
+      <path d="${grid}" stroke="rgba(170,225,255,.35)" stroke-width="1.2"/>${miss}
+      <path d="M142 92Q190 0 ${tx} ${ty}" fill="none" stroke="#FFE27A" stroke-width="2" stroke-dasharray="5 5" opacity=".7"/>
+      <circle r="5" fill="#FFE27A" stroke="#7A4A00" stroke-width="1.5"><animateMotion dur="${D}" repeatCount="indefinite" keyPoints="0;0;1;1" keyTimes="0;.2;.55;1" calcMode="linear" path="M142 92Q190 0 ${tx} ${ty}"/><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;.2;.54;.56;1"/></circle>
+      <g transform="translate(${tx} ${ty})"><circle r="13" fill="none" stroke="#FF4D4D" stroke-width="2.4" stroke-dasharray="9 4"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="1;1;1;0;0" keyTimes="0;.2;.55;.56;1"/></circle>
+        <circle r="4" fill="#FF8A3D"><animate attributeName="r" dur="${D}" repeatCount="indefinite" values="0;0;0;18;12;12" keyTimes="0;.2;.55;.65;.75;1"/><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;0;0;1;.9;0" keyTimes="0;.2;.55;.65;.9;1"/></circle>
+        <g opacity="0"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;.58;.62;.92;1"/><path d="M0-11c2 5 8 8 8 14a8 8 0 0 1-16 0c0-3 1.5-5 3-6.5.3 2.8 1.5 4.4 3.3 5C-2.6 -3 -1.6 -7 0 -11z" fill="#FF6A1A"/><path d="M0-2c1 3 4.3 4.5 4.3 8a4.3 4.3 0 0 1-8.6 0c0-2.2 1.3-3.6 2.2-4.6.3 1.4 1 2.2 1.7 2.6-.3-2.5-.3-4.3.4-6z" fill="#FFD84A"/></g></g>
+    </svg>`;
+  },
+    /* 3줄은 글자열(줄마다 24자 이하, games/CLAUDE.md howto 계약) */
+    lines:['배를 놓고 출격해요', '번갈아 적 바다를 쏴요', '맞히면 한 번 더 쏴요'],
+    more:[['바로 시작', '[자동으로 놓고 출격]을 누르면 배를 알아서 놓고 바로 시작해요. 칸을 눌러 조준하고 [발사], 적 배를 먼저 모두 가라앉히면 승리.'],['배 옮기기', '배를 끌어 옮기고, 누르면 방향이 바뀌어요. 배를 누른 뒤 ◀▲▼▶·⟳ 버튼으로도 옮길 수 있어요.'],
       ['실시간 대전', '한 차례 10초(느긋하게 30초, 같은 속도끼리 짝). 조준해 둔 칸이 있으면 시간이 다 될 때 그 칸에 쏴요. 상대가 없으면 컴퓨터와 붙어요.'],
       ['점수', '적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']]
   },
@@ -1096,7 +1193,16 @@ NG.fleet = {
   duelHow:'서로 포격하는 턴제 대전 · 한 차례 10초',
   /* 함대는 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 바로 포격전 */
   /* o.pace === 's'(공용 대전 v3 '느긋하게')면 한 차례 30초. 없으면 이 기기에 기억한 선택 */
-  duelLaunch(o){ const lv = duelLive() ? 'pvp' : 'normal', slow = o && o.pace ? o.pace === 's' : !!store.get('hp:fleet:slow', 0); flPaceNext = slow; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : '컴퓨터 함장' } } }); flPaceNext = null; }
+  duelRoom:true,   /* 사이트 대전 방(2명)에서 duelLaunch(o)로 시작할 수 있음 */
+  /* o = { pace, room, pl, host, seed, again }(공용 대전 v3). room이 있으면 사이트 방·한 판 더: 상대 찾기 없이 그 방 친구와 바로 해전.
+     G.duel.room에 받은 방 정보를 그대로 둔다(결과 뒤 사이트가 방으로 돌아갈 때 씀) */
+  duelLaunch(o){
+    const lv = duelLive() ? 'pvp' : 'normal', slow = o && o.pace ? o.pace === 's' : !!store.get('hp:fleet:slow', 0);
+    const link = lv === 'pvp' ? flLinkOf(o) : null;
+    flPaceNext = slow; flLinkNext = link;
+    try{ startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? (link ? '방 친구' : '상대 선장') : '컴퓨터 함장' }, room:link ? link.room : null } }); }
+    finally{ flPaceNext = null; flLinkNext = null; }
+  }
 };
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.fleet.scene = { kind:'sea', colors:['#BFF4FF'], density:1 };
