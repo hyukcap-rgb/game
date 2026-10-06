@@ -147,12 +147,12 @@ NG.rps = (() => {
     },
     twists:['flash', 'swap', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'판단 시간이 더 짧아요. 침착하게, 하지만 빠르게!' },
+      flash:{ name:'빠른 판', desc:'판단 시간이 더 짧아요. 침착하게, 하지만 빠르게!' },
       swap:{ name:'자리 바꾸기', desc:'내 손 버튼 세 개의 순서가 지령마다 바뀌어요. 그림과 글자를 보고 눌러요.' },
       tight:{ name:'외줄 타기', desc:'기회가 2개뿐이에요. 실수는 딱 한 번까지!' }
     }
   };
-  const RULE_TIP = { hide:'그림 지령: 글자 없이 그림만', not:'하지 마라: 맞는 손이 두 개', two:'두 손: 화살표 쪽 손 기준', last:'아까처럼: 앞 지령 그대로', flash:'번개: 판단 시간이 짧아요', swap:'자리 바꾸기: 버튼 순서가 바뀌어요', tight:'외줄 타기: 기회 2개' };
+  const RULE_TIP = { hide:'그림 지령: 글자 없이 그림만', not:'하지 마라: 맞는 손이 두 개', two:'두 손: 화살표 쪽 손 기준', last:'아까처럼: 앞 지령 그대로', flash:'빠른 판: 판단 시간이 짧아요', swap:'자리 바꾸기: 버튼 순서가 바뀌어요', tight:'외줄 타기: 기회 2개' };
   const tagName = k => (CONC.info[k] || CONC.twInfo[k] || {}).name || k;
 
   /* ---------- 진행 ---------- */
@@ -421,7 +421,7 @@ NG.rps = (() => {
       ['상대 손과 지령을 봐요', '진행자가 가위·바위·보 중 하나를 내밀어요. 아래 지령 판에 이겨라·져라·비겨라가 글자와 그림으로 나와요. 왕관은 이겨라, 눈물은 져라, 악수는 비겨라!'],
       ['지령에 맞는 손을 내요', '아래 큰 버튼 세 개 중 맞는 손을 눌러요. 지령 판 안의 막대가 다 줄기 전에! 키보드는 1·2·3.'],
       ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄어요. 별이 다 없어지면 끝. 침착하게 바로 판단할수록 점수가 높아요.'],
-      ['솔로: 새 지령', '그림 지령·하지 마라·두 손·아까처럼 같은 새 규칙과 번개·자리 바꾸기·외줄 타기 같은 변주가 나와요.']
+      ['솔로: 새 지령', '그림 지령·하지 마라·두 손·아까처럼 같은 새 규칙과 빠른 판·자리 바꾸기·외줄 타기 같은 변주가 나와요.']
     ],
     helpExtra(){ const m = G && G.id === 'rps' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['골목 대결', '운동장', '놀이공원', '지령 본부', '가위바위보 왕좌'],
@@ -463,7 +463,7 @@ NG.rps = (() => {
         </div>
         <div class="rp-row"><div class="hlives" id="rpLives" role="img"></div><div class="rp-tags">${tags}</div></div>
         <div class="rp-arena" id="rpArena">${arenaBg(m.pal)}
-          ${m.boss ? '<div class="rp-bossband" aria-hidden="true"><b>보스!</b></div>' : ''}
+          ${m.boss ? '<div class="rp-bossband" aria-hidden="true"><b>대장 판!</b></div>' : ''}
           <img class="toy rp-host" id="rpHost" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false">
           <div class="rp-bub" id="rpBub" aria-hidden="true"></div>
           <div class="rp-opp pump" id="rpOpp" role="img"></div>
@@ -478,13 +478,13 @@ NG.rps = (() => {
       </div>`;
       document.querySelectorAll('.ng-rps .rp-b').forEach(b => { b.onpointerdown = e => { e.preventDefault(); press(+b.dataset.p); }; b.onclick = e => { if(e.detail === 0) press(+b.dataset.p); }; });
       const sg = el('rpSign'); if(sg) sg.addEventListener('animationend', () => sg.classList.remove('pop'));
-      setOpp(m.Q[0], true); signWait(m.boss ? '보스 등장!' : '준비!');
+      setOpp(m.Q[0], true); signWait(m.boss ? '대장 판 등장!' : '준비!');
       hud(); layout();
       fx(() => [ '', 'joy', 'sad', 'wow' ].forEach(md => { const im = new Image(); im.src = toySrc(m.host, md); }));   /* 표정 그림 미리 만들기 */
       /* 상대 손·내 손 그림 미리 풀어 두기: 손이 나온 순간(판단 시간 시작)에 그림이 늦게 뜨지 않게 */
       fx(() => [0, 1, 2].forEach(h => [handSrc(h, HOST_COL[m.host] || '#FF8A1A'), handSrc(h, '#FF6F9F')].forEach(src => { const im = new Image(); im.src = src; if(im.decode) im.decode().catch(() => {}); m.pre = (m.pre || []).concat(im); })));
       const lines = HOST_LINE[m.host] || HOST_LINE.cat;
-      T(() => bubble(m.boss ? '보스 판이다!' : lines[0], 1100), 120);
+      T(() => bubble(m.boss ? '대장 판이다!' : lines[0], 1100), 120);
       if(m.boss){ m.mood = 'wow'; sfx('rpsBoss'); }
       m.onResize = () => layout();
       addEventListener('resize', m.onResize);

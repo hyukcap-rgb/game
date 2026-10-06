@@ -739,4 +739,62 @@ if(MULTI&&!ONLYW&&!ONLYS&&!ONLYT){
   if(GAMES.includes('match')) await G3.match();
   if(GAMES.includes('merge')) await G3.merge();
 }
+/* ================= R11 대전 판 다시 풀기 · 보내기(docs/21 WP3 8번, 결정 221) =================
+   진짜 1:1 대전 → 결과 창 [이 판 다시 풀기]·[친구에게 보내기] → 다시 푼 판·?ds= 링크(사이트·모듈, 다른 브라우저)로 연 판이 대전 판과 같은지(판 상태 지문 비교).
+   다시 풀기는 하트·대전 포인트·대전 기록이 그대로여야 한다. 혼자 의미 없는 대전(duelReplay 꺼짐)은 버튼이 없어야 한다.
+   지문 = G의 게임 상태(엔진 칸·시각·컴퓨터 흉내(ai)·만든 시간(genMs) 뺌)를 JSON으로 → 해시 */
+const FP=()=>{const skip=new Set(['id','lv','adv','duel','L','attempt','chal','paws','start','over','limit','paused','pauseAt','pausedMs','cfg','replay','practice','rec','raf','cleanup','lt','pz','done','map0','gift','mtRes']);
+  const seen=new WeakSet();let s='';for(const k of Object.keys(G).sort()){if(skip.has(k))continue;try{s+=k+'='+JSON.stringify(G[k],(kk,v)=>{if(typeof v==='function'||v instanceof Node)return undefined;if(typeof v==='number'&&v>1e11)return undefined;if(/^(t0|u|uid|at|ts|last|sec|lt|tAt|t1|ai|genMs|clock|phase|lastSec)$/.test(kk))return undefined;if(v&&typeof v==='object'){if(seen.has(v))return'~';seen.add(v);}return v;})+';';}catch(_){s+=k+'=?;';}}
+  return s;};
+const hs=s=>{if(typeof s!=='string')return String(s);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return h+':'+s.length;};
+const dif=(a,b)=>{if(a===b||typeof a!=='string'||typeof b!=='string')return '';let i=0;while(i<a.length&&a[i]===b[i])i++;return `\n      다른 곳: …${a.slice(Math.max(0,i-60),i+60)}…\n            ≠ …${b.slice(Math.max(0,i-60),i+60)}…`;};
+async function mkUrl(tag,url){const ctx=await br.newContext({viewport:{width:390,height:844}});
+  await ctx.route(/battle-production|function-bun|railway\.app\/api|fonts\.(googleapis|gstatic)\.com/,r=>r.abort());
+  const pg=await ctx.newPage(),errs=[];pg.on('pageerror',e=>errs.push(tag+' '+String(e)));
+  pg.on('console',m=>{if(m.type()==='error'&&!/WebSocket|favicon|Failed to load resource/.test(m.text()))errs.push(tag+' '+m.text())});
+  await pg.addInitScript(h=>{try{localStorage.setItem('hp:welcome','9');for(const g of h){localStorage.setItem('hp:help:'+g,'1');localStorage.setItem('hpe:::hp:help:'+g,'1');}}catch(_){}},HELPED);
+  await pg.goto(url,{waitUntil:'domcontentloaded'});return {ctx,pg,errs,tag};}
+async function replayCheck(g){
+  const A=await mk('A'),Bp=await mk('B');
+  const can=await A.pg.evaluate(g=>duelReplayOk(g),g);
+  await A.pg.evaluate(g=>duelStart(g),g); await w(300); await Bp.pg.evaluate(g=>duelStart(g),g);
+  const go=await Promise.all([A,Bp].map(x=>until(x,()=>G&&G.duel&&G.duel.go)));
+  const fp0=await A.pg.evaluate(`(${FP})()`), fpB=await Bp.pg.evaluate(`(${FP})()`);
+  await A.pg.evaluate(()=>finish(true)); await w(900); await Bp.pg.evaluate(()=>finish(true));
+  await Promise.all([A,Bp].map(x=>until(x,()=>G&&G.duel&&G.duel.resolved,null,15000))); await w(1300);
+  const btn=await A.pg.evaluate(()=>({rp:!!document.querySelector('#modal #dzRp'),send:!!document.querySelector('#modal #dzSend'),res:G.duel.res&&{g:G.duel.res.g,lv:G.duel.res.lv,rp:G.duel.res.rp,seed:!!G.duel.res.seed}}));
+  if(!can){ ok(go.every(Boolean)&&!btn.rp&&!btn.send&&btn.res&&btn.res.rp===false,`${g} 대전 판 다시 풀기 꺼짐(duelReplay) → 결과 창 버튼 없음`); ok(!errsOf([A,Bp]).length,`${g} 다시 풀기 꺼짐 오류 없음 `+errsOf([A,Bp]).join(' | ')); await closeAll([A,Bp]); return; }
+  ok(go.every(Boolean)&&fp0===fpB&&btn.rp&&btn.send&&btn.res.g===g&&btn.res.lv&&btn.res.rp,`${g} 대전 결과 창 [이 판 다시 풀기]·[친구에게 보내기] · res에 게임·씨앗·난이도 ${JSON.stringify(btn.res)}${fp0===fpB?'':' · 두 기기 판 다름'+dif(fp0,fpB)}`);
+  await A.pg.screenshot({path:SHOT+`/r11-${g}-result.png`});
+  /* 보내기 링크(사이트 linkOf 그대로) · 다시 풀기 */
+  const q=await A.pg.evaluate(()=>{window.__rx=duelReplayOf(G.duel.res);return new URL(linkOf(duelReplayQ(window.__rx))).search;});
+  const before=await A.pg.evaluate(()=>({h:heartState().n,wk:store.get('hp:duelWeek',null),rec:JSON.stringify(duelRec()),dp:dayState().duel}));
+  await A.pg.click('#modal #dzSend'); await w(500);
+  const sheet=await A.pg.evaluate(()=>!!document.querySelector('#modal #shSend')&&/[?&]ds=/.test(document.querySelector('#shareTxt').textContent||''));
+  await A.pg.click('#modal #mBack'); await w(400);
+  await A.pg.click('#modal #dzRp'); await w(700);
+  const re=await A.pg.evaluate(`({fp:(${FP})(),k:G.replay&&G.replay.kind,duel:!!G.duel,t:document.querySelector('#ptitle').textContent})`);
+  await A.pg.screenshot({path:SHOT+`/r11-${g}-replay.png`});
+  await A.pg.evaluate(()=>finish(true)); await w(900);
+  const after=await A.pg.evaluate(()=>({h:heartState().n,wk:store.get('hp:duelWeek',null),rec:JSON.stringify(duelRec()),dp:dayState().duel,vs:!!document.querySelector('#modal .chal .vs'),again:!!document.querySelector('#modal #mPri')}));
+  await A.pg.screenshot({path:SHOT+`/r11-${g}-replay-result.png`});
+  ok(sheet&&re.k==='duel'&&!re.duel&&re.fp===fp0&&/다시 풀기/.test(re.t),`${g} 이 판 다시 풀기 = 같은 판(지문 ${hs(re.fp)}) · 공유 시트에 ds 링크${dif(fp0,re.fp)}`);
+  ok(after.h===before.h&&JSON.stringify(after.wk)===JSON.stringify(before.wk)&&after.rec===before.rec&&after.dp===before.dp&&after.vs&&after.again,`${g} 다시 풀기는 하트·대전 포인트·대전 기록 그대로 · 결과 창 나란히`);
+  /* 다른 브라우저: 사이트 링크 */
+  const C=await mkUrl('C',B+'index.html'+q);
+  const gotC=await until(C,()=>!!document.querySelector('#modal #rpGo'),null,15000);
+  await C.pg.screenshot({path:SHOT+`/r11-${g}-gift.png`});
+  if(gotC) await C.pg.click('#modal #rpGo'); await w(700);
+  const c=await C.pg.evaluate(`({fp:(${FP})(),k:G&&G.replay&&G.replay.kind,from:G&&G.replay&&G.replay.from})`).catch(()=>({}));
+  ok(gotC&&c.k==='duel'&&c.fp===fp0&&!!c.from,`${g} 사이트 ?ds= 링크로 연 판 = 대전 판(지문 ${hs(c.fp)}) · 보낸 사람 ${c.from}${dif(fp0,c.fp)}`);
+  /* 다른 브라우저: 모듈 링크 */
+  const D=await mkUrl('D',B+`embed/${g}.html`+q);
+  const gotD=await until(D,()=>!!document.querySelector('#modal #dsGo'),null,15000);
+  if(gotD) await D.pg.click('#modal #dsGo'); await w(700);
+  const d=await D.pg.evaluate(`({fp:(${FP})(),k:G&&G.replay&&G.replay.kind})`).catch(()=>({}));
+  ok(gotD&&d.k==='duel'&&d.fp===fp0,`${g} 모듈 ?ds= 링크로 연 판 = 대전 판(지문 ${hs(d.fp)})${dif(fp0,d.fp)}`);
+  ok(!errsOf([A,Bp,C,D]).length,`${g} 다시 풀기·보내기 오류 없음 `+errsOf([A,Bp,C,D]).join(' | '));
+  await closeAll([A,Bp,C,D]);
+}
+if(!ONLYM) for(const g of GAMES){ if(['fleet','gostop','snowball'].includes(g)) continue; await replayCheck(g); }
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);

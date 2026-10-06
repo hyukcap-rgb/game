@@ -673,7 +673,7 @@ function radarSVG(ab){
   AXES.forEach((k, i) => {
     const [x, y] = pt(i, R * Math.max(0.04, ab[k] / 100)); g += `<circle cx="${x}" cy="${y}" r="4.5" style="fill:${GAME_META[AX_GAME[k]].col};stroke:var(--surface);stroke-width:2"/>`;
     const [lx, ly] = pt(i, R + 24), anc = Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end';
-    g += `<text x="${lx}" y="${ly - 2}" text-anchor="${anc}" style="fill:var(--ink);font-size:13px;font-weight:700">${k}</text><text x="${lx}" y="${ly + 14}" text-anchor="${anc}" style="fill:${ab[k] ? GAME_META[AX_GAME[k]].col : 'var(--sub)'};font-size:12px;font-weight:700">${ab[k] ? ab[k] : '–'}</text>`;
+    g += `<text x="${lx}" y="${ly - 2}" text-anchor="${anc}" style="fill:var(--ink);font-size:13px;font-weight:700">${k}</text><text x="${lx}" y="${ly + 14}" text-anchor="${anc}" style="fill:${ab[k] ? GAME_META[AX_GAME[k]].col : 'var(--sub)'};font-size:13px;font-weight:700">${ab[k] ? ab[k] : '–'}</text>`;
   });
   return `<svg class="radar" viewBox="0 0 300 260" role="img" aria-label="능력 5가지: ${AXES.map(k => k + ' ' + ab[k]).join(', ')}">${g}</svg>`;
 }

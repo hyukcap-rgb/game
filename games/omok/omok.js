@@ -1127,6 +1127,7 @@ body[data-mode="omok"] .om-loupe .om-lx{position:absolute; left:50%; top:50%; wi
    엔진의 가짜 진행 AI(duelAi)는 끝나지 않게 하고 진행도만 AI의 최고 줄 길이로 보여 준다. */
 Object.assign(NG.omok, {
   duelPace:[200, .5],
+  duelReplay:false,   /* 상대와 번갈아 두는 판이라 혼자 다시 풀기·판 보내기 없음(R11) */
   duelAi(){ return { ok:false, sc:0, get T(){ return (G && G.duel && G.duel.go ? elapsed() : 0) + .01; }, get fail(){ const m = G && G.m; return m ? Math.min(.99, ((m.oppBest || 0) + .05) / 5) : 0; } }; },
   /* 대전 막대 값 = 내가 둔 수 / 지금까지 모두 둔 수(세대별 테스트 S-OM-5: '4/5목' 막대가 헷갈림 → 수 번호). 4목 알림은 progress(최고 줄 길이)로 그대로 */
   duelStat:{ unit:'수', get:() => ({ v:G.m.myMoves || 0, t:Math.max(1, G.m.hist.length) }) }

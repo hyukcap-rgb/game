@@ -93,7 +93,7 @@ NG.parking = (() => {
     },
     twists:['flash', 'bare', 'limit', 'big', 'ice'],
     twInfo:{
-      flash:{ name:'번개', desc:'판은 조금 쉽지만 제한 시간이 아주 짧아요. 빠르게 길을 찾아요!' },
+      flash:{ name:'빠른 판', desc:'판은 조금 쉽지만 제한 시간이 아주 짧아요. 빠르게 길을 찾아요!' },
       bare:{ name:'맨손', desc:'힌트 없이 오직 머리로 풀어요. (되돌리기·처음부터는 쓸 수 있어요)' },
       limit:{ name:'수 제한', desc:'최단 수보다 2수까지만 더 움직일 수 있어요. 수를 다 쓰면 되돌리기로 다시 생각해요.' },
       big:{ name:'큰 주차장', desc:'7×7 넓은 주차장! 차도 많고 길도 길어요. 대신 시간은 넉넉해요.' },
@@ -201,7 +201,7 @@ NG.parking = (() => {
   function msg(html, cls){ const e = $('#pkMsg'); if(!e) return; e.className = 'pk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return m.P.goals.length > 1 ? '<span>빨간 차·노란 차를 자리로!</span>' : '<span>차를 끌거나, 누르고 화살표로 밀어요</span>';
   }
@@ -721,7 +721,7 @@ NG.parking = (() => {
           <div class="hchip pk-moves" id="pkMovesP" aria-label="움직인 수"><span class="hv">${ICO.move}<b id="pkMoves">0</b><small>/${m.capMax || m.opt}수</small></span><em>${m.capMax ? '움직인 수 / 최대' : '움직인 수 / 최단'}</em></div>
           <div class="hchip time" id="pkTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="pkTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="pk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="pk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="pk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="pk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="pk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="pk-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="pk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="pk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="pk-barw" id="pkBarWrap"><i id="pkBar"></i></div>
         <div class="pk-msg" id="pkMsg"><span>차를 세우는 중…</span></div>
         <div class="pk-lotw"><div class="pk-lot in${m.P.ice ? ' ice' : ''}" id="pkLot" role="group" aria-label="주차장 ${m.W}×${m.H}">
@@ -853,15 +853,15 @@ body[data-mode="parking"] .fxfloat.pkf{font-family:var(--heavy); font-weight:400
 /* 대전 결과 창: 풀이 나란히 다시 보기 */
 body[data-mode="parking"] .pk-rp{margin:10px 0 2px; text-align:center}
 body[data-mode="parking"] .pk-rph{margin:0; font-family:var(--disp); font-size:15px; color:#1A0F45}
-body[data-mode="parking"] .pk-rph small{font-size:12px; color:#6A5884}
+body[data-mode="parking"] .pk-rph small{font-size:13px; color:#6A5884}
 body[data-mode="parking"] .pk-rps{margin:2px 0 6px; font-size:13px; font-weight:800; color:#B3122E}
 body[data-mode="parking"] .pk-rpl{display:flex; flex-wrap:wrap; justify-content:center; gap:8px}
 body[data-mode="parking"] .pk-rpc{display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px; border-radius:12px; background:#fff; border:2.5px solid var(--sc); box-shadow:0 2px 0 #1A0F45}
 body[data-mode="parking"] .pk-rpc.me{background:#FFF0F3}
 body[data-mode="parking"] .pk-rpc svg{display:block}
 body[data-mode="parking"] .pk-rpc b{font-family:var(--disp); font-weight:400; font-size:13px; color:#1A0F45; white-space:nowrap}
-body[data-mode="parking"] .pk-rpc small{font-size:12px; font-weight:800; color:#6A5884}
-@media (max-width:370px){ .ng-parking .pk-ctl .tool{font-size:14px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:12px; padding:4px 7px} }
+body[data-mode="parking"] .pk-rpc small{font-size:13px; font-weight:800; color:#6A5884}
+@media (max-width:370px){ .ng-parking .pk-ctl .tool{font-size:14px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-parking .pk-car.glide{transition:none} .ng-parking .pk-lot.in .pk-car, .ng-parking .pk-sign svg, .ng-parking .pk-ghost, .ng-parking .pk-car.hint svg, .ng-parking .pk-car.rev svg, .ng-parking .pk-arw{animation:none} }
 `,
     sounds:{

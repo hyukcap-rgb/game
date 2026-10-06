@@ -30,7 +30,7 @@
 .duelbar.v3.two .d2-mid.me{background:linear-gradient(#5FD36B,#23A548)}
 .duelbar.v3.two .d2-mid.op{background:linear-gradient(#FF8AC0,#F0368A)}
 .duelbar.v3.two .d2-mid.tie{background:linear-gradient(#FFE27A,#FF9F1C); color:#5A3300}
-.duelbar.v3.two .aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 4px; border-radius:5px; background:#8F86C2; color:#fff; vertical-align:1px}
+.duelbar.v3.two .aitag{font-style:normal; font-family:var(--font); font-size:13px; font-weight:800; padding:0 4px; border-radius:5px; background:#8F86C2; color:#fff; vertical-align:1px}
 /* 상단 바 제목 자리에 들어갈 때 */
 .pbar.has-duel > .duelbar.v3.two{position:static; margin:0; padding:0 2px; background:none; border:0; box-shadow:none; min-width:0}
 
@@ -77,7 +77,7 @@
 .dmini .dm-av .av{width:20px; height:20px; border-width:1.5px; box-shadow:0 0 0 1.5px var(--outline)}
 .dmini .dseat{position:absolute; right:3px; top:3px; z-index:2}
 .dmini .dm-val{position:absolute; right:4px; bottom:1px; z-index:2; font-family:var(--heavy); font-size:13px; line-height:1.2; color:#1A0F45}
-.dmini .dm-val small{font-family:var(--font); font-size:12px; font-weight:800; color:#6A5884}
+.dmini .dm-val small{font-family:var(--font); font-size:13px; font-weight:800; color:#6A5884}
 .dmini .dm-val .tile{padding:0 2px; border-radius:4px; background:#FFE39A}
 .dm-rank{flex:none; width:40px; height:28px; display:grid; place-items:center; border-radius:99px; background:#fff; border:2.5px solid #F0368A; box-shadow:0 2px 0 #1A0F45;
   font-family:var(--heavy); font-size:14px; color:#1A0F45}
@@ -135,7 +135,7 @@
 .dres-list .dl-txt{grid-column:2 / 5; font-size:13px; font-weight:700; color:var(--sub); padding-left:42px; margin-top:-4px}
 .dr-side .drank{font-family:var(--heavy); font-size:26px; line-height:1.1; color:var(--ink)}
 .dr-side small{font-size:13px}
-.aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:1px}
+.aitag{font-style:normal; font-family:var(--font); font-size:13px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:1px}
 .dwait .dw-list{display:grid; gap:6px}
 
 @media (prefers-reduced-motion: reduce){ .dpchip, .dnote, .ds-slot .av, .duelbar.v3.two .d2-trk > i{transition:none!important; animation:none!important} }

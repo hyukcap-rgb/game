@@ -1,9 +1,9 @@
 /* 고스톱 화면 (games/gostop) — 온라인 맞고식 가로 판. 판 기준 크기 1630×923, JS(fit)가 화면에 맞게 확대·축소(세로 화면은 90° 돌림)
    19 표시(.gs19)는 제목·모달에서도 써서 전역 */
 .gs19{display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:#fff; border:3px solid #D7263D; color:#1A0F45;
-  font:900 12px/1 system-ui,sans-serif; letter-spacing:-.5px; vertical-align:middle; box-shadow:0 1px 0 rgba(0,0,0,.25); flex:none}
+  font:900 13px/1 system-ui,sans-serif; letter-spacing:-.5px; vertical-align:middle; box-shadow:0 1px 0 rgba(0,0,0,.25); flex:none}
 .gs19.big{width:58px; height:58px; border-width:6px; font-size:26px; margin:0 auto 8px}
-#ptitle .gs19{width:22px; height:22px; font-size:12px; border-width:2.5px; margin-left:4px; transform:translateY(-2px)}
+#ptitle .gs19{width:24px; height:24px; font-size:13px; border-width:2.5px; margin-left:4px; transform:translateY(-2px)}
 .gs-mgate{text-align:center}
 .gs-mgate h3{margin-top:2px}
 body.gs-full{overflow:hidden}

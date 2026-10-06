@@ -894,7 +894,7 @@ body[data-mode="memory"] .fxcombo span{font-size:18px}
 .ng-memory .mm-tdot{display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:#fff; border:2.5px solid var(--sc); flex:none}
 .ng-memory.mm-duel .mm-msg{height:44px}
 @media (prefers-reduced-motion: reduce){ .ng-memory .mm-board.dturn.myturn{animation:none} }
-@media (max-width:370px){ .ng-memory .mm-chip{font-size:12px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-msg b{font-size:19px} }
+@media (max-width:370px){ .ng-memory .mm-chip{font-size:13px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-msg b{font-size:19px} }
 @media (prefers-reduced-motion: reduce){ .ng-memory .mm-in{transition-duration:.01s} .ng-memory .mm-card.in, .ng-memory .mm-card.ok .mm-pop, .ng-memory .mm-card.cheer .mm-pop, .ng-memory .mm-msg b{animation:none} }
 `,
     sounds:{

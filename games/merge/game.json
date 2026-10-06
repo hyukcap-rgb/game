@@ -1,7 +1,7 @@
 {
   "id": "merge",
   "name": "숫자 합치기",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "summary": "밀어서 같은 숫자를 합쳐 목표를 이동 안에 채우는 전략 퍼즐",
   "js": [
     "merge.js"

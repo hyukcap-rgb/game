@@ -816,7 +816,7 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-ct em{font-style:normal; font-weight:800; color:#13703F}
 .ng-crossword .cw-cl small{font-family:var(--disp); font-size:13px; line-height:1; color:#8A5A2E; white-space:nowrap}
 .ng-crossword .cw-blind{font-style:normal; color:#6A4BD8}
-.ng-crossword .cw-prov{display:inline-block; font-family:var(--disp); font-size:12px; padding:1px 6px; border-radius:99px; background:#EFE7FF; color:#5B3FB5; border:1.5px solid #5B3FB5; vertical-align:1px}
+.ng-crossword .cw-prov{display:inline-block; font-family:var(--disp); font-size:13px; padding:1px 6px; border-radius:99px; background:#EFE7FF; color:#5B3FB5; border:1.5px solid #5B3FB5; vertical-align:1px}
 .ng-crossword .cw-in{display:flex; gap:8px; width:100%}
 .ng-crossword .cw-in input{flex:1; min-width:0; height:50px; padding:0 14px; border-radius:16px; border:2.5px solid #1A0F45; background:#fff; box-shadow:inset 0 3px 0 rgba(26,15,69,.08); font:inherit; font-size:20px; font-weight:800; color:#1A0F45; letter-spacing:2px; outline:none; user-select:text; -webkit-user-select:text}
 .ng-crossword .cw-in input:focus{border-color:#F07F2E; box-shadow:0 0 0 3px rgba(240,127,46,.3)}
@@ -894,3 +894,15 @@ Object.assign(NG.crossword, {
 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.crossword.scene = { kind:'motes', colors:['#FFFFFF', '#FFE2B8', '#FFF3B0'], density:1 };
+/* 첫 판 손가락 안내(엔진 coach, 세대별 테스트 P5·S-CW-3): 칸 누르기 → 열쇠 보기 → 입력창에 쓰기.
+   처음 한 번만(hp:coach:crossword), 대전에는 안 나옴(엔진). 엔진이 시계를 멈춘 채 보여 주고, 마지막(입력창 누르기)에서 시계를 다시 감는다 */
+NG.crossword.coach = [
+  { act:'tap', text:'칸을 누르면 그 낱말 열쇠가 아래에 나와요', at:() => {
+    try{
+      const m = G.m; if(!m || !m.words) return null;
+      const cur = m.words[m.cur];   /* 지금 고른 낱말과 겹치지 않는 낱말의 첫 칸(누르면 열쇠가 바뀌는 게 보이게) */
+      const w = m.words.find((x, k) => k !== m.cur && !(cur && x.cells.some(i => cur.cells.includes(i)))) || cur;
+      return w ? document.querySelector('#cwBoard .cw-c[data-i="' + w.cells[0] + '"]') : null;
+    }catch(_){ return null; } } },
+  { act:'tap', text:'여기에 답을 쓰고 [넣기]를 눌러요', at:() => document.getElementById('cwIn') }
+];

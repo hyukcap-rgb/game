@@ -222,6 +222,7 @@ function portalDuelResult(r, a, b, res){
   const brk = [ `기본 +${fmt(P.base)}`, P.bonus ? `강자 보너스 +${P.bonus}` : '', P.fire ? `연승 +${P.fire}` : '' ].filter(Boolean).join(' · ');
   const B = duelResBtns(R, id, room, inRoom);
   DZ = { R, id, room, g:G, B, code:room && room.code ? room.code : null };
+  const RPX = typeof duelReplayOf === 'function' ? duelReplayOf(res) : null;   /* 이 판 다시 풀기 · 친구에게 보내기(R11): 혼자 의미 있는 대전만 */
   let html = `${r1 ? '<div class="burst" aria-hidden="true"></div>' : ''}<div class="dzres${R.n > 2 ? ' many' : ''}" id="dzRes">
     <div class="dz-top"><span class="dz-band">${ser}</span><button class="dz-share" id="dzShare" aria-label="결과 공유">${ic('share')}<small>공유</small></button></div>
     ${duelBigHtml(R, P.streak)}
@@ -234,6 +235,7 @@ function portalDuelResult(r, a, b, res){
       ${firstToday ? `<p class="dz-att">${attPillHtml().replace(/<[^>]+>/g, '').trim()}</p>` : ''}</div>
     <p class="dz-again" id="dzAgain" aria-live="polite"></p>
     ${duelContinueHtml()}
+    ${RPX ? `<div class="rb-links dz-rp"><button id="dzRp">${ic('play')}이 판 다시 풀기</button><i aria-hidden="true">·</i><button id="dzSend">${ic('share')}친구에게 보내기</button></div>` : ''}
     ${resBtns(B)}</div>`;
   const show = again => {
     openModal(html);
@@ -242,6 +244,7 @@ function portalDuelResult(r, a, b, res){
     resBind(B); duelContinueBind();
     const pri = $('#mPri'); if(pri && B.cost) pri.classList.add('rb-cost');
     $('#dzShare').onclick = () => duelShareRes();
+    if(RPX){ $('#dzRp').onclick = () => duelReplayStart(RPX); $('#dzSend').onclick = () => HOST.sendDuel(RPX, () => { if(DZ && DZ.show) DZ.show(true); else closeModal(); }); }
     duelAgainLoop();
   };
   DZ.show = show;

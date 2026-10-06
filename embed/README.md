@@ -90,6 +90,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 | `origin` | 이벤트를 보낼 부모 주소(haru-embed.js가 자동으로 넣음) |
 | `room` | (더함, 2026-10-06) 방 코드(영문·숫자 6글자 권장). `mode=duel&room=K7MQ4P`처럼 같은 코드로 연 모듈끼리 2명~그 게임 최대 인원(5명까지)이 모여 같은 문제로 대전해요. 12초 안에 2명 이상이면 시작, 혼자면 계속 기다림. 결과 창 '한 판 더'는 같은 코드의 다음 판. 사이트(하루퍼즐 리그)의 대전 방과는 따로예요 |
 | `pace` | (더함) `slow`면 대전 '느긋하게'(시간 2배, 느긋하게끼리만 짝), `normal`이면 보통 |
+| `ds` | (더함, 2026-10-06 R11) **친구가 보낸 대전 판**. 대전 결과 창의 "친구에게 보내기"가 만드는 링크 `embed/<게임>.html?ds=<씨앗>&g=<게임>&lv=<난이도>&pn=<인원>&pc=s(느긋하게일 때)&rk=<보낸 사람 순위>&rt=<결과 글>&t=<다 푼 초>&sc=<점수>&n=<별명>`. 열면 첫 화면 위에 "○○님이 보낸 대전 판" 창 → [풀어 보기]로 그 대전과 **같은 판**을 혼자 풀고 끝나면 보낸 사람 기록과 나란히 보여요. 기록·별·대전 기록에 안 들어가요(`finish` 이벤트 대신 `replay` 이벤트). `g`가 이 모듈 게임이 아니거나 혼자 다시 풀 수 없는 대전(선점·차례·자기 방식·오목)이면 무시. 사이트 `index.html?ds=…`도 같은 이름 |
 
 ## 4. 이벤트(모듈 → 붙인 곳)
 모든 메시지: `{ source:'haru-puzzle', type, game, ver, … }`
@@ -105,6 +106,8 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 | `close` | 첫 화면 '나가기'(`close=1`일 때) | |
 | `state` | `state()` 요청에 답 | `state:{ solo, daily, duel }` |
 | `resize` | 내용 높이 바뀜 | `height` |
+| `replay` | (더함, R11) 대전 판 다시 풀기·받은 대전 판 시작·끝 | `phase`(`start`·`finish`), `seed`, `level`(시작), `from`(보낸 사람 별명 또는 null), 끝: `win`, `time`(초), `score` — 기록되지 않는 판이라 `start`·`finish` 이벤트는 오지 않아요(그만하면 `quit`의 `mode:"replay"`) |
+| `send` | (더함, R11) 결과 창 "친구에게 보내기"·"내 기록 보내기" | `kind:"duel"`, `url`(위 `ds` 링크), `text`(보낼 글), `seed`, `level`, `rank`, `time`, `score` — 모듈은 기기 공유 시트(안 되면 복사)를 띄우고, 붙인 곳은 이 이벤트로 자기 공유 화면을 띄워도 돼요 |
 
 명령(붙인 곳 → 모듈): `iframe.contentWindow.postMessage({ target:'haru-puzzle', cmd:'start', mode:'daily' }, '*')` — `cmd`: `start`·`menu`·`sound`(`on`)·`state`·`restore`(`state`).
 

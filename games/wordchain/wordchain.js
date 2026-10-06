@@ -668,7 +668,7 @@ NG.wordchain = (() => {
     _dict:{ W, NCORE, IDX, starts, dueum, cands, follow, check, aiPick, setup }, _stage:stageCfg,
     render(st){
       const m = S(), duel = m.duelOn;
-      const chips = (G.adv && (m.mj.length || m.tw || m.boss)) ? `<div class="wc-rules">${m.boss ? '<span class="wc-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="wc-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="wc-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.rule.ban.length ? `<span class="wc-chip ban">✕ ${m.rule.ban.join('·')}</span>` : ''}${m.rule.gold.length ? `<span class="wc-chip gold" id="wcGold"></span>` : ''}${m.rule.tight ? '<span class="wc-chip tw" id="wcMiss"></span>' : ''}</div>` : '';
+      const chips = (G.adv && (m.mj.length || m.tw || m.boss)) ? `<div class="wc-rules">${m.boss ? '<span class="wc-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="wc-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="wc-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.rule.ban.length ? `<span class="wc-chip ban">✕ ${m.rule.ban.join('·')}</span>` : ''}${m.rule.gold.length ? `<span class="wc-chip gold" id="wcGold"></span>` : ''}${m.rule.tight ? '<span class="wc-chip tw" id="wcMiss"></span>' : ''}</div>` : '';
       st.innerHTML = `<div class="ng-wc" id="wcStage">
         <div class="hud-row">
           <div class="hchip" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="hv">${duel ? toyImg('fox', 'wc-hav') : ICO.word}<b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></span><em>${duel ? '내 낱말' : '이은 낱말'}</em></div>

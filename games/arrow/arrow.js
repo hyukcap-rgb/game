@@ -470,7 +470,7 @@ NG.arrow = (() => {
       ['파랑은 그대로', '파란 화살표가 나오면 가리키는 쪽으로 밀어요. 화면 어디서든 손가락으로 밀거나, 아래 십자 버튼·키보드 화살표를 눌러도 돼요.'],
       ['빨강은 반대로', '빨간 화살표(꼬리에 되돌이 표시)는 반대쪽으로 밀어요. 오른쪽을 가리키면 왼쪽으로! 회색 화살표(멈춤 표시)는 가만히 있어야 정답이에요.'],
       ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄고, 다 쓰면 끝나요. 빨리 맞힐수록 점수가 높아요. 화살표가 떠 있을 때 처음 민 것 하나만 판정하고, 마구 누르면 다음 화살표가 늦게 나와요.'],
-      ['솔로: 5판마다 새 규칙', '엉뚱한 자리·글자 화살표·정지 표지·두 개 중 하나 같은 새 규칙과 번개·순간·외줄 타기 변주가 하나씩 나와요.']
+      ['솔로: 5판마다 새 규칙', '엉뚱한 자리·글자 화살표·정지 표지·두 개 중 하나 같은 새 규칙과 빠른 판·순간·외줄 타기 변주가 하나씩 나와요.']
     ],
     /* 도움말 v2(쉬운 화면): 그림 1장(파랑·빨강·회색 세 칸, 움직임 없음) + 3줄 */
     howto:{
@@ -524,7 +524,7 @@ NG.arrow = (() => {
     _press(d){ press(d, 'test'); },
     render(st){
       const m = S(), tn = m.tint, chips = [];
-      if(G.adv && m.boss) chips.push('<span class="ar-chip boss">보스</span>');
+      if(G.adv && m.boss) chips.push('<span class="ar-chip boss">대장 판</span>');
       if(G.adv){ m.mj.forEach(k => chips.push(`<span class="ar-chip mj">${CONC.info[k].name}</span>`)); if(m.tw) chips.push(`<span class="ar-chip tw">${(conceptInfo('arrow', m.tw) || {}).name || m.tw}</span>`); }
       safe(() => { const b = document.body.style; b.setProperty('--ar-s1', tn.sky1); b.setProperty('--ar-s2', tn.sky2); b.setProperty('--ar-s3', tn.sky3); b.setProperty('--ar-ring', tn.ring); });
       st.innerHTML = `<div class="ng-arrow${m.boss ? ' boss' : ''}" style="--ring:${tn.ring}" role="application" aria-label="거꾸로 화살표. 화면을 밀거나 십자 버튼, 화살표 키로 답해요">
@@ -560,7 +560,7 @@ NG.arrow = (() => {
       </div>`;
       const root = st.querySelector('.ng-arrow');
       hud();
-      if(m.boss){ say('<b class="bs">보스!</b><span>끝까지 침착하게</span>', 'pop'); sfx('arrowBoss'); T(() => hostMood(''), 1600); }
+      if(m.boss){ say('<b class="bs">대장 판!</b><span>끝까지 침착하게</span>', 'pop'); sfx('arrowBoss'); T(() => hostMood(''), 1600); }
       else say(`<b>준비</b><span>${m.talk.hi}</span>`);
       /* 조작: 버튼(누르는 순간) · 화면 어디서든 밀기(24px) · 키보드 */
       root.querySelectorAll('.ar-key').forEach(b => {

@@ -392,7 +392,7 @@ NG.block = (function(){
     addEventListener('resize', s.onResize);
     layout(); paintTray(true); hud();
     requestAnimationFrame(() => { if(G && G.bk === s && !s.dead){ layout(); paintTray(false); } });   /* 화면이 자리 잡은 뒤 높이를 한 번 더 맞춘다 */
-    if(s.cfg.boss) later(() => { if(!G.paused) toast(s.cfg.plan && s.cfg.plan.mj.length ? '보스 스테이지 · 배운 규칙이 한꺼번에 나와요' : '보스 스테이지 · 돌 블록도 줄을 채우면 함께 사라져요'); }, 500);
+    if(s.cfg.boss) later(() => { if(!G.paused) toast(s.cfg.plan && s.cfg.plan.mj.length ? '대장 판 · 배운 규칙이 한꺼번에 나와요' : '대장 판 · 돌 블록도 줄을 채우면 함께 사라져요'); }, 500);
     const me = G;
     const loop = ts => { if(G !== me || s.dead) return; G.raf = requestAnimationFrame(loop); frame(ts); };
     G.raf = requestAnimationFrame(loop);
@@ -809,7 +809,7 @@ NG.block = (function(){
       },
       twists:['flash','duo','big','rock','nopeek'],
       twInfo:{
-        flash:{ name:'번개', desc:'별 기준이 빡빡해요. 평소보다 조각을 20% 적게 써야 별 3개!' },
+        flash:{ name:'빠른 판', desc:'별 기준이 빡빡해요. 평소보다 조각을 20% 적게 써야 별 3개!' },
         duo:{ name:'두 개씩', desc:'조각이 3개가 아니라 2개씩만 나와요. 고를 수 있는 게 줄어요.' },
         big:{ name:'큰 조각 가방', desc:'3×3 네모나 5칸 막대 같은 큰 조각이 자주 나와요. 큰 자리를 비워 두세요!' },
         rock:{ name:'돌 블록', desc:'판에 돌 블록이 미리 놓여 있어요. 돌도 줄을 채우면 함께 사라져요.' },
@@ -851,7 +851,7 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-hud .hchip:not(.bk-goal){height:auto; min-height:56px}
 .ng-block .bk-pts b, .ng-block .bk-hud .time b{font-size:18px}
 .ng-block .bk-rules{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:-3px 0 9px}
-.ng-block .bk-chip{font-family:var(--disp); font-size:12.5px; line-height:1; padding:4px 9px 4px; border-radius:999px; border:2px solid #1A0F45; color:#1A0F45; background:#FFE27A; box-shadow:0 2px 0 #0E0730; white-space:nowrap}
+.ng-block .bk-chip{font-family:var(--disp); font-size:13px; line-height:1; padding:4px 9px 4px; border-radius:999px; border:2px solid #1A0F45; color:#1A0F45; background:#FFE27A; box-shadow:0 2px 0 #0E0730; white-space:nowrap}
 .ng-block .bk-chip.tw{background:#CFC5FF}
 .ng-block .bk-bar{margin:0; height:8px}
 .ng-block .bk-goal em{font-size:13px; color:#4A3A6E}
@@ -881,7 +881,7 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-pc.in{animation:bkIn .42s cubic-bezier(.2,1.3,.4,1) both}
 @keyframes bkIn{0%{transform:translateX(130px) scale(.6); opacity:0}100%{transform:none; opacity:1}}
 .ng-block .bk-slot.nofit .bk-pc{opacity:.38; filter:grayscale(.85) drop-shadow(0 3px 0 rgba(8,3,30,.4))}
-.ng-block .bk-slot.nofit::after{content:"놓을 곳 없음"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:700; color:#FFC4C4; white-space:nowrap}
+.ng-block .bk-slot.nofit::after{content:"놓을 곳 없음"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%); font-size:13px; font-weight:700; color:#FFC4C4; white-space:nowrap}
 .ng-block .bk-slot.empty{cursor:default}
 .ng-block .bk-tip{margin:0; padding:12px 0 10px; text-align:center; font-family:var(--disp); font-size:15px; color:#E4DDFF; transition:opacity .4s}
 .ng-block .bk-tip.off{opacity:0}
@@ -896,9 +896,9 @@ body[data-mode="block"] .bk-end{position:relative; width:64px; display:flex; fle
 body[data-mode="block"] .bk-end.me{background:#FFF0F7}
 body[data-mode="block"] .bk-end svg{display:block; border-radius:6px}
 body[data-mode="block"] .bk-end .bk-none{width:54px; height:54px; display:grid; place-items:center; border-radius:6px; background:#1B1550; color:#8C86A6; font-family:var(--heavy); font-size:22px}
-body[data-mode="block"] .bk-end .bk-er{position:absolute; left:-6px; top:-8px; padding:1px 5px; border-radius:99px; background:var(--sc); color:#fff; font-family:var(--heavy); font-size:12px; border:2px solid #1A0F45}
+body[data-mode="block"] .bk-end .bk-er{position:absolute; left:-6px; top:-8px; padding:1px 5px; border-radius:99px; background:var(--sc); color:#fff; font-family:var(--heavy); font-size:13px; border:2px solid #1A0F45}
 body[data-mode="block"] .bk-end b{font-family:var(--disp); font-weight:400; font-size:13px; color:#1A0F45; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-body[data-mode="block"] .bk-end small{font-size:12px; font-weight:800; color:#6A5884}
+body[data-mode="block"] .bk-end small{font-size:13px; font-weight:800; color:#6A5884}
 @media (prefers-reduced-motion: reduce){ .ng-block .bk-multi{animation-duration:.01s} .ng-block.bk-drag canvas{animation:none} .ng-block .bk-slot.sel .bk-pc{animation:none} }
 `,
     sounds:{

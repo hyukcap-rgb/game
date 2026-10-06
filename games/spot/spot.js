@@ -138,7 +138,7 @@ NG.spot = (() => {
     },
     twists:['flash', 'bare', 'tight', 'subtle', 'more'],
     twInfo:{
-      flash:{ name:'번개', desc:'제한 시간이 아주 짧아요. 큰 차이부터 빠르게 훑어보세요!' },
+      flash:{ name:'빠른 판', desc:'제한 시간이 아주 짧아요. 큰 차이부터 빠르게 훑어보세요!' },
       bare:{ name:'맨손', desc:'힌트 없이 오직 눈으로 찾아요.' },
       tight:{ name:'외줄 타기', desc:'빗나간 누르기는 딱 한 번까지! 두 번 빗나가면 끝나요.' },
       subtle:{ name:'살금살금', desc:'없어지거나 커지는 차이 없이 색·방향·작은 무늬만 바뀌어요. 자세히 보세요.' },
@@ -231,7 +231,7 @@ NG.spot = (() => {
   function msg(html, cls){ const e = $('#spMsg'); if(!e) return; e.className = 'sp-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>두 그림에서 다른 곳을 눌러요</span>';
   }
@@ -552,7 +552,7 @@ NG.spot = (() => {
       ['두 그림을 비교해요', '위 그림과 아래 그림은 거의 똑같지만 몇 곳이 달라요. 색이 바뀌거나, 없어지거나, 크기·자리·방향이 바뀌거나, 작은 무늬가 달라요.'],
       ['다른 곳을 눌러요', '위·아래 어느 그림을 눌러도 돼요. 찾으면 두 그림 모두에 동그라미가 그려져요. 제한 시간 안에 모두 찾으면 성공!'],
       ['마구 누르면 손해', '빗나간 곳을 누르면 점수가 ' + MISS_PTS + '점 깎이고 잠깐 누를 수 없어요. 연달아 빗나갈수록 더 오래 쉬어요. 💡힌트는 차이 근처를 알려 주지만 ' + HINT_PTS + '점이 깎여요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 거울 그림·깜빡 커튼·조각 그림·몇 곳일까 같은 새 규칙과 번개·살금살금·차이 잔치 같은 변주가 5판마다 하나씩 나와요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 거울 그림·깜빡 커튼·조각 그림·몇 곳일까 같은 새 규칙과 빠른 판·살금살금·차이 잔치 같은 변주가 5판마다 하나씩 나와요.']
     ],
     /* 도움말 v2(쉬운 화면): 그림 1장 + 3줄(감점 규칙을 글 속에 묻지 않게, S-SPOT-6) */
     howto:{
@@ -637,7 +637,7 @@ NG.spot = (() => {
           <div class="hchip time" id="spTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="spTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
           <button class="hchip item" id="spHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="sp-rules" aria-label="켜진 규칙">${m.boss ? '<span class="sp-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="sp-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="sp-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="sp-rules" aria-label="켜진 규칙">${m.boss ? '<span class="sp-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="sp-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="sp-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar sp-tbar" id="spBarWrap"><i id="spBar"></i></div>
         <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div><div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div>
           <button class="sp-tool" id="spSwap" hidden aria-label="다른 그림 보기">${ICO.swap}<b>아래 그림</b></button><button class="sp-tool sp-zoom" id="spZoom" aria-label="크게 보기"${m.blink ? ' hidden' : ''}>${ICO.zoom}</button></div>
@@ -748,7 +748,7 @@ body[data-mode="spot"]{background:
 .ng-spot .sp-chip.mj{background:#DDF8F3; color:#0B6B61}
 .ng-spot .sp-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-spot .sp-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-spot .sp-msg b{font-size:18px} .ng-spot .sp-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-spot .sp-msg b{font-size:18px} .ng-spot .sp-chip{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-spot .sp-pics.in .sp-pic, .ng-spot .sp-ring.pop circle, .ng-spot .sp-hintc circle{animation:none} .ng-spot .sp-cover{transition:none} }
 `,
     sounds:{

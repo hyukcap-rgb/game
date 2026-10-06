@@ -127,15 +127,15 @@ CONCEPTS.fleet = {
   order:['island', 'radar', 'salvo', 'silent'],
   info:{
     island:{ name:'섬', desc:'두 바다에 똑같이 섬 칸이 몇 개 생겨요. 섬에는 배를 둘 수도, 포를 쏠 수도 없어요. 배가 숨을 곳이 줄어든 만큼 머리를 써 봐요!' },
-    radar:{ name:'레이더', desc:'레이더를 2번 쓸 수 있어요. 칸을 고르면 그 둘레 3×3 안에 적 배가 있는지 알려 줘요. 레이더는 차례를 쓰지 않아요. 높은 스테이지에선 AI도 레이더를 써요.' },
-    salvo:{ name:'연발 포격', desc:'한 차례에 3발! 세 칸을 골라 한꺼번에 쏘고, 결과도 한꺼번에 봐요. 대신 맞혀도 한 번 더는 없어요. AI도 3발씩 쏴요.' },
+    radar:{ name:'레이더', desc:'레이더를 2번 쓸 수 있어요. 칸을 고르면 그 둘레 3×3 안에 적 배가 있는지 알려 줘요. 레이더는 차례를 쓰지 않아요. 높은 스테이지에선 컴퓨터도 레이더를 써요.' },
+    salvo:{ name:'연발 포격', desc:'한 차례에 3발! 세 칸을 골라 한꺼번에 쏘고, 결과도 한꺼번에 봐요. 대신 맞혀도 한 번 더는 없어요. 컴퓨터도 3발씩 쏴요.' },
     silent:{ name:'침묵 함대', desc:'적이 격침을 알려 주지 않아요. 명중과 빗나감만 보이고, 어떤 배가 가라앉았는지는 끝나야 알 수 있어요. 적 배 17칸을 모두 맞히면 이겨요.' }
   },
   twists:['flash', 'bare', 'first', 'fog', 'tight'],
   twInfo:{
     flash:{ name:'빠른 판', desc:'한 차례가 12초(연발은 18초)로 짧고, 별 기준 발수도 15% 빡빡해요. 빠르고 정확하게!' },
     bare:{ name:'맨손', desc:'레이더도, 격침한 배 둘레 자동 표시도 없어요. 오직 감으로 찾아요!' },
-    first:{ name:'선공 AI', desc:'이번엔 AI가 먼저 쏴요. 한 발도 허투루 쏘면 안 돼요!' },
+    first:{ name:'컴퓨터 먼저', desc:'이번엔 컴퓨터가 먼저 쏴요. 한 발도 허투루 쏘면 안 돼요!' },
     fog:{ name:'안개', desc:'빗나간 표시가 내 차례 3번이 지나면 안개 속으로 사라져요. 같은 칸을 또 쏘면 한 발 손해! 쏜 곳을 잘 기억해요.' },
     tight:{ name:'외줄 타기', desc:'포탄 수가 정해져 있어요(시작할 때 알려 줘요). 포탄을 다 쓰기 전에 적 함대를 모두 격침해야 이겨요.' }
   }
@@ -445,7 +445,7 @@ function flRenderSearch(b){
 function flSearchText(){
   const st = $('#flSt'), sn = $('#flSn'); if(!st) return;
   const left = Math.max(0, 20 - Math.floor((Date.now() - (G.mmT0 || Date.now())) / 1000));
-  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 AI와 겨뤄 보세요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
+  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 컴퓨터와 겨뤄 보세요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
   if(G.link && G.phase === 'joining'){ st.textContent = '방 친구를 기다리는 중'; sn.innerHTML = '친구가 배를 놓고 출격하면 바로 시작해요' + (G.oppSeen ? ' · <b>' + flEsc(G.oppNick) + '</b> 선장 들어옴' : ''); const cb = $('#flCancel'); if(cb) cb.style.display = 'none'; return; }
   if(G.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${flEsc(G.oppNick)}</b> 선장과 연결하는 중…`; $('#flSBtns').style.display = 'none'; return; }
   if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 컴퓨터 대전은 보통 난이도 점수로 계산돼요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
@@ -870,7 +870,7 @@ function flSoloTip(){
   const fx = G.fx; if(!fx) return '';
   let t = `솔로 스테이지 ${G.adv} · ★★★ ${fx.th[1]}발 · ★★ ${fx.th[0]}발 이하로 이기기`;
   if(fx.tight) t += `<br><b>포탄은 ${fx.tight}발뿐!</b> 다 쓰기 전에 모두 격침해요.`;
-  if(fx.first) t += '<br>이번엔 AI가 먼저 쏴요.';
+  if(fx.first) t += '<br>이번엔 컴퓨터가 먼저 쏴요.';
   if(fx.island) t += '<br>섬에는 배를 둘 수 없어요.';
   return t;
 }

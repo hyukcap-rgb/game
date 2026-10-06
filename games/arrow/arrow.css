@@ -214,7 +214,7 @@ body[data-mode="arrow"]{background:
 .ng-arrow .ar-sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0}
 .fxfloat.ar-plus{color:#C9FFE0; font-family:var(--heavy); font-weight:400; font-size:24px}
 
-@media (max-width:370px){ .ng-arrow .ar-say{font-size:14px; padding:5px 10px} .ng-arrow .ar-say b{font-size:17px} .ng-arrow .ar-hostav{width:58px; height:56px} .ng-arrow .ar-hostimg{width:56px; height:56px} .ng-arrow .ar-chip{font-size:12px; padding:4px 8px} }
+@media (max-width:370px){ .ng-arrow .ar-say{font-size:14px; padding:5px 10px} .ng-arrow .ar-say b{font-size:17px} .ng-arrow .ar-hostav{width:58px; height:56px} .ng-arrow .ar-hostimg{width:56px; height:56px} .ng-arrow .ar-chip{font-size:13px; padding:4px 8px} }
 @media (prefers-reduced-motion: reduce){
   .ng-arrow .ar-img, .ng-arrow .ar-plate, .ng-arrow .ar-say.pop, .ng-arrow .ar-key.hit, .ng-arrow .hlives i.lost, .ng-arrow .ar-slot.bonk, .ng-arrow .ar-hostav .ar-hostimg, .ng-arrow .ar-slot.arw::after{animation:none}
   .ng-arrow .ar-slot.go{animation:none; opacity:.25}

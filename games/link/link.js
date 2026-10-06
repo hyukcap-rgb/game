@@ -95,7 +95,7 @@ NG.link = (() => {
     },
     twists:['flash', 'bare', 'tight', 'turn1', 'tick'],
     twInfo:{
-      flash:{ name:'번개', desc:'타일은 조금 적지만 제한 시간이 아주 짧아요. 빠르게 훑어보세요!' },
+      flash:{ name:'빠른 판', desc:'타일은 조금 적지만 제한 시간이 아주 짧아요. 빠르게 훑어보세요!' },
       bare:{ name:'맨손', desc:'힌트와 섞기 없이 오직 눈으로 찾아요. (짝이 하나도 없을 때만 저절로 섞여요)' },
       tight:{ name:'외줄 타기', desc:'기회가 딱 한 번! 다른 그림을 고르거나 막힌 짝을 고르면 바로 끝나요.' },
       turn1:{ name:'한 번 꺾기', desc:'이번 판은 길이 한 번까지만 꺾일 수 있어요. 대신 시간은 넉넉해요.' },
@@ -249,7 +249,7 @@ NG.link = (() => {
   function msg(html, cls){ const e = $('#lkMsg'); if(!e) return; e.className = 'lk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>같은 그림을 두 번까지 꺾어 이어요</span>';
   }
@@ -766,7 +766,7 @@ NG.link = (() => {
           <button class="hchip item" id="lkHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
           <button class="hchip skip" id="lkMix" aria-label="섞기"><span class="hv">${ICO.mix}<b>${m.mixLeft}</b></span><em>섞기</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar lk-tbar" id="lkBarWrap"><i id="lkBar"></i></div>
         <div class="lk-row">${m.duel ? '' : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
         <div class="lk-wrap"><div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div></div>
@@ -893,7 +893,7 @@ body[data-mode="link"] .dmini .lk-mb .f{fill:#FFE27A; animation:link-mf .3s ease
 .ng-link .lk-board.frozen .lk-cell.tile{cursor:wait}
 body[data-mode="link"] .lk-fly{position:fixed; width:26px; height:26px; z-index:60; pointer-events:none}
 body[data-mode="link"] .lk-fly svg{width:100%; height:100%; display:block}
-@media (max-width:370px){ .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-link .lk-line path{animation:link-fade .52s ease-in forwards; stroke-dasharray:none} .ng-link .lk-board.in .lk-cell.tile, .ng-link .lk-cell.mixin .lk-face, .ng-link .lk-cell.hint .lk-face{animation:none} }
 `,
     sounds:{
