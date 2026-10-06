@@ -34,26 +34,37 @@ NG.chosung = (() => {
     return D;
   }
   const uniqN = list => list.map(o => o.n).filter((x, i, a) => a.indexOf(x) === i);
+  /* 문제로 내지 않는 낱말(chosung-words.js 끝 CHOSUNG_ASK_OUT). 정답으로는 그대로 인정한다 */
+  let ASK_OUT = null;
+  const askOut = () => ASK_OUT || (ASK_OUT = new Set(typeof CHOSUNG_ASK_OUT === 'string' ? CHOSUNG_ASK_OUT.split(' ').map(norm).filter(Boolean) : []));
+  /* 빼는 목록을 쓰는 날인가: 판 날짜(대전은 씨앗 안 날짜, 그 밖은 오늘) ≥ CHOSUNG_ASK_FROM → 그 전 날짜의 문제는 예전 그대로 */
+  function askOn(){
+    try{
+      if(typeof CHOSUNG_ASK_FROM !== 'string') return false;
+      const sd = G && G.duel && /(\d{4}-\d{2}-\d{2})/.exec(String(G.duel.seed || ''));
+      return (sd ? sd[1] : dayKey()) >= CHOSUNG_ASK_FROM;
+    }catch(_){ return false; }
+  }
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
     order:['long', 'hidecat', 'blank', 'saying'],
     info:{
       long:{ name:'긴 낱말', desc:'세 글자·네 글자 낱말만 나와요. 초성이 길수록 떠올릴 실마리도 많아요.' },
-      hidecat:{ name:'비밀 분류', desc:'분류가 가려져요! 초성만 보고 떠오르는 낱말을 써요. 어느 분류의 낱말이든 맞으면 정답이에요.' },
+      hidecat:{ name:'비밀 분류', desc:'분류를 숨겼어요 · 초성만 보고 맞혀요. 어느 분류의 낱말이든 그 초성이면 정답이에요.' },
       blank:{ name:'빈 초성', desc:'초성 하나가 ?로 가려져요. 남은 초성과 분류로 낱말을 떠올려요.' },
       saying:{ name:'속담·사자성어', desc:'속담과 사자성어가 섞여 나와요. 띄어쓰기는 안 해도 돼요.' }
     },
     twists:['flash', 'bare', 'tight', 'first', 'tick'],
     twInfo:{
-      flash:{ name:'번개', desc:'제한 시간이 아주 짧아요. 떠오르면 바로 쓰세요!' },
+      flash:{ name:'빠른 판', desc:'제한 시간이 아주 짧아요. 떠오르면 바로 쓰세요!' },
       bare:{ name:'맨손', desc:'힌트 없이, 건너뛰기는 딱 한 번! 오직 머릿속 사전으로 풀어요.' },
       tight:{ name:'외줄 타기', desc:'초성이나 분류가 틀린 답을 두 번 내면 끝나요. 신중하게!' },
       first:{ name:'첫 글자 선물', desc:'모든 문제의 첫 글자가 열려 있어요. 대신 시간이 아주 짧아요.' },
       tick:{ name:'째깍 벌칙', desc:'틀린 답을 낼 때마다 남은 시간이 3초씩 줄어요.' }
     }
   };
-  const RULE_TIP = { long:'세·네 글자', hidecat:'분류 비밀', blank:'? = 가린 초성', saying:'속담·사자성어', flash:'시간이 짧아요', bare:'힌트 없음', tight:'두 번 틀리면 끝', first:'첫 글자 열림', tick:'틀리면 −3초' };
+  const RULE_TIP = { long:'세·네 글자', hidecat:'분류를 숨겼어요', blank:'? = 가린 초성', saying:'속담·사자성어', flash:'시간이 짧아요', bare:'힌트 없음', tight:'두 번 틀리면 끝', first:'첫 글자 열림', tick:'틀리면 −3초' };
   const TICK_SEC = 3, LIVES_TIGHT = 2;
 
   /* ----- 솔로 난이도 표 -----
@@ -92,7 +103,10 @@ NG.chosung = (() => {
   function makeSet(cfg, rng){
     const d = dict(), q = cfg.q, say = Math.min(cfg.say || 0, q - 1), reg = q - say;
     const usedW = new Set(), usedCC = new Set(), perCat = {}, cap = Math.max(2, Math.ceil(reg / 4));
-    const pool = shuffle(d.cats.filter(c => !c.special && (!cfg.easy || c.easy)).flatMap(c => c.words).filter(o => o.len >= (cfg.minLen || 2) && o.len <= (cfg.maxLen || 4)), rng);
+    let pool = shuffle(d.cats.filter(c => !c.special && (!cfg.easy || c.easy)).flatMap(c => c.words).filter(o => o.len >= (cfg.minLen || 2) && o.len <= (cfg.maxLen || 4)), rng);
+    /* 빼는 낱말은 섞은 뒤에 거른다(rng 쓰는 횟수는 그대로) */
+    const out0 = cfg.askOut ? askOut() : null;
+    if(out0) pool = pool.filter(o => !out0.has(o.n));
     const out = [];
     const cands = (o, hide) => hide ? d.allCho[o.cho] : d.byCC[o.cat + ':' + o.cho];
     /* 두 번 훑는다: 처음엔 엄격하게(후보 수·분류 고르게·같은 분류 연달아 금지), 모자라면 너그럽게 */
@@ -131,7 +145,8 @@ NG.chosung = (() => {
     }
     /* 속담·사자성어: 사자성어와 속담을 번갈아, 너무 긴 속담(12글자 이상)은 빼고 고르게 끼워 넣는다 */
     if(say > 0){
-      const id = shuffle(d.byKey.idiom.words.slice(), rng), sy = shuffle(d.byKey.saying.words.filter(o => o.len <= 11), rng);
+      let id = shuffle(d.byKey.idiom.words.slice(), rng), sy = shuffle(d.byKey.saying.words.filter(o => o.len <= 11), rng);
+      if(out0){ id = id.filter(o => !out0.has(o.n)); sy = sy.filter(o => !out0.has(o.n)); }
       for(let s = 0; s < say; s++){
         const src = s % 2 === 0 ? id : sy, o = src[Math.floor(s / 2)] || id[s];
         const pq = { cat:o.cat, w:o.w, n:o.n, cho:o.cho, hide:false, blank:-1, ans:[o.n], say:true };
@@ -181,7 +196,7 @@ NG.chosung = (() => {
     const words = p.w.split(' ');
     /* 칸 크기: 한 줄(약 330px)에 들어가게, 너무 작아지면(34px 미만) 띄어쓰기 단위로 줄바꿈 */
     const n = p.n.length, gaps = (n - words.length) * 5 + (words.length - 1) * 14;
-    const sz = Math.max(34, Math.min(70, Math.floor((330 - gaps) / n)));
+    const sz = Math.max(34, Math.min(84, Math.floor((334 - gaps) / n)));
     let idx = 0;
     return `<div class="cs-tiles ${cls || ''}" style="--ts:${sz}px">${words.map(wd => `<span class="cs-wd">${Array.from(wd).map(() => {
       const i = idx++, open = show != null || p.open.has(i), ch = show != null ? show[i] : p.n[i];
@@ -191,7 +206,7 @@ NG.chosung = (() => {
   }
   function cardHtml(){
     const m = S(), p = m.qs[m.i], c = dict().byKey[p.cat];
-    const chip = p.hide ? '<span class="cs-cat hide">분류 ?</span>' : `<span class="cs-cat" style="--cc:${c.col}">${c.name}</span>`;
+    const chip = p.hide ? '<span class="cs-cat hide">분류를 숨겼어요</span>' : `<span class="cs-cat" style="--cc:${c.col}">${c.name}</span>`;
     return `<div class="cs-top">${chip}<span class="cs-len">${p.n.length}글자</span></div>${tilesHtml(p)}`;
   }
   function showQ(){
@@ -245,8 +260,22 @@ NG.chosung = (() => {
     sfx('chosungOk', { n:m.combo - 1 }); try{ fxBuzz(12); }catch(_){}
     try{ if(card){ const q = fxCenter(card); fxBurst(q.x, q.y, ['#FFE27A', '#B9A6FF', '#FFFFFF', '#7CE0B0'], 16, { speed:260, size:5, kinds:['star','dot','spark'], up:120, g:440, glow:true, dur:.7 }); } if(m.combo >= 3) fxCombo(m.combo); }catch(_){}
     msg(`<b>딩동댕!</b><span>${esc(p.say ? p.w : v)}</span>`, 'cs-pop');
+    boom(p.say ? p.w : v);
     hud();
     T(next, 700);
+  }
+  /* 정답이 화면 가득 터지는 연출(1초, 보이기만 · 누르기를 막지 않음) */
+  function boom(word){
+    try{
+      if(FXR && FXR.reduce) return;
+      const root = document.querySelector('.ng-chosung'); if(!root) return;
+      const old = root.querySelector('.cs-boom'); if(old) old.remove();
+      const e = document.createElement('div'); e.className = 'cs-boom'; e.setAttribute('aria-hidden', 'true');
+      const len = Array.from(String(word)).length;
+      e.innerHTML = `<b style="--fs:${Math.max(40, Math.min(96, Math.floor(330 / Math.max(2, len))))}px">${esc(word)}</b>`;
+      root.appendChild(e);
+      setTimeout(() => { try{ e.remove(); }catch(_){} }, 1050);
+    }catch(_){}
   }
   function useSkip(){
     const m = S(); if(!m || G.over || G.paused || m.lock || m.phase !== 'play' || m.skipLeft <= 0) return;
@@ -380,7 +409,7 @@ NG.chosung = (() => {
       ['써서 확인해요', '아래 칸에 낱말을 쓰고 [확인]이나 Enter를 눌러요. 틀려도 점수는 거의 깎이지 않아요(초성이 다르면 −5점).'],
       ['막히면 힌트·건너뛰기', '💡힌트는 앞에서부터 한 글자를 열어 줘요(−15점). 건너뛰면 그 문제는 0점이고 정답을 보여 줘요(판마다 횟수 제한).'],
       ['시간 안에 모두 풀어요', '제한 시간 안에 모든 문제를 풀면 성공! 빨리 풀수록 시간 보너스가 커요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 긴 낱말·비밀 분류·빈 초성·속담 같은 새 규칙과 번개·첫 글자 선물 같은 변주가 5판마다 하나씩 나와요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 긴 낱말·비밀 분류·빈 초성·속담 같은 새 규칙과 빠른 판·첫 글자 선물 같은 변주가 5판마다 하나씩 나와요.']
     ],
     helpExtra(){ const m = G && G.id === 'chosung' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['첫소리 마을','낱말 숲','수수께끼 다리','이야기 장터','말씨 궁전'],
@@ -395,7 +424,7 @@ NG.chosung = (() => {
     stageDesc(n){ const c = stageCfg(n); return `${c.q}문제 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.q}문제 · ${c.minLen}~${c.maxLen}글자${c.say ? ' · 사자성어·속담' : ''}`; },
     init(cfg, rng){
-      const qs = makeSet(cfg, rng);
+      const qs = makeSet(askOn() ? Object.assign({}, cfg, { askOut:true }) : cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { qs, q:qs.length, i:0, solved:0, skipped:0, hints:0, wrongs:0, combo:0, best:0, pen:0,
         hintLeft:cfg.hints == null ? 4 : cfg.hints, skipLeft:cfg.skips == null ? 3 : cfg.skips,
@@ -415,17 +444,17 @@ NG.chosung = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
-    _make:makeSet, _stage:stageCfg, _dict:dict, _cho:choOf,
+    _make:makeSet, _stage:stageCfg, _dict:dict, _cho:choOf, _askOut:askOut, _askOn:askOn,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-chosung">
         <div class="hud-row">
           <div class="hchip" aria-label="문제"><span class="hv">${ICO.q}<b id="csNo">1</b><small>/${m.q}</small></span><em>문제</em></div>
           <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
-          <button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
-          <button class="hchip skip" id="csSkip" aria-label="건너뛰기"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기</em></button>
+          <button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트<i class="cs-cost">−15</i></em></button>
+          <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기<i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="cs-barw" id="csBarW"><i id="csBar"></i></div>
         <div class="cs-dots" id="csDots" aria-hidden="true"></div>
         <div class="cs-play" id="csPlay">
@@ -459,9 +488,16 @@ body[data-mode="chosung"]{background:
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.25) 0 3px, transparent 3.5px) 0 0/44px 44px,
   linear-gradient(180deg,#F1ECFF 0%,#D6CBFF 55%,#B9A6FF 100%) fixed}
 .ng-chosung{position:relative; display:flex; flex-direction:column; align-items:center; width:100%}
-.ng-chosung .cs-play{flex:1 0 auto; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 0 5%}
-.ng-chosung.kb .cs-play{justify-content:flex-start; padding:0}
+.ng-chosung .cs-play{flex:1 0 auto; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:6px 0 0}
+.ng-chosung.kb .cs-play{padding:0}
 .ng-chosung .hud-row{margin:0}
+.ng-chosung .hchip em{font-size:13px}
+.ng-chosung .hchip em{display:flex; align-items:center; gap:3px}
+.ng-chosung .cs-cost{font-style:normal; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:1; padding:1px 4px 0; border-radius:6px; background:#E5484D; color:#fff}
+.ng-chosung .cs-boom{position:fixed; inset:0; z-index:40; display:grid; place-items:center; pointer-events:none}
+.ng-chosung .cs-boom b{font-family:var(--heavy); font-weight:400; font-size:var(--fs); line-height:1.1; color:#FFE27A; -webkit-text-stroke:calc(var(--fs) * .1) #1A0F45; paint-order:stroke fill; letter-spacing:2px; white-space:nowrap;
+  text-shadow:0 6px 0 #1A0F45, 0 0 40px rgba(255,226,122,.9); animation:chosung-boom 1s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes chosung-boom{0%{transform:scale(.3) rotate(-8deg); opacity:0} 22%{transform:scale(1.12) rotate(2deg); opacity:1} 70%{transform:scale(1); opacity:1} 100%{transform:scale(1.25); opacity:0}}
 .ng-chosung .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
 .ng-chosung .cs-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
 .ng-chosung .cs-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#33256E; box-shadow:0 2px 0 #1A0F45; white-space:nowrap}
@@ -478,7 +514,7 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-dots i.sk{background:#B5B0CC; border-color:#1A0F45}
 .ng-chosung .cs-card{position:relative; width:100%; margin:10px 0 0; padding:16px 10px 20px; border-radius:22px; cursor:text;
   background:radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EFEAFF 100%); border:3px solid #1A0F45;
-  box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,140,.2); display:flex; flex-direction:column; align-items:center; gap:12px; min-height:180px; justify-content:center}
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,140,.2); display:flex; flex-direction:column; align-items:center; gap:14px; min-height:230px; justify-content:center; max-width:358px}
 .ng-chosung .cs-card.in{animation:chosung-in .4s cubic-bezier(.2,1.5,.4,1)}
 .ng-chosung .cs-card.bad{background:radial-gradient(circle at 50% 30%, #FFF6F6 0%, #FFE0E2 100%)}
 .ng-chosung .cs-card.ok{background:radial-gradient(circle at 50% 30%, #F4FFF7 0%, #D3F5DF 100%)}
@@ -486,15 +522,15 @@ body[data-mode="chosung"]{background:
 @keyframes chosung-in{from{transform:translateX(26px) scale(.96); opacity:0}}
 .ng-chosung .cs-top{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; position:relative}
 .ng-chosung .cs-cat{font-family:var(--heavy); font-weight:400; font-size:19px; line-height:1; padding:7px 14px 6px; border-radius:99px; border:2.5px solid #1A0F45; color:#fff; background:var(--cc,#7B5CE6); box-shadow:0 3px 0 #1A0F45; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; white-space:nowrap}
-.ng-chosung .cs-cat.hide{background:repeating-linear-gradient(135deg,#3E2A9A 0 8px,#5B44C4 8px 16px)}
+.ng-chosung .cs-cat.hide{background:repeating-linear-gradient(135deg,#3E2A9A 0 8px,#5B44C4 8px 16px); font-size:16px}
 .ng-chosung .cs-cat.ok{background:#2BB673}
 .ng-chosung .cs-cat.sk{background:#8E8AA6}
 .ng-chosung .cs-len{position:absolute; right:2px; font-family:var(--disp); font-size:13px; color:#7A6CB0}
 .ng-chosung .cs-tiles{display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; max-width:100%}
 .ng-chosung .cs-wd{display:flex; gap:5px; flex-wrap:nowrap}
-.ng-chosung .cs-t{width:var(--ts); height:calc(var(--ts) * 1.08); display:grid; place-items:center; border-radius:calc(var(--ts) * .24); border:2.5px solid #1A0F45;
+.ng-chosung .cs-t{width:var(--ts); height:calc(var(--ts) * 1.08); display:grid; place-items:center; border-radius:calc(var(--ts) * .24); border:3px solid #1A0F45;
   background:linear-gradient(180deg,#FFFFFB 0%,#FFF3D6 100%); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 #B9A6FF, 0 5px 0 #1A0F45;
-  font-family:var(--disp); font-weight:400; font-size:calc(var(--ts) * .6); line-height:1; color:#2E1F7A; margin-bottom:5px}   /* 초성은 Jua(둥근 글꼴): 굵은 제목 글꼴은 ㅌ이 E, ㄴ이 L처럼 보임 */
+  font-family:var(--disp); font-weight:400; font-size:calc(var(--ts) * .66); line-height:1; color:#2E1F7A; margin-bottom:5px}   /* 초성은 Jua(둥근 글꼴): 굵은 제목 글꼴은 ㅌ이 E, ㄴ이 L처럼 보임 */
 .ng-chosung .cs-t.open{background:linear-gradient(180deg,#FFFBE0,#FFE38A); color:#1A0F45}
 .ng-chosung .cs-t.blank{background:repeating-linear-gradient(135deg,#EEE8FF 0 6px,#DCD2FF 6px 12px); color:#A08AE8}
 .ng-chosung .cs-t.pop{animation:chosung-pop .45s cubic-bezier(.2,1.6,.4,1)}
@@ -515,10 +551,10 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-msg.cs-pop, .ng-chosung .cs-msg.cs-win{animation:chosung-msg .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-chosung .cs-msg.cs-win b{font-size:24px; color:#FFE27A}
 @keyframes chosung-msg{from{transform:scale(.6); opacity:0}}
-.ng-chosung .cs-form{display:flex; gap:8px; width:100%; margin:2px 0 0}
+.ng-chosung .cs-form{display:flex; gap:8px; width:100%; max-width:358px; margin:2px 0 0}
 .ng-chosung .cs-in{flex:1; min-width:0; height:54px; padding:0 16px; border-radius:16px; border:3px solid #1A0F45; background:#fff; box-shadow:inset 0 3px 0 rgba(26,15,69,.08), 0 3px 0 #1A0F45;
   font-family:var(--heavy); font-weight:400; font-size:22px; color:#1A0F45; outline:none; -webkit-appearance:none; appearance:none}
-.ng-chosung .cs-in::placeholder{color:#B4AAD8; font-family:var(--disp); font-size:17px}
+.ng-chosung .cs-in::placeholder{color:#7D70AE; font-family:var(--disp); font-size:17px}
 .ng-chosung .cs-in:focus{box-shadow:0 0 0 3px #FFE27A, 0 3px 0 #1A0F45}
 .ng-chosung .cs-in:disabled{background:#EEEAF8}
 .ng-chosung .cs-go{flex:none; width:86px; height:54px; border-radius:16px; border:3px solid #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -526,7 +562,7 @@ body[data-mode="chosung"]{background:
   box-shadow:inset 0 3px 0 rgba(255,255,255,.45), 0 4px 0 #1A0F45}
 .ng-chosung .cs-go:active{transform:translateY(3px); box-shadow:inset 0 3px 0 rgba(255,255,255,.45), 0 1px 0 #1A0F45}
 @media (max-width:370px){ .ng-chosung .cs-msg b{font-size:18px} .ng-chosung .cs-go{width:74px} }
-@media (prefers-reduced-motion: reduce){ .ng-chosung .cs-card.in, .ng-chosung .cs-tiles.flip .cs-t, .ng-chosung .cs-t.pop{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-chosung .cs-boom{display:none} .ng-chosung .cs-card.in, .ng-chosung .cs-tiles.flip .cs-t, .ng-chosung .cs-t.pop{animation:none} }
 `,
     sounds:{
       chosungOk(o){ const n = Math.min(10, o.n || 0); aBell({ f:penta(n + 4, 72), d:.6, v:.09, idx:1.4, rev:.35 }); aBell({ f:penta(n + 6, 72), t:.09, d:.7, v:.075, idx:1.2, rev:.4 }); aBell({ f:penta(n + 8, 72), t:.18, d:.8, v:.06, idx:1.2, rev:.45 }); if(n >= 2) aSparkle({ root:84 + Math.min(7, n), n:4, t:.2, v:.03 }); },

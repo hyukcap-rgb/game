@@ -34,14 +34,14 @@ NG.wordchain = (() => {
   const CONC = {
     order:['long', 'gold', 'ban', 'rev'],
     info:{
-      long:{ name:'긴 낱말', desc:'두 글자 낱말은 쓸 수 없어요. 나도 AI도 세 글자 이상 낱말만 이어요.' },
+      long:{ name:'긴 낱말', desc:'두 글자 낱말은 쓸 수 없어요. 나도 컴퓨터도 세 글자 이상 낱말만 이어요.' },
       gold:{ name:'황금 글자', desc:'판마다 황금 글자 3개가 정해져요. 황금 글자가 들어간 낱말을 정해진 수만큼 이어야 성공이에요.' },
-      ban:{ name:'금지 글자', desc:'판마다 금지 글자 2개가 정해져요. 그 글자가 들어간 낱말은 나도 AI도 쓸 수 없어요.' },
+      ban:{ name:'금지 글자', desc:'판마다 금지 글자 2개가 정해져요. 그 글자가 들어간 낱말은 나도 컴퓨터도 쓸 수 없어요.' },
       rev:{ name:'거꾸로 잇기', desc:'앞 낱말의 첫 글자로 끝나는 낱말을 이어요. 사과 → 회사 → 사회처럼요. (두음법칙은 없어요)' }
     },
     twists:['flash', 'bare', 'tight', 'tick', 'shrink'],
     twInfo:{
-      flash:{ name:'번개', desc:'한 차례 제한 시간이 아주 짧아요. 떠오르는 대로 빠르게!' },
+      flash:{ name:'빠른 판', desc:'한 차례 제한 시간이 짧아요. 떠오르는 대로 빠르게!' },
       bare:{ name:'맨손', desc:'힌트 없이 오직 내 머릿속 사전으로 이어요.' },
       tight:{ name:'외줄 타기', desc:'첫 글자가 틀리거나 이미 쓴 말·규칙에 어긋난 말은 한 번만 봐줘요. 두 번째면 끝! (사전에 없는 말은 괜찮아요)' },
       tick:{ name:'째깍 벌칙', desc:'첫 글자가 틀리거나 이미 쓴 말을 넣으면 그 차례 시간이 3초 줄어요.' },
@@ -49,7 +49,7 @@ NG.wordchain = (() => {
     }
   };
   const RULE_TIP = { long:'세 글자 이상만', gold:'황금 글자 미션', ban:'금지 글자 조심', rev:'첫 글자로 끝나게', flash:'시간이 짧아요', bare:'힌트 없음', tight:'규칙 실수 1번까지', tick:'틀리면 −3초', shrink:'차례마다 −1초' };
-  const AI_NAME = ['순한 AI', '보통 AI', '영리한 AI', '한방 AI'];
+  const AI_NAME = ['순한 컴퓨터', '보통 컴퓨터', '영리한 컴퓨터', '끝내기 컴퓨터'];   /* 2026-10-06 쉬운 말: AI → 컴퓨터, 한방 → 끝내기 */
   /* 황금·금지 글자 후보(낱말에 자주 나오는 글자) */
   const GOLD_POOL = ['사', '기', '수', '자', '지', '리', '이', '도', '고', '구', '소', '대', '장', '전', '정', '상', '화', '시', '주', '가', '아', '무', '나', '마', '바', '하', '오', '공', '물', '산', '불', '꽃', '눈', '손', '발', '말', '밤', '별', '달', '해', '강', '새', '나무', '비'].filter(c => c.length === 1);
   const BAN_POOL = ['기', '사', '리', '이', '자', '지', '수', '구', '도', '고', '대', '장', '전', '정', '시', '주', '가', '화'];
@@ -68,7 +68,7 @@ NG.wordchain = (() => {
     goal = Math.max(5, Math.min(14, goal));
     let limit = LT.lim[Math.min(c, LT.lim.length - 1)] + (p.easy ? 2 : 0) - (p.boss ? 1 : 0);
     if(has('long') || has('rev')) limit += 3;
-    if(tw === 'flash') limit = Math.round(limit * 0.6);
+    if(tw === 'flash') limit = Math.max(12, Math.round(limit * 0.7));   /* 빠른 판: 최소 12초(50대 "9초는 너무 짧다") */
     if(tw === 'shrink') limit += 3;
     limit = Math.max(7, limit);
     let ai = c === 1 ? (k === 5 || k === 10 ? 1 : 0) : c === 2 ? (k === 10 ? 2 : 1) : c === 3 ? (k === 10 ? 3 : k === 5 ? 2 : 1) : (k === 10 ? 3 : k === 1 || k === 9 ? 1 : 2);
@@ -192,10 +192,22 @@ NG.wordchain = (() => {
   function bubble(x, n){
     const m = S(), by = x.by;
     if(by === 'start') return `<div class="wc-start" data-n="${n}"><small>시작 낱말</small><div class="wc-ws">${tilesHtml(x.w, false, true)}</div></div>`;
-    const who = by === 'me' ? '나' : by === 'op' ? esc(m.oppNick || '상대') : (m.aiName || 'AI');
-    return `<div class="wc-b ${by === 'me' ? 'me' : 'ai'}" data-n="${n}"><span class="wc-av">${avHtml(by)}</span><div class="wc-bw"><small>${who}${x.kill ? ' · <b class="kill">한방!</b>' : ''}</small><div class="wc-ws">${tilesHtml(x.w, true, true)}</div></div></div>`;
+    const who = by === 'me' ? '나' : by === 'op' ? esc(m.oppNick || '상대') : (m.aiName || '컴퓨터');
+    return `<div class="wc-b ${by === 'me' ? 'me' : 'ai'}" data-n="${n}"><span class="wc-av">${avHtml(by)}</span><div class="wc-bw"><small>${who}${x.kill ? ' · <b class="kill">끝내기 낱말!</b>' : ''}</small><div class="wc-ws">${tilesHtml(x.w, true, true)}</div></div></div>`;
+  }
+  /* 이은 낱말 기차(보이기만): 최근 8개를 칸으로 잇고, 새 낱말이 오른쪽에 붙으면 앞 칸은 왼쪽으로 밀려난다 */
+  const TRAIN_N = 8;
+  function train(){
+    try{
+      const m = S(), e = $('#wcTrain'); if(!e || !m.chain) return;
+      const list = m.chain.slice(-TRAIN_N), off = m.chain.length - list.length;
+      e.innerHTML = list.map((x, j) => `${j ? '<i class="wc-link"></i>' : ''}<span class="wc-car ${x.by === 'me' ? 'me' : x.by === 'start' ? 'st' : 'ai'}${x.kill ? ' kill' : ''}${j === list.length - 1 && off + j > 0 ? ' new' : ''}">${esc(x.w)}</span>`).join('');
+      const hide = m.chain.length < 2; if(e.hidden !== hide){ e.hidden = hide; setTimeout(fit, 0); }   /* 기차가 나타나면 기록 칸 높이를 다시 맞춤 */
+      e.scrollLeft = e.scrollWidth;
+    }catch(_){}
   }
   function logAdd(x){
+    train();
     const log = $('#wcLog'); if(!log) return null;
     const t = log.querySelector('.wc-typing'); if(t) t.remove();
     const gd = log.querySelector('.wc-guide'); if(gd) gd.remove();
@@ -238,7 +250,7 @@ NG.wordchain = (() => {
       let g = log.querySelector('.wc-guide');
       if(!on){ if(g) g.remove(); return; }
       const txt = m.turn === 'me' ? (m.rule.rev ? `<b>‘${lastW(m)[0]}’</b>(으)로 <b>끝나는</b> 낱말을 넣어요` : `<b>‘${needTxt(m)}’</b>(으)로 시작하는 낱말을 넣어요`) : m.turn ? '상대가 먼저 이어요' : '곧 시작해요';
-      const goal = m.duelOn ? `${m.dTurns}개씩 이으면 글자 점수로 승부` : `${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 한방 승리`;
+      const goal = m.duelOn ? `${m.dTurns}개씩 이으면 글자 점수로 승부` : `${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 끝내기 승리`;
       const html = `<p class="wc-gt">${txt}</p><p class="wc-gs">${goal}</p>`;
       if(!g){ log.insertAdjacentHTML('beforeend', `<div class="wc-guide">${html}</div>`); }
       else if(g.innerHTML !== html){ g.innerHTML = html; log.appendChild(g); }
@@ -290,7 +302,11 @@ NG.wordchain = (() => {
       const rem = Math.max(0, m.cfg.limit - (Date.now() - m.net.turnAt) / 1000), sec = Math.ceil(rem);
       if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / m.cfg.limit)})`;
       if(te && sec !== m.lastSec){ m.lastSec = sec; te.textContent = sec; }
-    } else if(bar) bar.style.transform = 'scaleX(1)';
+    } else {
+      /* 상대·컴퓨터 차례: 내 차례에 남았던 숫자(예: 10)가 그대로 보이지 않게, 다음 내 차례 시간을 보여 준다 */
+      if(bar) bar.style.transform = 'scaleX(1)';
+      if(m.lastSec !== 'idle'){ m.lastSec = 'idle'; if(te) te.textContent = turnLimit(m); if(tp) tp.classList.remove('warn'); const bw = $('#wcBarW'); if(bw) bw.classList.remove('hurry'); }
+    }
   }
 
   /* ===== 내가 넣기 ===== */
@@ -335,6 +351,7 @@ NG.wordchain = (() => {
     /* 효과(보이기만) */
     try{
       if(el){ const t = el.querySelector('.wc-t.to') || el; const q = fxCenter(t); fxBurst(q.x, q.y, by === 'me' ? ['#FF8A3D', '#FFE27A', '#FFFFFF'] : ['#14A3A0', '#B5F0E8', '#FFFFFF'], by === 'me' ? 10 : 6, { speed:200, size:4, kinds:['star', 'dot', 'spark'], up:90, g:420, dur:.55 }); }
+      if(x.kill){ fxShake($('#wcStage'), 7); fxFlash('#FF8A3D', .3, 220); const q = fxCenter(el || $('#wcLog')); fxBurst(q.x, q.y, ['#FF8A3D', '#FFE27A', '#E5484D', '#fff'], 24, { speed:340, size:6, kinds:['star', 'dot', 'spark'], up:120, g:420, glow:true, dur:.9 }); }
       if(by === 'me' && m.rule.gold.some(c => w.includes(c)) && el){ const g = el.querySelector('.wc-t.gold'); if(g){ const q = fxCenter(g); fxEmit(q.x, q.y, { quantity:10, speed:{ min:40, max:160 }, lifespan:{ min:400, max:700 }, kind:'twinkle', tint:['#FFE27A', '#FFB020'], scale:{ start:3, end:.3 }, alpha:{ start:1, end:0 } }); } }
     }catch(_){}
     sfx(by === 'me' ? 'wcPop' : 'wcAi', { n:m.myWords });
@@ -394,13 +411,13 @@ NG.wordchain = (() => {
     const m = S(); if(m.phase !== 'play') return;
     end(); m.result = why;
     if(why === 'kill'){
-      msg('<b class="win">한방 승리!</b><span>AI가 이을 낱말이 없어요</span>', 'win');
-      sfx('wcKill'); try{ fxFlash('#FFE27A', .35, 260); const ms = document.querySelectorAll('#wcLog .wc-b.me'), l = ms.length ? ms[ms.length - 1] : $('#wcLog'); const q = fxCenter(l); fxBurst(q.x, q.y, ['#FFE27A', '#FF8A3D', '#14A3A0', '#fff'], 28, { speed:360, size:6, kinds:['star', 'dot', 'spark'], up:140, g:420, glow:true, dur:1 }); }catch(_){}
+      msg('<b class="win">끝내기 승리!</b><span>컴퓨터가 이을 낱말이 없어요</span>', 'win');
+      sfx('wcKill'); try{ fxShake($('#wcStage'), 7); fxFlash('#FFE27A', .35, 260); const ms = document.querySelectorAll('#wcLog .wc-b.me'), l = ms.length ? ms[ms.length - 1] : $('#wcLog'); const q = fxCenter(l); fxBurst(q.x, q.y, ['#FFE27A', '#FF8A3D', '#14A3A0', '#fff'], 28, { speed:360, size:6, kinds:['star', 'dot', 'spark'], up:140, g:420, glow:true, dur:1 }); }catch(_){}
     } else { msg(`<b class="win">${m.cfg.goal}개 잇기 성공!</b><span>끝까지 버텼어요</span>`, 'win'); try{ const q = fxCenter($('#wcLog')); fxRing(q.x, q.y, '#FFE27A', q.w * .6, .7, 12); }catch(_){} }
     fxBuzz([30, 50, 30]);
     T(() => finish(true), 1100);
   }
-  const LOSE_TXT = { time:'시간이 다 됐어요', give:'포기했어요', kill:'한방을 맞았어요', miss:'실수를 두 번 했어요', gold:'황금 글자 미션 실패' };
+  const LOSE_TXT = { time:'시간이 다 됐어요', give:'포기했어요', kill:'끝내기 낱말을 받았어요', miss:'실수를 두 번 했어요', gold:'황금 글자 미션 실패' };
   function lose(why){
     const m = S(); if(m.phase !== 'play') return;
     end(); m.result = why;
@@ -422,12 +439,12 @@ NG.wordchain = (() => {
     const me = pts(m.myChars), op = pts(m.oppChars);
     let r, txt;
     if(why === 'pts'){ r = me > op ? 'w' : me < op ? 'l' : 'd'; txt = r === 'd' ? `${DUEL_TURNS}개씩 다 이었어요 · 글자 점수가 같아요!` : `${DUEL_TURNS}개씩 다 이었어요 · 글자 점수 ${fmt(Math.abs(me - op))}점 차이`; }
-    else if(why === 'oppKilled'){ r = 'w'; txt = '한방 승리! 상대가 이을 낱말이 없어요'; }
+    else if(why === 'oppKilled'){ r = 'w'; txt = '끝내기 승리! 상대가 이을 낱말이 없어요'; }
     else if(why === 'oppStuck'){ r = 'w'; txt = '상대가 이을 낱말을 못 찾았어요'; }
     else if(why === 'oppTime'){ r = 'w'; txt = '상대가 시간 안에 못 이었어요'; }
     else if(why === 'oppGive'){ r = 'w'; txt = '상대가 포기했어요 · 기권승'; }
     else if(why === 'oppLeft'){ r = 'w'; txt = '상대가 떠나 기권승이에요'; }
-    else if(why === 'meKilled'){ r = 'l'; txt = '한방을 맞았어요 · 이을 낱말이 사전에 없어요'; }
+    else if(why === 'meKilled'){ r = 'l'; txt = '끝내기 낱말을 받았어요 · 이을 낱말이 사전에 없어요'; }
     else if(why === 'meGive'){ r = 'l'; txt = '포기했어요'; }
     else if(why === 'meNet'){ r = 'l'; txt = '연결이 끊겨 대전을 이어 가지 못했어요'; }
     else { r = 'l'; txt = '시간 안에 못 이었어요'; }
@@ -452,14 +469,14 @@ NG.wordchain = (() => {
     const box = $('#wcSearch'), body = $('#wcBody'); if(!box) return;
     box.hidden = !on; if(body) body.classList.toggle('wait', on);
     if(on) box.innerHTML = `<div class="wc-sc"><div class="wc-radar"><i></i><i></i><i></i>${toyImg('fox', 'wc-scav')}</div><h3 id="wcSt">끝말잇기 상대를 찾는 중</h3><p id="wcSn"></p>
-      <button class="wc-cta" id="wcAiNow">AI와 바로 대전</button></div>`;
+      <button class="wc-cta" id="wcAiNow">컴퓨터와 바로 하기</button></div>`;
     const b = $('#wcAiNow'); if(b) b.onclick = () => toAI();
   }
   function searchText(){
     const m = S(), n = m.net, st = $('#wcSt'), sn = $('#wcSn'); if(!st || !n) return;
     if(n.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${esc(n.oppNick)}</b>님과 연결하는 중…`; return; }
     const left = Math.max(0, 15 - Math.floor((Date.now() - n.t0) / 1000)), k = typeof duelWaiting === 'function' ? duelWaiting(ID) : 0;
-    sn.textContent = `${left}초 안에 상대가 없으면 AI와 겨뤄요${k ? ' · 기다리는 사람 ' + k + '명' : ''} · 내 이름 ${n.nick}`;
+    sn.textContent = `${left}초 안에 상대가 없으면 컴퓨터와 겨뤄요${k ? ' · 기다리는 사람 ' + k + '명' : ''} · 내 이름 ${n.nick}`;
   }
   function search(){
     const m = S(); const n = m.net = { live:false, phase:'search', t0:Date.now(), nick:duelNick(), mv:[], oc:0 };
@@ -624,16 +641,16 @@ NG.wordchain = (() => {
     help:[
       ['끝 글자로 이어요', '앞 낱말의 끝 글자로 시작하는 낱말을 넣고 [잇기]를 눌러요. 두음법칙도 돼요(녀→여, 력→역, 라→나, 리→이 …). 사과 → 과일 → 일기'],
       ['두 글자 이상 · 한 번만', '한 글자 낱말과 이미 나온 낱말은 쓸 수 없어요. 사전에 없는 말은 “사전에 없어요” — 실수가 아니니 다른 낱말을 넣으면 돼요.'],
-      ['제한 시간 안에!', '내 차례마다 시간이 정해져 있어요. 시간이 다 되거나 포기하면 실패. 정한 수만큼 이으면 성공이에요. 💡 힌트는 이을 낱말의 첫 두 글자를 보여 줘요(점수 −30).'],
-      ['한방을 노려요', 'AI가 이을 낱말이 사전에 없는 끝 글자(예: ~름, ~슴, ~릇)로 끝내면 한방 승리! 반대로 AI도 한방을 노리니 조심해요. 긴 낱말일수록 점수가 커요.']
+      ['제한 시간 안에!', '내 차례마다 시간이 정해져 있어요(남은 5초부터 시계가 깜빡여요). 시간이 다 되거나 포기하면 실패. 정한 수만큼 이으면 성공이에요. 💡 힌트는 이을 낱말의 첫 두 글자를 보여 줘요(점수 −30).'],
+      ['끝내기 낱말을 노려요', '상대가 이을 낱말이 사전에 없는 끝 글자(예: ~름, ~슴, ~릇)로 끝내면 끝내기 승리! 반대로 컴퓨터도 끝내기 낱말을 노리니 조심해요. 긴 낱말일수록 점수가 커요.']
     ],
     helpExtra(){ const m = G && G.id === ID && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ') + (m.rule.ban.length ? ` (금지 글자: ${m.rule.ban.join(', ')})` : '') + (m.rule.gold.length ? ` (황금 글자: ${m.rule.gold.join(', ')} · ${m.rule.goldNeed}개)` : '')]]; },
     chapters:['말놀이 마당', '이야기 골목', '낱말 숲', '글자 바다', '사전 궁전'],
-    starRule:'★ 성공 · ★★ 힌트 없이 · ★★★ 힌트 없이 + 한방 승리 또는 세 글자 이상 낱말 5개',
+    starRule:'★ 성공 · ★★ 힌트 없이 · ★★★ 힌트 없이 + 끝내기 승리 또는 세 글자 이상 낱말 5개',
     levels:{
       easy:{ goal:8, limit:20, ai:0, hints:3 },
-      normal:{ goal:10, limit:15, ai:1, hints:3 },
-      hard:{ goal:12, limit:12, ai:2, hints:2 }
+      normal:{ goal:10, limit:18, ai:1, hints:3 },   /* 2026-10-06: 15 → 18초(대전도 이 값) */
+      hard:{ goal:12, limit:15, ai:2, hints:2 }      /* 12 → 15초 */
     },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.goal}개 잇기 · 한 차례 ${c.limit}초 · ${AI_NAME[c.ai]}`; },
     concepts:CONC,
@@ -689,6 +706,7 @@ NG.wordchain = (() => {
         </div>
         <div class="wc-barw" id="wcBarW"><i id="wcBar"></i></div>
         ${chips}
+        <div class="wc-train" id="wcTrain" aria-hidden="true" hidden></div>
         ${duel ? `<p class="wc-dline">${toyImg('fox', 'wc-hav')}<b>나</b><span>VS</span><b id="wcOppName">${esc(m.oppNick || '상대')}</b> · ${m.dTurns}개씩 이으면 글자 점수로 승부</p>` : ''}
         <div class="wc-body" id="wcBody">
           <div class="wc-log" id="wcLog" role="log" aria-live="polite" aria-label="이어진 낱말"></div>
@@ -723,11 +741,11 @@ NG.wordchain = (() => {
       const time = Math.round(250 * avg);
       const longB = Math.min(150, Math.max(0, (m.myChars - 2 * m.myWords) * 15)), killB = m.result === 'kill' ? 100 : 0;
       const extra = Math.max(0, Math.min(250, longB + killB - 30 * m.hints));
-      return { base, time, extra, rows:[`이은 낱말 ${m.myWords}개 · ${m.myChars}글자`, `남은 시간 보너스 (평균 ${Math.round(avg * 100)}%)`, `긴 낱말 +${longB}${killB ? ' · 한방 +100' : ''} · 힌트 ${m.hints}번`] };
+      return { base, time, extra, rows:[`이은 낱말 ${m.myWords}개 · ${m.myChars}글자`, `남은 시간 보너스 (평균 ${Math.round(avg * 100)}%)`, `긴 낱말 +${longB}${killB ? ' · 끝내기 +100' : ''} · 힌트 ${m.hints}번`] };
     },
     stars(){ const m = G.m; return m.hints ? 1 : (m.result === 'kill' || m.longW >= 5) ? 3 : 2; },
     winTitle:'끝말잇기 성공!',
-    duelHow:'실시간 1:1 번갈아 잇기 · 한방이면 승리 · 8개씩 이으면 글자 점수',
+    duelHow:'실시간 1:1 번갈아 잇기 · 끝내기 낱말이면 승리 · 8개씩 이으면 글자 점수',
     /* 대전은 게임이 직접 진행(턴제 실시간). fleet:true = 엔진에 "게임이 대전을 직접 진행"이라고 알림 */
     duelLaunch(){ const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : AI_NAME[1] } } }); },
     css:`
@@ -768,10 +786,10 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-start{align-self:center; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 16px 10px; border-radius:16px; background:#fff; border:2.5px dashed #14A3A0}
 .ng-wc .wc-start small{font-family:var(--disp); font-size:13px; color:#3F7A74}
 .ng-wc .wc-log.fresh{justify-content:center; gap:16px}
-.ng-wc .wc-log.fresh .wc-start{padding:14px 22px 16px; border-width:3px; gap:8px}
+.ng-wc .wc-log.fresh .wc-start{padding:10px 18px 12px; border-width:3px; gap:6px}
 .ng-wc .wc-log.fresh .wc-start small{font-size:16px}
 .ng-wc .wc-log.fresh .wc-start .wc-ws{gap:6px; padding:9px 12px}
-.ng-wc .wc-log.fresh .wc-start .wc-t{width:56px; height:60px; border-radius:14px; font-size:34px}
+.ng-wc .wc-log.fresh .wc-start .wc-t{width:46px; height:50px; border-radius:12px; font-size:28px}
 .ng-wc .wc-log.fresh .wc-start .wc-t.to{-webkit-text-stroke:5px ${OL}}
 .ng-wc .wc-guide{align-self:center; text-align:center; animation:wc-pop .38s cubic-bezier(.2,1.5,.4,1) both}
 .ng-wc .wc-gt{margin:0; font-family:var(--disp); font-size:19px; color:#0E4F4B; line-height:1.4}
@@ -812,7 +830,18 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-head.two{font-size:17px}
 .ng-wc .wc-head:empty{visibility:hidden}
 .ng-wc .wc-in input{flex:1; min-width:0; height:44px; border:0; outline:0; background:transparent; font:inherit; font-family:var(--disp); font-size:20px; color:${OL}; padding:0 4px}
-.ng-wc .wc-in input::placeholder{color:#9AB5B1; font-size:15px}
+.ng-wc .wc-in input::placeholder{color:#4E7D78; font-size:15px}
+.ng-wc .wc-train{display:flex; align-items:center; gap:0; margin:8px 0 0; padding:2px 2px 4px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; white-space:nowrap; scroll-behavior:smooth; -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18px)}
+.ng-wc .wc-train[hidden]{display:none}
+.ng-wc .wc-train::-webkit-scrollbar{display:none}
+.ng-wc .wc-car{flex:none; padding:5px 9px 4px; border-radius:10px 10px 6px 6px; border:2px solid ${OL}; background:#fff; box-shadow:0 3px 0 ${OL}; font-family:var(--heavy); font-size:15px; line-height:1.1; color:${OL}}
+.ng-wc .wc-car.me{background:linear-gradient(180deg,#FFF3E2,#FFD9AE)}
+.ng-wc .wc-car.ai{background:linear-gradient(180deg,#FFFFFF,#D5F3EE)}
+.ng-wc .wc-car.st{background:#fff; border-style:dashed}
+.ng-wc .wc-car.kill{background:linear-gradient(180deg,#FFB3B6,#FF6B70); color:#fff}
+.ng-wc .wc-car.new{animation:wc-car .42s cubic-bezier(.2,1.5,.4,1) both}
+.ng-wc .wc-link{flex:none; width:10px; height:4px; background:${OL}; border-radius:2px}
+@keyframes wc-car{from{transform:translateX(26px); opacity:0}}
 .ng-wc .wc-in input.bad{animation:wc-bad .35s}
 @keyframes wc-bad{30%{color:#E5484D}}
 .ng-wc .wc-go{flex:none; display:flex; align-items:center; gap:4px; height:44px; padding:0 14px 0 10px; border-radius:999px; border:2.2px solid ${OL}; cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -839,7 +868,7 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-scav{width:64px; height:64px; position:relative}
 .ng-wc .wc-cta{height:46px; padding:0 22px; border-radius:999px; border:2.5px solid ${OL}; background:linear-gradient(180deg,#FFE27A,#FFB020); font-family:var(--heavy); font-size:17px; color:${OL}; box-shadow:0 3px 0 ${OL}; cursor:pointer}
 @media (max-width:370px){ .ng-wc .wc-t{width:30px; height:33px; font-size:19px} .ng-wc .wc-go{padding:0 10px 0 8px; font-size:16px} }
-@media (prefers-reduced-motion: reduce){ .ng-wc .pop, .ng-wc .wc-msg.pop, .ng-wc .wc-msg.win{animation:none} .ng-wc .wc-log{scroll-behavior:auto} }
+@media (prefers-reduced-motion: reduce){ .ng-wc .wc-car.new, .ng-wc .pop, .ng-wc .wc-msg.pop, .ng-wc .wc-msg.win{animation:none} .ng-wc .wc-log{scroll-behavior:auto} }
 `,
     sounds:{
       wcPop(o){ const n = Math.min(10, o.n || 0); aNoise({ ft:'bandpass', f:2600, q:2, d:.04, v:.05 }); aBell({ f:penta(n + 4, 72), d:.5, v:.08, idx:1.3, rev:.3 }); aBell({ f:penta(n + 6, 72), t:.08, d:.6, v:.06, idx:1.2, rev:.35 }); },
