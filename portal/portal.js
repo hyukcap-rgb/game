@@ -223,7 +223,7 @@ const RETIRED = { tower:'숲 지킴이' };
 const gameName = id => GAMES[id] ? GAMES[id].name : RETIRED[id] ? '지난 게임(' + RETIRED[id] + ')' : id;
 /* 시험지에서 게임을 부를 때 쓰는 모드(게임 정의가 그 모드를 가져야 시험지에 나옴). 오목 = 묘수풀이 */
 const EXAM_MODE = { omok:'puzzle' };
-const hasMode = (g, md) => { const m = NG[g]; return !!m && (m.examMode === md || (Array.isArray(m.modes) && m.modes.includes(md)) || !!(m.modes && !Array.isArray(m.modes) && m.modes[md])); };
+const hasMode = (g, md) => { const m = NG[g]; return !!m && (m.examMode === md || m.dailyMode === md || (Array.isArray(m.modes) && m.modes.includes(md)) || !!(m.modes && !Array.isArray(m.modes) && m.modes[md])); };
 const examReady = g => !!GAMES[g] && (!EXAM_MODE[g] || hasMode(g, EXAM_MODE[g]));
 const examOpt = (id, o = {}) => EXAM_MODE[id] ? Object.assign({ mode:EXAM_MODE[id] }, o) : o;
 const subjGames = (i, kk) => SUBJ[i][1].filter(g => (!SUBJ_FROM[g] || kk >= SUBJ_FROM[g]) && (!SUBJ_UNTIL[g] || kk < SUBJ_UNTIL[g]));

@@ -72,8 +72,9 @@ if(!ONLYM) for(const g of GAMES){
   const r=sc.map(s=>s.txt.trim()||'?');
   const clean=sc.every(s=>!/실패|진행 0%/.test(s.body));
   const good=okGo.every(Boolean)&&res.every(Boolean)&&st[0].mode==='pvp'&&st[1].mode==='pvp'&&st[0].seed===st[1].seed&&/^fl-d3-/.test(st[0].seed)&&Math.abs(st[0].start-st[1].start)<400&&sc[0].me===sc[1].opp&&sc[1].me===sc[0].opp&&!A.errs.length&&!Bp.errs.length
-    &&({'승리!':'패배','패배':'승리!','무승부':'무승부'})[r[0]]===r[1]&&sc[0].rank+sc[1].rank===3&&clean;   /* 한쪽이 이기면 다른 쪽은 져야 함 */
+    &&({'승리!':'패배','패배':'승리!','무승부':'무승부'})[r[0]]===r[1]&&(r[0]==='무승부'?sc[0].rank+sc[1].rank===2:sc[0].rank+sc[1].rank===3)&&clean;   /* 한쪽이 이기면 다른 쪽은 져야 함 */
   /* 한쪽이 끝나면 다른 쪽도 끝: B는 A가 끝낸 뒤 스스로 끝내기 전에 끊겨야 함 → '계속 풀기'로 혼자 이어 풀기 */
+  const endAll=await A.pg.evaluate(g=>duelEndOf(g)!=='first',g);   /* 점수전처럼 모두 끝까지 하는 게임은 '먼저 끝내면 모두 끝'을 보지 않음 */
   const cut=await Bp.pg.evaluate(()=>({cut:G.duel.cut||'',btn:!!document.querySelector('#mCont')}));
   let cont='-';
   if(cut.btn){ await Bp.pg.click('#mCont'); await w(800);
@@ -84,7 +85,7 @@ if(!ONLYM) for(const g of GAMES){
     cont=Object.assign(cont,{rec:before===after.d?'안 바뀜':'바뀜!',t:after.t});
   }
   const cutOk=cut.cut==='done'&&cut.btn&&cont.p&&!cont.over&&!cont.duel&&cont.stage&&cont.rec==='안 바뀜'&&cont.t==='다 풀었어요!';
-  ok(cutOk,`  상대가 끝내면 나도 끝=${cut.cut} 계속풀기=${JSON.stringify(cont)}`);
+  if(endAll) console.log(`  (모두 끝까지 하는 대전: 끊김 점검 건너뜀)`); else ok(cutOk,`  상대가 끝내면 나도 끝=${cut.cut} 계속풀기=${JSON.stringify(cont)}`);
   ok(good,`${g}  pvp=${st.map(s=>s.mode)} 같은문제=${st[0].seed===st[1].seed} 시작차=${Math.abs(st[0].start-st[1].start)}ms 점수A=${sc[0].me}/${sc[0].opp} B=${sc[1].me}/${sc[1].opp} 결과=${r.join(' | ')} 순위=${sc.map(s=>s.rank)} 문구깨끗=${clean} ${[...A.errs,...Bp.errs].join(' ')}`);
   await closeAll([A,Bp]);
 }

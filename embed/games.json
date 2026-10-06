@@ -4,202 +4,192 @@
     {
       "id": "fox",
       "name": "여우 자리 찾기",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "색깔 구역마다 여우를 한 마리씩 놓는 논리 퍼즐",
       "duel": true,
       "file": "fox.html",
-      "bytes": 235339,
-      "gzip": 78032
+      "bytes": 303799,
+      "gzip": 99578
     },
     {
       "id": "sudoku",
       "name": "스도쿠",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
       "duel": true,
       "file": "sudoku.html",
-      "bytes": 229883,
-      "gzip": 75859
+      "bytes": 295067,
+      "gzip": 96160
     },
     {
       "id": "ball",
       "name": "별빛 구슬",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
       "duel": true,
       "file": "ball.html",
-      "bytes": 233314,
-      "gzip": 76709
-    },
-    {
-      "id": "tower",
-      "name": "숲 지킴이",
-      "version": "1.0.2",
-      "summary": "씨앗 카드로 식물을 심어 도토리 창고를 지키는 길목 방어",
-      "duel": true,
-      "file": "tower.html",
-      "bytes": 256277,
-      "gzip": 85175
+      "bytes": 300138,
+      "gzip": 98008
     },
     {
       "id": "fleet",
       "name": "함대 결전",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "함대를 숨기고 번갈아 포격하는 해전 추리(실시간 1:1·AI)",
       "duel": true,
       "file": "fleet.html",
-      "bytes": 262668,
-      "gzip": 86366
+      "bytes": 326093,
+      "gzip": 105975
     },
     {
       "id": "match",
       "name": "동물 삼총사",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "같은 동물 3마리를 맞추는 퍼즐",
       "duel": true,
       "file": "match.html",
-      "bytes": 270156,
-      "gzip": 89841
+      "bytes": 350038,
+      "gzip": 115091
     },
     {
       "id": "nono",
       "name": "네모 그림",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
       "duel": true,
       "file": "nono.html",
-      "bytes": 249980,
-      "gzip": 82974
+      "bytes": 313175,
+      "gzip": 102545
     },
     {
       "id": "block",
       "name": "블록 채우기",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
       "duel": true,
       "file": "block.html",
-      "bytes": 243490,
-      "gzip": 81757
+      "bytes": 307361,
+      "gzip": 101610
     },
     {
       "id": "memory",
       "name": "카드 짝 맞추기",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "summary": "보여 준 카드를 기억해 짝을 찾는 집중력 게임",
       "duel": true,
       "file": "memory.html",
-      "bytes": 240092,
-      "gzip": 79294
+      "bytes": 301862,
+      "gzip": 98334
     },
     {
       "id": "merge",
       "name": "숫자 합치기",
-      "version": "1.0.2",
-      "summary": "밀어서 같은 숫자를 합치는 전략 퍼즐",
+      "version": "1.1.0",
+      "summary": "밀어서 같은 숫자를 합쳐 목표를 이동 안에 채우는 전략 퍼즐",
       "duel": true,
       "file": "merge.html",
-      "bytes": 237229,
-      "gzip": 79037
+      "bytes": 309204,
+      "gzip": 102548
     },
     {
       "id": "link",
       "name": "짝 잇기",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "summary": "같은 그림 타일을 두 번까지 꺾이는 길로 이어 지우는 공간지각 게임",
       "duel": true,
       "file": "link.html",
-      "bytes": 236397,
-      "gzip": 78632
+      "bytes": 311690,
+      "gzip": 102258
     },
     {
       "id": "gostop",
       "name": "고스톱",
-      "version": "1.6.1",
+      "version": "1.7.0",
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 1105972,
-      "gzip": 694622
+      "bytes": 1167892,
+      "gzip": 713672
     },
     {
       "id": "crossword",
       "name": "가로세로 낱말퀴즈",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "뜻풀이 열쇠를 보고 가로·세로로 엇갈린 한국어 낱말을 맞히는 추리 퍼즐",
       "duel": true,
       "file": "crossword.html",
-      "bytes": 253988,
-      "gzip": 98439
+      "bytes": 320388,
+      "gzip": 121124
     },
     {
       "id": "hidden",
       "name": "숨은그림 찾기",
-      "version": "1.0.1",
-      "summary": "꾸밈이 가득한 장면 속에 숨은 물건을 찾아 누르는 집중력 게임",
+      "version": "1.1.0",
+      "summary": "그림책 장면 12곳 속에 숨은 물건을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "hidden.html",
-      "bytes": 252700,
-      "gzip": 83111
+      "bytes": 381120,
+      "gzip": 127511
     },
     {
       "id": "spot",
       "name": "틀린그림 찾기",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "spot.html",
-      "bytes": 253570,
-      "gzip": 83117
+      "bytes": 328967,
+      "gzip": 105026
     },
     {
       "id": "chosung",
       "name": "초성게임",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "초성과 분류를 보고 낱말을 떠올려 쓰는 추리 게임",
       "duel": true,
       "file": "chosung.html",
-      "bytes": 233200,
-      "gzip": 85222
+      "bytes": 295738,
+      "gzip": 104862
     },
     {
       "id": "wordchain",
       "name": "끝말잇기",
-      "version": "1.0.1",
-      "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — AI와 잇기, 한방 낱말, 실시간 1:1 턴제 대전",
+      "version": "1.1.0",
+      "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — 컴퓨터와 잇기, 끝내기 낱말, 실시간 1:1 턴제 대전",
       "duel": true,
       "file": "wordchain.html",
-      "bytes": 266269,
-      "gzip": 109346
+      "bytes": 328073,
+      "gzip": 127853
     },
     {
       "id": "mines",
       "name": "지뢰찾기",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "숫자를 보고 밤송이가 숨은 칸을 피해 숲을 모두 여는 찍기 없는 논리 게임",
       "duel": true,
       "file": "mines.html",
-      "bytes": 230234,
-      "gzip": 76008
+      "bytes": 291689,
+      "gzip": 94894
     },
     {
       "id": "omok",
       "name": "오목",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "정확히 5개를 먼저 잇는 오목 — 오늘의 묘수풀이·AI 대국·실시간 1:1 대전",
       "duel": true,
       "file": "omok.html",
-      "bytes": 236516,
-      "gzip": 78863
+      "bytes": 302769,
+      "gzip": 99433
     },
     {
       "id": "parking",
       "name": "자동차 주차하기",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "summary": "꽉 찬 주차장에서 차를 앞뒤로 밀어 빨간 내 차를 자리까지 보내는 공간지각 퍼즐",
       "duel": true,
       "file": "parking.html",
-      "bytes": 296539,
-      "gzip": 106735
+      "bytes": 361665,
+      "gzip": 126703
     },
     {
       "id": "snowball",
@@ -208,8 +198,8 @@
       "summary": "말랑볼을 굴려 먹고 커져서, 작은 상대를 꿀꺽하는 3분 육성 대결 — 솔로(별 3개)와 30명 배틀로열 대전",
       "duel": true,
       "file": "snowball.html",
-      "bytes": 247368,
-      "gzip": 81946
+      "bytes": 307104,
+      "gzip": 100233
     },
     {
       "id": "flag",
@@ -218,8 +208,8 @@
       "summary": "진행자 명령대로 파란 깃발·흰 깃발을 올리고 내리는 순발력 게임(막 누르면 손해)",
       "duel": true,
       "file": "flag.html",
-      "bytes": 241953,
-      "gzip": 79173
+      "bytes": 301669,
+      "gzip": 97390
     },
     {
       "id": "mole",
@@ -228,8 +218,8 @@
       "summary": "구멍에서 튀어나오는 두더지만 치고 폭탄 두더지는 참는 순발력 게임",
       "duel": true,
       "file": "mole.html",
-      "bytes": 241690,
-      "gzip": 79332
+      "bytes": 301406,
+      "gzip": 97629
     },
     {
       "id": "twin",
@@ -238,8 +228,8 @@
       "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
       "duel": true,
       "file": "twin.html",
-      "bytes": 241773,
-      "gzip": 80827
+      "bytes": 301481,
+      "gzip": 99073
     },
     {
       "id": "arrow",
@@ -248,8 +238,8 @@
       "summary": "파란 화살표는 그 방향, 빨간 화살표는 반대로 미는 순발력 게임",
       "duel": true,
       "file": "arrow.html",
-      "bytes": 236284,
-      "gzip": 77065
+      "bytes": 296000,
+      "gzip": 95270
     },
     {
       "id": "rps",
@@ -258,8 +248,8 @@
       "summary": "상대 손과 지령(이겨라·져라·비겨라)에 맞는 손을 재빨리 내는 순발력 게임",
       "duel": true,
       "file": "rps.html",
-      "bytes": 237255,
-      "gzip": 77260
+      "bytes": 296963,
+      "gzip": 95580
     },
     {
       "id": "thread",
@@ -268,8 +258,16 @@
       "summary": "같은 색 단추를 색실로 꿰어 잇고 천의 빈칸을 남김없이 채우는 공간지각 퍼즐",
       "duel": true,
       "file": "thread.html",
-      "bytes": 307972,
-      "gzip": 118392
+      "bytes": 367709,
+      "gzip": 136153
+    }
+  ],
+  "retired": [
+    {
+      "id": "tower",
+      "name": "숲 지킴이",
+      "file": "tower.html",
+      "until": "2027-01-04"
     }
   ]
 }

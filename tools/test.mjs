@@ -45,7 +45,7 @@ async function run(label, url, steps, g, needEvents){
   const page = await browser.newPage({ viewport:{ width:400, height:820 } }), errs = [];
   page.on('pageerror', e => errs.push(String(e)));
   page.on('console', m => { if(m.type() === 'error' && !/WebSocket/.test(m.text())) errs.push(m.text()); });
-  await page.addInitScript(() => { try{ localStorage.setItem('hp:welcome', '9'); }catch(_){} window.__ev = []; addEventListener('haru-puzzle', e => window.__ev.push(e.detail.type)); });
+  await page.addInitScript(() => { try{ localStorage.setItem('hp:welcome', '9'); localStorage.setItem('hp:age19', '1'); localStorage.setItem('hpe:::hp:age19', '1'); localStorage.setItem('hpe:test::hp:age19', '1'); }catch(_){} window.__ev = []; addEventListener('haru-puzzle', e => window.__ev.push(e.detail.type)); });
   await page.goto(url); await wait(700);
   await page.evaluate(() => typeof closeModal === 'function' && closeModal());
   const bad = [];
