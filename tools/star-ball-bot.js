@@ -2,6 +2,7 @@
 // 사용: node tools/star-ball-bot.js [index.html] [모드] [각도 수] [조준 흔들림(rad)]
 //   모드: stages:1:30 | stagesL:5,10,20 | daily:easy|normal|hard:판수   예) node tools/star-ball-bot.js index.html stages:1:30 40
 //   각도 16 + 흔들림 0.03 = 서툰 사람 흉내, 각도 40 = 잘하는 사람
+//   duel:판수 = 대전 고정 7줄 판 · fps = 같은 씨앗·각도로 30/60/120fps 결과가 같은지 · RNDBOT=1 = 아무 각도로만 쏘는 봇
 const fs = require('fs'), vm = require('vm');
 const src = require('./source').readSource(process.argv[2]);
 const a = src.indexOf('/* ---------- 별빛 구슬: 밤하늘'), b = src.indexOf('\nObject.assign(SFX_GATE, { bTink');
@@ -12,7 +13,7 @@ const ctx = { Math, console, performance:{ now:() => 0 }, SFX_LIB:{}, SFX_GATE:{
   sfx(){}, fxBuzz(){}, toast(){}, $:() => null, panC:() => 0, G:null, document:{},
   finish(win){ ctx.G.over = true; ctx.G.result = win; } };
 vm.createContext(ctx);
-vm.runInContext(code.replace(/^function ballStageCfg/m, 'var ballStageCfg = function') + '\n;this.api = { genBall, ballInit, ballFire, ballUpdate, get ballStageCfg(){ return ballStageCfg; }, ballStars, BAIM_MIN, BAIM_MAX, ballBlocksLeft };', ctx);
+vm.runInContext(code.replace(/^function ballStageCfg/m, 'var ballStageCfg = function') + '\n;this.api = { genBall, ballInit, ballFire, ballUpdate, get ballStageCfg(){ return ballStageCfg; }, ballStars, BAIM_MIN, BAIM_MAX, ballBlocksLeft, BR, ballDuelCfg, BLEVELS };', ctx);
 const A = ctx.api;
 const NA = +(process.argv[4] || 60), NOISE = +(process.argv[5] || 0);
 if(process.env.CFGFILE) vm.runInContext(fs.readFileSync(process.env.CFGFILE, "utf8"), ctx);
@@ -22,6 +23,7 @@ function runTurn(g, ang){
   ctx.G = g; A.ballFire(ang);
   let n = 0;
   while(!g.over && g.phase === 'shoot' && n < 30 * 120){ A.ballUpdate(1/30); n++; }
+  g.watchF = (g.watchF || 0) + n;   /* 구슬이 날아다닌 화면 시간(1/30초 단위) */
   g.slide = 0; g.fx = []; g.rings = []; g.txts = [];
   return g;
 }
@@ -30,16 +32,18 @@ function evalState(g){
   if(g.over) return g.result ? 1e9 - g.turn * 1000 : -1e9;
   if(g.won) return 1e9 - g.turn * 1000;
   const { s, low } = hpSum(g);
-  return -s * 10 + g.balls * 12 - (low >= 8 ? 4000 : low >= 7 ? 600 : 0) - (g.shield ? 0 : 3000) + g.broken * 5;
+  return -s * 10 + g.balls * 12 - (low >= A.BR - 2 ? 4000 : low >= A.BR - 3 ? 600 : 0) - (g.shield ? 0 : 3000) + g.broken * 5;
 }
 function play(cfg, seed, opt = {}){
   const g = { id:'ball', sim:true, adv:0, L:{}, over:false };
+  const RND = process.env.RNDBOT ? ctx.mulberry(ctx.seedFrom('rnd:' + seed)) : null;
   ctx.G = g; A.ballInit(A.genBall(mul(seed), cfg));
   g.sim = true;
   let guard = 0;
   while(!g.over && guard++ < 200){
     if(g.won){ g.over = true; g.result = true; break; }
     let best = null, bestV = -Infinity;
+    if(RND){ runTurn(g, A.BAIM_MIN + (A.BAIM_MAX - A.BAIM_MIN) * RND()); if(g.won){ g.over = true; g.result = true; } continue; }
     for(let i=0;i<NA;i++){
       const ang = A.BAIM_MIN + (A.BAIM_MAX - A.BAIM_MIN) * (i + .5) / NA + (opt.noise ? (Math.random() - .5) * .02 : 0);
       const c = runTurn(clone(g), ang), v = evalState(c);
@@ -49,14 +53,28 @@ function play(cfg, seed, opt = {}){
     if(g.won){ g.over = true; g.result = true; }
   }
   if(process.env.DUMP && !g.result) console.log(g.gridB.map(r => r.map(c => !c ? ' .  ' : c.star ? ' *  ' : (c.t === 'bump' ? 'o' : c.sp ? c.sp[0].toUpperCase() : '#') + String(c.hp).padEnd(3)).join('')).join('\n'));
-  return { win:!!g.result, turn:g.turn, R:g.R, rows:g.rowsN, shield:g.shield, balls:g.balls, total:g.total, top:g.hpTop, stars:g.result ? A.ballStars(g.turn, g.R, g.shield > 0) : 0 };
+  return { win:!!g.result, turn:g.turn, R:g.R, rows:g.rowsN, shield:g.shield, balls:g.balls, total:g.total, top:g.hpTop, stars:g.result ? A.ballStars(g.turn, g.R, g.shield > 0) : 0, watch:(g.watchF || 0) / 30 };
 }
 function mul(seed){ return ctx.mulberry(ctx.seedFrom(seed)); }
 vm.runInContext('this.mulberry = mulberry; this.seedFrom = seedFrom;', ctx);
 
 const mode = process.argv[3] || 'stages';
 const out = [];
-if(mode.startsWith('stages')){
+if(mode === 'fps'){   /* 같은 씨앗·같은 각도 입력 → 프레임 길이가 달라도 깬 블록·턴이 같아야 함 */
+  const sig = dt => { const g = { id:'ball', sim:true, adv:0, L:{}, over:false }; ctx.G = g; A.ballInit(A.genBall(mul('fps:1'), A.ballStageCfg(20))); g.sim = true;
+    const r = mul('fps:aim'); for(let t=0;t<8 && !g.over && !g.won;t++){ A.ballFire(A.BAIM_MIN + (A.BAIM_MAX - A.BAIM_MIN) * r()); let n = 0; while(!g.over && g.phase === 'shoot' && n++ < 1e5) A.ballUpdate(dt); g.slide = 0; }
+    return [g.broken, g.turn, g.balls, g.sx.toFixed(6), JSON.stringify(g.gridB.map(row => row.map(c => c ? (c.star ? '*' : c.hp) : 0)))].join('|'); };
+  const a = sig(1/30), b = sig(1/60), c = sig(1/120), d = sig(1/144);
+  console.log('30fps ' + a.slice(0, 40) + '\n60fps ' + b.slice(0, 40) + '\n120fps ' + c.slice(0, 40));
+  console.log(a === b && b === c && c === d ? 'FPS SAME OK' : 'FPS DIFFERENT'); process.exit(a === b && b === c && c === d ? 0 : 1);
+}
+if(mode.startsWith('duel')){
+  const N = +(mode.split(':')[1] || 6);
+  for(let i=1;i<=N;i++){
+    const r = play(A.ballDuelCfg(), 'duel:ball:' + i);
+    out.push(r); console.log(`duel #${i} blocks ${r.total} | ${r.win ? 'WIN ' : 'LOSE'} turns ${r.turn} balls ${r.balls} watch ${r.watch.toFixed(0)}s`);
+  }
+} else if(mode.startsWith('stages')){
   const [, s0, s1] = mode.split(':'); const from = +(s0 || 1), to = +(s1 || 30);
   const list = mode.startsWith('stagesL') ? s0.split(',').map(Number) : Array.from({ length:to - from + 1 }, (_, i) => from + i);
   for(const n of list){
@@ -65,12 +83,13 @@ if(mode.startsWith('stages')){
     out.push(r); console.log(`N${String(n).padStart(2)} rows ${r.rows} top ${String(r.top).padStart(3)} blocks ${String(r.total).padStart(3)} | ${r.win ? 'WIN ' : 'LOSE'} turns ${r.turn} par ${r.R} (${r.turn - r.R >= 0 ? '+' : ''}${r.turn - r.R}) shield ${r.shield ? 'kept' : 'used'} balls ${r.balls} ★${r.stars}  ${Date.now() - t0}ms`);
   }
 } else {
-  const L = { easy:{ rows:10, like:5 }, normal:{ rows:14, like:12 }, hard:{ rows:18, like:22 } };
+  const L = A.BLEVELS;   /* 게임의 levels 표 그대로 */
   const k = mode.split(':')[1] || 'normal', N = +(mode.split(':')[2] || 6);
   for(let i=1;i<=N;i++){
-    const r = play(Object.assign({ limit:0 }, L[k]), '2026-09-30:ball:' + k + ':' + i);
+    const r = play(Object.assign({}, L[k]), '2026-09-30:ball:' + k + ':' + i);
     out.push(r); console.log(`${k} #${i} top ${r.top} blocks ${r.total} | ${r.win ? 'WIN ' : 'LOSE'} turns ${r.turn} par ${r.R} shield ${r.shield ? 'kept' : 'used'} balls ${r.balls} ★${r.stars}`);
   }
 }
 const w = out.filter(r => r.win);
-console.log(`\nwins ${w.length}/${out.length}, avg over-par ${(w.reduce((s, r) => s + r.turn - r.R, 0) / Math.max(1, w.length)).toFixed(1)}, shield used ${out.filter(r => !r.shield).length}, stars ${out.map(r => r.stars).join('')}`);
+console.log(`\nwatch avg ${(out.reduce((s, r) => s + r.watch, 0) / Math.max(1, out.length)).toFixed(1)}s (구슬 나는 시간 합)`);
+console.log(`wins ${w.length}/${out.length}, avg over-par ${(w.reduce((s, r) => s + r.turn - r.R, 0) / Math.max(1, w.length)).toFixed(1)}, shield used ${out.filter(r => !r.shield).length}, stars ${out.map(r => r.stars).join('')}`);
