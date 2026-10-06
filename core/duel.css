@@ -36,6 +36,7 @@
 
 /* ---------- 3~5명: 순위 칩 줄(높이 60) ---------- */
 .duelbar.v3.chips, .duelbar.v3.mini{display:block; margin:0 0 8px; padding:2px 0 0; background:none; border:0; box-shadow:none}
+.duelbar.v3.mini{width:auto; height:auto; border-radius:0}   /* 사이트 공용 .mini(19×19 작은 칸) 규칙이 미니 카드 줄에 걸려 줄이 19px로 줄던 것 막기 */
 .dchips{position:relative; height:60px; margin:0 auto; max-width:100%}
 .dpchip{position:absolute; left:0; top:2px; width:66px; height:56px; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px;
   border-radius:12px; background:#FFFFFF; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; color:#1A0F45; font:inherit; cursor:pointer;
@@ -65,7 +66,7 @@
 @media (max-width:369px){ .dpchip{width:60px; height:52px} .dpchip .dc-val{font-size:16px} }
 
 /* ---------- 미니 화면(상대 판 축소): 카드 72×64, 상대 4명까지 + 내 순위 배지 ---------- */
-.dminis{display:flex; align-items:center; justify-content:center; gap:8px; min-height:66px}
+.dminis{display:flex; align-items:center; justify-content:center; gap:6px; min-height:66px}
 .dmini{position:relative; width:72px; height:64px; flex:none; border-radius:12px; background:#fff; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; overflow:hidden}
 .dmini::after{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--sc)}
 .dmini.first{box-shadow:0 3px 0 #1A0F45, inset 0 4px 0 #FFC93C}

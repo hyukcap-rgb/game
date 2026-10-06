@@ -18,6 +18,9 @@ const EMB = (() => {
     unlock:q.get('unlock') === '1',                /* 솔로: 아직 안 연 스테이지도 바로 시작 */
     close:q.get('close') === '1',                  /* 첫 화면에 '나가기' 버튼(앱이 화면을 닫을 때) */
     origin:q.get('origin') || '*',                 /* 이벤트를 받을 부모 페이지 주소(보안상 정해 주는 것을 권장) */
+    room:String(q.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12),   /* 더함: 같은 방 코드끼리 대전(2~5명) */
+    pace:q.get('pace') === 'slow' ? 's' : q.get('pace') === 'normal' ? 'n' : null,             /* 더함: 대전 느긋하게(시간 2배) */
+    roomRd:0,
     cur:null                                       /* 지금 하는 모드 */
   };
 })();
@@ -65,7 +68,20 @@ function embStart(mode, opt){
     if(!lv){ embLevelSheet(); return; }
     startGame(id, lv, { seed:'prac:' + id + ':' + Date.now() + ':' + Math.random() }); return;
   }
-  if(mode === 'duel'){ duelStart(id); return; }
+  if(mode === 'duel'){ if(EMB.room) embRoomDuel(); else duelStart(id); return; }
+}
+/* 방 코드 대전(주소 옵션 room=코드): 같은 코드로 연 사람끼리 대전 방 'fl-d3-e-<코드>-<판>'에 모여 같은 순간 시작(2명 이상, 그 게임 최대 인원까지).
+   12초 안에 혼자면 계속 기다림. 사이트의 대전 방과는 따로(모듈끼리만) */
+function embRoomDuel(rd){
+  const id = EMB.id, code = EMB.room, n = duelMaxOf(id); EMB.cur = 'duel';
+  rd = rd || EMB.roomRd + 1;
+  if(!duelLive()){ toast('실시간 연결이 안 돼요. 잠시 뒤 다시 해 주세요'); embMenu(); return; }
+  let stop = false;
+  openModal(`<div class="rmwait"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note"><b>방 코드 ${esc(code.length === 6 ? code.slice(0, 3) + ' ' + code.slice(3) : code)}</b> · ${rd}판째<br>친구가 같은 코드로 들어오면 시작해요${n > 2 ? ` · ${n}명까지` : ''}</p></div><div class="mbtns one"><button class="b2" id="erNo">취소</button></div>`);
+  const h = duelPrivate(id, 'normal', 'fl-d3-e-' + code.toLowerCase() + '-' + rd, { n, round:rd, pace:duelPaceGet(), room:{ id:code, code, rd },
+    onFail:why => { if(stop) return; if(why === 'gone' && $('#erNo')){ embRoomDuel(rd); return; } closeModal(); toast(why === 'offline' ? '실시간 연결이 안 돼요' : '대전을 시작하지 못했어요'); embMenu(); } });
+  EMB.roomRd = rd;
+  $('#erNo').onclick = () => { stop = true; h.cancel(); embMenu(); };
 }
 function embLevelSheet(){
   const id = EMB.id, m = NG[id];
@@ -88,7 +104,7 @@ function embMenu(){
       ${embHas('daily') ? row('daily', ic('clock'), '오늘의 문제', `${EMB_WD[new Date().getDay()]}요일 · ${LEVELS[lv].name} · 모두 같은 문제${r.tries ? ' · 오늘 최고 ' + fmt(r.best) + '점' : ''}`) : ''}
       ${embHas('solo') ? row('solo', ic('map'), '솔로 · 스테이지 ' + p.max, `${chName(id, chOf(p.max))} · 별 ${advStarsOf(id)}개${conceptsOf(id) ? ' · 5판마다 새 규칙' : ''}${m.cardNote ? ' · ' + esc(m.cardNote()) : ''}`) + `<button class="em-map" id="emMap">${ic('map')} 스테이지 맵</button>` : ''}
       ${embHas('practice') ? row('practice', ic('play'), '연습', m.levelSheet ? '상대와 난이도를 골라요' : '쉬움 · 보통 · 어려움 중 골라 새 문제로') : ''}
-      ${embHas('duel') ? row('duel', ic('duel'), '1:1 대전', `${m.duelHow || '같은 문제 · 점수가 높으면 승리'}${R.w + R.d + R.l ? ` · ${R.w}승 ${R.d}무 ${R.l}패` : ''}${m.cardNote ? ' · ' + esc(m.cardNote()) : ''}`) : ''}
+      ${embHas('duel') ? row('duel', ic('duel'), duelMaxOf(id) > 2 ? `대전 · 2~${duelMaxOf(id)}명` : '1:1 대전', `${EMB.room ? '방 코드 ' + esc(EMB.room) + ' · ' : ''}${m.duelHow || '같은 문제 · 점수가 높으면 승리'}${R.w + R.d + R.l ? ` · 1위 ${R.w}번 · 판 ${R.w + R.d + R.l}번` : ''}${m.cardNote ? ' · ' + esc(m.cardNote()) : ''}`) : ''}
     </div>
     <div class="em-foot"><button id="emHelp">게임 방법</button><button id="emBig" aria-pressed="${bigOn()}">큰 글씨 ${bigOn() ? '켬' : '끔'}</button>${EMB.close ? `<button id="emClose">나가기</button>` : ''}</div>`;
   el.querySelectorAll('.em-go').forEach(b => b.onclick = () => embStart(b.dataset.m));
@@ -177,21 +193,52 @@ function embSoloFinish(win){
     } else sfx('lose');
   }, win ? 500 : 250);
 }
-/* 대전 */
-function embDuelResult(r, a, b){
-  const D = G.duel, id = G.id, win = r === 'w', why = duelWhy(r, a, b);
-  const R = duelRec(), x = R[id] || { w:0, d:0, l:0 }; x[r]++; R[id] = x; store.set('hp:duelRec', R);
-  embEmit('finish', { mode:'duel', result:r, win, vs:D.mode === 'ai' || (D.fleet && G.mode !== 'pvp') ? 'ai' : 'live', me:a ? { score:a.sc, progress:a.pg } : null, opp:b ? { score:b.sc, progress:b.pg } : null, record:x });
-  const html = `${win ? '<div class="burst" aria-hidden="true"></div>' : ''}<h3 class="${r === 'l' ? 'bad' : 'ok'}">${win ? '승리!' : r === 'd' ? '무승부' : '패배'}</h3>
-    ${duelSidesHtml(r, a, b)}${why ? `<p class="note">${why}</p>` : ''}
-    <p class="note">대전 기록 ${x.w}승 ${x.d}무 ${x.l}패</p>`;
-  const pri = ['다시 대전', () => { embMenu(); embStart('duel'); }], sc = ['처음으로', embMenu];
+/* 대전: 사이트와 같은 배치(큰 순위 → 순위표 → 버튼), 포인트 대신 "대전 기록". finish 이벤트는 더하기만(rank·players·kind·round·room) */
+const EMB_CROWN = `<svg class="dcrown" viewBox="0 0 32 24" aria-hidden="true"><path d="M3 7l6.5 6L16 3l6.5 10L29 7l-3 14H6z" fill="#FFC93C" stroke="#1A0F45" stroke-width="2.4" stroke-linejoin="round"/><circle cx="16" cy="15.5" r="2.2" fill="#F0368A" stroke="#1A0F45" stroke-width="1.4"/></svg>`;
+function embDuelFallback(r, a, b){
+  const D = G.duel, ai = D.mode === 'ai' || (D.fleet && G.mode !== 'pvp' && G.lv !== 'pvp'), tx = x => x && x.txt ? x.txt : x && x.sc ? fmt(x.sc) + '점' : '';
+  return { kind:'turn', n:2, ai, rank:r === 'l' ? 2 : 1, tie:r === 'd', why:duelWhy(r, a, b), round:null, room:{ code:null, canAgain:false },
+    rows:[ { pid:'me', nick:'나', me:true, col:DUEL_SEAT[0].col, shape:DUEL_SEAT[0].shape, rank:r === 'l' ? 2 : 1, txt:tx(a) },
+      { pid:'op', nick:(D.opp && D.opp.nick) || '상대', ai, col:DUEL_SEAT[1].col, shape:DUEL_SEAT[1].shape, rank:r === 'w' ? 2 : 1, txt:tx(b) } ].sort((x, y) => x.rank - y.rank) };
+}
+function embDuelResult(r, a, b, res){
+  const D = G.duel, id = G.id, R = res && res.rows ? res : embDuelFallback(r, a, b), r1 = R.rank === 1 && !R.tie;
+  const RC = duelRec(), x = RC[id] || { w:0, d:0, l:0 }; x[r]++; RC[id] = x; store.set('hp:duelRec', RC);
+  embEmit('finish', { mode:'duel', result:r, win:r === 'w', vs:D.mode === 'ai' || (D.fleet && G.mode !== 'pvp') ? 'ai' : 'live', me:a ? { score:a.sc, progress:a.pg } : null, opp:b ? { score:b.sc, progress:b.pg } : null, record:x,
+    rank:R.rank, players:R.rows.map(y => ({ nick:y.me ? null : y.nick, me:!!y.me, ai:!!y.ai, rank:y.rank, ok:!!y.ok, v:y.v == null ? null : y.v, t:y.t == null ? null : y.t, mis:y.mis || 0, score:y.sc || 0, text:y.txt || '', left:!!y.left })),
+    kind:R.kind, round:R.round ? { r:R.round.r, series:R.round.series || {} } : null, room:EMB.room ? { code:EMB.room, r:EMB.roomRd } : (R.room && R.room.code ? { code:R.room.code } : null) });
+  const tot = x.w + x.d + x.l, t = R.n <= 2 && R.tie ? '무승부' : `${R.tie ? '공동 ' : ''}${R.rank}위`;
+  const me = R.rows.find(y => y.me) || {};
+  const rows = `<ol class="dz-rows">${R.rows.map(y => `<li class="${y.me ? 'me' : ''}${y.rank === 1 ? ' win' : ''}${y.left ? ' left' : ''}"><span class="dz-medal${y.rank <= 3 ? ' m' + y.rank : ''}">${y.rank}</span>${duelShapeSvg(y.shape, y.col, 16)}${y.me ? avatar({ me:true }) : oppAv(y.nick)}
+    <span class="dz-nm"><b>${y.me ? '나' : esc(y.nick)}${y.ai ? ' <em class="aitag">컴퓨터</em>' : ''}</b><small>${esc(y.txt || '')}</small></span></li>`).join('')}</ol>`;
+  let html = `${r1 ? '<div class="burst" aria-hidden="true"></div>' : ''}<div class="dzres" id="dzRes">
+    <h3 class="dz-h${r1 ? ' r1' : ''}" data-r="${R.tie && R.rank === 1 ? 'd' : r1 ? 'w' : 'l'}">${r1 ? EMB_CROWN : ''}<span class="num">${t}</span></h3>
+    ${me.txt ? `<p class="dz-mine">${esc(me.txt)}</p>` : ''}${R.why ? `<p class="dz-why">${R.why}</p>` : ''}${rows}${typeof duelResX === 'function' ? duelResX() : ''}
+    <p class="dz-rec">대전 기록 1위 ${x.w}번 · 판 ${tot}번</p><p class="dz-again" id="dzAgain" aria-live="polite"></p>`;
+  const quickAgain = R.room && R.room.canAgain && !R.ai;
+  const pri = EMB.room ? ['한 판 더', () => embRoomDuel(EMB.roomRd + 1), '같은 방 코드로 새 문제']
+    : quickAgain ? ['한 판 더', () => embDuelAgain(), '같은 상대와 새 문제로'] : ['다시 대전', () => { embMenu(); embStart('duel'); }, quickAgain ? '' : '새 상대를 찾아요'];
+  const sc = ['처음으로', embMenu], ex = quickAgain ? [{ id:'mNew', label:'새 상대 찾기', fn:() => { embMenu(); duelStart(id); } }] : [];
+  const RB = embRes(pri, sc, ex); if(quickAgain) RB.pri.keep = true;
   setTimeout(() => {
-    openModal(html + duelContinueHtml() + embButtons(pri, sc)); embBind(pri, sc); duelContinueBind();
-    if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
-    try{ const mm = r === 'w' ? ['joy', 'sad'] : r === 'l' ? ['sad', 'joy'] : ['wow', 'wow']; document.querySelectorAll('#modal .dr-side').forEach((e, i) => toyMood(e, mm[i])); }catch(_){}   /* 이긴 쪽 기쁨 · 진 쪽 아쉬움 */
-    const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);
-  }, $('#veil').classList.contains('on') ? 0 : (win ? 500 : 250));
+    openModal(html + duelContinueHtml() + resBtns(RB) + '</div>'); $('#modal').classList.add('duelm', 'dzm'); resBind(RB); duelContinueBind();
+    if(r1){ fxConfetti(); sfx('fanfare'); } else if(R.tie) sfx('result'); else sfx('lose');
+    try{ toyMood($('#modal .dz-rows li.me'), r1 ? 'joy' : R.tie ? 'wow' : 'sad'); }catch(_){}
+    if(quickAgain) embAgainLoop(id);
+  }, $('#veil').classList.contains('on') ? 0 : (r1 ? 500 : 250));
+}
+/* 빠른 대전 한 판 더(결과 뒤 30초): 남은 초 · 누른 사람 수 */
+function embDuelAgain(){ const p = $('#mPri'); if(!duelAgain()){ toast('같은 상대와 한 판 더 할 시간이 지났어요'); return; } sfx('flLock'); if(p){ p.disabled = true; const l = p.querySelector('.rb-l'); if(l) l.textContent = '기다리는 중…'; } }
+function embAgainLoop(id){
+  clearInterval(embAgainLoop.t);
+  const g = G, tick = () => {
+    const el = $('#dzAgain'), pri = $('#mPri'); if(!el || !pri || G !== g){ clearInterval(embAgainLoop.t); return; }
+    const s = duelAgainState();
+    if(!s.on){ clearInterval(embAgainLoop.t); pri.disabled = false; pri.innerHTML = '<span class="rb-l">새 상대 찾기</span><small>같은 상대와는 시간이 지났어요</small>'; pri.onclick = () => { closeModal(); embMenu(); duelStart(id); }; el.innerHTML = ''; return; }
+    let tm = pri.querySelector('.dz-sec'); if(!tm){ tm = document.createElement('i'); tm.className = 'dz-sec num'; pri.appendChild(tm); } tm.textContent = s.left;
+    el.innerHTML = s.want ? `<span>${s.n >= 2 ? `${s.n}명이 모였어요 · 곧 시작해요` : '다른 사람을 기다리는 중…'}</span>` : s.n ? `<span>${s.n}명이 한 판 더를 눌렀어요</span>` : '';
+  };
+  tick(); embAgainLoop.t = setInterval(tick, 400);
 }
 
 /* ---- 엔진에 알려 주기 ---- */
@@ -211,7 +258,7 @@ Object.assign(HOST, {
   finish(win){ if(G.adv) embSoloFinish(win); else embPlayFinish(win); },
   exit(){ embEmit('quit', { mode:EMB.cur }); embMenu(); },
   canDuel:() => true,
-  duelResult:(r, a, b) => embDuelResult(r, a, b)
+  duelResult:(r, a, b, res) => embDuelResult(r, a, b, res)
 });
 Object.defineProperty(HOST, 'flatMult', { get:() => EMB.cur === 'daily' });   /* 오늘의 문제는 배율 없이(사이트와 같은 점수) */
 
@@ -247,6 +294,7 @@ playChromeInit();
 if(new URLSearchParams(location.search).get('back') === '1'){ HOST.historyGuard = true; navInit(); }
 if(embHas('duel')) netStart(); else ROOM_STATE = 'none';   /* 대전을 켠 곳에서만 대전 서버에 연결 */
 if(new URLSearchParams(location.search).get('sound') === '0') sndSetOn(false);
+if(EMB.pace) store.set('hp:duelPace', EMB.pace);   /* 주소 옵션 pace=slow|normal: 대전 느긋하게(시간 2배) */
 { const bg = new URLSearchParams(location.search).get('big'); if(bg === '1' || bg === '0') bigSet(bg === '1'); }   /* 주소 옵션 big=1|0: 큰 글씨 */
 embEmit('ready', { name:NG[EMB.id].name, modes:EMB.modes });
 embMenu();

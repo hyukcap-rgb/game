@@ -397,3 +397,21 @@ body.gs-full{overflow:hidden}
 .gs-lobby.up .gs-earn button{border-width:3px; border-radius:14px; font-size:15px; padding:8px 14px; box-shadow:0 3px 0 #1A0F45}
 .gs-tcard small{font-size:16px}
 .gs-tph{width:96px; height:96px}
+
+/* ===== 2026-10-06 세대별 테스트 2단계: 13px 미만 글자 정리 =====
+   판(1630×923)은 휴대폰 세로 390×844에서 약 0.52배로 줄어든다 → 판 안 글자는 25px 이상이어야 화면에서 13px 이상.
+   19 표시는 제목·모달(실제 px)에서 13px, 판 이름표에서 26px(≈13.5px). */
+.gs19{width:26px; height:26px; font-size:13px}
+#ptitle .gs19{width:24px; height:24px; font-size:13px}
+.gs-tag{width:168px; left:1096px}
+.gs-tag .gs19{width:44px; height:44px; border-width:4px; font-size:26px}
+.gs-tag b{font-size:28px}
+.gs-tag small{font-size:25px}
+.gs-cnt{min-width:40px; height:40px; border-radius:20px; font-size:26px; line-height:36px}
+.gs-ps b{font-size:25px; line-height:28px; padding:0 9px}
+.gs-prof .gs-ps{height:34px; bottom:-17px}
+.gs-pl, .gs-ih, .gs-ir2, .gs-msg, .gs-ppk{font-size:26px}
+.gs-prof .gs-sub{font-size:25px !important}
+.gs-auto{font-size:26px; letter-spacing:-.6px}
+.gs-sunp small, .gs-nx span, .gs-eno, .gs-pay.sm, .gs-askb button small, .gs-askb button.card small{font-size:26px}
+.gs-sun{font-size:25px}

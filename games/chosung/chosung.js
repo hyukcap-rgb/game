@@ -166,7 +166,8 @@ NG.chosung = (() => {
     q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><path d="M7.5 8.5h5v6M14.5 8.5v7" fill="none" stroke="#6C5CE7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
-    skip:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5v13l8-6.5zM12 5.5v13l8-6.5z" fill="#7CCBFF" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+    skip:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5v13l8-6.5zM12 5.5v13l8-6.5z" fill="#7CCBFF" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    bell:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4.5L4 17h16l-2-3.5V9a6 6 0 0 0-6-6z" fill="#FF8FC8" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="19.5" r="2" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.6"/><path d="M9 7.5a3 3 0 0 1 2-1.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>'
   };
 
   function hud(){
@@ -177,7 +178,8 @@ NG.chosung = (() => {
     const lv = $('#csLives');
     if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
     const dots = $('#csDots');
-    if(dots) dots.innerHTML = m.qs.map((p, n) => `<i class="${p.res === 'ok' ? 'ok' : p.res === 'skip' ? 'sk' : n === m.i ? 'now' : ''}"></i>`).join('');
+    if(dots) dots.innerHTML = m.qs.map((p, n) => `<i class="${p.res === 'ok' ? 'ok' : p.res === 'op' ? 'op' : p.res === 'skip' || p.res === 'sk' ? 'sk' : n === m.i ? 'now' : ''}"${m.bz && p.col ? ` style="--oc:${p.col}"` : ''}></i>`).join('');
+    const mi = $('#csMine'); if(mi && m.bz) mi.textContent = bzMine();
   }
   function msg(html, cls){ const e = $('#csMsg'); if(!e) return; e.className = 'cs-msg ' + (cls || ''); e.innerHTML = html; }
   function baseMsg(){
@@ -222,9 +224,10 @@ NG.chosung = (() => {
     const m = S(), inp = $('#csIn');
     if(!m || G.over || G.paused || m.lock || m.phase !== 'play' || !inp) return;
     if(G.duel && !G.duel.go) return;
+    if(m.bz && Date.now() < m.bz.lockUntil) return;   /* 버저 대전: 틀린 뒤 0.8초는 못 누름 */
     const v = norm(inp.value); if(!v) return;
     const p = m.qs[m.i], ok = valid(p);
-    if(ok.includes(v)){ correct(v); return; }
+    if(ok.includes(v)){ if(m.bz) bzClaim(v); else correct(v); return; }
     /* 틀림: 초성이 같으면 "사전에 없음"(벌칙 없음), 다르면 진짜 실수 */
     const vc = choOf(v), same = vc.length === p.cho.length && [...vc].every((ch, i) => i === p.blank || ch === p.cho[i]);
     const card = $('#csCard');
@@ -243,6 +246,11 @@ NG.chosung = (() => {
     }
     msg(`<b class="bad">${hard ? '땡!' : '음…'}</b><span>${esc(why)}</span>`, 'cs-pop');
     inp.select && inp.select();
+    if(m.bz){   /* 버저 대전: 틀리면 0.8초 쉼(입력칸은 그대로 두어 화면 키보드가 내려가지 않게) */
+      m.bz.lockUntil = Date.now() + BZ_LOCK;
+      const f = $('#csForm'); if(f){ f.classList.add('lock'); T(() => f.classList.remove('lock'), BZ_LOCK); }
+      msg(`<b class="bad">${hard ? '땡!' : '음…'}</b><span>${esc(why)} · 잠깐 쉬어요</span>`, 'cs-pop');
+    }
     hud();
     T(() => { if(card) card.classList.remove('bad'); }, 500);
     if(hard && m.lives && m.wrongs >= m.lives){ lose('기회를 다 썼어요', 'miss'); return; }
@@ -315,6 +323,7 @@ NG.chosung = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(); if(m.phase !== 'play') return;
+    if(m.bz){ bzTick(); return; }
     const t = elapsed(), rem = remTime(t), sec = Math.ceil(rem), bar = $('#csBar');
     if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / G.limit)})`;
     if(sec !== m.lastSec){
@@ -342,6 +351,115 @@ NG.chosung = (() => {
     msg(`<b class="bad">${text}</b><span>${m.solved}/${m.q}문제</span>`, 'cs-pop');
     sfx('chosungTimeUp'); try{ fxBuzz([40, 40, 60]); }catch(_){}
     T(() => finish(false), 1400);
+  }
+
+  /* ===== 버저 대전(대전 v3 선점, 2~5명): 같은 문제를 모두 동시에 보고 먼저 맞힌 사람이 그 문제를 차지(duelClaim('q'+번호)) =====
+     문제 일정은 모든 기기가 같은 값으로 계산한다: 첫 문제는 대전 시작 시각(서버 ms)에 열리고, 누가 차지하면 그 사람이 누른 시각에,
+     아무도 못 맞히면 열린 뒤 qt초에 닫힌다 → 정답 보여 주기 BZ_SHOW → 다음 문제.
+     차지 기록이 늦게 도착하면(간발의 차) 주인과 일정이 저절로 다시 맞춰진다. 마지막 문제 뒤 duelEndNow → 순위 = 차지 수 → 틀린 수 → 마지막 차지 이른 순(엔진) */
+  const BZ_SHOW = 1600, BZ_LOCK = 800;
+  const srvNow = () => typeof duelSrv === 'function' ? duelSrv() : Date.now();
+  const bzPl = pid => { try{ return (duelPlayers() || []).find(x => x.pid === pid) || null; }catch(_){ return null; } };
+  function bzMine(){ const D = G && G.duel; if(!D || !D.owners) return 0; let n = 0; for(const k in D.owners) if(D.owners[k] === D.myPid) n++; return n; }
+  /* 지금 몇 번째 문제가 어떤 상태인가: { i, ph:'wait'|'open'|'show'|'done', s(열린 시각), end(닫힌 시각), own, now } */
+  function bzSched(){
+    const m = S(), D = G.duel, B = m.bz; if(!D || !D.go || D.goSrv == null) return { i:0, ph:'wait' };
+    const now = srvNow(); let s = D.goSrv;
+    for(let i = 0; i < m.q; i++){
+      const k = 'q' + i, own = duelOwner(k), at = own && D.P[own] && D.P[own].cl ? +D.P[own].cl[k] : NaN;
+      const end = own && isFinite(at) ? Math.max(s, at) : s + B.qt * 1000;
+      if(!own && now < end) return { i, ph:'open', s, end, now };
+      const nx = end + BZ_SHOW;
+      if(now < nx) return { i, ph:'show', s, end, own, now };
+      s = nx;
+    }
+    return { i:m.q, ph:'done', now };
+  }
+  function bzTick(){
+    const m = S(), B = m.bz, D = G.duel; if(!D || !D.go) return;
+    const s = bzSched();
+    if(D.mode === 'ai') bzAi(s);
+    const key = s.i + ':' + s.ph + ':' + (s.own || '');
+    if(key !== B.key){ B.key = key; bzEnter(s); if(G.over) return; }
+    if(s.ph === 'open'){
+      const rem = Math.max(0, (s.end - s.now) / 1000), sec = Math.ceil(rem), bar = $('#csBar');
+      if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / B.qt)})`;
+      if(sec !== m.lastSec){
+        m.lastSec = sec;
+        const e = $('#csTime'); if(e) e.textContent = mmss(sec);
+        const tp = $('#csTimeP'); if(tp) tp.classList.toggle('warn', sec <= 5);
+        const bw = $('#csBarW'); if(bw) bw.classList.toggle('hurry', sec <= 5);
+        if(sec <= 5 && sec > 0) sfx('chosungTick', { hi:sec <= 3 });
+      }
+    }
+  }
+  function bzEnter(s){
+    const m = S(), B = m.bz, D = G.duel;
+    if(s.ph === 'done'){
+      m.phase = 'done'; m.lock = true; m.i = m.q - 1; hud();
+      msg('<b>모든 문제 끝!</b><span>순위를 매겨요</span>', 'cs-win');
+      duelEndNow(m.q + '문제가 모두 끝났어요');
+      return;
+    }
+    if(s.ph === 'open'){
+      m.lock = false; m.lastSec = -1;
+      if(B.shown !== s.i){ B.shown = s.i; m.i = s.i; showQ(); clearInput(); }
+      const bar = $('#csBar'); if(bar) bar.style.transform = 'scaleX(1)';
+      return;
+    }
+    /* 정답 보여 주기: 누가 맞혔는지(내 화면의 자리 색) + 정답 */
+    m.lock = true; m.i = s.i; B.shown = s.i;
+    try{ const bar = $('#csBar'); if(bar) bar.style.transform = 'scaleX(0)'; const e = $('#csTime'); if(e) e.textContent = '0:00'; m.lastSec = -1; const tp = $('#csTimeP'); if(tp) tp.classList.remove('warn'); }catch(_){}
+    const p = m.qs[s.i], card = $('#csCard'), own = s.own || null, pl = own ? bzPl(own) : null, mine = !!own && own === D.myPid;
+    const wasMine = B.revI === s.i && B.revOwn === D.myPid;   /* 내 것으로 보였다가 뺏김 → '간발의 차' 알림은 엔진이 띄움 */
+    B.revI = s.i; B.revOwn = own;
+    p.res = own ? (mine ? 'ok' : 'op') : 'sk'; p.col = pl ? pl.col : null;
+    const word = mine && p.got ? p.got : p.n, nick = pl ? pl.nick : '';
+    if(card){
+      card.style.setProperty('--oc', p.col || '#8E8AA6');
+      card.innerHTML = `<div class="cs-top"><span class="cs-cat ${own ? 'op' : 'sk'}">${own ? (mine ? '내가 맞혔어요!' : esc(nick) + '님 정답!') : '아무도 못 맞혔어요'}</span></div>` + tilesHtml(p, word, 'flip');
+      card.classList.remove('ok', 'skip', 'op', 'bad'); card.classList.add(mine ? 'ok' : own ? 'op' : 'skip');
+    }
+    clearInput();
+    const shown = p.say || !mine ? p.w : word;
+    if(mine){
+      sfx('chosungOk', { n:bzMine() - 1 }); try{ fxBuzz(12); }catch(_){}
+      try{ if(card){ const q = fxCenter(card); fxBurst(q.x, q.y, ['#FFE27A', '#FF8FC8', '#FFFFFF'], 16, { speed:260, size:5, kinds:['star','dot','spark'], up:120, g:440, glow:true, dur:.7 }); } }catch(_){}
+      boom(shown);
+      msg(`<b>딩동댕!</b><span>${esc(shown)}</span>`, 'cs-pop');
+    } else if(own){
+      sfx('chosungSkip');
+      msg(`<b class="op" style="--oc:${p.col}">${esc(nick)}</b><span>님이 먼저 맞혔어요</span>`, 'cs-pop');
+    } else {
+      sfx('chosungSkip');
+      msg(`<b class="sk">정답은</b><span>${esc(p.w)}</span>`, 'cs-pop');
+    }
+    if(!wasMine || mine) duelNotify(own ? (mine ? `내가 먼저 맞혔어요! · ${esc(shown)}` : `${esc(nick)}님 정답! · ${esc(p.w)}`) : `아무도 못 맞혔어요 · 정답 ${esc(p.w)}`,
+      { from:pl, kind:mine ? 'good' : 'info', force:true, ms:1300 });
+    hud();
+  }
+  /* 맞는 답을 냄 → 선점 누르기. 이미 남이 차지했으면(같은 순간) 알려 주기만 */
+  function bzClaim(v){
+    const m = S(), p = m.qs[m.i], r = duelClaim('q' + m.i);
+    clearInput();
+    if(r && r.ok){ p.got = v; m.lock = true; bzTick(); return; }
+    msg('<b class="bad">아깝다!</b><span>한발 먼저 맞힌 사람이 있어요</span>', 'cs-pop');
+  }
+  /* 컴퓨터 상대(사람 같은 속도): 문제마다 판 씨앗 난수로 맞힐지·몇 초 뒤에 맞힐지를 정함(같은 판 = 같은 결과).
+     문제 순서가 정해진 버저라 엔진의 '아무 열쇠나 계단마다 차지'(duelKeys) 대신 게임이 지금 문제만 차지시킨다 */
+  function bzAi(s){
+    const m = S(), B = m.bz, D = G.duel, A = D.P && D.P.ai; if(!A || s.ph !== 'open') return;
+    if(B.aiI !== s.i){
+      B.aiI = s.i;
+      const r = mulberry(seedFrom(D.seed + ':cai:' + s.i)), slow = D.pace === 's' ? 1.6 : 1;
+      const hit = r() < (m.qs[s.i].n.length >= 4 ? .45 : .58), sec = (3.2 + r() * 8.5 + (r() < .15 ? 3 : 0)) * slow;
+      B.aiAt = hit && sec < B.qt - .6 ? s.s + sec * 1000 : null;
+    }
+    const k = 'q' + s.i;
+    if(B.aiAt && s.now >= B.aiAt && !duelOwner(k)){
+      A.cl = A.cl || {}; A.cl[k] = Math.round(B.aiAt); B.aiAt = null;
+      try{ if(typeof duelClaimsRecalc === 'function') duelClaimsRecalc(D); }catch(_){}
+    }
   }
 
   /* 화면 맞춤(보이기만): 카드·입력 묶음을 남은 높이의 가운데~아래에 둔다. 화면 키보드가 올라오면(보이는 높이가 줄면) 빈칸을 없애 입력칸·카드가 보이게 */
@@ -407,10 +525,29 @@ NG.chosung = (() => {
     help:[
       ['초성과 분류를 봐요', '예를 들어 분류가 「과일」, 초성이 ㅅㄱ이면 "사과"를 떠올릴 수 있어요. 같은 분류·같은 초성인 낱말은 무엇이든 정답이에요.'],
       ['써서 확인해요', '아래 칸에 낱말을 쓰고 [확인]이나 Enter를 눌러요. 틀려도 점수는 거의 깎이지 않아요(초성이 다르면 −5점).'],
+      ['대전: 먼저 맞히면 내 것', '대전은 2~5명이 같은 문제 8개를 함께 봐요. 먼저 맞힌 사람이 그 문제를 차지하고(문제당 15초), 틀리면 0.8초 쉬어요. 많이 차지한 사람이 1등!'],
       ['막히면 힌트·건너뛰기', '💡힌트는 앞에서부터 한 글자를 열어 줘요(−15점). 건너뛰면 그 문제는 0점이고 정답을 보여 줘요(판마다 횟수 제한).'],
       ['시간 안에 모두 풀어요', '제한 시간 안에 모든 문제를 풀면 성공! 빨리 풀수록 시간 보너스가 커요.'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 긴 낱말·비밀 분류·빈 초성·속담 같은 새 규칙과 빠른 판·첫 글자 선물 같은 변주가 5판마다 하나씩 나와요.']
     ],
+    /* 도움말 v2: 움직이는 그림(320×180) + 3줄. 그림 = 분류 칩과 초성 칸이 정답으로 뒤집히고 버저 종이 울림(오리지널 도형) */
+    howto:{
+      pic(){
+        const tile = (x, a, b, d) => `<g transform="translate(${x} 70)"><rect x="-26" y="-4" width="52" height="58" rx="13" fill="#B9A6FF" stroke="${OL}" stroke-width="3"/><rect x="-26" y="-8" width="52" height="56" rx="13" fill="#FFF8E4" stroke="${OL}" stroke-width="3"/>
+          <text y="34" font-size="34" text-anchor="middle" fill="#2E1F7A" font-family="Jua,sans-serif">${a}<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.38;.42;.94;1" dur="4s" begin="${d}s" repeatCount="indefinite"/></text>
+          <text y="34" font-size="32" text-anchor="middle" fill="#13703F" font-family="Jua,sans-serif" opacity="0">${b}<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.4;.44;.94;1" dur="4s" begin="${d}s" repeatCount="indefinite"/></text></g>`;
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#E9E1FF"/>
+          <g fill="#fff" opacity=".6"><circle cx="24" cy="26" r="4"/><circle cx="296" cy="150" r="5"/><circle cx="290" cy="24" r="3"/><circle cx="34" cy="154" r="3"/></g>
+          <rect x="62" y="20" width="196" height="146" rx="22" fill="#fff" stroke="${OL}" stroke-width="3"/>
+          <rect x="125" y="32" width="70" height="28" rx="14" fill="#FF8FC8" stroke="${OL}" stroke-width="2.6"/><text x="160" y="52" font-size="17" text-anchor="middle" fill="#fff" stroke="${OL}" stroke-width="3.5" paint-order="stroke" font-family="Jua,sans-serif">과일</text>
+          ${tile(128, 'ㅅ', '사', 0)}${tile(192, 'ㄱ', '과', .06)}
+          <g transform="translate(276 92)"><g><animateTransform attributeName="transform" type="rotate" values="0;0;-14;12;-8;0;0" keyTimes="0;.4;.45;.5;.55;.6;1" dur="4s" repeatCount="indefinite"/>
+            <path d="M0-24a15 15 0 0 0-15 15v12l-6 9h42l-6-9V-9a15 15 0 0 0-15-15z" fill="#FFE27A" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/><circle cy="18" r="5" fill="#FF8FC8" stroke="${OL}" stroke-width="2.6"/></g>
+            <text x="0" y="-32" font-size="18" text-anchor="middle" fill="#F0368A" stroke="#fff" stroke-width="4" paint-order="stroke" font-family="Jua,sans-serif" opacity="0">+1<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.42;.46;.8;.86" dur="4s" repeatCount="indefinite"/></text></g>
+          <g transform="translate(36 96)"><path d="M-12-18h24a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H-2l-8 8v-8h-2a6 6 0 0 1-6-6v-20a6 6 0 0 1 6-6z" fill="#fff" stroke="${OL}" stroke-width="2.6" stroke-linejoin="round"/><text y="5" font-size="20" text-anchor="middle" fill="#7B5CE6" font-family="Jua,sans-serif">?</text></g></svg>`;
+      },
+      lines:['분류와 초성을 보고 낱말을 떠올려요', '아래 칸에 쓰고 [확인]을 눌러요', '대전은 먼저 맞힌 사람이 차지해요']
+    },
     helpExtra(){ const m = G && G.id === 'chosung' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['첫소리 마을','낱말 숲','수수께끼 다리','이야기 장터','말씨 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·건너뛰기 2번 이하 · ★★★ 힌트·건너뛰기 없이',
@@ -432,6 +569,8 @@ NG.chosung = (() => {
         phase:'play', lock:false, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, lastSec:-1, sec:0, fail:null, timers:new Set() };
       G.limit = cfg.limit; if(G.m.lives) G.paws = G.m.lives;
       const m = G.m;
+      /* 실시간 대전(v3) = 버저 선점: 힌트·넘기기 없음, 문제마다 qt초 */
+      if(G.duel && G.duel.v === 3 && !G.duel.fleet){ m.bz = { qt:cfg.qt || 15, key:'', lockUntil:0, shown:-1 }; m.hintLeft = 0; m.skipLeft = 0; }
       G.cleanup = () => { m.timers.forEach(clearTimeout); m.timers.clear(); if(G && G.raf) cancelAnimationFrame(G.raf); document.querySelectorAll('.fxcombo').forEach(e => e.remove()); };
       /* 테스트·도구용: 남은 문제를 차례로 모두 맞힌다 */
       m._solveForTest = () => new Promise(res => {
@@ -450,9 +589,9 @@ NG.chosung = (() => {
       st.innerHTML = `<div class="ng-chosung">
         <div class="hud-row">
           <div class="hchip" aria-label="문제"><span class="hv">${ICO.q}<b id="csNo">1</b><small>/${m.q}</small></span><em>문제</em></div>
-          <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
-          <button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트<i class="cs-cost">−15</i></em></button>
-          <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기<i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></em></button>
+          <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(m.bz ? m.bz.qt : G.limit)}</b></span><em>남은 시간</em></div>
+          ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트<i class="cs-cost">−15</i></em></button>
+          <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기<i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></em></button>`}
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="cs-barw" id="csBarW"><i id="csBar"></i></div>
@@ -512,6 +651,14 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-dots i.now{background:#FFE27A; border-color:#1A0F45; transform:scale(1.25)}
 .ng-chosung .cs-dots i.ok{background:#5BD08A; border-color:#1A0F45}
 .ng-chosung .cs-dots i.sk{background:#B5B0CC; border-color:#1A0F45}
+.ng-chosung .cs-dots i.op, .ng-chosung .cs-dots i.ok[style]{background:var(--oc); border-color:#1A0F45}
+.ng-chosung .hchip.mine{background:linear-gradient(180deg,#FFF0F7,#FFC6E2)} .ng-chosung .hchip.mine em{color:#8A1F57}
+.ng-chosung .cs-card.op{background:radial-gradient(circle at 50% 30%, #FFFFFF 0%, color-mix(in srgb, var(--oc) 22%, #fff) 100%)}
+.ng-chosung .cs-cat.op{background:var(--oc)}
+.ng-chosung .cs-card.op .cs-t{background:linear-gradient(180deg,#FFFFFF, color-mix(in srgb, var(--oc) 25%, #fff)); color:#1A0F45}
+.ng-chosung .cs-msg b.op{color:var(--oc)}
+.ng-chosung .cs-form.lock .cs-in{background:#FFE3E4; border-color:#E5484D}
+.ng-chosung .cs-form.lock .cs-go{filter:grayscale(.8); opacity:.7}
 .ng-chosung .cs-card{position:relative; width:100%; margin:10px 0 0; padding:16px 10px 20px; border-radius:22px; cursor:text;
   background:radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EFEAFF 100%); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), 0 5px 0 #1A0F45, 0 14px 22px rgba(60,30,140,.2); display:flex; flex-direction:column; align-items:center; gap:14px; min-height:230px; justify-content:center; max-width:358px}
@@ -577,7 +724,23 @@ body[data-mode="chosung"]{background:
   };
 })();
 
-/* 대전: 같은 문제 세트를 누가 더 빨리·많이 맞히나(기본 대전 = 같은 씨앗, 점수 비교) */
-Object.assign(NG.chosung, { duelPace:[150, .78], duelHow:'같은 초성 문제 · 빨리 많이 맞히면 승리', duelStat:{ unit:'문제', get:() => ({ v:G.m.i, t:G.m.q }) } });
+/* 대전 v3 = 버저 선점(2~5명, docs/21 WP11·안건 2): 8문제를 모두 같이 보고 먼저 맞힌 사람이 그 문제를 차지.
+   문제당 15초(느긋하게 30초), 오답은 0.8초 쉼, 순위 = 맞힌 수 → 틀린 수 → 마지막으로 맞힌 시각 이른 순(엔진 선점 순위) */
+Object.assign(NG.chosung, {
+  duelKind:'shared', duelMax:5, duelEnd:'game', duelRoom:true,   /* duelRoom: 대전 방(2~5명) 목록에 나옴(WP2) */
+  duelPace:[150, .78],
+  duelHow:'같은 초성 문제 · 먼저 맞힌 사람이 차지',
+  duelStat:{ unit:'문제', get:() => (G.m.bz ? { t:G.m.q, mis:G.m.wrongs } : { v:G.m.i, t:G.m.q, mis:G.m.wrongs }) },
+  /* 대전 판: 보통 = 8문제·문제당 15초. 쉬움·어려움은 방 난이도에서(문제 수·시간은 같고 낱말 길이·분류·정답 후보 수만 다름) */
+  duelCfg(o){
+    const d = o && o.diff, q = 8, qt = 15;
+    const c = d === 'easy' ? { minLen:2, maxLen:3, easy:1, maxCand:6 } : d === 'hard' ? { minLen:3, maxLen:4, easy:0, maxCand:3 } : { minLen:2, maxLen:4, easy:0, maxCand:4 };
+    return Object.assign({ q, qt, limit:q * (qt + 2), hints:0, skips:0 }, c);
+  },
+  duelSlow(cfg){ const qt = (cfg.qt || 15) * 2; return Object.assign({}, cfg, { qt, limit:cfg.q * (qt + 2) }); },
+  duelKeys:() => (G.m && G.m.qs ? G.m.qs.map((_, i) => 'q' + i) : []),
+  /* 컴퓨터는 문제마다 게임이 직접 차지시킨다(bzAi). 엔진의 계단 진행은 쓰지 않음(끝나지 않는 결과) */
+  duelAi:() => ({ ok:false, T:1e6, sc:0, fail:0 })
+});
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.chosung.scene = { kind:'shapes', colors:['#FFFFFF','#E3DAFF','#FFF3B0'], density:.8, alpha:.5 };

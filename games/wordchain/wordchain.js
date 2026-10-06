@@ -3,7 +3,7 @@
    앞 낱말의 끝 글자로 시작하는 낱말을 번갈아 잇는다(두음법칙 허용: 녀→여, 력→역, 라→나 …).
    사전은 wordchain-words.js(직접 모은 일반 명사, core = 누구나 아는 말 · extra = 받아 주는 말).
    - 오늘의 문제·연습·솔로: AI와 번갈아 잇기. 시작 낱말·AI 응답은 모두 씨앗 rng(같은 날 같은 시작, 같은 수 → 같은 응답).
-   - 대전: 실시간 1:1 턴제(사람끼리 번갈아 잇기, gostop처럼 duelLaunch + duel:{fleet:true} + presence로 수 주고받기). 상대가 없으면 AI. */
+   - 대전: 2~5명 돌아가며 잇기(공용 대전 v3 차례 엔진 duelTurn). 못 이으면 탈락, 끝까지 남은 사람이 1등. 사람이 없으면 컴퓨터. */
 NG.wordchain = (() => {
   const ID = 'wordchain';
   const OL = '#1A0F45';
@@ -178,9 +178,10 @@ NG.wordchain = (() => {
     send:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 20 4l-5.6 16.3-3.2-6.9z" fill="#fff" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/><path d="M11.2 13.4 20 4" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/></svg>'
   };
   const oppKind = nick => { try{ const k = DUEL_NICK_B.findIndex(a => String(nick || '').endsWith(a)); return FACE_KIND[k >= 0 ? k : seedFrom(String(nick || '?')) % 6]; }catch(_){ return 'cat'; } };
-  function avHtml(by){
+  function avHtml(by, pid){
     const m = S();
     if(by === 'me') return toyImg('fox', 'wc-avimg');
+    if(m.dw && pid) return toyImg(oppKind(dWho(pid).nick), 'wc-avimg');   /* 대전: 참가자마다 동물 얼굴 */
     if(by === 'op') return toyImg(m.oppKind || 'cat', 'wc-avimg');
     return toyImg('owl', 'wc-avimg');
   }
@@ -192,8 +193,9 @@ NG.wordchain = (() => {
   function bubble(x, n){
     const m = S(), by = x.by;
     if(by === 'start') return `<div class="wc-start" data-n="${n}"><small>시작 낱말</small><div class="wc-ws">${tilesHtml(x.w, false, true)}</div></div>`;
-    const who = by === 'me' ? '나' : by === 'op' ? esc(m.oppNick || '상대') : (m.aiName || '컴퓨터');
-    return `<div class="wc-b ${by === 'me' ? 'me' : 'ai'}" data-n="${n}"><span class="wc-av">${avHtml(by)}</span><div class="wc-bw"><small>${who}${x.kill ? ' · <b class="kill">끝내기 낱말!</b>' : ''}</small><div class="wc-ws">${tilesHtml(x.w, true, true)}</div></div></div>`;
+    const who = by === 'me' ? '나' : m.dw && x.pid ? esc(duelShortNick(dWho(x.pid).nick)) + (x.pid === 'ai' ? ' (컴퓨터)' : '') : by === 'op' ? esc(m.oppNick || '상대') : (m.aiName || '컴퓨터');
+    const sc = m.dw && x.pid && by !== 'me' ? ` style="--sc:${dWho(x.pid).col}"` : '';
+    return `<div class="wc-b ${by === 'me' ? 'me' : 'ai'}${sc ? ' seat' : ''}" data-n="${n}"${sc}><span class="wc-av">${avHtml(by, x.pid)}</span><div class="wc-bw"><small>${who}${x.kill ? ' · <b class="kill">끝내기 낱말!</b>' : ''}</small><div class="wc-ws">${tilesHtml(x.w, true, true)}</div></div></div>`;
   }
   /* 이은 낱말 기차(보이기만): 최근 8개를 칸으로 잇고, 새 낱말이 오른쪽에 붙으면 앞 칸은 왼쪽으로 밀려난다 */
   const TRAIN_N = 8;
@@ -220,7 +222,8 @@ NG.wordchain = (() => {
     const log = $('#wcLog'); if(!log) return;
     const t = log.querySelector('.wc-typing'); if(t) t.remove();
     if(!on) return;
-    log.insertAdjacentHTML('beforeend', `<div class="wc-b ai wc-typing"><span class="wc-av">${avHtml(by)}</span><div class="wc-bw"><small>${by === 'op' ? esc(S().oppNick || '상대') : S().aiName} · 생각 중</small><div class="wc-dots"><i></i><i></i><i></i></div></div></div>`);
+    const m = S(), dp = m.dw && by !== 'op' && by !== 'ai' ? by : m.dw && by === 'ai' ? 'ai' : null;   /* 대전: by = 참가자 번호 */
+    log.insertAdjacentHTML('beforeend', `<div class="wc-b ai wc-typing"><span class="wc-av">${avHtml(dp ? 'op' : by, dp)}</span><div class="wc-bw"><small>${dp ? esc(duelShortNick(dWho(dp).nick)) : by === 'op' ? esc(m.oppNick || '상대') : m.aiName} · 생각 중</small><div class="wc-dots"><i></i><i></i><i></i></div></div></div>`);
     log.scrollTop = log.scrollHeight;
   }
   function msg(html, cls){ const e = $('#wcMsg'); if(!e) return; e.className = 'wc-msg ' + (cls || ''); e.innerHTML = html; }
@@ -231,13 +234,13 @@ NG.wordchain = (() => {
   function hud(){
     const m = S(); if(!m) return;
     const c = $('#wcCnt'); if(c) c.textContent = m.myWords;
-    const o = $('#wcOpp'); if(o) o.textContent = m.oppWords;
+    const o = $('#wcAlive'); if(o && m.dw) try{ o.textContent = dAlive().length; }catch(_){}
     const h = $('#wcHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || m.turn !== 'me'; }
     const hd = $('#wcHead'); if(hd){ const t = headTxt(); hd.textContent = t; hd.classList.toggle('two', t.length > 1); }
     const g = $('#wcGold'); if(g){ g.innerHTML = `★ ${m.rule.gold.join('·')} <b>${Math.min(m.goldGot, m.rule.goldNeed)}/${m.rule.goldNeed}</b>`; g.classList.toggle('ok', m.goldGot >= m.rule.goldNeed); }
     const mi = $('#wcMiss'); if(mi) mi.innerHTML = `실수 <b>${m.misses}/1</b>`;
     const inp = $('#wcInput');
-    if(inp) inp.placeholder = m.turn === 'me' ? (m.rule.rev ? `‘${lastW(m)[0]}’(으)로 끝나는 낱말` : `‘${needTxt(m)}’(으)로 시작하는 낱말`) : m.turn === 'op' || m.turn === 'ai' ? '상대 차례예요…' : '';
+    if(inp) inp.placeholder = m.dw && m.dw.P[m.dw.me].out ? '탈락했어요 · 함께 구경해요' : m.turn === 'me' ? (m.rule.rev ? `‘${lastW(m)[0]}’(으)로 끝나는 낱말` : `‘${needTxt(m)}’(으)로 시작하는 낱말`) : m.turn === 'op' || m.turn === 'ai' ? '상대 차례예요…' : '';
     const st = $('#wcStage'); if(st) st.dataset.turn = m.turn || '';
     fresh();
   }
@@ -250,7 +253,7 @@ NG.wordchain = (() => {
       let g = log.querySelector('.wc-guide');
       if(!on){ if(g) g.remove(); return; }
       const txt = m.turn === 'me' ? (m.rule.rev ? `<b>‘${lastW(m)[0]}’</b>(으)로 <b>끝나는</b> 낱말을 넣어요` : `<b>‘${needTxt(m)}’</b>(으)로 시작하는 낱말을 넣어요`) : m.turn ? '상대가 먼저 이어요' : '곧 시작해요';
-      const goal = m.duelOn ? `${m.dTurns}개씩 이으면 글자 점수로 승부` : `${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 끝내기 승리`;
+      const goal = m.duelOn ? `차례에 못 이으면 탈락 · 끝까지 남으면 1등 (모두 ${m.dTurns}개씩 이으면 글자 점수)` :`${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 끝내기 승리`;
       const html = `<p class="wc-gt">${txt}</p><p class="wc-gs">${goal}</p>`;
       if(!g){ log.insertAdjacentHTML('beforeend', `<div class="wc-guide">${html}</div>`); }
       else if(g.innerHTML !== html){ g.innerHTML = html; log.appendChild(g); }
@@ -269,14 +272,14 @@ NG.wordchain = (() => {
   }
 
   /* ===== 차례 · 시계 ===== */
-  const pvp = () => S().net && S().net.live;
-  const nowS = () => pvp() ? Date.now() / 1000 : elapsed();   /* 실시간 대전은 멈추지 않는 시계 */
+  const pvp = () => !!S().dw;   /* 대전: 멈추지 않는 시계, 차례 시간은 엔진(duelTurn.left) */
+  const nowS = () => elapsed();
   const turnLimit = m => m.rule.shrink ? Math.max(6, m.cfg.limit - m.myWords) : m.cfg.limit;
-  const remain = m => Math.max(0, m.tLim - (nowS() - m.tStart) - m.pen);
+  const remain = m => { if(m.dw){ const l = duelTurn.left(); return l == null ? m.tLim : l; } return Math.max(0, m.tLim - (nowS() - m.tStart) - m.pen); };
   function startMyTurn(){
     const m = S(); if(m.phase !== 'play' || G.over) return;
-    if(!cands(m, lastW(m)).length){ lose('kill'); return; }     /* 이을 낱말이 사전에 하나도 없음 = 한방 당함 */
-    m.turn = 'me'; m.tLim = turnLimit(m); m.tStart = nowS(); m.pen = 0; m.lastSec = -1; m.hintShown = null;
+    if(!m.dw && !cands(m, lastW(m)).length){ lose('kill'); return; }     /* 이을 낱말이 사전에 하나도 없음 = 한방 당함(대전은 dTurnStart가 탈락 처리) */
+    m.turn = 'me'; m.tLim = turnLimit(m); m.tStart = nowS(); m.pen = 0; m.lastSec = -1; m.hintShown = null; m.timeShown = false; m.giveArm = false;
     hud();
     msg(m.rule.rev ? `<b>‘${lastW(m)[0]}’</b><span>(으)로 끝나는 낱말을 넣어요</span>` : `<b>‘${needTxt(m)}’</b><span>(으)로 시작하는 낱말!</span>`, 'go');
     const inp = $('#wcInput'); if(inp && !G.paused) try{ inp.focus({ preventScroll:true }); }catch(_){}
@@ -285,7 +288,10 @@ NG.wordchain = (() => {
   function loop(){
     if(!G || !G.m || G.over) return;
     G.raf = requestAnimationFrame(loop);
-    const m = S(); if(m.phase !== 'play') return;
+    const m = S();
+    if(m.dw && m.phase === 'intro' && G.duel.go) startChain(m.start, 0);   /* 대전: 모두 같은 순간(엔진 카운트다운 끝)에 시작 */
+    if(m.dw) dPoll();
+    if(m.phase !== 'play') return;
     const bar = $('#wcBar'), tp = $('#wcTimeP'), te = $('#wcTime');
     if(m.turn === 'me'){
       if(G.paused && !pvp()) return;
@@ -296,12 +302,12 @@ NG.wordchain = (() => {
         const hurry = sec <= 5; if(tp) tp.classList.toggle('warn', hurry); const bw = $('#wcBarW'); if(bw) bw.classList.toggle('hurry', hurry);
         if(hurry && sec > 0){ sfx('wcTick', { hi:sec <= 3 }); try{ if(tp && !FXR.reduce && tp.animate) tp.animate([{ transform:'scale(1)' }, { transform:'scale(1.12)' }, { transform:'scale(1)' }], { duration:280 }); }catch(_){} }
       }
-      if(rem <= 0) lose('time');
-    } else if(m.turn === 'op' && m.net && m.net.live){
-      /* 상대 차례: 상대 시계를 흉내(내 화면용). 진짜 판정은 상대 기기가 보낸 수로 */
-      const rem = Math.max(0, m.cfg.limit - (Date.now() - m.net.turnAt) / 1000), sec = Math.ceil(rem);
+      if(rem <= 0){ if(m.dw){ if(!m.timeShown){ m.timeShown = true; msg('<b class="bad">시간이 다 됐어요</b><span>잠깐만요…</span>', 'pop'); } } else lose('time'); }   /* 대전: 탈락은 엔진의 시간 초과 사건으로(모든 기기 같게) */
+    } else if(m.dw && (m.turn === 'op' || m.turn === 'ai')){
+      /* 대전에서 남의 차례: 엔진 차례 시계(모든 기기 같음)를 그대로 보여 줌 */
+      const l = duelTurn.left(), rem = l == null ? m.cfg.limit : l, sec = Math.ceil(rem);
       if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / m.cfg.limit)})`;
-      if(te && sec !== m.lastSec){ m.lastSec = sec; te.textContent = sec; }
+      if(te && sec !== m.lastSec){ m.lastSec = sec; te.textContent = sec; if(tp) tp.classList.remove('warn'); const bw = $('#wcBarW'); if(bw) bw.classList.remove('hurry'); }
     } else {
       /* 상대·컴퓨터 차례: 내 차례에 남았던 숫자(예: 10)가 그대로 보이지 않게, 다음 내 차례 시간을 보여 준다 */
       if(bar) bar.style.transform = 'scaleX(1)';
@@ -323,6 +329,11 @@ NG.wordchain = (() => {
       sfx('wcBad'); fxBuzz(20);
       if(e.kind === 'rule'){
         m.misses++;
+        if(m.dw){   /* 대전: 규칙 실수는 한 번 봐주고 두 번째면 탈락 */
+          m.dw.P[m.dw.me].miss = m.misses;
+          if(m.misses >= 2){ msg(`<b class="bad">${e.t}</b><span>실수 2번째!</span>`, 'pop'); if(duelTurn.act('out', { k:'miss' })) dOut(m.dw.me, 'miss'); return; }
+          msg(`<b class="bad">${e.t}</b><span>한 번 더 틀리면 탈락!</span>`, 'pop'); hud(); try{ inp.select(); }catch(_){} return;
+        }
         if(m.rule.tick){ m.pen += m.rule.tick; try{ const q = fxCenter($('#wcTimeP')); fxFloat(q.x, q.y + 30, '−' + m.rule.tick + '초', 'bad'); }catch(_){} }
         if(m.rule.tight && m.misses >= 2){ msg(`<b class="bad">${e.t}</b><span>실수 2번째!</span>`, 'pop'); hud(); lose('miss'); return; }
       }
@@ -331,8 +342,9 @@ NG.wordchain = (() => {
       try{ inp.select(); }catch(_){}
       return;
     }
+    if(m.dw && !duelTurn.act('w', { w })){ msg('<b class="bad">시간이 지났어요</b><span>이번 차례는 넘어가요</span>', 'pop'); return; }   /* 늦은 수는 엔진이 막음 */
     inp.value = '';
-    play('me', w);
+    play('me', w, m.dw ? { pid:m.dw.me } : null);
   }
   /* 한 수 두기(나·AI·상대 공통) */
   function play(by, w, extra){
@@ -340,13 +352,13 @@ NG.wordchain = (() => {
     const rem = by === 'me' ? remain(m) : 0;
     const x = Object.assign({ w, by }, extra || {});
     m.chain.push(x); m.used.add(w);
+    if(m.dw && x.pid){ const q = m.dw.P[x.pid]; if(q){ q.words++; q.chars += w.length; } if(!cands(m, w).length) x.kill = true; dSyncAi(); }   /* 대전: 다음 사람이 이을 낱말이 없으면 끝내기 낱말 */
     if(by === 'me'){
       m.myWords++; m.myChars += w.length; m.remSum += Math.min(1, rem / m.tLim); m.turns++;
       if(w.length >= 3) m.longW++;
       if(m.rule.gold.some(c => w.includes(c))) m.goldGot++;
-      if(m.net && m.net.live) publish(w);
     } else { m.oppWords++; m.oppChars += w.length; }
-    m.turn = null; hud();
+    m.turn = null; hud(); if(m.dw) order();
     const el = logAdd(x);
     /* 효과(보이기만) */
     try{
@@ -360,11 +372,7 @@ NG.wordchain = (() => {
   }
   function afterMove(by){
     const m = S(); if(m.phase !== 'play') return;
-    if(m.duelOn){
-      if(m.myWords >= m.dTurns && m.oppWords >= m.dTurns){ duelEnd('pts'); return; }
-      if(by === 'me') T(oppTurn, 380); else T(startMyTurn, 420);
-      return;
-    }
+    if(m.dw){ dCheckEnd(); return; }   /* 대전: 다음 차례는 엔진 차례(dPoll)가 정함 */
     if(by === 'me'){
       const goldOk = m.goldGot >= m.rule.goldNeed;
       if(m.myWords >= m.cfg.goal && goldOk){ win('goal'); return; }
@@ -373,18 +381,24 @@ NG.wordchain = (() => {
       T(aiTurn, 380);
     } else T(startMyTurn, 420);
   }
-  function oppTurn(){ const m = S(); if(m.net && m.net.live){ m.turn = 'op'; m.net.turnAt = Date.now(); m.lastSec = -1; hud(); typing('op', true); msg(`<span><b>${esc(m.oppNick)}</b> 차례예요</span>`, 'soft'); sync(); } else aiTurn(); }
-
   /* ===== AI 차례 ===== */
   function aiTurn(){
     const m = S(); if(m.phase !== 'play' || G.over) return;
-    m.turn = 'ai'; hud(); typing('ai', true);
-    msg(`<span>${m.aiName}가 생각하고 있어요…</span>`, 'soft');
-    const r = histRng(m, 'wait'), wait = 650 + Math.floor(r() * 650) + (m.myWords > 6 ? 250 : 0);
+    m.turn = 'ai'; m.lastSec = -1; hud(); typing('ai', true);
+    msg(`<span>${m.dw ? esc(duelShortNick(dWho('ai').nick)) + '님이' : m.aiName + '가'} 생각하고 있어요…</span>`, 'soft');
+    const r = histRng(m, 'wait'), wait = (m.dw ? 1500 + Math.floor(r() * 2000) : 650 + Math.floor(r() * 650)) + (m.myWords > 6 ? 250 : 0);   /* 대전 컴퓨터는 1.5~3.5초 생각 */
+    const n0 = m.dw ? duelTurn.n() : 0;
     T(() => {
+      if(m.dw && (duelTurn.cur() !== 'ai' || duelTurn.n() !== n0 || m.dw.ended)) return;
       const res = aiPick(m, m.cfg.ai, m.duelOn ? .25 : null, m.duelOn ? .05 : 0);
-      if(!res || res.fail){ typing('ai', false); if(m.duelOn) duelEnd(res ? 'oppStuck' : 'oppKilled'); else win('kill'); return; }
-      play(m.duelOn ? 'op' : 'ai', W[res.i], res.kill ? { kill:true } : null);
+      if(m.dw){
+        typing('ai', false);
+        if(!res || res.fail){ if(duelTurn.act('out', { k:res ? 'stuck' : 'kill' }, { as:'ai' })) dOut('ai', res ? 'stuck' : 'kill'); return; }
+        if(duelTurn.act('w', { w:W[res.i] }, { as:'ai' })) play('ai', W[res.i], { pid:'ai', kill:!!res.kill });
+        return;
+      }
+      if(!res || res.fail){ typing('ai', false); win('kill'); return; }
+      play('ai', W[res.i], res.kill ? { kill:true } : null);
     }, wait);
   }
 
@@ -401,7 +415,10 @@ NG.wordchain = (() => {
   function giveUp(){
     const m = S(); if(!m || G.over || m.phase !== 'play') return;
     const b = $('#wcGive');
+    if(m.dw && (m.dw.P[m.dw.me].out || m.dw.ended)) return;
+    if(m.dw && m.turn !== 'me'){ msg('<span>포기는 내 차례에만 할 수 있어요</span>', 'soft'); return; }
     if(!m.giveArm){ m.giveArm = true; if(b) b.classList.add('arm'); msg('<b class="bad">포기할까요?</b><span>한 번 더 누르면 포기해요</span>', 'pop'); T(() => { m.giveArm = false; const bb = $('#wcGive'); if(bb) bb.classList.remove('arm'); }, 2600); return; }
+    if(m.dw){ if(duelTurn.act('out', { k:'give' })) dOut(m.dw.me, 'give'); return; }
     lose('give');
   }
 
@@ -421,171 +438,118 @@ NG.wordchain = (() => {
   function lose(why){
     const m = S(); if(m.phase !== 'play') return;
     end(); m.result = why;
-    if(m.duelOn){ duelEnd(why === 'kill' ? 'meKilled' : why === 'give' ? 'meGive' : 'meTime'); return; }
     let sub = why === 'kill' ? `‘${needTxt(m)}’(으)로 ${m.rule.rev ? '끝나는' : '시작하는'} 낱말이 사전에 없어요` : `${m.myWords}개 이었어요`;
     msg(`<b class="bad">${LOSE_TXT[why]}</b><span>${sub}</span>`, 'pop');
     sfx(why === 'kill' ? 'wcKilled' : 'wcLose'); fxBuzz([40, 40, 60]); try{ fxShake($('#wcLog'), 5); }catch(_){}
     T(() => finish(false), 1500);
   }
 
-  /* ===== 대전 =====
-     같은 시작 낱말로 번갈아 잇기. 각자 dTurns개씩 이으면 글자 수 점수(낱말 글자 × 10)로 승부.
-     시간 초과·포기·이을 낱말 없음(한방 맞음)이면 그쪽이 진다. 상대가 없으면 AI(보통, 가끔 못 찾음). */
+  /* ===== 대전: 2~5명 돌아가며 잇기(대전 v3 차례 엔진, docs/21 WP11) =====
+     - 같은 씨앗 → 같은 시작 낱말. 차례 순서 = 엔진 참가 순서(duelTurn). 모든 기기가 같은 사건 순서로 같은 상태를 계산한다.
+     - 수: act('w', { w:낱말 }) · 탈락 act('out', { k:'kill'|'give'|'miss' }) · 이미 탈락한 사람 차례는 그 기기가 바로 act('p')(넘김)
+     - 시간 초과(엔진이 모든 기기에서 같은 '대신 하기' timeout을 냄) = 탈락. 차례인 사람이 나가면 엔진이 'skip' → 탈락
+     - 이을 낱말이 사전에 없음(끝내기 낱말을 받음)·포기·규칙 실수 2번째도 탈락. 사전에 없는 말은 다시 넣기(실수 아님)
+     - 끝: 남은 사람이 1명이면 그 사람 1위, 또는 남은 사람 모두 정한 수(2명 8 · 3명 6 · 4~5명 5개)를 이으면 글자 점수로 순위
+     - 순위 = 탈락 순서(늦게 탈락할수록 위) → 끝까지 남은 사람은 글자 점수. 순위 열쇠는 duelStat의 lf(남은 사람 1000 + 글자 수, 탈락 = 탈락 번째 수)
+     - 컴퓨터 상대(사람이 없을 때 1:1): 보통 컴퓨터 + 끝내기 25% + 가끔 못 찾음 */
   const DUEL_TURNS = 8;
-  const pts = (chars) => chars * 10;
-  function duelEnd(why){
-    const m = S(); if(m.ended) return; m.ended = true;
-    if(m.phase === 'play') end();
-    const me = pts(m.myChars), op = pts(m.oppChars);
-    let r, txt;
-    if(why === 'pts'){ r = me > op ? 'w' : me < op ? 'l' : 'd'; txt = r === 'd' ? `${DUEL_TURNS}개씩 다 이었어요 · 글자 점수가 같아요!` : `${DUEL_TURNS}개씩 다 이었어요 · 글자 점수 ${fmt(Math.abs(me - op))}점 차이`; }
-    else if(why === 'oppKilled'){ r = 'w'; txt = '끝내기 승리! 상대가 이을 낱말이 없어요'; }
-    else if(why === 'oppStuck'){ r = 'w'; txt = '상대가 이을 낱말을 못 찾았어요'; }
-    else if(why === 'oppTime'){ r = 'w'; txt = '상대가 시간 안에 못 이었어요'; }
-    else if(why === 'oppGive'){ r = 'w'; txt = '상대가 포기했어요 · 기권승'; }
-    else if(why === 'oppLeft'){ r = 'w'; txt = '상대가 떠나 기권승이에요'; }
-    else if(why === 'meKilled'){ r = 'l'; txt = '끝내기 낱말을 받았어요 · 이을 낱말이 사전에 없어요'; }
-    else if(why === 'meGive'){ r = 'l'; txt = '포기했어요'; }
-    else if(why === 'meNet'){ r = 'l'; txt = '연결이 끊겨 대전을 이어 가지 못했어요'; }
-    else { r = 'l'; txt = '시간 안에 못 이었어요'; }
-    if(m.net && m.net.live && /^me/.test(why)) publish(why === 'meKilled' ? '!k' : why === 'meGive' ? '!g' : why === 'meNet' ? '!q' : '!t');
-    const winSide = r === 'w';
-    msg(`<b class="${r === 'l' ? 'bad' : 'win'}">${r === 'w' ? '이겼어요!' : r === 'l' ? '졌어요' : '무승부'}</b><span>${txt}</span>`, r === 'w' ? 'win' : 'pop');
-    sfx(r === 'w' ? (why === 'oppKilled' ? 'wcKill' : 'wcWinD') : r === 'l' ? 'wcLose' : 'wcAi');
-    if(G.duel){ G.duel.r = r; G.duel.a = { sc:me, pg:null }; G.duel.b = { sc:op, pg:null }; G.duel.why = txt; }
-    T(() => finish(winSide), 1500);
+  const duelCap = n => n <= 2 ? 8 : n === 3 ? 6 : 5;
+  const pts = chars => chars * 10;
+  const DW = () => S() && S().dw;
+  const dSrv = () => { try{ return duelSrv(); }catch(_){ return Date.now(); } };
+  function dPpl(){ const d = DW(); if(!d) return {}; if(!d.ppl || Date.now() - d.pplAt > 800){ d.ppl = {}; try{ duelPlayers().forEach(p => { d.ppl[p.pid] = p; }); }catch(_){} d.pplAt = Date.now(); } return d.ppl; }
+  const dWho = pid => dPpl()[pid] || { pid, nick:'상대', col:'#2F7BFF', shape:'square' };
+  const dNm = pid => { const d = DW(); return d && pid === d.me ? '나' : duelShortNick(dWho(pid).nick); };
+  const dAlive = () => { const d = DW(), pp = dPpl(); return G.duel.pl.filter(p => !d.P[p].out && !(pp[p] && pp[p].left)); };
+  /* 순위 열쇠(lf): 남은 사람 1000 + 글자 수, 탈락 = 몇 번째로 탈락했는지(1부터) */
+  const dKey = pid => { const q = DW().P[pid]; return q.out ? q.outN : 1000 + q.chars; };
+  function dSyncAi(){
+    try{ const D = G.duel, A = D.P.ai, d = DW(); if(!A || !d.P.ai) return; const q = d.P.ai;
+      if(q.words > (A.st.v || 0)) A.st.la = Math.round(dSrv());
+      Object.assign(A.st, { v:q.words, lf:dKey('ai'), mis:q.miss, pg:Math.min(1, q.words / d.cap) }); }catch(_){}
   }
-
-  /* ----- 실시간 1:1(턴제): 대기실 presence로 짝 찾기 → 둘만의 방 'fl-w-…'에서 presence.mv에 수를 쌓는다 -----
-     수 = 낱말 글자 또는 '!t'(시간 초과) '!g'(포기) '!q'(나감·연결 끊김) '!k'(이을 낱말 없음). 자리 0(peer가 작은 쪽)이 먼저 잇고 시작 낱말을 정해 sw로 알린다. */
-  const OPP_GRACE = 10;   /* 상대 차례가 제한 시간 + 10초를 넘으면 기권승 */
-  function publish(mv){
-    const n = S().net; if(!n || !n.nr) return;
-    n.mv.push(mv);
-    try{ n.nr.presence({ mv:n.mv.slice() }).catch(() => {}); }catch(_){}
+  function dInit(cfg){
+    const m = S(), D = G.duel;
+    m.dw = { me:D.myPid, cap:duelCap(D.pl.length), P:{}, outN:0, ended:false, lastKey:'', aiBusy:false, sec:cfg.limit };
+    D.pl.forEach(p => { m.dw.P[p] = { words:0, chars:0, miss:0, out:null, outN:0 }; });
+    m.dTurns = m.dw.cap; G.limit = 0;   /* 판 전체 시간 제한 없음(차례 시간만) */
+    try{ duelTurn.timeout(cfg.limit); duelTurn.onAct(dOnAct); }catch(_){}
+    m.dIv = setInterval(dPoll, 200);   /* 화면이 가려져 그림이 멈춰도 차례 넘김은 돌게 */
   }
-  function lobbyClear(){ try{ if(ROOM) ROOM.presence({ du:null, dg:null, dt:null, dp:null, nk:null }).catch(() => {}); }catch(_){} }
-  function searchUI(on){
-    const box = $('#wcSearch'), body = $('#wcBody'); if(!box) return;
-    box.hidden = !on; if(body) body.classList.toggle('wait', on);
-    if(on) box.innerHTML = `<div class="wc-sc"><div class="wc-radar"><i></i><i></i><i></i>${toyImg('fox', 'wc-scav')}</div><h3 id="wcSt">끝말잇기 상대를 찾는 중</h3><p id="wcSn"></p>
-      <button class="wc-cta" id="wcAiNow">컴퓨터와 바로 하기</button></div>`;
-    const b = $('#wcAiNow'); if(b) b.onclick = () => toAI();
+  /* 다른 사람의 수 · 엔진의 대신 하기(시간 초과) · 나간 사람 건너뛰기 */
+  function dOnAct(a){
+    const m = S(), d = DW(); if(!m || !d || d.ended || G.over) return;
+    const q = d.P[a.pid]; if(!q) return;
+    if(a.kind === 'w' && a.data && a.data.w){ typing('', false); play(a.pid === 'ai' ? 'ai' : 'op', String(a.data.w).slice(0, 12), { pid:a.pid }); return; }
+    if(a.kind === 'out') dOut(a.pid, a.data && a.data.k || 'give');
+    else if(a.kind === 'timeout' && !q.out) dOut(a.pid, 'time');
+    else if(a.kind === 'skip' && !q.out) dOut(a.pid, 'left');
   }
-  function searchText(){
-    const m = S(), n = m.net, st = $('#wcSt'), sn = $('#wcSn'); if(!st || !n) return;
-    if(n.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${esc(n.oppNick)}</b>님과 연결하는 중…`; return; }
-    const left = Math.max(0, 15 - Math.floor((Date.now() - n.t0) / 1000)), k = typeof duelWaiting === 'function' ? duelWaiting(ID) : 0;
-    sn.textContent = `${left}초 안에 상대가 없으면 컴퓨터와 겨뤄요${k ? ' · 기다리는 사람 ' + k + '명' : ''} · 내 이름 ${n.nick}`;
-  }
-  function search(){
-    const m = S(); const n = m.net = { live:false, phase:'search', t0:Date.now(), nick:duelNick(), mv:[], oc:0 };
-    searchUI(true); searchText();
-    const room = ROOM; if(!room){ toAI(); return; }
-    n.dt = Date.now();
-    room.presence({ du:'wait', dg:ID, dt:n.dt, nk:n.nick, dp:null }).catch(() => {});
-    const check = () => {
-      if(S() !== m || G.over || n.phase !== 'search') return;
-      let ps; try{ ps = room.peers(); }catch(_){ return; }
-      const me = ps.find(p => p.sameTab); if(!me) return;
-      n.myPeer = me.peer;
-      const claim = ps.find(p => !p.sameTab && p.presence && p.presence.du === 'play' && p.presence.dg === ID && p.presence.dp === me.peer);
-      if(claim){ match(claim); return; }
-      const list = ps.filter(p => p.presence && p.presence.du === 'wait' && p.presence.dg === ID && typeof p.presence.dt === 'number')
-        .sort((a, b) => a.presence.dt - b.presence.dt || (a.peer < b.peer ? -1 : 1));
-      const i = list.findIndex(p => p.sameTab); if(i < 0) return;
-      const opp = list[i % 2 ? i - 1 : i + 1]; if(opp) match(opp);
-    };
-    try{ n.mmUn = room.onPeers(check, () => {}); }catch(_){}
-    n.mmIv = setInterval(() => {
-      if(S() !== m || G.over){ clearInterval(n.mmIv); return; }
-      check(); searchText();
-      if(n.phase === 'search' && Date.now() - n.t0 > 15000) toAI();
-    }, 500);
-  }
-  function stopSearch(){ const n = S().net; if(!n) return; clearInterval(n.mmIv); if(n.mmUn) try{ n.mmUn(); }catch(_){} n.mmUn = null; }
-  function roomClose(){
-    const n = S() && S().net; if(!n) return;
-    clearInterval(n.syncIv); if(n.nrUn) try{ n.nrUn(); }catch(_){} n.nrUn = null;
-    if(n.nr){ const nr = n.nr; n.nr = null; setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1500); }
-  }
-  async function match(opp){
-    const m = S(), n = m.net; if(n.phase !== 'search') return;
-    stopSearch();
-    n.phase = 'joining'; n.oppPeer = opp.peer; n.oppNick = String((opp.presence && opp.presence.nk) || '상대').slice(0, 12);
-    ROOM.presence({ du:'play', dp:opp.peer }).catch(() => {});
-    searchText(); sfx('flLock'); fxBuzz([20, 40, 20]);
-    const a = [n.myPeer, opp.peer].map(x => String(x).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20)).sort();
-    n.key = a[0] + ':' + a[1];
-    let nr;
-    try{ nr = await ROOM.join(('fl-w-' + a[0] + '-' + a[1]).slice(0, 50)); }catch(_){ if(S() === m) matchFail(); return; }
-    if(S() !== m || n.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
-    n.nr = nr; n.joinT = Date.now(); n.mv = []; n.oc = 0;
-    n.seat = String(n.myPeer) < String(opp.peer) ? 0 : 1;
-    /* 자리 0이 시작 낱말을 정해 알린다(두 기기 사전이 달라도 같은 판) */
-    if(n.seat === 0){ const s = setup(m.cfg, mulberry(seedFrom('wc:pvp:' + n.key))); n.sw = s.start; n.seed = s.seed; }
-    nr.presence({ v:1, nk:n.nick, mv:[], sw:n.sw || null }).catch(() => {});
-    try{ n.nrUn = nr.onPeers(ch => {
-        if(S() !== m) return;
-        if(n.oppSeen && ch.left && ch.left.some(p => p.peer === n.oppPeer)){ if(!n.began){ matchFail(); return; } if(!n.oppGone){ n.oppGone = Date.now(); toast('상대 연결이 끊겼어요 · 15초 기다려요'); } }
-        else sync();
-      }, () => { if(S() === m && !G.over && n.began && !m.ended){ toast('연결이 끊겨서 대전을 이어 가지 못했어요'); if(m.phase === 'play') end(); duelEnd('meNet'); } }); }catch(_){}
-    n.syncIv = setInterval(() => { if(S() === m) sync(); }, 250);
-  }
-  function matchFail(){ const m = S(), n = m.net; roomClose(); n.oppSeen = false; if(G.over) return; toast('상대와 연결하지 못했어요. 다시 찾을게요'); search(); }
-  function oppPres(){
-    const n = S().net; if(!n || !n.nr) return null;
-    let ps; try{ ps = n.nr.peers(); }catch(_){ return null; }
-    const o = ps.find(p => !p.sameTab && (p.peer === n.oppPeer || (p.presence && p.presence.nk === n.oppNick)));
-    if(o && o.peer !== n.oppPeer){ n.oppPeer = o.peer; n.oppGone = 0; }
-    return o ? o.presence || {} : null;
-  }
-  function sync(){
-    const m = S(), n = m && m.net; if(!n || G.over || m.ended) return;
-    const o = oppPres();
-    if(o && o.nk){ n.oppSeen = true; if(n.oppGone){ n.oppGone = 0; toast('상대가 다시 연결됐어요'); } }
-    if(!n.began){
-      if(n.phase === 'joining' && o && o.nk && (n.seat === 0 || o.sw)){
-        lobbyClear(); n.began = true; n.live = true; n.lastOpp = Date.now();
-        if(n.seat === 1){ n.sw = String(o.sw); n.seed = seedFrom('wc:pvp:' + n.key) % 1e9; }
-        beginPvp();
-      } else if(n.phase === 'joining' && Date.now() - n.joinT > 9000) matchFail();
-      return;
+  const OUT_TXT = { time:'시간 안에 못 이었어요', give:'포기했어요', kill:'이을 낱말이 사전에 없어요', miss:'규칙 실수 2번', left:'나갔어요', stuck:'이을 낱말을 못 찾았어요' };
+  function dOut(pid, why){
+    const m = S(), d = DW(), q = d.P[pid]; if(!q || q.out) return;
+    q.out = why; q.outN = ++d.outN;
+    typing('', false);
+    const me = pid === d.me, who = dWho(pid);
+    const log = $('#wcLog'); if(log){ log.insertAdjacentHTML('beforeend', `<div class="wc-out pop"><b>${me ? '나' : esc(duelShortNick(who.nick))}</b> 탈락 · ${OUT_TXT[why] || ''}</div>`); log.scrollTop = log.scrollHeight; }
+    if(me){
+      m.turn = null; m.result = why;
+      msg(`<b class="bad">탈락했어요</b><span>${OUT_TXT[why] || ''} · 끝날 때까지 함께 봐요</span>`, 'pop');
+      sfx(why === 'kill' ? 'wcKilled' : 'wcLose'); fxBuzz([40, 40, 60]); try{ fxShake($('#wcLog'), 5); }catch(_){}
+      const inp = $('#wcInput'); if(inp){ inp.value = ''; inp.blur(); }
+    } else {
+      try{ duelNotify(`${esc(duelShortNick(who.nick))}님 탈락 · ${OUT_TXT[why] || ''}`, { from:who, kind:'good', force:true }); }catch(_){}
+      sfx(why === 'kill' ? 'wcKill' : 'wcAi');
     }
-    if(n.oppGone && Date.now() - n.oppGone > 15000){ duelEnd('oppLeft'); return; }
-    if(m.phase !== 'play') return;
-    const mv = o && Array.isArray(o.mv) ? o.mv : [];
-    if(m.turn === 'op' && mv.length > n.oc){
-      const x = String(mv[n.oc++]); n.lastOpp = Date.now();
-      typing('op', false);
-      if(x[0] === '!'){ end(); duelEnd(x === '!k' ? 'oppKilled' : x === '!g' ? 'oppGive' : x === '!q' ? 'oppLeft' : 'oppTime'); return; }
-      play('op', x);
-      return;
+    dSyncAi(); order(); hud(); dCheckEnd();
+  }
+  /* 차례가 바뀌었는지 살핌(0.2초마다 + 그림 틀마다) */
+  function dPoll(){
+    const m = S(), d = DW(); if(!m || !d || G.over || d.ended || m.phase !== 'play') return;
+    dCheckEnd(); if(d.ended) return;
+    const cur = duelTurn.cur(), key = cur + ':' + duelTurn.n();
+    if(key === d.lastKey) return;
+    d.lastKey = key; dTurnStart(cur);
+  }
+  function dTurnStart(cur){
+    const m = S(), d = DW(), q = d.P[cur]; if(!q) return;
+    order();
+    if(cur === d.me){
+      if(q.out){ m.turn = null; duelTurn.act('p', null); hud(); return; }               /* 이미 탈락: 바로 넘김 */
+      if(!cands(m, lastW(m)).length){ m.turn = null; if(duelTurn.act('out', { k:'kill' })) dOut(d.me, 'kill'); return; }   /* 끝내기 낱말을 받음 */
+      startMyTurn(); return;
     }
-    if(m.turn === 'op' && Date.now() - n.turnAt > (m.cfg.limit + OPP_GRACE) * 1000){ end(); duelEnd('oppTime'); }
+    if(cur === 'ai'){
+      if(q.out){ duelTurn.act('p', null, { as:'ai' }); return; }
+      aiTurn(); return;
+    }
+    m.turn = q.out ? null : 'op'; m.lastSec = -1; hud();
+    if(!q.out){ typing(cur, true); msg(`<span><b>${esc(duelShortNick(dWho(cur).nick))}</b>님 차례예요</span>`, 'soft'); }
   }
-  function beginPvp(){
-    const m = S(), n = m.net;
-    searchUI(false);
-    m.oppNick = n.oppNick; m.oppKind = oppKind(n.oppNick); m.aiName = n.oppNick;
-    if(G.duel){ G.duel.mode = 'pvp'; G.duel.opp = { nick:n.oppNick }; }
-    const t = $('#ptitle small'); if(t) t.textContent = '대전 · 실시간 1:1 · ' + n.oppNick;
-    const on = $('#wcOppName'); if(on) on.textContent = n.oppNick;
-    const oa = $('#wcOppAv'); if(oa) oa.innerHTML = toyImg(m.oppKind, 'wc-hav');
-    m.seed = n.seed; m.seat = n.seat;
-    startChain(n.sw, 2200);
+  function dCheckEnd(){
+    const m = S(), d = DW(); if(!d || d.ended) return;
+    const alive = dAlive();
+    let why = null;
+    if(alive.length <= 1) why = alive.length ? (alive[0] === d.me ? '내가 끝까지 남았어요!' : `${esc(dNm(alive[0]))}님이 끝까지 남았어요`) : '모두 탈락했어요';
+    else if(alive.every(p => d.P[p].words >= d.cap)) why = `모두 ${d.cap}개씩 이었어요 · 글자 점수로 순위를 매겼어요`;
+    if(!why) return;
+    d.ended = true; end();
+    const keys = G.duel.pl.map(p => dKey(p)), best = Math.max(...keys), meTop = dKey(d.me) === best;
+    const tie = keys.filter(k => k === best).length > 1;
+    msg(`<b class="${meTop ? 'win' : 'bad'}">${meTop ? (tie ? '공동 1위!' : '1위!') : '끝났어요'}</b><span>${why}</span>`, meTop ? 'win' : 'pop');
+    sfx(meTop ? 'wcWinD' : 'wcLose');
+    if(meTop) try{ const q = fxCenter($('#wcLog')); fxRing(q.x, q.y, '#FFE27A', q.w * .6, .7, 12); }catch(_){}
+    dSyncAi();
+    T(() => { try{ duelEndNow(why); }catch(_){} }, 1500);
   }
-  function toAI(){
-    const m = S(); if(!m || (m.net && m.net.began)) return;
-    stopSearch(); roomClose(); lobbyClear();
-    if(m.net){ m.net.live = false; m.net.phase = 'ai'; }
-    searchUI(false);
-    const nick = AI_NAME[1];
-    m.oppNick = nick; m.aiName = nick; m.oppKind = 'owl';
-    if(G.duel){ G.duel.mode = 'ai'; G.duel.opp = { nick }; }
-    const t = $('#ptitle small'); if(t) t.textContent = '대전 · ' + nick;
-    const on = $('#wcOppName'); if(on) on.textContent = nick;
-    startChain(m.start, 700);
+  /* 차례 순서 줄: 얼굴 + 이름 + 이은 수, 지금 차례 강조, 탈락은 회색 ✕ */
+  function order(){
+    try{
+      const e = $('#wcOrder'), d = DW(); if(!e || !d) return;
+      const cur = duelTurn.cur(), pp = dPpl();
+      e.innerHTML = G.duel.pl.map(pid => { const p = pp[pid] || dWho(pid), q = d.P[pid], out = q.out || (p.left ? 'left' : null);
+        return `<span class="wc-op${pid === cur && !out && !d.ended ? ' cur' : ''}${out ? ' out' : ''}${pid === d.me ? ' me' : ''}" style="--sc:${p.col || '#2F7BFF'}">${pid === d.me ? toyImg('fox', 'wc-oav') : toyImg(oppKind(p.nick), 'wc-oav')}<b>${pid === d.me ? '나' : esc(duelShortNick(p.nick))}</b><i>${out ? '탈락' : q.words}</i></span>`; }).join('<em class="wc-oarr" aria-hidden="true">›</em>');
+    }catch(_){}
   }
 
   /* ===== 시작: 시작 낱말을 놓고 첫 차례 ===== */
@@ -594,13 +558,10 @@ NG.wordchain = (() => {
     m.chain = [{ w:sw, by:'start' }]; m.used = new Set([sw]);
     const log = $('#wcLog'); if(log) log.innerHTML = '';
     logAdd(m.chain[0]); hud();
-    msg('<span>시작 낱말이 나왔어요</span>', 'soft');
     sfx('wcStart');
-    T(() => {
-      m.phase = 'play';
-      const first = m.duelOn ? (m.seat === 0 ? 'me' : 'op') : 'me';
-      if(first === 'me') startMyTurn(); else oppTurn();
-    }, delay);
+    if(m.dw){ m.phase = 'play'; order(); dPoll(); return; }   /* 대전: 첫 차례는 엔진 참가 순서 첫 사람 */
+    msg('<span>시작 낱말이 나왔어요</span>', 'soft');
+    T(() => { m.phase = 'play'; startMyTurn(); }, delay);
   }
 
   function wire(){
@@ -644,6 +605,24 @@ NG.wordchain = (() => {
       ['제한 시간 안에!', '내 차례마다 시간이 정해져 있어요(남은 5초부터 시계가 깜빡여요). 시간이 다 되거나 포기하면 실패. 정한 수만큼 이으면 성공이에요. 💡 힌트는 이을 낱말의 첫 두 글자를 보여 줘요(점수 −30).'],
       ['끝내기 낱말을 노려요', '상대가 이을 낱말이 사전에 없는 끝 글자(예: ~름, ~슴, ~릇)로 끝내면 끝내기 승리! 반대로 컴퓨터도 끝내기 낱말을 노리니 조심해요. 긴 낱말일수록 점수가 커요.']
     ],
+    /* 도움말 v2(공용 WP3): 그림 1장(320×180, 글자 타일만 — 낱말은 그림의 일부) + 3줄, 나머지는 '더 알아보기' */
+    howto:{
+      pic(){
+        /* 글자 타일 3줄이 차례로 나타남: 사과 → 과일 → 일기. 이어 받는 글자는 주황 → 다음 줄 첫 칸이 같은 색 */
+        const tile = (x, y, c, k) => `<g transform="translate(${x} ${y})"><rect x="-19" y="-20" width="38" height="40" rx="9" fill="${k === 'to' ? '#FFB36B' : k === 'from' ? '#B5F0E8' : '#FFFDF4'}" stroke="${OL}" stroke-width="3"/><text y="9" font-size="24" font-weight="900" text-anchor="middle" fill="${OL}" font-family="system-ui,sans-serif">${c}</text></g>`;
+        const row = (i, a, b, y, x0) => `<g opacity="0">${tile(x0, y, a, i ? 'from' : '')}${tile(x0 + 44, y, b, 'to')}<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;${(i * .22).toFixed(2)};${(i * .22 + .06).toFixed(2)};.92;1" dur="5s" repeatCount="indefinite"/></g>`;
+        const arrow = (i, x1, y1, x2, y2) => `<path d="M${x1} ${y1}Q${x1 + 26} ${y1 + 4} ${x2} ${y2}" fill="none" stroke="#FF8A3D" stroke-width="4" stroke-linecap="round" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;${(i * .22 + .03).toFixed(2)};${(i * .22 + .08).toFixed(2)};.92;1" dur="5s" repeatCount="indefinite"/></path>`;
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#DDF8F3"/>
+          <circle cx="24" cy="22" r="4" fill="#fff"/><circle cx="296" cy="160" r="5" fill="#fff"/>
+          ${row(0, '사', '과', 40, 50)}${arrow(1, 120, 40, 122, 82)}${row(1, '과', '일', 90, 122)}${arrow(2, 192, 90, 194, 132)}${row(2, '일', '기', 140, 194)}</svg>`;
+      },
+      lines:['앞 낱말 끝 글자로 이어요', '두 글자 이상, 한 번만 써요', '차례 시간 안에 넣어요'],
+      more:[
+        ['끝 글자로 이어요', '앞 낱말의 끝 글자로 시작하는 낱말을 넣고 [잇기]. 두음법칙도 돼요(녀→여, 력→역, 라→나, 리→이). 사전에 없는 말은 “사전에 없어요” — 실수가 아니니 다른 낱말을 넣어요.'],
+        ['성공 · 끝내기 낱말', '정한 수만큼 이으면 성공. 상대가 이을 낱말이 없는 끝 글자(예: ~름, ~슴, ~릇)로 끝내면 끝내기 승리! 💡 힌트는 첫 두 글자를 보여 줘요(−30점).'],
+        ['대전: 2~5명 돌아가며', '차례대로 이어요. 시간 안에 못 잇거나, 포기하거나, 이을 낱말이 없거나, 규칙 실수를 두 번 하면 탈락. 끝까지 남은 사람이 1등이고, 모두 정한 수만큼 이으면 글자 점수로 순위를 매겨요. 느긋하게는 차례 36초.']
+      ]
+    },
     helpExtra(){ const m = G && G.id === ID && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ') + (m.rule.ban.length ? ` (금지 글자: ${m.rule.ban.join(', ')})` : '') + (m.rule.gold.length ? ` (황금 글자: ${m.rule.gold.join(', ')} · ${m.rule.goldNeed}개)` : '')]]; },
     chapters:['말놀이 마당', '이야기 골목', '낱말 숲', '글자 바다', '사전 궁전'],
     starRule:'★ 성공 · ★★ 힌트 없이 · ★★★ 힌트 없이 + 끝내기 승리 또는 세 글자 이상 낱말 5개',
@@ -658,25 +637,19 @@ NG.wordchain = (() => {
     stageDesc(n){ const c = stageCfg(n); return `${c.goal}개 잇기 · 한 차례 ${c.limit}초 · ${AI_NAME[c.ai]}`; },
     init(cfg, rng, lv){
       const s = setup(cfg, rng);
-      const duelOn = !!G.duel;
+      const duelOn = !!(G.duel && !G.duel.fleet);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { cfg, rule:s.rule, start:s.start, seed:s.seed, chain:[], used:new Set(), turn:null, phase:'intro', duelOn, dTurns:DUEL_TURNS,
-        seat:duelOn ? (rng() < .5 ? 0 : 1) : 0, aiName:duelOn ? AI_NAME[1] : AI_NAME[cfg.ai || 0], oppNick:null, oppKind:null,
+        aiName:duelOn ? AI_NAME[1] : AI_NAME[cfg.ai || 0], oppNick:null, oppKind:null,
         myWords:0, myChars:0, oppWords:0, oppChars:0, longW:0, goldGot:0, turns:0, remSum:0, misses:0, hints:0, hintLeft:duelOn ? 0 : (cfg.hints == null ? 3 : cfg.hints),
-        combo:0, tLim:cfg.limit, tStart:0, pen:0, lastSec:-1, result:null, ended:false, tips, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, timers:new Set(), net:null };
+        combo:0, tLim:cfg.limit, tStart:0, pen:0, lastSec:-1, result:null, ended:false, tips, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, timers:new Set() };
       G.limit = cfg.limit;
       const m = G.m;
+      if(duelOn) dInit(cfg);
       G.cleanup = () => {
-        m.timers.forEach(clearTimeout); m.timers.clear();
+        m.timers.forEach(clearTimeout); m.timers.clear(); clearInterval(m.dIv);
         if(m.onVV){ try{ removeEventListener('resize', m.onVV); if(window.visualViewport) visualViewport.removeEventListener('resize', m.onVV); }catch(_){} }
         if(G && G.raf) cancelAnimationFrame(G.raf);
-        const n = m.net;
-        if(n){
-          clearInterval(n.mmIv); clearInterval(n.syncIv);
-          if(n.mmUn) try{ n.mmUn(); }catch(_){} if(n.nrUn) try{ n.nrUn(); }catch(_){}
-          if(n.nr){ if(n.began && !m.ended){ n.mv.push('!q'); try{ n.nr.presence({ mv:n.mv.slice() }).catch(() => {}); }catch(_){} } const nr = n.nr; n.nr = null; setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1200); }
-          if(n.phase === 'search' || n.phase === 'joining') lobbyClear();
-        }
         document.querySelectorAll('.fxcombo').forEach(e => e.remove());
       };
       /* 테스트·도구용: 이을 수 있는 낱말을 넣어 끝까지 둔다(한방이 있으면 한방) */
@@ -700,17 +673,16 @@ NG.wordchain = (() => {
         <div class="hud-row">
           <div class="hchip" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="hv">${duel ? toyImg('fox', 'wc-hav') : ICO.word}<b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></span><em>${duel ? '내 낱말' : '이은 낱말'}</em></div>
           <div class="hchip time" id="wcTimeP" aria-label="내 차례 남은 시간"><span class="hv">${ICO.clock}<b id="wcTime">${m.cfg.limit}</b><small>초</small></span><em>차례 시간</em></div>
-          ${duel ? `<div class="hchip" aria-label="상대가 이은 낱말"><span class="hv"><span id="wcOppAv">${toyImg('owl', 'wc-hav')}</span><b id="wcOpp">0</b><small>/${m.dTurns}</small></span><em>상대 낱말</em></div>`
+          ${duel ? `<div class="hchip" aria-label="남은 사람"><span class="hv">${ICO.vs}<b id="wcAlive">${G.duel.pl.length}</b><small>명</small></span><em>남은 사람</em></div>`
             : `<button class="hchip item" id="wcHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>`}
           <button class="hchip skip wc-give" id="wcGive" aria-label="포기(두 번 누르기)"><span class="hv">${ICO.flag}</span><em>포기</em></button>
         </div>
         <div class="wc-barw" id="wcBarW"><i id="wcBar"></i></div>
         ${chips}
         <div class="wc-train" id="wcTrain" aria-hidden="true" hidden></div>
-        ${duel ? `<p class="wc-dline">${toyImg('fox', 'wc-hav')}<b>나</b><span>VS</span><b id="wcOppName">${esc(m.oppNick || '상대')}</b> · ${m.dTurns}개씩 이으면 글자 점수로 승부</p>` : ''}
+        ${duel ? `<div class="wc-order" id="wcOrder" aria-label="차례 순서"></div>` : ''}
         <div class="wc-body" id="wcBody">
           <div class="wc-log" id="wcLog" role="log" aria-live="polite" aria-label="이어진 낱말"></div>
-          <div class="wc-search" id="wcSearch" hidden></div>
         </div>
         <form class="wc-in" id="wcForm" autocomplete="off">
           <span class="wc-head" id="wcHead" aria-hidden="true"></span>
@@ -725,11 +697,12 @@ NG.wordchain = (() => {
       setTimeout(fit, 30);
       if(G.raf) cancelAnimationFrame(G.raf);
       G.raf = requestAnimationFrame(loop);
-      if(duel && G.lv === 'pvp' && typeof ROOM !== 'undefined' && ROOM){ search(); return; }
-      if(duel){ toAI(); return; }
+      if(m.dw){ order(); msg('<span>모두 모이면 시작 낱말이 나와요</span>', 'soft'); return; }   /* 대전: 엔진 카운트다운이 끝나면 loop가 startChain */
       startChain(m.start, 900);
     },
     progress(){ const m = G && G.m; if(!m) return 0; return Math.min(1, m.myWords / (m.duelOn ? m.dTurns : m.cfg.goal)); },
+    /* 대전 순위: 순위 열쇠 lf(남은 사람 1000 + 글자 수 · 탈락 = 탈락 번째) 큰 순 → 이은 낱말 → 실수 적은 순 */
+    duelRank(a, b){ return ((b.lf || 0) - (a.lf || 0)) || ((b.v || 0) - (a.v || 0)) || ((a.mis || 0) - (b.mis || 0)); },
     lossText(){
       const m = G.m, why = m.result;
       return (why && LOSE_TXT[why] ? LOSE_TXT[why] + '. ' : '') + `낱말 ${m.myWords}개를 이었어요${m.duelOn ? '' : ` (목표 ${m.cfg.goal}개)`}.`;
@@ -745,9 +718,13 @@ NG.wordchain = (() => {
     },
     stars(){ const m = G.m; return m.hints ? 1 : (m.result === 'kill' || m.longW >= 5) ? 3 : 2; },
     winTitle:'끝말잇기 성공!',
-    duelHow:'실시간 1:1 번갈아 잇기 · 끝내기 낱말이면 승리 · 8개씩 이으면 글자 점수',
-    /* 대전은 게임이 직접 진행(턴제 실시간). fleet:true = 엔진에 "게임이 대전을 직접 진행"이라고 알림 */
-    duelLaunch(){ const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : AI_NAME[1] } } }); },
+    duelHow:'2~5명이 돌아가며 잇기 · 못 이으면 탈락 · 끝까지 남으면 1등',
+    /* 대전 v3(2026-10-06): 공용 차례 엔진(duelKind 'turn', 2~5명, 공용 준비 화면). 예전 자체 1:1(duelLaunch·fleet·대기실 'wait')은 없앰
+       → 엔진이 v3 대기실(w3/h3/j3)·방 'fl-d3-…'을 쓰므로 지난 버전(1:1 'wait')과 섞이지 않는다 */
+    duelKind:'turn', duelMax:5, duelEnd:'game',
+    duelCfg:() => ({ goal:DUEL_TURNS, limit:18, ai:1, hints:0, duel:1 }),
+    duelSlow:cfg => Object.assign({}, cfg, { limit:36 }),   /* 느긋하게: 차례 36초 */
+    duelAi:() => null,                                       /* 컴퓨터 상대는 이 게임이 직접 잇는다(aiTurn) */
     css:`
 body[data-mode="wordchain"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.65), rgba(255,255,255,0) 70%),
@@ -762,7 +739,6 @@ body[data-mode="wordchain"]{background:
 .ng-wc .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
 .ng-wc .wc-give{flex:.8 1 0}
 .ng-wc .wc-give.arm{background:linear-gradient(180deg,#FF9A9E,#E5484D)} .ng-wc .wc-give.arm em{color:#fff}
-.ng-wc .wc-dline .wc-hav{width:24px; height:24px}
 .ng-wc .wc-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid ${OL}; overflow:hidden}
 .ng-wc .wc-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0E2,#14A3A0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-wc .wc-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
@@ -776,9 +752,6 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-chip.gold{background:#FFF4C2; color:#8A5A00}
 .ng-wc .wc-chip.gold.ok{background:#E3FAE8; color:#13703F}
 .ng-wc .wc-chip b{font-family:var(--heavy); font-weight:400}
-.ng-wc .wc-dline{display:flex; align-items:center; justify-content:center; gap:6px; margin:8px 0 0; font-family:var(--disp); font-size:14px; color:#0E4F4B; white-space:nowrap; overflow:hidden}
-.ng-wc .wc-dline b{font-family:var(--heavy); font-weight:400; max-width:40%; overflow:hidden; text-overflow:ellipsis}
-.ng-wc .wc-dline span{font-family:var(--heavy); color:#FF8A3D}
 .ng-wc .wc-body{position:relative; margin-top:10px}
 .ng-wc .wc-log{height:300px; overflow-y:auto; overscroll-behavior:contain; padding:12px 10px 14px; border-radius:20px; background:radial-gradient(circle at 50% 30%, #FBFFFE 0%, #E6F8F4 100%);
   border:3px solid ${OL}; box-shadow:inset 0 0 0 3px rgba(255,255,255,.8), 0 5px 0 ${OL}, 0 14px 22px rgba(10,90,85,.2); display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth}
@@ -857,16 +830,22 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-msg.go b{color:#FFB36B}
 .ng-wc .wc-msg.pop, .ng-wc .wc-msg.win{animation:wc-in .35s cubic-bezier(.2,1.5,.4,1)}
 @keyframes wc-in{from{transform:scale(.6); opacity:0}}
-.ng-wc .wc-search{position:absolute; inset:0; display:grid; place-items:center; border-radius:20px; background:linear-gradient(180deg,#FFFFFF,#E6F8F4); border:3px solid ${OL}; box-shadow:0 5px 0 ${OL}; padding:16px; text-align:center}
-.ng-wc .wc-search[hidden]{display:none}
-.ng-wc .wc-sc h3{margin:10px 0 4px; font-family:var(--heavy); font-weight:400; font-size:20px; color:${OL}}
-.ng-wc .wc-sc p{margin:0 0 14px; font-size:14px; color:#4E6F6B; line-height:1.45}
-.ng-wc .wc-radar{position:relative; width:96px; height:96px; margin:0 auto; display:grid; place-items:center}
-.ng-wc .wc-radar i{position:absolute; inset:0; border-radius:50%; border:3px solid #14A3A0; opacity:0; animation:wc-rad 2.1s ease-out infinite}
-.ng-wc .wc-radar i:nth-child(2){animation-delay:.7s} .ng-wc .wc-radar i:nth-child(3){animation-delay:1.4s}
-@keyframes wc-rad{0%{transform:scale(.4); opacity:.9} 100%{transform:scale(1.15); opacity:0}}
-.ng-wc .wc-scav{width:64px; height:64px; position:relative}
-.ng-wc .wc-cta{height:46px; padding:0 22px; border-radius:999px; border:2.5px solid ${OL}; background:linear-gradient(180deg,#FFE27A,#FFB020); font-family:var(--heavy); font-size:17px; color:${OL}; box-shadow:0 3px 0 ${OL}; cursor:pointer}
+/* 대전(2~5명): 차례 순서 줄 · 탈락 줄 · 참가자 색 말풍선 */
+.ng-wc .wc-order{display:flex; align-items:center; justify-content:center; gap:2px; margin:6px 0 0; padding:12px 0 3px; flex-wrap:nowrap}
+.ng-wc .wc-op{position:relative; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:50px; max-width:62px; padding:4px 4px 3px; border-radius:12px; background:#fff; border:2px solid ${OL}; box-shadow:0 2px 0 ${OL}; transition:transform .2s, opacity .2s}
+.ng-wc .wc-op .wc-oav{width:24px; height:24px; display:block}
+.ng-wc .wc-op b{font-family:var(--disp); font-weight:400; font-size:13px; line-height:1.1; color:${OL}; max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ng-wc .wc-op i{font-style:normal; font-family:var(--heavy); font-size:13px; line-height:1; color:#0B5E5C}
+.ng-wc .wc-op.me{background:#FFF1E2}
+.ng-wc .wc-op.cur{border-color:var(--sc); box-shadow:0 0 0 3px var(--sc), 0 2px 0 ${OL}; transform:translateY(-2px) scale(1.06)}
+.ng-wc .wc-op.cur::before{content:'차례'; position:absolute; top:-11px; left:50%; transform:translateX(-50%); padding:1px 6px; border-radius:99px; background:var(--sc); color:#fff; font-family:var(--disp); font-size:13px; line-height:1.2; border:1.5px solid ${OL}; white-space:nowrap}
+.ng-wc .wc-op.out{opacity:.45; filter:grayscale(1)}
+.ng-wc .wc-op.out i{color:#B3122E}
+.ng-wc .wc-oarr{font-style:normal; font-family:var(--heavy); font-size:15px; color:#3F7A74}
+.ng-wc .wc-order:has(.wc-op:nth-child(9)) .wc-oarr{display:none}
+.ng-wc .wc-out{align-self:center; padding:5px 12px; border-radius:99px; background:#FFE3E3; border:2px solid ${OL}; font-family:var(--disp); font-size:14px; color:#8E0F2F}
+.ng-wc .wc-out b{font-family:var(--heavy); font-weight:400}
+.ng-wc .wc-b.seat .wc-av{border-color:var(--sc); box-shadow:0 0 0 2px var(--sc)}
 @media (max-width:370px){ .ng-wc .wc-t{width:30px; height:33px; font-size:19px} .ng-wc .wc-go{padding:0 10px 0 8px; font-size:16px} }
 @media (prefers-reduced-motion: reduce){ .ng-wc .wc-car.new, .ng-wc .pop, .ng-wc .wc-msg.pop, .ng-wc .wc-msg.win{animation:none} .ng-wc .wc-log{scroll-behavior:auto} }
 `,
@@ -889,6 +868,7 @@ body[data-mode="wordchain"]{background:
 })();
 
 /* 대전: 진행 수치(duelStat — 실시간 턴제라 막대는 안 쓰지만 계약대로), AI 상대 속도(duelPace) */
-Object.assign(NG.wordchain, { duelPace:[150, .6], duelStat:{ unit:'낱말', get:() => ({ v:G.m.myWords, t:G.m.duelOn ? G.m.dTurns : G.m.cfg.goal }) } });
+/* 대전 수치(duelStat): v = 내가 이은 낱말(칩 '3낱말'), mis = 규칙 실수, lf = 순위 열쇠(duelRank가 씀, 화면에는 안 나옴). t는 주지 않음 */
+Object.assign(NG.wordchain, { duelPace:[150, .6], duelStat:{ unit:'낱말', get:() => { const m = G.m; if(m && m.dw){ const q = m.dw.P[m.dw.me]; return { v:m.myWords, mis:q.miss, lf:q.out ? q.outN : 1000 + q.chars }; } return { v:m.myWords, t:m.cfg.goal }; } } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.wordchain.scene = { kind:'bubbles', colors:['#FFFFFF', '#B5F0E8', '#FFE9A8'], density:.8 };

@@ -76,20 +76,24 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelMax` | `2` | 최대 인원 2~5. 빠른 대전은 이만큼 모으거나, 2명 이상 + 두 번째 입장 6초, 또는 12초에 시작(12초에 혼자면 컴퓨터 1:1) |
 | `duelCfg(o)` | 그 난이도 `levels` | 대전 판 설정을 돌려줌. `o = { n:인원, pace:'n'|'s', avoid:[최근 본 열쇠], diff:'easy'|'normal'|'hard' }`. **문제 내용은 여기서 rng로 만들지 않는다**(init의 rng로만). `avoid`는 `G.duel.avoid`로도 읽을 수 있음 |
 | `duelSlow(cfg)` | `limit × 2` | '느긋하게'일 때 설정 바꾸기(차례 게임은 차례 시간 ×2 등). 없으면 엔진이 limit만 2배, `duelTurn.timeout`도 2배 |
-| `duelStat.get()` | | 돌려주는 값에 `mis`(틀린 횟수)를 **더함**. 경주·선점 게임은 넣는 것을 권함(없으면 엔진이 `lf`가 줄어든 횟수로 셈). `v`가 오른 시각(`la`)은 엔진이 셈 |
+| `duelStat.get()` | | 돌려주는 값에 `mis`(틀린 횟수)를 **더함**. 경주·선점 게임은 넣는 것을 권함(없으면 엔진이 `lf`가 줄어든 횟수로 셈). `v`가 오른 시각(`la`)은 엔진이 셈. `tb`(선택) = 순위 동점 가르기 수(작을수록 앞, 예: 쏜 턴·움직인 수) → 기본 순위에서 `v` 다음·`mis` 앞. `left`(선택) = 점수전의 남은 수 → 3 이하일 때 "마지막 3번" 알림 |
 | `duelRank(a, b)` | 엔진 기본 | 순위 비교를 바꿀 때만. `a`·`b` = `{ pg, v, t, lf, mis, la, dn, ok, sc, ft, left }`, 앞서면 음수 |
 | `duelEnd` | 종류별 | `'first'`(경주 기본: 누가 다 풀면 모두 끝) · `'all'`(점수 기본: 모두 끝나거나 시간. 컴퓨터 대전에서 내가 먼저 끝나면 컴퓨터는 제 판을 끝까지 한 결과로 셈 — 일부러 빨리 끝내 이기기 막기) · `'game'`(선점·차례 기본: 게임이 `duelEndNow()`) |
 | `onDuelEvent(ev, from)` | | 다른 사람이 `duelSend`로 보낸 사건. `ev = { n, kind, data, at }`, `from` = 참가자 |
 | `onDuelClaim(key, owner, info)` | | 선점 주인이 정해지거나 바뀔 때(내 것 포함). `info = { mine, lost, at, sure }`(`lost` = 내 것으로 보였다가 더 이른 사람에게 뺏김 → "간발의 차" 알림은 엔진이 띄움, 게임은 표시·점수만 되돌림. `sure` = 0.4초 확인 끝) |
 | `duelKeys()` | | 선점 게임의 차지할 수 있는 열쇠 목록(컴퓨터 상대가 계단마다 하나씩 차지). 없으면 컴퓨터는 수만 올라감 |
-| `duelMini` | | 미니 화면 `{ get:() => 글자열(400B 이하), draw:(el, s, p) => void }`. 있으면 칩 줄 대신 상대 카드(72×64, 그림 칸 약 60×42) |
+| `duelHelp` | | 대전 준비 화면·대전 중 규칙 목록(`[[제목, 설명], …]` 또는 함수). 없으면 `help`. 솔로와 대전 규칙이 다를 때(예: 카드 짝 미리 보기 없음) |
+| `duelMini` | | 미니 화면 `{ get:() => 글자열(400B 이하), draw:(el, s, p) => void }`. 있으면 칩 줄 대신 상대 카드(72×64, 그림 칸 약 60×42). 컴퓨터 상대는 판 글자가 없어 `draw`를 매번 부름(`s=''`, `p.ai`·`p.st`로 그리고, 같으면 건너뛰기) |
+| `duelResHtml(rows, res)` | | 결과 창(사이트·모듈)에 덧붙일 HTML(끝 판 나란히·풀이 다시 보기 등). `rows` = 순위 순 + `mv`(그 사람의 마지막 미니 화면 글자열, 나는 게임이 직접) |
+| `duelDoneMsg(nick)` | `'○○님이 다 풀었어요!'` | 경주에서 다른 사람이 다 풀었을 때 큰 알림 문구(예: 주차 `'○○ 탈출!'`) |
 | `duelAi(rng, o)` | 엔진 사람 흉내 | 게임 전용 컴퓨터 결과 `{ ok, T(초), sc, fail(못 끝낼 때 멈추는 진행 0~1), pts? }`. `o = { pace, cfg }`. `T`를 getter로 주면 예전처럼 연속으로 움직임(오목) |
 | `duelAvoidKey()` | | 이번 판을 나타내는 열쇠(예: 숨은그림 장면 이름). 엔진이 최근 3개를 저장해 다음 대전 `avoid`로 넘김(빠른 대전은 방장 목록을 모두가 씀) |
-| `duelLaunch(o)` | | 자기 방식 대전(함대·고스톱·끝말잇기). 지금은 `o = { pace }`를 받음(무시해도 됨) |
+| `duelLaunch(o)` | | 자기 방식 대전(함대·고스톱·끝말잇기). 빠른 대전은 `o = { pace }`. 사이트 대전 방에서는 `o = { room:중계 방 이름('fl-d3-r-<코드>-<판>'), pl:[참가자 기기 표식], me, host:내가 이번 판 방장인지, seed, again, pace, n, lv:난이도, nick, info:방 정보(G.duel.room에 그대로 넣으면 결과 창이 방 버튼·보상 난이도를 씀), onFail(why) }` — 받으면 짝 찾기 없이 그 방에서 pl 사람끼리 시작 |
+| `duelRoom` | `false` | `duelLaunch` 게임이 위 방 정보(o.room)를 받아 시작할 수 있으면 `true` → 대전 방 목록·방 만들기에 나옴(없으면 빠른 대전만, 예: 스노우볼) |
 | `duelPlace` | `'bar'` | `'top'`이면 막대·칩 줄을 늘 맨 위에(상단 바 안에 넣지 않음) |
 
 **엔진이 주는 함수(전역)**: `duelPlayers()`(자리 순서 `[{ pid, seat, nick, me, ai, col, shape, st, left, gone, rank }]`, 색·모양은 내 화면 기준: 나는 늘 분홍 원) · `duelMe()` · `duelIsHost()` ·
-`duelSend(kind, data)`(200B 이하, 나에게는 안 옴) · `duelClaim(key)` → `{ ok }` · `duelOwner(key)` · `duelEndNow(why)` · `duelNotify(text, { from, kind:'good'|'bad'|'info' })` · `duelSeed()` · `duelRound()` → `{ r, series, freeLeft }` ·
+`duelSend(kind, data)`(200B 이하, 나에게는 안 옴) · `duelAiDelay(초)`(컴퓨터 상대를 늦춤: 남은 계단·끝 시각을 뒤로) · `duelClaim(key)` → `{ ok }` · `duelOwner(key)` · `duelEndNow(why)` · `duelNotify(text, { from, kind:'good'|'bad'|'info' })` · `duelSeed()` · `duelRound()` → `{ r, series, freeLeft }` ·
 `duelTurn = { order(), cur(), n(), mine(), act(kind, data, { next:false로 차례 유지 }), onAct(cb), timeout(sec), left() }`(`onAct`는 다른 사람의 수와 엔진의 대신 하기 `{ kind:'timeout'|'skip', auto:true, rng }`만 부름, 내 수는 게임이 바로 그림).
 게임 상태는 같은 씨앗·같은 사건 순서로 모든 기기가 같게 계산한다. `G.duel.opp`·`G.duel.oppPeer`·`G.duel.nr`(1:1 게임이 쓰던 이름)은 그대로 있다.
 

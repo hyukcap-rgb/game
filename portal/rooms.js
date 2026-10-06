@@ -1,30 +1,41 @@
-/* ===================== 대전 방 · 친구 접속 (2026-10-05, docs/22_대전방_친구_설계.md) =====================
+/* ===================== 대전 방 · 친구 접속 (2026-10-05 docs/22 → 2026-10-06 docs/21 10-2·11-1, 결정 208·209·212) =====================
    대전 서버(중계)는 그대로 쓰고, 대기실(lobby) presence로 방 광고·접속 상태·초대를 주고받는다(서버 배포 없음).
    · 대기실 presence(내 것): u 기기 표식 · mn 이름 · ml 레벨 · fh 친구 표식(친구 코드를 바꾼 값, 친구만 알아봄)
-     · ps 하는 일('h' 접속 · 'r:<게임>' 방 · 'p:<게임>' 게임 중) · rm 방 광고(방장만) · iv 실시간 초대 목록
-   · 방마다 중계 방 'rm-<번호>' 하나. 방장 presence가 방 상태를 정한다: gu 도전자(기기 표식) · kick 내보낸 사람 · rd 판 번호 · st 상태.
-   · 판은 공용 대전 엔진(duelPrivate)으로 대전 방 'du-<번호>-<판>'에서 같은 순간 시작. 씨앗 = 방 번호 + 판 번호 + 날짜.
-   게임 이름으로 나누지 않는다: 게임 정의에 duelLaunch가 있는 게임(차례로 두는 게임)은 이번엔 빠른 대전만. */
+     · ps 하는 일('h' 접속 · 'r:<게임>' 방 · 'p:<게임>' 게임 중) · rm 방 광고(방장만, n 인원 · c 정원) · iv 실시간 초대 목록
+   · 방마다 중계 방 'rm-<코드>' 하나. 방 코드 = 6글자(I·O·0·1 없음). 비공개 방 = 친구 방(따로 만들지 않음).
+     - 모두의 presence: nk 이름 · lv 레벨 · u 기기 표식 · rdy 준비(한 판 더 = 자동 준비) · rv 결과 보는 중
+     - 방장 presence: h · hv(방장 차례 번호) · g · d · b · pv · cap 정원(2~그 게임 최대) · st 상태('w' 기다림 · 'go' 시작 · 'p' 대전 중)
+       · rd 판 번호 · kick 내보낸 사람 · ord 들어온 순서 · pl 이번 판 참가자 · av 최근 본 판(같은 판 반복 줄이기) · ca 자동 시작 시각(서버 ms)
+   · 방장이 나가면 ord에서 가장 먼저 들어온 사람이 방장(hv+1). 남은 사람이 1명이면 그 사람이 방장으로 방 유지(혼자서는 시작 못 함).
+   · 판은 공용 대전 엔진(duelPrivate)으로 대전 방 'fl-d3-r-<코드>-<판>'에서 같은 순간 시작. 씨앗 = 방 + 판 번호 + 날짜.
+   · 시작: 2명 이상 + 처음 판은 들어온 사람 모두 준비, 다음 판부터는 준비(한 판 더)한 사람끼리. 꽉 차고(다음 판부터는 남은 모두) 모두 준비면 3초 뒤 자동 시작.
+   · 한 판 더 없이 3판 연속 쉬면 자동으로 방에서 나감(12절).
+   게임 이름으로 나누지 않는다: 자기 방식 대전(duelLaunch)인 게임은 게임 정의에 duelRoom:true가 있을 때만 방(duelLaunch(o)로 방을 넘김). */
 const RM_DIFF = ['easy', 'normal', 'hard'];
 const RM_DNAME = { easy:'쉬움', normal:'보통', hard:'어려움' };
-const RM_PTS = { easy:{ w:300, d:180, l:100 }, normal:DUEL_PTS, hard:{ w:550, d:330, l:200 } };
-const RM_HARD_LV = 5, RM_BAND = 5, RM_BONUS = 100, RM_INV_GAP = 30000;
+const RM_PTS = DUEL_TWO;   /* 2명 줄(결정 199) — 인원별 표는 duelPts(portal/duel-ui.js) */
+const RM_HARD_LV = 5, RM_BAND = 5, RM_BONUS = DUEL_STRONG, RM_INV_GAP = 30000, RM_REST = 3, RM_AUTO = 3000;
+const RM_CODE_A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const rmLv = () => { try{ return lvInfo().L; }catch(_){ return 1; } };
 const rmRec = L => L >= 12 ? 'hard' : L >= 5 ? 'normal' : 'easy';
 const rmCanD = (d, L = rmLv()) => d !== 'hard' || L >= RM_HARD_LV;
-const rmOk = id => !!(NG[id] && !NG[id].duelLaunch);   /* 동시에 푸는 게임만 방 */
-const rmPtsTxt = d => { const p = RM_PTS[d] || DUEL_PTS; return `승 +${p.w} · 무 +${p.d} · 패 +${p.l}`; };
+const rmOk = id => !!(NG[id] && (!NG[id].duelLaunch || NG[id].duelRoom === true));   /* 동시에 푸는 게임 + 방을 받는 자기 방식 게임 */
+const rmMax = id => duelMaxOf(id);
+const rmNorm = id => String(id || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+const rmRelay = id => 'rm-' + String(id).toLowerCase();
+const rmCodeFmt = c => (c = String(c || '')).length === 6 ? c.slice(0, 3) + ' ' + c.slice(3) : c;
+/* 인원별 순위 보상 글: "1위 +450 · 2위 +270 · 3위 +150" (2명은 승/무/패) */
+function rmPtsTxt(d, n){
+  n = Math.max(2, Math.min(5, n | 0));
+  if(n === 2){ const p = RM_PTS[d] || DUEL_PTS; return `승 +${p.w} · 무 +${p.d} · 패 +${p.l}`; }
+  return Array.from({ length:n }, (_, i) => `${i + 1}위 +${duelPtsAt(n, i + 1, d)}`).join(' · ');
+}
 const rmChip = d => `<span class="dchip ${d}">${RM_DNAME[d] || '보통'}</span>`;
 function rmUid(){ let u = store.get('hp:uid', ''); if(!u){ u = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); store.set('hp:uid', u); } return u; }
 const rmHash = code => code ? 'f' + (seedFrom('fr:' + code) >>> 0).toString(36) : '';
 const rmVisible = () => store.get('hp:fronline', true) !== false;
 const rmPlaying = () => !!(G && !G.over && $('#play') && $('#play').style.display === 'block');
-/* 대전 포인트: 난이도별 + 강자 보너스(방에서 나보다 5레벨 이상 높은 상대를 이기면) */
-function rmPts(lv, r, D){
-  const base = (RM_PTS[lv] || DUEL_PTS)[r] || 0;
-  const bonus = r === 'w' && D && D.room && typeof D.room.oppLv === 'number' && D.room.oppLv - rmLv() >= RM_BAND ? RM_BONUS : 0;
-  return { pts:base + bonus, bonus };
-}
+const RM_CROWN = `<svg class="rmcrown" viewBox="0 0 32 24" width="16" height="12" aria-hidden="true"><path d="M3 7l6.5 6L16 3l6.5 10L29 7l-3 14H6z" fill="#FFC93C" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
 
 /* ---------- 대기실 presence ---------- */
 const RM = { cur:null, inv:[], seenInv:{}, pendInv:[], lbSig:{}, view:'', listG:'', listF:'all' };
@@ -38,7 +49,7 @@ function lbWant(){
     u:rmUid(), mn:myNick(), ml:rmLv(),
     fh:rmVisible() && frCode() ? rmHash(frCode()) : null,
     ps:rmPlaying() ? 'p:' + G.id : c ? 'r:' + c.g : 'h',
-    rm:c && c.host && !c.closed ? { i:c.id, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, n:c.gu ? 2 : 1, s:c.st === 'w' ? 'w' : 'p', t:c.t } : null,
+    rm:c && c.host && !c.closed ? { i:c.id, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, n:Math.max(1, c.ord.length), c:c.cap, s:c.st === 'w' ? 'w' : 'p', t:c.t } : null,
     iv:RM.inv.length ? RM.inv.map(x => ({ h:x.h, r:x.r, g:x.g, d:x.d, t:x.t })) : null
   };
 }
@@ -51,10 +62,11 @@ function lbPush(){
 /* 그 게임의 공개 방 목록 */
 function rmAds(g){
   return lbPeers().filter(p => p.presence.rm && p.presence.rm.i && (!g || p.presence.rm.g === g) && !p.presence.rm.pv)
-    .map(p => Object.assign({ peer:p.peer, nk:String(p.presence.mn || '익명').slice(0, 12), lv:+p.presence.ml || 1, fh:p.presence.fh || '' }, p.presence.rm))
+    .map(p => Object.assign({ peer:p.peer, nk:String(p.presence.mn || '익명').slice(0, 12), lv:+p.presence.ml || 1, fh:p.presence.fh || '' }, p.presence.rm, { c:Math.max(2, Math.min(5, +p.presence.rm.c || 2)) }))
     .filter(r => RM_DIFF.includes(r.d));
 }
-const rmCount = g => rmAds(g).filter(r => r.n < 2).length;
+const rmOpenAd = r => r.n < r.c && r.s === 'w';
+const rmCount = g => rmAds(g).filter(rmOpenAd).length;
 function rmSig(){ if(!duelLive()) return ''; return lbPeers().map(p => (p.presence.rm ? p.presence.rm.i + p.presence.rm.n + p.presence.rm.s : '') + (p.presence.fh || '') + (p.presence.ps || '')).join(',') + '|' + (RM.cur ? RM.cur.id : ''); }
 
 /* ---------- 친구 접속 상태 ---------- */
@@ -73,7 +85,7 @@ function frStatus(f, live){
   const L = (live || frLive()).get(f.fid);
   if(L){
     const g = L.ps.slice(2), gn = GAMES[g] ? GAMES[g].name : '';
-    if(L.ps.startsWith('r:') && L.rm && !L.rm.pv && L.rm.n < 2) return { on:true, txt:`대전 방에서 기다리는 중 · ${gn} ${RM_DNAME[L.rm.d] || ''}`, room:L.rm };
+    if(L.ps.startsWith('r:') && L.rm && !L.rm.pv && L.rm.n < Math.max(2, +L.rm.c || 2) && L.rm.s === 'w') return { on:true, txt:`대전 방에서 기다리는 중 · ${gn} ${RM_DNAME[L.rm.d] || ''} ${L.rm.n}/${Math.max(2, +L.rm.c || 2)}`, room:L.rm };
     if(L.ps.startsWith('r:')) return { on:true, txt:'대전 방에 있어요' + (gn ? ' · ' + gn : '') };
     if(L.ps.startsWith('p:')) return { on:true, txt:'게임 중' + (gn ? ' · ' + gn : ''), busy:true };
     return { on:true, txt:'접속 중' };
@@ -84,143 +96,239 @@ function frStatus(f, live){
 const frOnlineN = () => frLive().size;
 
 /* ---------- 방 만들기 · 들어가기 · 나가기 ---------- */
-function rmNewId(){ const a = 'abcdefghijkmnpqrstuvwxyz23456789'; let s = ''; for(let i = 0; i < 8; i++) s += a[Math.random() * a.length | 0]; return s; }
+function rmNewCode(){ let s = ''; for(let i = 0; i < 6; i++) s += RM_CODE_A[Math.random() * RM_CODE_A.length | 0]; return s; }   /* 문제 내용과 무관한 방 번호라 Math.random */
 function rmMyPres(){ return { nk:myNick(), lv:rmLv(), u:rmUid() }; }
+function rmHostPub(c, extra){
+  if(!c || !c.host) return;
+  c.nr.presence(Object.assign({ h:1, hv:c.hv, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, cap:c.cap, st:c.st, rd:c.rd, kick:c.kick.slice(-30), ord:c.ord.slice(0, 5), pl:c.pl || [], av:c.av || [], ca:c.ca || null }, extra || {})).catch(() => {});
+}
 async function rmCreate(o){
   if(RM.cur){ toast('이미 대전 방에 있어요'); rmOpen(); return false; }
-  if(!duelLive()){ toast('지금은 실시간 연결이 안 돼요. 빠른 대전(AI)으로 겨뤄 보세요'); return false; }
-  const L = rmLv(), id = rmNewId();
-  const c = { id, g:o.g, d:rmCanD(o.d, L) ? o.d : 'normal', b:o.band === 'near' ? [Math.max(1, L - RM_BAND), L + RM_BAND] : null, pv:!!o.pv, host:true, st:'w', rd:0, kick:[], gu:null, t:Date.now(), lastInv:{} };
-  let nr; try{ nr = await ROOM.join('rm-' + id); }catch(_){ toast('방을 만들지 못했어요. 잠시 뒤 다시 해 주세요'); return false; }
-  c.nr = nr; RM.cur = c;
-  nr.presence(Object.assign(rmMyPres(), { h:1, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, st:'w', rd:0, kick:[], gu:null })).catch(() => {});
+  if(!duelLive()){ toast('지금은 실시간 연결이 안 돼요. 빠른 대전(컴퓨터)으로 겨뤄 보세요'); return false; }
+  const L = rmLv(), id = rmNewCode(), mx = rmMax(o.g), me = rmUid();
+  const c = { id, g:o.g, d:rmCanD(o.d, L) ? o.d : 'normal', b:o.band === 'near' ? [Math.max(1, L - RM_BAND), L + RM_BAND] : null, pv:!!o.pv, cap:Math.max(2, Math.min(mx, +o.cap || mx)),
+    host:true, hv:1, st:'w', rd:0, kick:[], ord:[me], pl:[], av:[], t:Date.now(), lastInv:{}, rdy:true, rv:0, rest:0, joinAt:Date.now() };
+  let nr; try{ nr = await ROOM.join(rmRelay(id)); }catch(_){ toast('방을 만들지 못했어요. 잠시 뒤 다시 해 주세요'); return false; }
+  c.nr = nr; RM.cur = c; duelFreeReset(id);
+  nr.presence(Object.assign(rmMyPres(), { rdy:1, rv:0 })).catch(() => {});
+  rmHostPub(c);
   c.un = nr.onPeers(() => rmSync(), () => rmLost());
   lbPush(); sfx('flLock');
   return c;
 }
-/* 방 들어가기: 방장이 보이면 확인(내보내짐·레벨·꽉 참) 뒤 방 안으로 */
+/* 방 들어가기: 방장이 보이면 확인(내보내짐·레벨·꽉 참·대전 중) 뒤 방 안으로. o = { invited, onErr(msg), quiet } */
 async function rmJoin(id, o = {}){
-  id = String(id || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12); if(!id) return;
+  id = rmNorm(id);
+  const err = msg => { if(o.onErr) o.onErr(msg); else { closeModal(); toast(msg); } };
+  if(!id) return err('그런 방이 없어요. 코드를 다시 봐 주세요');
   if(RM.cur){ if(RM.cur.id === id){ rmOpen(); return; } toast('이미 다른 대전 방에 있어요. 먼저 나가 주세요'); rmOpen(); return; }
-  if(!duelLive()){ toast('지금은 실시간 연결이 안 돼요. 잠시 뒤 다시 해 주세요'); return; }
-  openModal(`<div class="rmwait"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note">대전 방에 들어가는 중…</p></div>`);
-  let nr; try{ nr = await ROOM.join('rm-' + id); }catch(_){ closeModal(); toast('방에 들어가지 못했어요'); return; }
-  nr.presence(Object.assign(rmMyPres(), { rdy:0, iv:o.invited ? 1 : 0 })).catch(() => {});
+  if(!duelLive()) return err('실시간 연결이 안 돼요. 잠시 뒤 다시 해 주세요');
+  if(!o.quiet) openModal(`<div class="rmwait"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note">대전 방에 들어가는 중…</p></div>`);
+  let nr; try{ nr = await ROOM.join(rmRelay(id)); }catch(_){
+    await new Promise(r => setTimeout(r, 600));   /* 방금 나온 방이면 나가기가 끝난 뒤 한 번 더 */
+    try{ nr = await ROOM.join(rmRelay(id)); }catch(_2){ return err('방에 들어가지 못했어요'); }
+  }
+  const me = rmUid();
+  nr.presence(Object.assign(rmMyPres(), { rdy:0, rv:0, iv:o.invited ? 1 : 0 })).catch(() => {});
   const t0 = Date.now();
-  const host = await new Promise(res => { const iv = setInterval(() => { let h = null; try{ h = nr.peers().find(p => !p.sameTab && p.presence && p.presence.h && p.presence.g); }catch(_){} if(h || Date.now() - t0 > 4000){ clearInterval(iv); res(h); } }, 150); });
-  const out = msg => { try{ nr.leave(); }catch(_){} closeModal(); toast(msg); };
-  if(!host) return out('방이 닫혔거나 없는 방이에요');
-  const H = host.presence, L = rmLv();
-  if((H.kick || []).includes(rmUid())) return out('방장이 내보낸 방이라 들어갈 수 없어요');
+  const host = await new Promise(res => { const iv = setInterval(() => { let h = null; try{ h = rmBestHost(nr.peers().filter(p => !p.sameTab)); }catch(_){} if(h || Date.now() - t0 > 4000){ clearInterval(iv); res(h); } }, 150); });
+  const out = msg => { try{ nr.presence({ bye:1 }).catch(() => {}); }catch(_){} setTimeout(() => { try{ nr.leave(); }catch(_){} }, 100); err(msg); };
+  if(!host) return out('그런 방이 없어요. 코드를 다시 봐 주세요');
+  const H = host.presence, L = rmLv(), cap = Math.max(2, Math.min(5, +H.cap || 2)), ord = Array.isArray(H.ord) ? H.ord : [];
+  if((H.kick || []).includes(me)) return out('이 방에서 내보내져서 들어갈 수 없어요');
   if(!o.invited && H.b && (L < H.b[0] || L > H.b[1])) return out(`Lv ${H.b[0]}~${H.b[1]}만 들어갈 수 있는 방이에요`);
-  if(H.gu && H.gu !== rmUid()) return out('방이 꽉 찼어요');
   if(!GAMES[H.g] || !rmOk(H.g)) return out('지금은 들어갈 수 없는 방이에요');
-  const c = RM.cur = { id, g:H.g, d:RM_DIFF.includes(H.d) ? H.d : 'normal', b:H.b || null, pv:!!H.pv, host:false, st:H.st || 'w', rd:+H.rd || 0, kick:[], gu:null, t:Date.now(), nr, joinAt:Date.now(), hostSeen:Date.now(), rdy:false, invited:!!o.invited, lastInv:{} };
+  if(H.st && H.st !== 'w' && !ord.includes(me)) return out('지금 대전 중이에요. 판이 끝나면 다시 눌러 주세요');
+  if(ord.length >= cap && !ord.includes(me)) return out('방이 꽉 찼어요');
+  const c = RM.cur = { id, g:H.g, d:RM_DIFF.includes(H.d) ? H.d : 'normal', b:H.b || null, pv:!!H.pv, cap, host:false, hv:+H.hv || 0, st:H.st || 'w', rd:+H.rd || 0, kick:(H.kick || []).slice(), ord:ord.slice(), pl:[], av:[],
+    t:Date.now(), nr, joinAt:Date.now(), hostSeen:Date.now(), hostU:H.u, hostNk:String(H.nk || '방장'), rdy:false, rv:0, rest:0, invited:!!o.invited, lastInv:{} };
+  duelFreeReset(id);
   c.un = nr.onPeers(() => rmSync(), () => rmLost());
   sfx('flLock'); fxBuzz(15);
   lbPush(); rmOpen();
+  return c;
 }
 function rmLeave(msg){
   const c = RM.cur; if(!c) return;
   RM.cur = null; RM.inv = [];
   if(c.dh) try{ c.dh.cancel(); }catch(_){}
   if(c.un) try{ c.un(); }catch(_){}
-  try{ c.nr.presence({ bye:1 }).catch(() => {}); }catch(_){}
+  try{ c.nr.presence({ bye:1, h:0 }).catch(() => {}); }catch(_){}
   setTimeout(() => { try{ c.nr.leave(); }catch(_){} }, 150);
+  duelFreeReset('');
   lbPush(); rmPillRender();
-  if($('#rmRoom') && $('#veil').classList.contains('on')) closeModal();
+  if(($('#rmRoom') || $('#dzRes')) && $('#veil').classList.contains('on')) closeModal();
   if(msg) toast(msg);
   if(typeof renderHome === 'function' && $('#home').style.display !== 'none') renderHome();
 }
 /* 연결이 오래 끊겨 방을 잃음 */
 function rmLost(){ if(!RM.cur) return; if(rmPlaying() && G.duel && G.duel.room){ RM.cur.closed = true; return; } rmLeave('연결이 끊겨 대전 방에서 나왔어요'); }
 
-/* 방 상태 맞추기(방장은 정하고, 도전자는 따른다) */
+/* ---------- 방 상태 맞추기(방장은 정하고, 나머지는 따른다) ---------- */
 function rmPeers(c){ try{ return c.nr.peers(); }catch(_){ return []; } }
-function rmHostOf(c){ return rmPeers(c).find(p => p.presence && p.presence.h && !p.presence.bye); }
-function rmGuestOf(c){
-  if(c.host) return c.gu ? rmPeers(c).find(p => !p.sameTab && p.presence && p.presence.u === c.gu && !p.presence.bye) : null;
-  return rmPeers(c).find(p => p.sameTab);
+/* 방장이 둘 보이면(넘겨받는 사이): 방장 차례 번호가 큰 쪽, 같으면 기기 표식이 작은 쪽 */
+function rmBestHost(ps){
+  return ps.filter(p => p.presence && p.presence.h && p.presence.g && !p.presence.bye && p.presence.u)
+    .sort((a, b) => (+b.presence.hv || 0) - (+a.presence.hv || 0) || (a.presence.u < b.presence.u ? -1 : 1))[0] || null;
+}
+/* 방 안 사람들(나 포함), 들어온 순서대로: { u, nk, lv, rdy, rv, me, host, seat } */
+function rmMembers(c){
+  if(!c) return [];
+  const me = rmUid(), ps = rmPeers(c), by = {};
+  ps.forEach(p => { const P = p.presence; if(!p.sameTab && P && P.u && !P.bye && !c.kick.includes(P.u)) by[P.u] = P; });
+  const hostU = c.host ? me : c.hostU;
+  const mine = { u:me, nk:myNick(), lv:rmLv(), rdy:!!c.rdy, rv:c.rv ? 1 : 0, me:true };
+  const ord = c.ord.filter(u => u === me || by[u]);
+  if(!ord.includes(me)) ord.push(me);
+  return ord.slice(0, 5).map((u, i) => { const P = u === me ? mine : by[u];
+    return { u, nk:String(P.nk || '?').slice(0, 12), lv:+P.lv || 1, rdy:!!P.rdy, rv:!!P.rv, me:u === me, host:u === hostU, seat:i }; });
 }
 function rmSync(){
   const c = RM.cur; if(!c) return;
+  const me = rmUid(), now = Date.now(), ps = rmPeers(c);
+  const live = ps.filter(p => !p.sameTab && p.presence && p.presence.u && !p.presence.bye && p.presence.u !== me);
   if(c.host){
-    const ps = rmPeers(c).filter(p => !p.sameTab && p.presence && p.presence.u && !p.presence.h && !p.presence.bye && !c.kick.includes(p.presence.u));
-    let gu = c.gu;
-    if(gu && !ps.some(p => p.presence.u === gu) && c.st === 'w') gu = null;   /* 대전 중에는 잠깐 끊겨도 자리 유지 */
-    if(!gu && ps.length) gu = ps[0].presence.u;
-    if(gu !== c.gu){
-      const was = c.gu; c.gu = gu;
-      c.nr.presence({ gu }).catch(() => {});
-      if(gu && !was){ sfx('flPing'); fxBuzz([20, 30, 20]); }
-      if(!gu && was && c.st === 'w') toast('도전자가 나갔어요');
+    const other = rmBestHost(live.filter(p => (+p.presence.hv || 0) > c.hv || ((+p.presence.hv || 0) === c.hv && p.presence.u < me)));
+    if(other){ c.host = false; c.hostU = other.presence.u; c.hostNk = String(other.presence.nk || '방장'); c.hostSeen = now; try{ c.nr.presence({ h:0 }).catch(() => {}); }catch(_){} rmRefreshViews(); return; }
+    const us = live.filter(p => !c.kick.includes(p.presence.u)).map(p => p.presence.u);
+    const ord = c.ord.filter(u => u === me || us.includes(u) || (c.st !== 'w' && (c.pl || []).includes(u)));
+    if(!ord.includes(me)) ord.unshift(me);
+    for(const u of us) if(!ord.includes(u) && ord.length < c.cap) ord.push(u);
+    if(ord.join() !== c.ord.join()){
+      const added = ord.filter(u => !c.ord.includes(u)), gone = c.ord.filter(u => !ord.includes(u));
+      c.ord = ord; rmHostPub(c);
+      if(added.length){ sfx('flPing'); fxBuzz([20, 30, 20]); }
+      if(gone.length && c.st === 'w') toast('한 명이 방에서 나갔어요');
       lbPush();
     }
+    /* 판이 끝났는데 상태가 남아 있으면 기다림으로 */
+    if(c.st !== 'w' && (!c.dh || c.dh.dead) && !(rmPlaying() && G.duel && G.duel.room) && now - (c.goAt || 0) > 8000){ c.st = 'w'; rmHostPub(c); lbPush(); }
+    rmAutoCheck(c);
   } else {
-    const h = rmHostOf(c);
+    const h = rmBestHost(live);
     if(h){
-      c.hostSeen = Date.now(); const H = h.presence;
-      c.hostPeer = h.peer;
-      if((H.kick || []).includes(rmUid())){ rmLeave('방장이 방에서 내보냈어요'); return; }
-      if(H.gu && H.gu !== rmUid() && Date.now() - c.joinAt > 1500){ rmLeave('방이 꽉 찼어요'); return; }
-      c.st = H.st || 'w';
-      if(H.st === 'go' && +H.rd > c.rd && H.gu === rmUid()) rmBegin(+H.rd);
-    } else if(!(rmPlaying() && G.duel && G.duel.room) && Date.now() - c.hostSeen > 8000){ rmLeave('방장이 나가서 방이 닫혔어요'); return; }
+      const H = h.presence;
+      if(c.hostU && c.hostU !== H.u && c.hostLost){ toast(`이제 ${String(H.nk || '방장').slice(0, 12)}님이 방장이에요`); sfx('flPing'); }
+      c.hostLost = 0; c.hostSeen = now; c.hostU = H.u; c.hostNk = String(H.nk || '방장'); c.hostPeer = h.peer;
+      if((H.kick || []).includes(me)){ rmLeave('방장이 방에서 내보냈어요'); return; }
+      c.kick = (H.kick || []).slice(); c.ord = Array.isArray(H.ord) ? H.ord.slice(0, 5) : c.ord; c.hv = +H.hv || 0;
+      c.cap = Math.max(2, Math.min(5, +H.cap || 2)); c.g = H.g || c.g; c.d = RM_DIFF.includes(H.d) ? H.d : c.d; c.b = H.b || null; c.pv = !!H.pv;
+      if(!c.ord.includes(me) && now - c.joinAt > 2500 && c.ord.length >= c.cap){ rmLeave('방이 꽉 찼어요'); return; }
+      c.st = H.st || 'w'; c.ca = typeof H.ca === 'number' ? H.ca : null;
+      if((H.st === 'go' || H.st === 'p') && +H.rd > c.rd){
+        const pl = Array.isArray(H.pl) ? H.pl : [];
+        if(pl.includes(me)){ if(H.st === 'go') rmBegin(+H.rd, pl, H.av); }
+        else if(c.ord.includes(me)){
+          c.rd = +H.rd; c.rest = (c.rest | 0) + 1;
+          if(c.rest >= RM_REST){ rmLeave(`${RM_REST}판 연속 쉬어서 방에서 나왔어요`); return; }
+          toast('이번 판은 쉬어요 · 판이 끝나면 같이 해요');
+        } else c.rd = +H.rd;
+      }
+    } else if(!(rmPlaying() && G.duel && G.duel.room)){
+      /* 방장이 안 보임: 나가기(bye)는 바로, 끊김은 4초 뒤 → 들어온 순서가 가장 빠른 사람이 방장 */
+      const bye = ps.some(p => p.presence && p.presence.u === c.hostU && p.presence.bye);
+      if(!c.hostLost) c.hostLost = now;
+      if(bye || now - c.hostSeen > 4000){
+        const liveU = new Set(live.map(p => p.presence.u)); liveU.add(me);
+        const nxt = c.ord.find(u => u !== c.hostU && liveU.has(u)) || [...liveU].sort()[0];
+        if(nxt === me) rmPromote(c, live);
+        else if(now - c.hostSeen > 20000){ rmLeave('방장이 나가서 방이 닫혔어요'); return; }
+      }
+    }
   }
   rmRefreshViews();
 }
+/* 방장 넘겨받기 */
+function rmPromote(c, live){
+  const me = rmUid(), liveU = new Set(live.map(p => p.presence.u));
+  c.host = true; c.hv = (c.hv | 0) + 1; c.hostLost = 0;
+  c.ord = c.ord.filter(u => u !== c.hostU && (u === me || liveU.has(u)));
+  if(!c.ord.includes(me)) c.ord.unshift(me);
+  for(const u of liveU) if(!c.ord.includes(u) && c.ord.length < c.cap) c.ord.push(u);
+  c.hostU = me; c.st = 'w'; c.ca = null; c.autoAt = 0; c.t = Date.now();
+  rmHostPub(c); lbPush();
+  sfx('flPing'); fxBuzz([20, 30, 20]);
+  toast('이제 내가 방장이에요 · 시작 버튼이 생겼어요');
+}
+/* 꽉 차고(다음 판부터는 남은 모두) 모두 준비면 3초 뒤 자동 시작. 그 사이 누가 준비를 풀면 멈춤 */
+function rmAutoCheck(c){
+  if(!c.host || c.st !== 'w') return;
+  const mem = rmMembers(c), all = mem.length >= 2 && mem.every(m => m.rdy) && (mem.length >= c.cap || c.rd >= 1);
+  if(!all){ if(c.autoAt){ c.autoAt = 0; c.ca = null; rmHostPub(c); } return; }
+  if(!c.autoAt){ c.autoAt = Date.now() + RM_AUTO; c.ca = Math.round(netNow() + RM_AUTO); rmHostPub(c); sfx('flPing'); return; }
+  if(Date.now() >= c.autoAt){ c.autoAt = 0; c.ca = null; rmStartGame(true); }
+}
 function rmReady(on){
-  const c = RM.cur; if(!c || c.host) return;
-  if(on && !HOST.canDuel()) return;
-  c.rdy = !!on; c.nr.presence({ rdy:on ? 1 : 0 }).catch(() => {});
+  const c = RM.cur; if(!c) return;
+  if(on && !HOST.canDuel({ again:true, room:c.id })) return;
+  c.rdy = !!on; c.rv = 0; c.nr.presence({ rdy:on ? 1 : 0, rv:0 }).catch(() => {});
   sfx(on ? 'flLock' : 'toggle'); rmRefreshViews();
 }
-function rmStartGame(){
+/* 방장 [시작]: 2명 이상. 처음 판은 들어온 사람 모두 준비, 다음 판부터는 준비한 사람끼리 */
+function rmStartGame(auto){
   const c = RM.cur; if(!c || !c.host || c.st !== 'w') return;
-  const g = rmGuestOf(c);
-  if(!g || !g.presence.rdy){ toast('도전자가 준비하면 시작할 수 있어요'); return; }
-  if(!HOST.canDuel()) return;
-  const rd = c.rd + 1;
-  c.st = 'go'; c.nr.presence({ st:'go', rd }).catch(() => {});
-  rmBegin(rd);
+  const mem = rmMembers(c), others = mem.filter(m => !m.me), rdy = others.filter(m => m.rdy);
+  if(!rdy.length){ if(!auto) toast(others.length ? '준비한 사람이 있어야 시작할 수 있어요' : '혼자서는 시작할 수 없어요 · 친구를 불러 보세요'); return; }
+  if(c.rd === 0 && rdy.length < others.length){ if(!auto) toast('들어온 사람이 모두 준비하면 시작할 수 있어요'); return; }
+  if(!HOST.canDuel({ again:true, room:c.id })) return;
+  const pl = [rmUid(), ...rdy.map(m => m.u)].slice(0, c.cap), rd = c.rd + 1;
+  c.st = 'go'; c.pl = pl; c.goAt = Date.now(); c.autoAt = 0; c.ca = null; c.av = duelSeenGet(c.g);
+  rmHostPub(c, { rd });
+  rmBegin(rd, pl, c.av);
 }
-/* 판 시작: 두 사람이 같은 대전 방에 들어가 공용 엔진으로 같은 순간 시작 */
-function rmBegin(rd){
+/* 판 시작: 이번 판 사람들이 같은 대전 방에 들어가 공용 엔진으로 같은 순간 시작 */
+function rmBegin(rd, pl, av){
   const c = RM.cur; if(!c || rd <= c.rd) return;
-  c.rd = rd; c.rdy = false;
-  if(!c.host) c.nr.presence({ rdy:0 }).catch(() => {});
-  const other = c.host ? rmGuestOf(c) : rmHostOf(c), oppLv = other && other.presence ? +other.presence.lv || 1 : 1;
-  openModal(`<div class="rmwait"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note">곧 시작해요 · 같은 문제를 같은 순간에 풀어요</p></div>`);
-  c.dh = duelPrivate(c.g, c.d, 'du-' + c.id + '-' + rd, { nick:myNick(), room:{ id:c.id, g:c.g, d:c.d, oppLv, host:c.host },
-    onFail:why => {
-      c.dh = null;
-      if(c.host){ c.st = 'w'; c.nr.presence({ st:'w' }).catch(() => {}); }
-      toast(why === 'start' ? '하트가 없어 시작하지 못했어요' : '상대와 연결하지 못했어요. 다시 준비해 주세요');
-      if(RM.cur === c) rmOpen();
-    } });
-  if(c.host) setTimeout(() => { if(RM.cur === c && c.st === 'go'){ c.st = 'p'; c.nr.presence({ st:'p' }).catch(() => {}); lbPush(); } }, 1500);
+  const me = rmUid(), mem = rmMembers(c);
+  c.rd = rd; c.rdy = false; c.rv = 0; c.rest = 0; c.pl = pl.slice(); c.goAt = Date.now();
+  c.nr.presence({ rdy:0, rv:0 }).catch(() => {});
+  const lvs = {}; mem.forEach(m => { if(pl.includes(m.u)) lvs[m.me ? myNick() : m.nk] = m.lv; });
+  const name = 'fl-d3-r-' + c.id.toLowerCase() + '-' + rd;
+  const room = { id:c.id, g:c.g, d:c.d, host:c.host, lvs, code:c.pv ? c.id : null, n:pl.length, rd };
+  const fail = why => {
+    c.dh = null;
+    if(c.host){ c.st = 'w'; rmHostPub(c); }
+    toast(why === 'start' ? '하트가 없어 시작하지 못했어요' : '함께 시작하지 못했어요. 다시 준비해 주세요');
+    if(RM.cur === c) rmOpen();
+  };
+  if(NG[c.g].duelLaunch){   /* 자기 방식 대전(duelRoom:true): 방 정보를 넘겨 게임이 그 중계 방에서 시작 */
+    closeModal();
+    try{ NG[c.g].duelLaunch({ room:name, pl:pl.slice(), host:pl[0] === me, me, seed:name + ':' + dayKey(), again:rd > 1, pace:'n', n:pl.length, lv:c.d, nick:myNick(), info:room, onFail:fail }); }catch(e){ console.warn('duelLaunch', e); fail('join'); }
+  } else {
+    openModal(`<div class="rmwait"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note">곧 시작해요 · ${pl.length}명이 같은 문제를 같은 순간에 풀어요</p></div>`);
+    c.dh = duelPrivate(c.g, c.d, name, { nick:myNick(), n:pl.length, round:rd, avoid:Array.isArray(av) ? av : [], room, onFail:fail });
+  }
+  if(c.host) setTimeout(() => { if(RM.cur === c && c.st === 'go'){ c.st = 'p'; rmHostPub(c); lbPush(); } }, 1500);
   lbPush();
 }
-/* 판이 끝남(결과 창이 뜰 때): 방장은 방을 다시 대기로 */
+/* 판이 끝남(결과 창이 뜰 때): 방장은 방을 다시 대기로, 모두 '결과 보는 중' */
 function rmAfterDuel(){
   const c = RM.cur; if(!c) return;
-  c.dh = null;
-  if(c.host){ c.st = 'w'; c.nr.presence({ st:'w' }).catch(() => {}); }
+  c.dh = null; c.rv = 1; c.rdy = false;
+  c.nr.presence({ rv:1, rdy:0 }).catch(() => {});
+  if(c.host){ c.st = 'w'; rmHostPub(c); }
   if(c.closed) setTimeout(() => rmLeave('대전 방 연결이 끊겨 방에서 나왔어요'), 1500);
   lbPush();
 }
-function rmKick(){
+/* 결과 창 [한 판 더] = 방으로 돌아가기 + 자동 준비 · [방으로] = 준비 없이 방으로 */
+function rmAgain(){
+  const c = RM.cur; goHome(); setTab('duel');
+  if(!c){ toast('방이 닫혔어요'); return; }
+  rmOpen(); rmReady(true);
+}
+function rmBack(){ const c = RM.cur; if(!c) return; c.rv = 0; c.nr.presence({ rv:0 }).catch(() => {}); rmOpen(); }
+function rmKick(u){
   const c = RM.cur; if(!c || !c.host || c.st !== 'w') return;
-  const g = rmGuestOf(c); if(!g) return;
-  const nk = escH(String(g.presence.nk || '도전자').slice(0, 12));
+  const m = rmMembers(c).find(x => x.u === u && !x.me); if(!m) return;
+  const nk = escH(m.nk);
   openModal(`<h3>내보내기</h3><p class="note"><b>${nk}</b>님을 방에서 내보낼까요?<br>이 방이 닫힐 때까지 다시 들어올 수 없어요.</p>
     <div class="mbtns"><button class="b2" id="rkNo">취소</button><button class="b1 danger" id="rkYes">내보내기</button></div>`);
   $('#rkNo').onclick = rmOpen;
   $('#rkYes').onclick = () => {
     if(RM.cur !== c) return closeModal();
-    c.kick.push(g.presence.u); c.gu = null;
-    c.nr.presence({ kick:c.kick.slice(-30), gu:null }).catch(() => {});
-    toast(nk.replace(/&[a-z#0-9]+;/g, '') + '님을 내보냈어요'); sfx('toggle');
+    c.kick.push(u); c.ord = c.ord.filter(x => x !== u);
+    rmHostPub(c);
+    toast(m.nk + '님을 내보냈어요'); sfx('toggle');
     lbPush(); rmOpen();
   };
 }
@@ -247,9 +355,15 @@ function rmLink(){
 }
 async function rmShareLink(){
   const c = RM.cur; if(!c) return;
-  const url = rmLink(), text = `${myNick()}의 ${GAMES[c.g].name} 대전 방(${RM_DNAME[c.d]})으로 와! 같은 문제, 다른 점수.`;
+  const url = rmLink(), text = `${myNick()}의 ${GAMES[c.g].name} 대전 방(${RM_DNAME[c.d]} · ${c.cap}명)으로 와! 방 코드 ${rmCodeFmt(c.id)}\n같은 문제, 다른 점수.`;
   try{ if(navigator.share){ await navigator.share({ title:'하루퍼즐 리그 대전 방', text, url }); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
   try{ await navigator.clipboard.writeText(text + '\n' + url); toast('방 링크를 복사했어요. 카톡에 붙여 넣어 보내세요'); }catch(_){ toast(url); }
+}
+async function rmCopyCode(){
+  const c = RM.cur; if(!c) return;
+  let ok = false; try{ await navigator.clipboard.writeText(c.id); ok = true; }catch(_){}
+  if(!ok){ try{ const ta = document.createElement('textarea'); ta.value = c.id; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); }catch(_){} }
+  sfx('toggle'); toast(ok ? '방 코드를 복사했어요' : '방 코드 ' + rmCodeFmt(c.id));
 }
 function rmInviteSheet(){
   const c = RM.cur; if(!c) return;
@@ -258,12 +372,14 @@ function rmInviteSheet(){
   const row = f => { const s = frStatus(f, live), wait = Date.now() - (c.lastInv[f.fid] || 0) < RM_INV_GAP;
     return `<div class="frrow${s.on ? ' on' : ''}"><span class="frav">${rivalAv({ name:f.fid })}${s.on ? '<i class="ondot"></i>' : ''}</span><span class="frn"><b>${escH(f.nick)}</b><small>${escH(s.txt || '')}</small></span>
       <button class="btn small ${s.on ? 'primary' : 'secondary'}" data-inv="${f.fid}" ${wait ? 'disabled' : ''}>${wait ? '보냄' : s.on ? '바로 초대' : '알림 보내기'}</button></div>`; };
-  openModal(`<h3>친구 초대</h3><p class="note">${GAMES[c.g].name} · ${RM_DNAME[c.d]} 방으로 불러요. 초대받은 친구는 레벨이 달라도 들어올 수 있어요.</p>
-    <div class="frlist">${fs.length ? fs.map(row).join('') : `<p class="note">아직 친구가 없어요. 아래 링크를 보내거나, 친구 메뉴에서 친구를 먼저 맺어 보세요.</p>`}</div>
+  openModal(`<h3>친구 초대</h3><p class="note">${GAMES[c.g].name} · ${RM_DNAME[c.d]} · ${c.cap}명 방으로 불러요. 초대받은 친구는 레벨이 달라도 들어올 수 있어요.</p>
+    <div class="rmcode sm"><span>방 코드</span><b class="num">${rmCodeFmt(c.id)}</b><button class="btn small secondary" id="riCode">코드 복사</button></div>
+    <div class="frlist">${fs.length ? fs.map(row).join('') : `<p class="note">아직 친구가 없어요. 아래 링크나 방 코드를 보내거나, 친구 메뉴에서 친구를 먼저 맺어 보세요.</p>`}</div>
     <button class="btn gold block" id="riLink">${ic('share')} 방 링크 보내기 · 카톡</button>
     <div class="mbtns one"><button class="b2" id="riBack">방으로</button></div>`);
   document.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { const f = FR.friends.find(q => q.fid === b.dataset.inv); if(f){ rmInviteFriend(f); rmInviteSheet(); } });
   $('#riLink').onclick = rmShareLink;
+  $('#riCode').onclick = rmCopyCode;
   $('#riBack').onclick = rmOpen;
 }
 /* 실시간 초대 받기: 게임 중이면 끝난 뒤에 */
@@ -275,7 +391,7 @@ function rmInvScan(){
       if(!x || x.h !== my || !x.r) continue;
       const k = p.presence.u + ':' + x.r + ':' + x.t; if(RM.seenInv[k]) continue;
       RM.seenInv[k] = 1;
-      if(RM.cur && RM.cur.id === x.r) continue;
+      if(RM.cur && RM.cur.id === rmNorm(x.r)) continue;
       RM.pendInv.push({ r:x.r, g:x.g, d:x.d, nk:String(p.presence.mn || '친구').slice(0, 12), at:Date.now() });
     }
   }
@@ -299,44 +415,46 @@ function rmInvBanner(x){
 /* ---------- 화면: 방 목록(게임별) ---------- */
 function rmList(g){
   if(!GAMES[g]) return;
-  if(!rmOk(g)){   /* 차례로 두는 게임 */
+  if(!rmOk(g)){   /* 방을 받지 않는 자기 방식 게임 */
     openModal(`<div class="rmlist"><p class="kick">대전</p><h3>${GAMES[g].name}</h3>
-      <p class="note">이 게임은 번갈아 두는 실시간 대전이라 <b>빠른 대전</b>으로 바로 붙어요.<br>대전 방은 다음 업데이트에서 열려요.</p>
+      <p class="note">이 게임은 <b>빠른 대전</b>으로 바로 붙어요.<br>대전 방은 다음 업데이트에서 열려요.</p>
       ${HOST.duelRewardHtml()}
       <div class="mbtns"><button class="b2" id="rlClose">닫기</button><button class="b1" id="rlQuick">빠른 대전 ${costTag()}</button></div></div>`);
-    $('#rlClose').onclick = closeModal; $('#rlQuick').onclick = () => { closeModal(); duelStart(g); };
+    $('#rlClose').onclick = closeModal; $('#rlQuick').onclick = () => { closeModal(); gateThen(g, () => duelStart(g)); };
     return;
   }
   RM.listG = g;
-  const L = rmLv(), rec = rmRec(L);
+  const L = rmLv(), rec = rmRec(L), mx = rmMax(g);
+  const pt = d => mx > 2 ? `<b class="num">1위 ${duelTopTxt(d, mx)}</b><small>꼴찌 +${DUEL_LAST[d]}</small>` : `<b class="num">승 +${RM_PTS[d].w}</b><small>무 +${RM_PTS[d].d} · 패 +${RM_PTS[d].l}</small>`;
   openModal(`<div class="rmlist" id="rmList" style="--gc:${GCOL[g][1]}"><button class="mx" id="rlX" aria-label="닫기">✕</button>
-    <div class="rmhead"><span class="g-art">${ART[g]()}</span><div><p class="kick">대전 방</p><h3>${GAMES[g].name}</h3></div></div>
-    <div class="rmpts">${RM_DIFF.map(d => `<div class="rmpt ${d}${rmCanD(d, L) ? '' : ' lock'}">${rmChip(d)}${d === rec ? '<em>추천</em>' : ''}<b class="num">승 +${RM_PTS[d].w}</b><small>무 +${RM_PTS[d].d} · 패 +${RM_PTS[d].l}</small>${rmCanD(d, L) ? '' : `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>`}</div>`).join('')}</div>
+    <div class="rmhead"><span class="g-art">${ART[g]()}</span><div><p class="kick">대전 방 · ${mx > 2 ? `2~${mx}명` : '1:1'}</p><h3>${GAMES[g].name}</h3></div></div>
+    <div class="rmpts">${RM_DIFF.map(d => `<div class="rmpt ${d}${rmCanD(d, L) ? '' : ' lock'}">${rmChip(d)}${d === rec ? '<em>추천</em>' : ''}${pt(d)}${rmCanD(d, L) ? '' : `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>`}</div>`).join('')}</div>
     <div class="fchips rmf" role="group" aria-label="난이도로 거르기">${['all', ...RM_DIFF].map(f => `<button data-rf="${f}" class="${RM.listF === f ? 'on' : ''}">${f === 'all' ? '전체' : RM_DNAME[f]}</button>`).join('')}</div>
     <div class="rmrows" id="rmRows"></div>
-    <p class="rmme">내 레벨 Lv ${L} · 한 판 ${ic('heart')}1 · 방에서는 사람끼리만 붙어요</p>
+    <p class="rmme">내 레벨 Lv ${L} · 첫 판 ${ic('heart')}1 · 같은 방 3판 무료 · 방에서는 사람끼리만 붙어요</p>
     <div class="mbtns"><button class="b2" id="rlQuick">빠른 대전 ${costTag()}</button><button class="b1" id="rlMake">${RM.cur ? '내 방으로' : '방 만들기'}</button></div></div>`);
   $('#rlX').onclick = () => { RM.listG = ''; closeModal(); };
-  $('#rlQuick').onclick = () => { if(RM.cur){ toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'); return; } RM.listG = ''; closeModal(); duelStart(g); };
+  $('#rlQuick').onclick = () => { if(RM.cur){ toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'); return; } RM.listG = ''; closeModal(); gateThen(g, () => duelStart(g)); };
   $('#rlMake').onclick = () => { RM.listG = ''; if(RM.cur) rmOpen(); else rmCreateSheet(g); };
   document.querySelectorAll('[data-rf]').forEach(b => b.onclick = () => { RM.listF = b.dataset.rf; document.querySelectorAll('[data-rf]').forEach(x => x.classList.toggle('on', x === b)); rmListRender(); });
   rmListRender();
 }
 function rmListRender(){
   const box = $('#rmRows'), g = RM.listG; if(!box || !g) return;
-  if(!duelLive()){ box.innerHTML = `<p class="rmempty">지금은 실시간 연결이 안 돼요.<br>빠른 대전을 누르면 AI와 겨뤄요.</p>`; return; }
-  const L = rmLv(), live = frLive(), fhs = new Set([...FR.friends].filter(f => f.code).map(f => rmHash(f.code)));
+  if(!duelLive()){ box.innerHTML = `<p class="rmempty">지금은 실시간 연결이 안 돼요.<br>빠른 대전을 누르면 컴퓨터와 겨뤄요.</p>`; return; }
+  const L = rmLv(), fhs = new Set([...FR.friends].filter(f => f.code).map(f => rmHash(f.code)));
   let rs = rmAds(g).filter(r => RM.listF === 'all' || r.d === RM.listF);
-  const can = r => r.n < 2 && r.s === 'w' && (!r.b || (L >= r.b[0] && L <= r.b[1])) && !(RM.cur && RM.cur.id === r.i);
+  const can = r => rmOpenAd(r) && (!r.b || (L >= r.b[0] && L <= r.b[1])) && !(RM.cur && RM.cur.id === r.i);
   rs.sort((a, b) => (can(b) - can(a)) || (fhs.has(b.fh) - fhs.has(a.fh)) || (Math.abs(a.lv - L) - Math.abs(b.lv - L)) || (a.t - b.t));
-  const sig = JSON.stringify(rs.map(r => [r.i, r.n, r.s, r.d, r.nk, r.lv])) + L + RM.listF;
+  const sig = JSON.stringify(rs.map(r => [r.i, r.n, r.c, r.s, r.d, r.nk, r.lv])) + L + RM.listF;
   if(box.dataset.sig === sig) return; box.dataset.sig = sig;
   if(!rs.length){ box.innerHTML = `<p class="rmempty">${RM.listF === 'all' ? '아직 열린 방이 없어요.' : RM_DNAME[RM.listF] + ' 방이 없어요.'}<br><b>방 만들기</b>로 첫 방을 열어 보세요.</p>`; return; }
   box.innerHTML = rs.map(r => {
-    const ok = can(r), fr = fhs.has(r.fh), why = r.n >= 2 ? (r.s === 'w' ? '꽉 참' : '대전 중') : r.s !== 'w' ? '대전 중' : r.b && (L < r.b[0] || L > r.b[1]) ? `Lv ${r.b[0]}~${r.b[1]}만` : '';
+    const ok = can(r), fr = fhs.has(r.fh), full = r.n >= r.c, why = r.s !== 'w' ? '대전 중' : full ? '꽉 참' : r.b && (L < r.b[0] || L > r.b[1]) ? `Lv ${r.b[0]}~${r.b[1]}만` : '';
+    const stc = r.s !== 'w' ? '<em class="rmstc off">대전 중</em>' : full ? '<em class="rmstc off">꽉 찼어요</em>' : '<em class="rmstc">기다리는 중</em>';
     return `<div class="rmrow${ok ? '' : ' off'}${fr ? ' fr' : ''}"><span class="frav">${rivalAv({ name:r.nk })}</span>
-      <span class="rmrn"><b>${escH(r.nk)} <em class="lvt">Lv ${r.lv}</em>${fr ? '<em class="frt">친구</em>' : ''}</b><small>${rmChip(r.d)}<span class="gp">승 +${RM_PTS[r.d].w}</span> · ${r.b ? `Lv ${r.b[0]}~${r.b[1]}` : '누구나'}</small></span>
-      <span class="rmn num">${r.n}/2</span><button class="btn small ${ok ? 'primary' : 'secondary'}" data-rj="${r.i}" ${ok ? '' : 'disabled'}>${ok ? '들어가기' : why}</button></div>`;
+      <span class="rmrn"><b>${escH(r.nk)} <em class="lvt">Lv ${r.lv}</em>${fr ? '<em class="frt">친구</em>' : ''}</b><small>${rmChip(r.d)}<span class="gp">1위 +${duelPtsAt(r.c, 1, r.d)}</span> · ${r.b ? `Lv ${r.b[0]}~${r.b[1]}` : '누구나'}</small></span>
+      <span class="rmn"><b class="num">${r.n}/${r.c}</b>${stc}</span><button class="btn small ${ok ? 'primary' : 'secondary'}" data-rj="${r.i}" ${ok ? '' : 'disabled'}>${ok ? '들어가기' : why}</button></div>`;
   }).join('');
   box.querySelectorAll('[data-rj]').forEach(b => b.onclick = () => { RM.listG = ''; rmJoin(b.dataset.rj, { invited:false }); });
 }
@@ -344,23 +462,27 @@ function rmListRender(){
 /* ---------- 화면: 방 만들기 ---------- */
 function rmCreateSheet(g, o = {}){
   if(RM.cur){ rmOpen(); return; }
-  const L = rmLv(); let d = rmCanD(o.d || rmRec(L), L) ? (o.d || rmRec(L)) : 'normal', band = o.band || 'near', pv = !!o.pv;
+  const L = rmLv(), mx = rmMax(g); let d = rmCanD(o.d || rmRec(L), L) ? (o.d || rmRec(L)) : 'normal', band = o.band || 'near', pv = o.friend ? true : !!o.pv, cap = Math.max(2, Math.min(mx, +o.cap || mx));
   const draw = () => {
     openModal(`<div class="rmmake" style="--gc:${GCOL[g][1]}"><p class="kick">${o.friend ? escH(o.friend.nick) + '님과 같이 하기' : '방 만들기'}</p><h3>${GAMES[g].name}</h3>
-      <p class="rmlb">난이도 · 얻는 점수</p>
-      <div class="rmdiffs">${RM_DIFF.map(x => { const lk = !rmCanD(x, L); return `<button class="rmd ${x}${x === d ? ' on' : ''}${lk ? ' lock' : ''}" data-d="${x}" ${lk ? 'disabled' : ''}>${rmChip(x)}${x === rmRec(L) ? '<em>추천</em>' : ''}<b class="num">승 +${RM_PTS[x].w}</b><small>무 +${RM_PTS[x].d}<br>패 +${RM_PTS[x].l}</small>${lk ? `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>` : ''}</button>`; }).join('')}</div>
+      <p class="rmlb">난이도 · 1위 보상</p>
+      <div class="rmdiffs">${RM_DIFF.map(x => { const lk = !rmCanD(x, L); return `<button class="rmd ${x}${x === d ? ' on' : ''}${lk ? ' lock' : ''}" data-d="${x}" ${lk ? 'disabled' : ''}>${rmChip(x)}${x === rmRec(L) ? '<em>추천</em>' : ''}<b class="num">1위 +${duelPtsAt(cap, 1, x)}</b><small>${cap > 2 ? `꼴찌 +${DUEL_LAST[x]}` : `무 +${RM_PTS[x].d}<br>패 +${RM_PTS[x].l}`}</small>${lk ? `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>` : ''}</button>`; }).join('')}</div>
+      <p class="rmlb">정원</p>
+      ${mx > 2 ? `<div class="rmcap" role="group" aria-label="정원">${Array.from({ length:mx - 1 }, (_, i) => i + 2).map(n => `<button data-cap="${n}" class="${n === cap ? 'on' : ''}" aria-pressed="${n === cap}">${n}명</button>`).join('')}</div>
+        <p class="rmcapn">${cap}명이 모이면 1위 +${duelPtsAt(cap, 1, d)} · 꼴찌도 +${DUEL_LAST[d]}</p>` : '<p class="rmcapn">이 게임은 2명이 붙어요</p>'}
       ${o.friend ? '' : `<p class="rmlb">누가 들어오나</p>
       <div class="seg"><button data-b="near" class="${band === 'near' ? 'on' : ''}">내 레벨 근처<small>Lv ${Math.max(1, L - RM_BAND)}~${L + RM_BAND}</small></button><button data-b="all" class="${band === 'all' ? 'on' : ''}">누구나<small>레벨 상관없이</small></button></div>
-      <label class="rmpv"><input type="checkbox" id="rmPv" ${pv ? 'checked' : ''}><span><b>비공개 방</b><small>목록에 안 보이고 초대·링크로만 들어와요</small></span></label>`}
-      <p class="rmme">강자 보너스: 나보다 ${RM_BAND}레벨 이상 높은 상대를 이기면 +${RM_BONUS}<br>한 판 ${ic('heart')}1 · 두 사람 모두</p>
+      <label class="rmpv"><input type="checkbox" id="rmPv" ${pv ? 'checked' : ''}><span><b>비공개 방</b><small>목록에 안 보이고 초대·링크·방 코드로만 들어와요</small></span></label>`}
+      <p class="rmme">강자 보너스: 나보다 ${RM_BAND}레벨 이상 높은 사람보다 높은 순위면 +${RM_BONUS}<br>첫 판 ${ic('heart')}1 · 같은 방 2~4판째 무료</p>
       <div class="mbtns"><button class="b2" id="rcBack">뒤로</button><button class="b1" id="rcGo">${o.friend ? '방 만들고 초대하기' : '방 만들기'}</button></div></div>`);
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { d = b.dataset.d; sfx('toggle'); draw(); });
+    document.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { cap = +b.dataset.cap; sfx('toggle'); draw(); });
     document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { band = b.dataset.b; draw(); });
     const pc = $('#rmPv'); if(pc) pc.onchange = () => { pv = pc.checked; };
     $('#rcBack').onclick = () => o.back ? o.back() : rmList(g);
     $('#rcGo').onclick = async () => {
       $('#rcGo').disabled = true;
-      const c = await rmCreate({ g, d, band:o.friend ? 'all' : band, pv:o.friend ? true : pv });
+      const c = await rmCreate({ g, d, cap, band:o.friend ? 'all' : band, pv:o.friend ? true : pv });
       if(!c){ const b = $('#rcGo'); if(b) b.disabled = false; return; }
       if(o.friend) rmInviteFriend(o.friend);
       rmOpen();
@@ -369,45 +491,98 @@ function rmCreateSheet(g, o = {}){
   draw();
 }
 
+/* ---------- 화면: 방 코드로 들어가기(대전 탭 "친구와 대전" 카드) ---------- */
+function rmCodeSheet(pre){
+  if(RM.cur){ rmOpen(); return; }
+  openModal(`<div class="rmcodeq"><h3>방 코드로 들어가기</h3><p class="rmcq-s">친구에게 받은 6글자를 넣어요</p>
+    <label class="rmcbox"><input id="rcIn" maxlength="14" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="방 코드 6글자" aria-describedby="rcErr">
+      <span class="rmcells" aria-hidden="true">${Array.from({ length:6 }, (_, i) => `<i data-i="${i}"></i>`).join('')}</span></label>
+    <p class="rmcq-n">I·O·0·1은 쓰지 않아요</p><p class="rmcerr" id="rcErr" role="alert"></p>
+    <div class="mbtns rmfoot"><button class="b2" id="rcNo">취소</button><button class="b1" id="rcGo" disabled>들어가기</button></div></div>`);
+  const inp = $('#rcIn'), err = $('#rcErr'), go = $('#rcGo');
+  let busy = false;
+  const val = () => inp.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  const paint = () => {
+    const v = val(); if(inp.value !== v) inp.value = v;
+    document.querySelectorAll('.rmcells i').forEach((el, i) => { el.textContent = v[i] || ''; el.classList.toggle('cur', i === Math.min(5, v.length) && document.activeElement === inp); el.classList.toggle('on', !!v[i]); });
+    go.disabled = v.length < 6 || busy;
+  };
+  const tryJoin = () => {
+    const v = val(); if(v.length < 6 || busy) return;
+    if([...v].some(ch => !RM_CODE_A.includes(ch))){ err.textContent = '그런 방이 없어요. 코드를 다시 봐 주세요'; sfx('toggle'); return; }
+    busy = true; err.classList.remove('bad'); err.textContent = '대전 방에 들어가는 중…'; paint();
+    rmJoin(v, { invited:true, quiet:true, onErr:m => { busy = false; if(!$('#rcErr')) return; err.classList.add('bad'); err.textContent = m; sfx('toggle'); paint(); } });
+  };
+  inp.oninput = () => { err.textContent = ''; paint(); if(val().length === 6) tryJoin(); };
+  inp.onfocus = inp.onblur = paint;
+  inp.onkeydown = e => { if(e.key === 'Enter') tryJoin(); };
+  go.onclick = tryJoin;
+  $('#rcNo').onclick = closeModal;
+  if(pre){ inp.value = pre; }
+  paint(); setTimeout(() => { try{ inp.focus(); }catch(_){} }, 60);
+}
+
 /* ---------- 화면: 방 안 ---------- */
 function rmOpen(){
   const c = RM.cur; if(!c){ closeModal(); return; }
+  if(c.rv){ c.rv = 0; c.nr.presence({ rv:0 }).catch(() => {}); }
   openModal(`<div class="rmroom" id="rmRoom" style="--gc:${GCOL[c.g][1]}"></div>`);
-  $('#modal').classList.add('duelm');
+  $('#modal').classList.add('duelm', 'rmm');
   rmRoomRender(true);
   rmPillRender();
 }
+/* 자리 표식: 들어온 순서로 자리 번호, 내 화면에서는 나 = 언제나 분홍 원(자리 0과 내 자리를 바꿔 그림) */
+function rmSeatOf(m, mine){ const s = m.me ? 0 : m.seat === 0 ? mine : m.seat; return DUEL_SEAT[s % 5]; }
 function rmRoomRender(force){
   const c = RM.cur, box = $('#rmRoom'); if(!c || !box) return;
-  const hostP = c.host ? null : rmHostOf(c), guestP = rmGuestOf(c);
-  const H = c.host ? Object.assign(rmMyPres(), {}) : (hostP ? hostP.presence : { nk:'방장', lv:'?' });
-  const Gp = guestP ? guestP.presence : null;
-  const gRdy = c.host ? !!(Gp && Gp.rdy) : c.rdy;
-  const sig = JSON.stringify([c.st, c.gu, H.nk, H.lv, Gp && [Gp.nk, Gp.lv, Gp.rdy, Gp.iv], c.rdy, Object.keys(c.lastInv).length]);
+  const mem = rmMembers(c), me = mem.find(m => m.me) || { seat:0 }, n = mem.length, others = mem.filter(m => !m.me);
+  const rdyN = mem.filter(m => m.rdy || (m.host && c.host && m.me)).length;
+  const cd = c.ca ? Math.max(0, Math.ceil((c.ca - netNow()) / 1000)) : 0;
+  const playing = c.st !== 'w', inPl = (c.pl || []).includes(rmUid());
+  const sig = JSON.stringify([c.st, c.cap, c.host, c.rdy, cd, c.d, c.pv, mem.map(m => [m.u, m.nk, m.lv, m.rdy, m.rv, m.host]), Object.keys(c.lastInv).length]);
   if(!force && box.dataset.sig === sig) return; box.dataset.sig = sig;
-  const seat = (p, isHost, me) => p ? `<div class="rmseat${isHost ? ' host' : ''}${!isHost && (c.host ? !!p.rdy : c.rdy) ? ' rdy' : ''}">
-      ${isHost ? '<span class="crown">👑</span>' : ''}<span class="frav">${me ? avatar({ me:true }) : rivalAv({ name:String(p.nk || '?') })}</span>
-      <b>${me ? '나' : escH(String(p.nk || '?').slice(0, 12))}</b><small>Lv ${escH(String(p.lv || '?'))}${isHost ? ' · 방장' : ''}</small>
-      ${!isHost ? `<span class="rdytag">${(c.host ? p.rdy : c.rdy) ? '준비 완료' : '준비 중…'}</span>` : ''}
-      ${!isHost && c.host && c.st === 'w' ? '<button class="rmkick" id="rmKick">내보내기</button>' : ''}</div>`
-    : `<div class="rmseat empty"><span class="ds-radar"><i></i><i></i><i></i></span><b>기다리는 중…</b><small>${c.pv ? '초대한 친구만 들어와요' : '방 목록에 보여요'}</small>${c.host ? `<button class="btn small gold" id="rmInv2">${ic('share')} 친구 초대</button>` : ''}</div>`;
-  const status = c.st !== 'w' ? '대전이 진행 중이에요' : c.host ? (!Gp ? '도전자를 기다리고 있어요. 친구를 초대해 보세요' : gRdy ? '도전자가 준비됐어요! 시작을 누르세요' : '도전자가 준비하면 시작할 수 있어요')
-    : (c.rdy ? '방장이 시작하면 바로 대전이 시작돼요' : '준비를 누르면 방장이 시작할 수 있어요');
-  const main = c.host ? `<button class="b1" id="rmGo" ${Gp && gRdy && c.st === 'w' ? '' : 'disabled'}>시작 ${costTag()}</button>`
-    : `<button class="b1${c.rdy ? ' on' : ''}" id="rmRdy" ${c.st === 'w' ? '' : 'disabled'}>${c.rdy ? '준비 취소' : '준비 ' + costTag()}</button>`;
+  const tag = m => {
+    if(playing && (c.pl || []).includes(m.u)) return '<span class="rdytag play">대전 중</span>';
+    if(playing) return '<span class="rdytag">쉬는 중</span>';
+    if(m.rv) return '<span class="rdytag rv">결과 보는 중</span>';
+    if(m.rdy) return '<span class="rdytag on">준비 완료</span>';
+    if(m.host) return '<span class="rdytag host">방장</span>';
+    return '<span class="rdytag">준비 중…</span>';
+  };
+  const seatRow = m => { const S = rmSeatOf(m, me.seat);
+    return `<div class="rmseat2${m.rdy ? ' rdy' : ''}${m.me ? ' me' : ''}">${duelShapeSvg(S.shape, S.col, 20)}<span class="frav">${m.me ? avatar({ me:true }) : rivalAv({ name:m.nk })}</span>
+      <span class="rmsn"><b>${m.me ? '나' : escH(m.nk)}${m.host ? RM_CROWN : ''}</b><small>Lv ${m.lv}${m.host ? ' · 방장' : ''}</small></span>${tag(m)}
+      ${c.host && !m.me && c.st === 'w' ? `<button class="rmkick" data-kick="${m.u}" aria-label="${escH(m.nk)} 내보내기">내보내기</button>` : ''}</div>`; };
+  const empty = i => { const S = DUEL_SEAT[i % 5];
+    return `<div class="rmseat2 empty"><span class="rmeshape" style="--sc:${S.col}"></span><span class="frav"><i class="rmedot"></i></span><span class="rmsn"><b>빈자리</b><small>${c.pv ? '초대한 친구·방 코드로' : '방 목록에 보여요'}</small></span>
+      ${c.host ? `<button class="btn small gold" data-inv2="1">초대</button>` : '<span class="rdytag">기다리는 중</span>'}</div>`; };
+  const seats = Array.from({ length:c.cap }, (_, i) => mem[i] ? seatRow(mem[i]) : empty(i)).join('');
+  const free = duelFreeNext(c.id), cost = free ? ' · 무료' : ' ' + costTag();
+  const canGo = c.host && !playing && others.some(m => m.rdy) && (c.rd > 0 || others.every(m => m.rdy));
+  const goN = 1 + others.filter(m => m.rdy).length;
+  let status;
+  if(playing) status = inPl ? '대전이 진행 중이에요' : '<b>이번 판은 쉬어요</b> · 판이 끝나면 같이 해요';
+  else if(cd > 0) status = `<span class="rmcd">모두 준비! <b class="num">${cd}</b></span>`;
+  else if(n < 2) status = '혼자서는 시작할 수 없어요 · 친구를 불러 보세요';
+  else status = `${n}명 중 ${rdyN}명 준비 · ${c.host ? (canGo ? '시작을 누르세요' : c.rd > 0 ? '준비한 사람끼리 시작해요' : '모두 준비하면 시작') : n >= c.cap || c.rd > 0 ? '모두 준비하면 바로 시작' : '방장이 시작해요'}`;
+  const main = c.host ? `<button class="b1" id="rmGo" ${canGo ? '' : 'disabled'}>시작 · ${goN}명${cost}</button>`
+    : `<button class="b1${c.rdy ? ' on' : ''}" id="rmRdy" ${playing ? 'disabled' : ''}>${c.rdy ? '준비 취소' : '준비' + cost}</button>`;
   box.innerHTML = `<button class="mx" id="rmX" aria-label="방 창 접기">—</button>
     <p class="kick">대전 방${c.pv ? ' · 비공개' : ''}${c.b ? ` · Lv ${c.b[0]}~${c.b[1]}` : ''}</p><h3>${GAMES[c.g].name}</h3>
-    <div class="rmtags">${rmChip(c.d)}<span class="gp">${rmPtsTxt(c.d)}</span></div>
-    <div class="rmseats">${seat(H, true, c.host)}<div class="vs-x">VS</div>${seat(c.host ? Gp : rmMyPres(), false, !c.host)}</div>
-    <p class="note rmst">${status}</p>
-    <div class="mbtns"><button class="b2" id="rmOut">나가기</button>${main}</div>
-    ${c.host ? `<button class="btn secondary block rminvbtn" id="rmInv">${ic('share')} 초대하기 · 친구 / 링크</button>` : ''}`;
+    <div class="rmtags">${rmChip(c.d)}<span class="gp">${Math.max(2, n) > 2 ? `지금 ${n}명: ` : ''}${rmPtsTxt(c.d, Math.max(2, n))}</span></div>
+    ${c.pv ? `<div class="rmcode"><span>방 코드</span><b class="num">${rmCodeFmt(c.id)}</b><button class="btn small secondary" id="rmCopy">코드 복사</button></div>` : ''}
+    <div class="rmseats2">${seats}</div>
+    <p class="rmst">${status}</p>
+    ${c.host && !playing ? `<button class="btn secondary block rminvbtn" id="rmInv">${ic('share')} 초대하기 · 친구 / 링크 / 코드</button>` : ''}
+    <div class="mbtns rmfoot"><button class="b2" id="rmOut">나가기</button>${main}</div>`;
   $('#rmX').onclick = () => { closeModal(); rmPillRender(); };
-  $('#rmOut').onclick = () => rmLeave(c.host ? '방을 닫았어요' : '방에서 나왔어요');
-  const go = $('#rmGo'); if(go) go.onclick = rmStartGame;
+  $('#rmOut').onclick = () => rmLeave('방에서 나왔어요');
+  const go = $('#rmGo'); if(go) go.onclick = () => rmStartGame(false);
   const rd = $('#rmRdy'); if(rd) rd.onclick = () => rmReady(!c.rdy);
-  const k = $('#rmKick'); if(k) k.onclick = rmKick;
-  const i1 = $('#rmInv'), i2 = $('#rmInv2'); if(i1) i1.onclick = rmInviteSheet; if(i2) i2.onclick = rmInviteSheet;
+  box.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => rmKick(b.dataset.kick));
+  box.querySelectorAll('[data-inv2]').forEach(b => b.onclick = rmInviteSheet);
+  const i1 = $('#rmInv'); if(i1) i1.onclick = rmInviteSheet;
+  const cp = $('#rmCopy'); if(cp) cp.onclick = rmCopyCode;
 }
 function rmRefreshViews(){ if($('#rmRoom')) rmRoomRender(); if($('#rmRows')) rmListRender(); rmPillRender(); }
 /* 방 창을 접었을 때 아래에 떠 있는 알약 */
@@ -416,8 +591,8 @@ function rmPillRender(){
   const show = c && !rmPlaying() && $('#home').style.display !== 'none' && !($('#veil').classList.contains('on'));
   if(!show){ if(el) el.hidden = true; return; }
   if(!el){ el = document.createElement('button'); el.id = 'rmPill'; el.className = 'rmpill'; el.onclick = () => rmOpen(); document.body.appendChild(el); }
-  const n = c.host ? (c.gu ? 2 : 1) : 2;
-  const txt = `${ic('duel')}<span><b>대전 방 · ${GAMES[c.g].name}</b><small>${RM_DNAME[c.d]} · ${n}/2 · ${c.host ? (c.gu ? '도전자 입장!' : '기다리는 중') : (c.rdy ? '준비 완료' : '준비를 눌러요')}</small></span><em>열기</em>`;
+  const mem = rmMembers(c), n = mem.length;
+  const txt = `${ic('duel')}<span><b>대전 방 · ${GAMES[c.g].name}</b><small>${RM_DNAME[c.d]} · ${n}/${c.cap} · ${c.st !== 'w' ? '대전 중' : c.rdy ? '준비 완료' : c.host ? (n > 1 ? '시작할 수 있어요' : '기다리는 중') : '준비를 눌러요'}</small></span><em>열기</em>`;
   if(el.dataset.t !== txt){ el.innerHTML = txt; el.dataset.t = txt; }
   el.hidden = false;
 }
@@ -461,14 +636,15 @@ function frTogether(f){
   if(!duelLive()){ frInvitePlay(f); return; }   /* 실시간이 안 되면 예전처럼 오늘의 시험지로 부르기 */
   const set = dayState().set, ids = GAME_IDS.filter(g => rmOk(g) && !isAdult(g)).sort((a, b) => (set.includes(b) ? 1 : 0) - (set.includes(a) ? 1 : 0));
   openModal(`<div class="frpickg"><p class="kick">${escH(f.nick)}님과 같이 하기</p><h3>어떤 게임으로 붙을까요?</h3>
-    <div class="gpick">${ids.map(g => `<button data-tg="${g}" style="--gc:${GCOL[g][1]}"><span class="g-art">${ART[g]()}</span><b>${GAMES[g].name}</b>${set.includes(g) ? '<em>오늘</em>' : ''}</button>`).join('')}</div>
+    <div class="gpick">${ids.map(g => `<button data-tg="${g}" style="--gc:${GCOL[g][1]}"><span class="g-art">${ART[g]()}</span><b>${GAMES[g].name}</b><em class="mx5">${duelMaxOf(g) > 2 ? duelMaxOf(g) + '명' : '2명'}</em>${set.includes(g) ? '<em class="tdy">오늘</em>' : ''}</button>`).join('')}</div>
     <div class="mbtns one"><button class="b2" id="tgBack">뒤로</button></div></div>`);
   $('#tgBack').onclick = frHub;
   document.querySelectorAll('[data-tg]').forEach(b => b.onclick = () => rmCreateSheet(b.dataset.tg, { friend:f, back:() => frTogether(f) }));
 }
 /* 대전 탭 맨 위: 접속 중인 친구 줄 */
 function duelFriendsHtml(){
-  if(!FR.friends.length) return `<button class="dfr empty" id="dfrInv">${FR_G}<span><b>친구와 같이 대전하기</b><small>친구를 초대하면 접속 중인 친구가 여기 보여요</small></span>${ic('chev')}</button>`;
+  if(!FR.friends.length) return '';   /* 친구가 없으면 위 "친구와 대전" 카드가 대신(겹치지 않게) */
+  if(false) return `<button class="dfr empty" id="dfrInv">${FR_G}<span><b>친구와 같이 대전하기</b><small>친구를 초대하면 접속 중인 친구가 여기 보여요</small></span>${ic('chev')}</button>`;
   const live = frLive(), on = FR.friends.filter(f => live.has(f.fid));
   if(!on.length) return `<button class="dfr empty" id="dfrHub">${FR_G}<span><b>접속 중인 친구가 없어요</b><small>친구 ${FR.friends.length}명 · 눌러서 알림으로 같이 하자고 하기</small></span>${ic('chev')}</button>`;
   return `<div class="dfr"><p><i class="ondot"></i>접속 중인 친구 ${on.length}명</p><div class="dfr-row">${on.map(f => { const s = frStatus(f, live);

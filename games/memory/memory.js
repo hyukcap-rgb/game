@@ -274,7 +274,9 @@ NG.memory = (() => {
   }
   function startPlay(){
     const m = S();
-    m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0;
+    m.phase = 'play';
+    if(m.dd){ dHud(true); return; }   /* 대전: 시계는 엔진이 맞춘 것 그대로, 미리 보기 없음 */
+    G.start = Date.now(); G.pausedMs = 0;
     m.cards.forEach((_, i) => { const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 18 + 'ms'); el.classList.add('wave'); } setUp(i, false); });
     T(() => document.querySelectorAll('.ng-memory .mm-card.wave').forEach(e => e.classList.remove('wave')), 700);
     sfx('memoryGo'); msg(m.preview > 0 ? playMsg() : '<b class="boss">미리 보기 없음</b><span>뒤집으며 기억해요</span>');
@@ -285,6 +287,7 @@ NG.memory = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#mmBar');
+    if(m.dd){ if(m.phase === 'deal' && t >= DEAL) startPlay(); if(m.phase === 'play'){ dHud(); dAiTick(); } return; }
     if(m.phase === 'deal' && t >= DEAL){
       if(m.preview <= 0){ startPlay(); return; }
       m.phase = 'preview'; m.cards.forEach((_, i) => { const el = cardEl(i); if(el) el.style.transitionDelay = ''; setUp(i, true); });
@@ -314,6 +317,7 @@ NG.memory = (() => {
   /* 뒤집기: 보통은 g장(2 또는 3)이 모두 같으면 짝. 조커 + 아무 카드 = 그 카드의 짝 전부. 폭탄은 뒤집자마자 터진다 */
   function tap(i){
     const m = S();
+    if(m && m.dd){ dTap(i); return; }   /* 대전: 번갈아 뒤집기 */
     if(!m || G.over || G.paused || m.phase !== 'play' || m.lock || m.st[i] !== 0 || m.open.includes(i)) return;
     m.flips++; m.seen.add(i);
     if(m.cards[i] === BOMB){ hud(); boom(i); return; }
@@ -462,6 +466,157 @@ NG.memory = (() => {
     T(() => finish(false), 1500);
   }
 
+  /* ===== 대전: 번갈아 뒤집어 짝 뺏기(대전 v3 차례 엔진, 2~4명, docs/21 WP12·10-1) =====
+     한 판(4×6, 12쌍)을 모두 같이 본다. 차례인 사람이 두 장을 뒤집어 같으면 가져가고 한 번 더(차례 시간 다시 15초), 다르면 다음 사람.
+     모든 기기는 같은 씨앗(판)과 같은 차례 사건 순서로 같은 상태를 계산한다(duelTurn.act → 다른 기기 onAct).
+     - 수 = act('f', { c:카드 번호, t:짝이면 서버 시각 }) · 첫 장은 차례 유지(next:false), 짝이면 유지, 틀리면 다음 사람
+     - 시간 초과: 엔진이 모든 기기에서 같은 rng로 '대신 하기' → 덮인 카드 아무 2장(첫 장을 이미 뒤집었으면 1장)
+     - 나간 사람 차례는 엔진이 건너뜀('skip') · 컴퓨터 상대는 이 게임이 직접 둔다(기억이 사람처럼 불완전)
+     - 순위 = 가져간 쌍(v) → 틀린 횟수(mis) 적은 순(엔진 기본 비교) */
+  const DUEL = { cols:4, rows:6, limit:0, preview:0, turn:15, duel:1 };
+  const DD = () => S() && S().dd;
+  const srvNow = () => { try{ return Math.round(duelSrv()); }catch(_){ return Date.now(); } };
+  /* 짝을 맞히면 차례 시간을 처음부터(모든 기기가 같은 서버 시각 t로 맞춤). 엔진에 '차례 유지 + 시간 다시' 칸이 없어 차례 상태의 시작 시각만 고친다 */
+  function turnRestart(t){ try{ const D = G.duel; if(D && D.turn && typeof t === 'number') D.turn.since = t; }catch(_){} }
+  function dPeople(){ const d = DD(); if(!d) return {}; if(!d.ppl || Date.now() - d.pplAt > 1000){ d.ppl = {}; try{ duelPlayers().forEach(p => { d.ppl[p.pid] = p; }); }catch(_){} d.pplAt = Date.now(); } return d.ppl; }
+  const dWho = pid => dPeople()[pid] || { pid, nick:'상대', col:'#2F7BFF', shape:'square', me:false };
+  const dName = pid => { const p = dWho(pid); return p.me ? '나' : duelShortNick(p.nick); };
+  /* 내 수치(엔진 칩·순위): v = 가져간 쌍, mis = 틀린 횟수. t를 주지 않는다(엔진 컴퓨터 흉내가 v를 덮지 않게) */
+  function dStatSync(pid){
+    try{ const D = G.duel, d = DD(); if(!D || !d) return; const P = D.P[pid]; if(!P || P.me || !P.ai) return;
+      const v = d.pairs[pid] || 0; if(v > (P.st.v || 0)) P.st.la = srvNow(); P.st.v = v; P.st.mis = d.miss[pid] || 0; P.st.pg = v / S().pairs; }catch(_){}
+  }
+  function dInit(cfg){
+    const m = S(), D = G.duel, me = D.myPid;
+    m.dd = { on:true, turnSec:cfg.turn || 15, own:m.cards.map(() => null), pairs:{}, miss:{}, busyUntil:0, ended:false, lastCur:null, lastN:-1, lastSec:-1, ai:null };
+    D.pl.forEach(p => { m.dd.pairs[p] = 0; m.dd.miss[p] = 0; });
+    G.limit = 0;
+    try{ duelTurn.timeout(m.dd.turnSec); duelTurn.onAct(dOnAct); }catch(_){}
+    if(D.mode === 'ai' && D.P.ai) m.dd.ai = { mem:new Map(), rng:mulberry(seedFrom(D.seed + ':mmai')), busy:false };
+    m.dd.me = me;
+  }
+  /* 한 장 뒤집기(나·상대·컴퓨터·대신 하기 공통). 상태는 바로 바꾸고, 그림(다시 덮기)은 뒤에 */
+  function dFlip(pid, i, auto){
+    const m = S(), d = m.dd; if(!d || m.st[i] !== 0 || m.open.includes(i)) return null;
+    m.open.push(i); m.seen.add(i); dAiSee(i);
+    const el = cardEl(i), who = dWho(pid);
+    if(el){ el.style.setProperty('--fc', who.col); el.classList.add('by'); }
+    setUp(i, true); sfx('memoryFlip', { n:m.open.length });
+    if(m.open.length < 2) return 'one';
+    const [a, b] = m.open; m.open = [];
+    if(m.cards[a] === m.cards[b]){
+      m.st[a] = m.st[b] = 2; d.own[a] = d.own[b] = pid; d.pairs[pid] = (d.pairs[pid] || 0) + 1; m.found++;
+      if(pid === d.me){ m.combo++; m.best = Math.max(m.best, m.combo); }
+      [a, b].forEach(j => { const e = cardEl(j); if(e){ e.classList.remove('by'); e.style.setProperty('--oc', who.col); e.insertAdjacentHTML('beforeend', `<span class="mm-own" aria-hidden="true">${duelShapeSvg(who.shape, who.col, 16)}</span>`); } });
+      try{ celebrate([a, b], who.me ? symCol(m.cards[a]) : who.col); }catch(_){}
+      sfx('memoryMatch', { n:pid === d.me ? m.combo - 1 : 0 }); fxBuzz(15);
+      if(pid === d.me && m.combo >= 2) try{ fxCombo(m.combo); }catch(_){}
+      if(!who.me) try{ duelNotify(`${esc(duelShortNick(who.nick))}님이 짝을 가져갔어요`, { from:who, kind:'info' }); }catch(_){}
+      dStatSync(pid); dAiForget(a); dAiForget(b);
+      return 'match';
+    }
+    d.miss[pid] = (d.miss[pid] || 0) + 1; if(pid === d.me) m.combo = 0;
+    dStatSync(pid);
+    d.busyUntil = Date.now() + 950;
+    [a, b].forEach(j => { const e = cardEl(j); if(e){ e.classList.add('bad'); try{ fxShake(e, 4); }catch(_){} } });
+    if(pid === d.me) sfx('memoryMiss');
+    T(() => [a, b].forEach(j => { const e = cardEl(j); if(e) e.classList.remove('bad', 'by'); if(m.st[j] === 0 && !m.open.includes(j)) setUp(j, false); }), 900);
+    return 'miss';
+  }
+  /* 다른 사람의 수 · 엔진의 대신 하기 */
+  function dOnAct(a){
+    const m = S(); if(!m || !m.dd || m.dd.ended) return;
+    if(a.kind === 'f' && a.data && typeof a.data.c === 'number'){
+      const r = dFlip(a.pid, a.data.c);
+      if(r === 'match') turnRestart(a.data.t);
+    } else if(a.kind === 'timeout'){
+      const down = m.st.map((s, i) => s === 0 && !m.open.includes(i) ? i : -1).filter(i => i >= 0);
+      const need = m.open.length ? 1 : 2, pick = shuffle(down, a.rng || mulberry(1)).slice(0, need);
+      const p = dWho(a.pid);
+      try{ duelNotify(p.me ? '시간이 지나 아무 카드나 뒤집었어요' : `${esc(duelShortNick(p.nick))}님 시간이 지나 아무 카드나 뒤집었어요`, { from:p, kind:'bad', force:true }); }catch(_){}
+      pick.forEach(i => dFlip(a.pid, i, true));
+      if(m.open.length){ const o = m.open.slice(); m.open = []; T(() => o.forEach(j => { const e = cardEl(j); if(e) e.classList.remove('by'); if(m.st[j] === 0) setUp(j, false); }), 900); }
+    } else if(a.kind === 'skip'){
+      const o = m.open.slice(); m.open = []; o.forEach(j => { const e = cardEl(j); if(e) e.classList.remove('by'); setUp(j, false); });
+    }
+    dCheckEnd(); dHud(true);
+  }
+  /* 내가 누름 */
+  function dTap(i){
+    const m = S(), d = m.dd;
+    if(G.over || d.ended || m.phase !== 'play' || m.st[i] !== 0 || m.open.includes(i)) return;
+    if(!duelTurn.mine()){ dBanner(true); return; }
+    if(Date.now() < d.busyUntil) return;
+    const second = m.open.length === 1, hit = second && m.cards[m.open[0]] === m.cards[i], t = srvNow();
+    if(!duelTurn.act('f', hit ? { c:i, t } : { c:i }, { next:second && !hit })) return;   /* 늦은 수(시간 지남)는 엔진이 막음 */
+    m.flips++;
+    if(dFlip(d.me, i) === 'match') turnRestart(t);
+    dCheckEnd(); dHud(true);
+  }
+  function dCheckEnd(){
+    const m = S(), d = m.dd; if(d.ended || m.found < m.pairs) return;
+    d.ended = true; m.phase = 'done';
+    const pl = G.duel.pl, best = Math.max(...pl.map(p => d.pairs[p] || 0)), top = pl.filter(p => (d.pairs[p] || 0) === best);
+    const why = top.length > 1 ? `짝을 모두 찾았어요 · ${best}쌍으로 공동 1위` : `짝을 모두 찾았어요 · ${top[0] === d.me ? '내가' : esc(duelShortNick(dWho(top[0]).nick)) + '님이'} ${best}쌍으로 가장 많이 가져갔어요`;
+    msg(top.includes(d.me) ? `<b>${top.length > 1 ? '공동 1위!' : '내가 1위!'}</b><span>${best}쌍</span>` : `<b class="bad">모두 찾았어요</b><span>나 ${d.pairs[d.me] || 0}쌍</span>`, 'mm-win');
+    sfx(top.includes(d.me) ? 'win' : 'memoryTimeUp', { g:'memory' });
+    T(() => { try{ duelEndNow(why); }catch(_){} }, 1300);
+  }
+  /* 화면: 내 짝 · 차례 시간 · 남은 짝, "○○님 차례" 큰 표시, 판 테두리 = 차례인 사람 색 */
+  function dBanner(nudge){
+    const m = S(), d = m.dd, cur = duelTurn.cur(); if(!cur || d.ended) return;
+    const p = dWho(cur), mine = cur === d.me;
+    msg(mine ? `<b class="mm-myturn">내 차례!</b><span>${m.open.length ? '한 장 더 뒤집어요' : '두 장을 뒤집어요'}</span>`
+      : `<span class="mm-tdot" style="--sc:${p.col}">${duelShapeSvg(p.shape, p.col, 16)}</span><b class="mm-otturn">${esc(duelShortNick(p.nick))}님 차례</b>`, nudge ? 'mm-shuffle' : '');
+    const bd = $('#bd'); if(bd){ bd.style.setProperty('--tc', p.col); bd.classList.toggle('myturn', mine); bd.classList.add('dturn'); }
+  }
+  function dHud(force){
+    const m = S(), d = m.dd; if(!d) return;
+    const f = $('#mmFound'); if(f) f.textContent = d.pairs[d.me] || 0;
+    const lf = $('#mmLeft'); if(lf) lf.textContent = m.pairs - m.found;
+    const cur = duelTurn.cur(), n = duelTurn.n();
+    if(force || cur !== d.lastCur || n !== d.lastN){ d.lastCur = cur; d.lastN = n; dBanner(); }
+    const left = duelTurn.left(), sec = left == null ? d.turnSec : Math.ceil(left);
+    if(sec !== d.lastSec){
+      d.lastSec = sec; const e = $('#mmTime'); if(e) e.textContent = sec;
+      const hurry = sec <= 5 && cur === d.me && !d.ended; const p = $('#mmTimeP'); if(p) p.classList.toggle('hurry', hurry);
+      const b = $('#mmBarWrap'); if(b) b.classList.toggle('hurry', hurry);
+      if(hurry && sec > 0) sfx('memoryTick', { hi:sec <= 3 });
+    }
+    const bar = $('#mmBar'); if(bar) bar.style.transform = `scaleX(${left == null ? 1 : Math.max(0, Math.min(1, left / d.turnSec))})`;
+  }
+  /* ---- 컴퓨터 상대: 본 카드를 사람처럼 기억(본 순간 62%만 기억, 차례마다 조금씩 잊음) ---- */
+  function dAiSee(i){ const d = DD(); if(!d || !d.ai) return; if(d.ai.rng() < .62) d.ai.mem.set(i, S().cards[i]); }
+  function dAiForget(i){ const d = DD(); if(d && d.ai) d.ai.mem.delete(i); }
+  function dAiTick(){
+    const m = S(), d = m.dd, A = d && d.ai; if(!A || A.busy || d.ended || m.phase !== 'play' || duelTurn.cur() !== 'ai' || Date.now() < d.busyUntil) return;
+    A.busy = true; const n0 = duelTurn.n(), r = A.rng;
+    for(const k of [...A.mem.keys()]) if(m.st[k] !== 0 || r() < .06) A.mem.delete(k);   /* 조금씩 잊음 */
+    const down = () => m.st.map((s, i) => s === 0 && !m.open.includes(i) ? i : -1).filter(i => i >= 0);
+    const known = (x, not) => [...A.mem.entries()].filter(([j, k]) => j !== not && k === x && m.st[j] === 0 && !m.open.includes(j)).map(([j]) => j);
+    const pickFirst = () => {
+      const ks = {}; for(const [j, k] of A.mem) if(m.st[j] === 0) (ks[k] = ks[k] || []).push(j);
+      const pair = Object.values(ks).find(a => a.length >= 2); if(pair) return pair[0];
+      const un = down().filter(j => !A.mem.has(j)); const pool = un.length ? un : down(); return pool[Math.floor(r() * pool.length)];
+    };
+    const go = (i, second) => {
+      if(G.over || S() !== m || d.ended || duelTurn.cur() !== 'ai' || duelTurn.n() !== n0 || i == null){ A.busy = false; return; }
+      const hit = second && m.cards[m.open[0]] === m.cards[i], t = srvNow();
+      if(!duelTurn.act('f', { c:i }, { as:'ai', next:second && !hit })){ A.busy = false; return; }
+      const res = dFlip('ai', i);
+      if(res === 'match') turnRestart(t);
+      dCheckEnd(); dHud(true);
+      if(res === 'one'){
+        const k = known(m.cards[i], i); const un = down().filter(j => !A.mem.has(j)), pool = un.length ? un : down();
+        const j = k.length ? k[0] : pool[Math.floor(r() * pool.length)];
+        T(() => go(j, true), 700 + Math.floor(r() * 700));
+        return;
+      }
+      A.busy = false;
+    };
+    T(() => go(pickFirst(), false), 1300 + Math.floor(r() * 1500));
+  }
+
   function build(){
     const m = S(), bd = $('#bd'); if(!bd) return;
     bd.innerHTML = m.cards.map((k, i) => k ? `<button class="mm-card${m.st[i] ? ' up' : ''}${m.st[i] === 2 ? ' ok' : ''} in" data-i="${i}" style="--d:${(i % m.cols + Math.floor(i / m.cols)) * 30}ms" aria-label="덮인 카드 ${Math.floor(i / m.cols) + 1}행 ${i % m.cols + 1}열"><span class="mm-pop"><span class="mm-in"><span class="mm-face mm-back">${BACK}</span><span class="mm-face mm-front${frontCls(k)}">${faceHtml(k)}</span></span></span></button>`
@@ -500,6 +655,12 @@ NG.memory = (() => {
         <path d="${starPath(116, 20, 4.5, 2)}" fill="#fff" stroke="#1A0F45" stroke-width="1.4" stroke-linejoin="round"/>
         <path d="${starPath(44, 22, 4, 1.8)}" fill="#fff" stroke="#1A0F45" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
     },
+    /* 대전 준비 화면 규칙(대전은 미리 보기 없이 번갈아 뒤집어 짝 뺏기) */
+    duelHelp:[
+      ['돌아가며 두 장씩', '내 차례에 카드 두 장을 뒤집어요. 남이 뒤집는 카드도 모두에게 보이니 잘 기억해 두세요.'],
+      ['맞히면 한 번 더', '같은 그림이면 그 짝을 가져가고 한 번 더 해요. 다르면 다음 사람 차례예요.'],
+      ['가장 많이 가져가면 1위', '짝을 가장 많이 가져간 사람이 1위예요. 같으면 덜 틀린 사람이 앞서요.']
+    ],
     help:[
       ['그림을 기억해요', '처음 몇 초 동안 모든 카드가 앞면으로 보여요. 어디에 무슨 그림이 있는지 잘 기억해 두세요.'],
       ['두 장씩 뒤집어요', '카드를 눌러 두 장을 뒤집어요. 같은 그림이면 짝을 찾은 거예요. 다르면 다시 덮여요.'],
@@ -508,12 +669,29 @@ NG.memory = (() => {
     ],
     /* 도움말 v2(공용 WP3): 첫 화면 3줄, 나머지는 '더 알아보기' */
     howto:{
-      lines:[
-        ['처음 몇 초 그림을 외워요', '모든 카드가 잠깐 앞면으로 보여요'],
-        ['두 장씩 뒤집어 짝을 찾아요', '같은 그림이면 짝, 다르면 다시 덮여요'],
-        ['시간 안에 짝을 모두 찾기', '덜 틀리고 빨리 찾을수록 점수가 높아요']
-      ],
+      /* 그림(320×180, 글자 없음): 덮인 카드 8장 중 두 장이 차례로 뒤집혀 같은 체리 → 반짝, 다른 두 장은 뒤집혔다 다시 덮임 */
+      pic(){
+        const cw = 50, ch = 66, gx = 14, x0 = (320 - 4 * cw - 3 * gx) / 2, y0 = 18;
+        const back = `<rect width="${cw}" height="${ch}" rx="9" fill="#7C4DEB" stroke="${OL}" stroke-width="3"/><path d="M${cw / 2} 18l12 15-12 15-12-15z" fill="#FF8AB8" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/>`;
+        const face = k => `<rect width="${cw}" height="${ch}" rx="9" fill="#FFF8EA" stroke="${OL}" stroke-width="3"/><g transform="translate(5 13) scale(.625)">${SYM[k][2]}</g>`;   /* 안쪽 svg를 쓰면 도움말 CSS(svg 100%)에 커져서 g로 */
+        /* 한 장: 뒷면 → (begin초에) 앞면 보임. back=1이면 잠시 뒤 다시 덮임. 6초마다 되풀이 */
+        const card = (c, r, k, t1, t2) => {
+          const x = x0 + c * (cw + gx), y = y0 + r * (ch + 12);
+          if(!k) return `<g transform="translate(${x} ${y})">${back}</g>`;
+          const kt = [0, t1 / 6, (t1 + .2) / 6, t2 ? t2 / 6 : .9, t2 ? (t2 + .2) / 6 : .95, 1].map(v => v.toFixed(3)).join(';');
+          return `<g transform="translate(${x} ${y})"><g>${back}<animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="${kt}" dur="6s" repeatCount="indefinite"/></g>
+            <g opacity="0">${face(k)}<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="${kt}" dur="6s" repeatCount="indefinite"/></g></g>`;
+        };
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#FFE3D6"/>
+          ${card(0, 0, 'lemon', 2.6, 3.8)}${card(1, 0, '')}${card(2, 0, 'cherry', .6, 0)}${card(3, 0, '')}
+          ${card(0, 1, '')}${card(1, 1, 'cherry', 1.3, 0)}${card(2, 1, '')}${card(3, 1, 'moon', 3.0, 3.8)}
+          <g opacity="0"><circle cx="${x0 + 2 * (cw + gx) + cw / 2}" cy="${y0 + ch / 2}" r="38" fill="none" stroke="#FFC93C" stroke-width="5"/><circle cx="${x0 + (cw + gx) + cw / 2}" cy="${y0 + ch + 12 + ch / 2}" r="38" fill="none" stroke="#FFC93C" stroke-width="5"/>
+            <animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;.24;.27;.4;1" dur="6s" repeatCount="indefinite"/></g></svg>`;
+      },
+      lines:['처음 몇 초 그림을 외워요', '두 장씩 뒤집어 같은 그림 찾기', '시간 안에 짝을 모두 찾아요'],
       more:[
+        ['외우기 · 뒤집기', '처음 몇 초 동안 모든 카드가 앞면으로 보여요. 그다음 두 장씩 뒤집어 같은 그림이면 짝, 다르면 다시 덮여요. 덜 틀리고 빨리 찾을수록 점수가 높아요.'],
+        ['대전: 짝 뺏기', '2~4명이 한 판을 번갈아 뒤집어요. 짝을 맞히면 가져가고 한 번 더, 틀리면 다음 사람 차례예요. 남이 뒤집는 카드도 보이니 잘 기억해 두세요. 많이 가져간 사람이 1등!'],
         ['외우는 시간', '오늘의 문제는 쉬움 4초 · 보통 3.5초 · 어려움 3초. 솔로에서는 [느긋하게 외우기 ×2]를 켜면 두 배로 보여 줘요.'],
         ['솔로: 5판마다 새 규칙', '세 장 짝·폭탄·조커·닮은꼴 같은 새 규칙과 빠른 판·외줄 타기 같은 변주가 5판마다 하나씩 나와요. 1판은 시간 걱정 없는 몸풀기 판이에요.']
       ]
@@ -530,6 +708,7 @@ NG.memory = (() => {
     stageDesc(n){ const c = stageCfg(n); return `카드 ${c.sets * c.g + c.bombs + c.jokers}장 · ${c.sets}${c.g === 3 ? '세트' : '쌍'} · ${mmss(c.limit)}${c.missCap ? ' · 실수 ' + c.missCap + '번까지' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.cols}×${c.rows} · ${c.cols * c.rows / 2}쌍`; },
     init(cfg, rng){
+      if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = Object.assign({}, DUEL); G.cfg = cfg; }   /* 대전 판(엔진이 duelCfg를 못 넘긴 경우에도) */
       const cols = cfg.cols, rows = cfg.rows, g = cfg.g || 2, bombs = cfg.bombs || 0, jokers = cfg.jokers || 0, twins = cfg.twins || 0;
       const pairs = cfg.sets || cols * rows / 2;
       let cards;
@@ -558,6 +737,7 @@ NG.memory = (() => {
       G.limit = cfg.limit;
       const m = G.m;
       /* 솔로: 1판은 몸풀기(남은 시간 숨김), '느긋하게 외우기'를 켜면 외우는 시간 ×2(이 기기에 기억) */
+      if(G.duel && !G.duel.fleet) dInit(cfg);
       m.warm = G.adv === 1 && !G.duel;
       m.pv0 = m.preview; m.slowOk = !!G.adv && !G.duel && m.pv0 > 0;
       m.slow = m.slowOk && !!store.get('hp:memory:slow', 0); if(m.slow) m.preview = m.pv0 * 2;
@@ -584,13 +764,18 @@ NG.memory = (() => {
     _solveForTest(missFirst){ return G.m._solveForTest(missFirst); },
     render(st){
       const m = S();
-      st.innerHTML = `<div class="ng-memory">
-        <div class="hud-row mm-hud">
+      const dtop = m.dd ? `<div class="hud-row mm-hud">
+          <div class="hchip" aria-label="내가 가져간 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>쌍</small></span><em>내 짝</em></div>
+          <div class="hchip time mm-time" id="mmTimeP" aria-label="차례 남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${m.dd.turnSec}</b><small>초</small></span><em>차례 시간</em></div>
+          <div class="hchip" aria-label="남은 짝"><span class="hv"><span class="mm-ic">${ICO.flip}</span><b id="mmLeft">${m.pairs}</b><small>쌍</small></span><em>남은 짝</em></div>
+        </div>` : '';
+      st.innerHTML = `<div class="ng-memory${m.dd ? ' mm-duel' : ''}">
+        ${dtop}${m.dd ? '' : `<div class="hud-row mm-hud">
           <div class="hchip" aria-label="찾은 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></span><em>찾은 짝</em></div>
           ${m.warm ? `<div class="hchip time mm-time" aria-label="몸풀기 판 · 시간 넉넉"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b class="mm-easy">넉넉해요</b></span><em>몸풀기 판</em></div>`
             : `<div class="hchip time mm-time" id="mmTimeP" aria-label="남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`}
-        </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss || m.slowOk) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}${m.slowOk ? `<button type="button" class="mm-chip slow${m.slow ? ' on' : ''}" id="mmSlow" aria-pressed="${m.slow}">느긋하게 외우기 ×2</button>` : ''}</div>` : ''}
+        </div>`}
+        ${!m.dd && G.adv && (m.mj.length || m.tw || m.boss || m.slowOk) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}${m.slowOk ? `<button type="button" class="mm-chip slow${m.slow ? ' on' : ''}" id="mmSlow" aria-pressed="${m.slow}">느긋하게 외우기 ×2</button>` : ''}</div>` : ''}
         <div class="mm-barw${m.warm ? ' warm' : ''}" id="mmBarWrap"><i id="mmBar"></i></div>
         <div class="mm-msg" id="mmMsg"><span>카드를 나눠 주는 중…</span></div>
         <div class="mm-board" id="bd" role="grid" aria-label="카드 판"></div>
@@ -602,11 +787,11 @@ NG.memory = (() => {
       if(G.raf) cancelAnimationFrame(G.raf);
       G.raf = requestAnimationFrame(loop);
     },
-    progress(){ const m = G && G.m; return m ? m.found / m.pairs : 0; },
+    progress(){ const m = G && G.m; if(m && m.dd) return (m.dd.pairs[m.dd.me] || 0) / m.pairs; return m ? m.found / m.pairs : 0; },
     lossText(){ const m = G.m; return (m.fail === 'miss' ? '허용 실수를 넘었어요. ' : '') + `짝 ${m.found}/${m.pairs}${m.g === 3 ? '세트' : '쌍'}을 찾았어요.`; },
     score(){
-      const m = G.m, sec = Math.min(G.limit, (m.sec || elapsed()) + (m.pen || 0));
-      const time = Math.max(0, 350 - Math.floor(sec * 350 / G.limit));
+      const m = G.m, sec = G.limit ? Math.min(G.limit, (m.sec || elapsed()) + (m.pen || 0)) : (m.sec || elapsed());
+      const time = G.limit ? Math.max(0, 350 - Math.floor(sec * 350 / G.limit)) : 0;   /* 대전(시간 제한 없음)은 시간 보너스 없음 */
       const extra = Math.max(0, Math.round(150 * (1 - m.misses / (1.5 * m.pairs * (m.g === 3 ? 1.6 : 1)))));
       return { base:500, time, extra, rows:['짝 모두 찾기', '시간 보너스 (' + mmss(sec) + ')', '틀린 뒤집기 ' + m.misses + '번'] };
     },
@@ -695,6 +880,20 @@ body[data-mode="memory"] .fxcombo span{font-size:18px}
 .ng-memory .mm-card.boomed{opacity:.55}
 .ng-memory .mm-card.ok.jk .mm-front{background:linear-gradient(160deg,#FFF1A8,#FFC6EA 50%,#C9DAFF)}
 @keyframes memory-cheer{0%{transform:none} 40%{transform:translateY(-10px) scale(1.1)} 100%{transform:none}}
+/* 대전(짝 뺏기): 차례인 사람 색 테두리, 뒤집은 사람 색 테두리, 가져간 짝에 그 사람 표식 */
+.ng-memory .mm-board.dturn{border-color:var(--tc,#1A0F45); box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), 0 0 0 3px var(--tc,#1A0F45), 0 5px 0 3px #1A0F45; transition:box-shadow .25s, border-color .25s}
+.ng-memory .mm-board.dturn.myturn{animation:memory-my 1.4s ease-in-out infinite alternate}
+@keyframes memory-my{to{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75), 0 0 0 5px var(--tc,#F0368A), 0 0 18px 6px rgba(240,54,138,.45)}}
+.ng-memory .mm-card.by .mm-front{box-shadow:inset 0 0 0 4px var(--fc,#2F7BFF), 0 3px 0 #1A0F45}
+.ng-memory.mm-duel .mm-card.ok .mm-front{box-shadow:inset 0 0 0 4px var(--oc,#FFC93C), 0 3px 0 #1A0F45}
+.ng-memory.mm-duel .mm-card.ok::after{display:none}
+.ng-memory .mm-own{position:absolute; right:-5px; top:-6px; z-index:2; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #1A0F45; display:grid; place-items:center; pointer-events:none; animation:memory-in .35s .2s cubic-bezier(.2,1.6,.4,1) both}
+.ng-memory .mm-own svg{display:block}
+.ng-memory .mm-msg b.mm-myturn{color:#FFE27A; font-size:26px}
+.ng-memory .mm-msg b.mm-otturn{font-size:23px; max-width:240px; overflow:hidden; text-overflow:ellipsis}
+.ng-memory .mm-tdot{display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:#fff; border:2.5px solid var(--sc); flex:none}
+.ng-memory.mm-duel .mm-msg{height:44px}
+@media (prefers-reduced-motion: reduce){ .ng-memory .mm-board.dturn.myturn{animation:none} }
 @media (max-width:370px){ .ng-memory .mm-chip{font-size:12px; padding:4px 7px} .ng-memory .mm-rules{gap:4px} .ng-memory .mm-msg b{font-size:19px} }
 @media (prefers-reduced-motion: reduce){ .ng-memory .mm-in{transition-duration:.01s} .ng-memory .mm-card.in, .ng-memory .mm-card.ok .mm-pop, .ng-memory .mm-card.cheer .mm-pop, .ng-memory .mm-msg b{animation:none} }
 `,
@@ -716,6 +915,17 @@ body[data-mode="memory"] .fxcombo span{font-size:18px}
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.memory, { duelPace:[70,.74], duelStat:{ unit:'쌍',             get:() => ({ v:G.m.found, t:G.m.pairs }) } });
+/* 대전 v3(2026-10-06 WP12): 번갈아 뒤집어 짝 뺏기. 차례 게임(duelKind:'turn'), 2~4명, 게임이 끝을 알림(duelEnd:'game').
+   대전 판 4×6·12쌍·미리 보기 없음, 차례 15초(느긋하게 30초 = duelSlow). 컴퓨터 상대는 게임이 직접 두므로 엔진 흉내(duelAi)는 끔(null).
+   duelStat: 대전에서는 { v:내가 가져간 쌍, mis:내 틀린 횟수 }(t 없음 → 칩 '3쌍'), 대전이 아닐 때는 예전 값 */
+Object.assign(NG.memory, {
+  duelKind:'turn', duelMax:4, duelEnd:'game',
+  duelCfg:() => ({ cols:4, rows:6, limit:0, preview:0, turn:15, duel:1 }),
+  duelSlow:cfg => Object.assign({}, cfg, { turn:(cfg.turn || 15) * 2 }),
+  duelAi:() => null,
+  duelHow:'한 판을 번갈아 뒤집어요 · 짝을 맞히면 한 번 더 · 많이 가져간 사람이 1등',
+  duelPace:[70,.74],
+  duelStat:{ unit:'쌍', get:() => { const m = G.m; if(m && m.dd) return { v:m.dd.pairs[m.dd.me] || 0, mis:m.dd.miss[m.dd.me] || 0 }; return { v:m.found, t:m.pairs }; } }
+});
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.memory.scene = { kind:'petals', colors:['#FFFFFF','#FFC2DA','#FFE3A3'], density:1 };

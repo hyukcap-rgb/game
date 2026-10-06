@@ -332,7 +332,7 @@ NG.parking = (() => {
     sfx('pkMove', { n:Math.abs(v - from) });
     try{ const el = carEl(i); if(el && !FXR.reduce){ const q = fxCenter(el), k = m.P.cars[i], dir = v > from ? 1 : -1;
       fxEmit(q.x - (k.h ? dir * q.w * .45 : 0), q.y - (k.h ? 0 : dir * q.h * .45), { quantity:4, speed:{ min:10, max:40 }, angle:k.h ? (dir > 0 ? { min:160, max:200 } : { min:-20, max:20 }) : (dir > 0 ? { min:250, max:290 } : { min:70, max:110 }), lifespan:{ min:300, max:500 }, kind:'smoke', tint:['#FFFFFF', '#D8D2F5'], scale:{ start:2.6, end:4.5 }, alpha:{ start:.6, end:0 } }); } }catch(_){}
-    hud(); afterMove();
+    hud(); afterMove(); pathSend();
     return true;
   }
   function afterMove(){
@@ -368,14 +368,14 @@ NG.parking = (() => {
     m.pos = last.pos.slice(); m.used = last.used; m.moves = last.mv;
     moved.forEach(i => place(i, m.pos[i], true));
     m.P.cars.forEach((_, i) => { if((usedBefore ^ m.used) & (1 << i)) refreshCar(i); });
-    clearHint(); clearSel(); sfx('pkUndo'); hud(); afterMove();
+    clearHint(); clearSel(); sfx('pkUndo'); hud(); afterMove(); pathSend();
   }
   function restart(){
     const m = S(); if(!canPlay() || !m.hist.length) return;
     const usedBefore = m.used;
     m.pos = m.pos0.slice(); m.used = 0; m.moves = 0; m.hist = []; m.restarts++;
     m.P.cars.forEach((_, i) => { place(i, m.pos[i], true); if(usedBefore & (1 << i)) refreshCar(i); });
-    clearHint(); clearSel(); sfx('pkUndo', { all:1 }); hud(); afterMove();
+    clearHint(); clearSel(); sfx('pkUndo', { all:1 }); hud(); afterMove(); pathSend();
     try{ fxPunch($('#pkLot'), 1.02); }catch(_){}
   }
   function clearHint(){ const g = $('#pkGhost'); if(g) g.remove(); document.querySelectorAll('.ng-parking .pk-car.hint').forEach(e => e.classList.remove('hint')); }
@@ -553,6 +553,96 @@ NG.parking = (() => {
   }
   function timeUp(){ const e = $('#pkTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요'); }
 
+
+  /* ===== 대전(대전 v3 엔진, 2~5명 경주) =====
+     - 게임 중 상대 판 미니 화면은 넣지 않음(상대 움직임이 풀이 힌트) → 칩 줄(3명 이상)·막대(2명).
+     - 진행 v = 처음 최단 수 − 남은 최단 수(풀이에 가까워진 만큼), t = 처음 최단 수, tb = 움직인 수.
+       순위(duelRank): 뺀 사람 → (뺀 사람끼리) 움직인 수 적은 → 먼저 뺀 / 못 뺀 사람은 남은 최단 수 적은(v 큰) → 움직인 수 적은.
+     - 결과 창: 모두의 풀이를 나란히 다시 재생(SMIL, 1.5배속 = 한 수 0.45초). 풀이는 움직일 때마다 사건 'pk'로 보냄
+       (되돌린 수를 뺀 길, 차 글자 + 위치 숫자, 90수까지). 컴퓨터는 최단 풀이(못 뺐으면 그 진행만큼). */
+  const PATH_MAX = 90;
+  function pathOf(m){
+    const out = []; for(let k = 0; k < m.hist.length; k++){ const h = m.hist[k], i = h.car, nx = (m.hist[k + 1] ? m.hist[k + 1].pos : m.pos)[i]; out.push([i, nx]); }
+    return out.slice(0, PATH_MAX);
+  }
+  const pathEnc = a => a.map(([i, v]) => String.fromCharCode(65 + i) + v).join('');
+  const pathDec = s => (String(s || '').match(/[A-Z]\d/g) || []).slice(0, PATH_MAX).map(t => [t.charCodeAt(0) - 65, +t[1]]);
+  function pathSend(){
+    const m = S(); if(!m || !G.duel || G.duel.fleet || m.phase === 'deal') return;
+    const enc = pathEnc(pathOf(m)); if(enc === m.pathSent) return; m.pathSent = enc;
+    try{ duelSend('pk', { p:enc }); }catch(_){}
+  }
+  function onEvent(ev, from){
+    const m = G && G.m; if(!m || !ev || ev.kind !== 'pk' || !ev.data) return;
+    (m.paths = m.paths || {})[from.pid] = pathDec(ev.data.p);
+  }
+  function duelRank(a, b){
+    if(!!a.ok !== !!b.ok) return a.ok ? -1 : 1;
+    const t = (x, y) => x.tb != null && y.tb != null && x.tb !== y.tb ? x.tb - y.tb : 0;
+    if(a.ok) return t(a, b);   /* 같으면 엔진이 먼저 뺀 순서로 */
+    const va = a.v || 0, vb = b.v || 0; if(va !== vb) return vb - va;
+    return t(a, b);
+  }
+  /* 결과 창: 풀이 나란히 다시 보기 */
+  function replayHtml(rows){
+    const m = G && G.m, D = G && G.duel; if(!m || !D) return '';
+    const P = m.P, W = m.W, H = m.H, cs = 13, pad = 4, BW = W * cs + pad * 2, BH = H * cs + pad * 2;
+    const runs = rows.map(r => {
+      let path = null;
+      if(r.me) path = pathOf(m);
+      else if(r.ai){ const st = ((D.P || {})[r.pid] || {}).st || {}; path = (m.path0 || []).slice(0, st.ok ? m.path0.length : Math.max(0, Math.floor(st.v || 0))); }
+      else if(m.paths && m.paths[r.pid]) path = m.paths[r.pid];
+      const mv = r.me ? m.moves : r.ai ? (path ? path.length : 0) : (((D.P || {})[r.pid] || {}).st || {}).tb;
+      return { r, path, mv:mv != null ? mv : path ? path.length : null };
+    }).filter(x => x.path);
+    if(!runs.length) return '';
+    const SD = .45, K = Math.max(1, ...runs.map(x => x.path.length + (x.r.ok ? 1 : 0))), dur = (K * SD + 1.6).toFixed(2);
+    const exitOf = gi => { const [i, g] = P.goals[gi], k = P.cars[i], lim = k.h ? W : H; return g + k.len === lim ? 1 : g === 0 ? -1 : 0; };
+    const board = x => {
+      const pos = m.pos0.slice(), tl = P.cars.map(() => [[0, 0]]), T = SD / (K * SD + 1.6);
+      const push = (i, at, v) => { const a = tl[i]; a.push([at, a[a.length - 1][1]]); a.push([at + T * .6, v - m.pos0[i]]); };
+      x.path.forEach(([i, v], j) => { if(i < 0 || i >= P.cars.length) return; push(i, j * T + .0001, v); pos[i] = v; });
+      if(x.r.ok) P.goals.forEach(([i], gi) => { const d = exitOf(gi); if(d) push(i, x.path.length * T + .0001, pos[i] + d * (P.cars[i].len + 1)); });
+      const cars = P.cars.map((k, i) => {
+        const col = (m.look[i] && m.look[i].col) || ['#ccc', '#999'], w = (k.h ? k.len : 1) * cs - 2, h = (k.h ? 1 : k.len) * cs - 2;
+        const x0 = pad + (k.h ? m.pos0[i] : k.c) * cs + 1, y0 = pad + (k.h ? k.r : m.pos0[i]) * cs + 1, a = tl[i];
+        let an = '';
+        if(a.length > 1){
+          a.push([1, a[a.length - 1][1]]);
+          const kt = [], vals = []; let last = -1;
+          a.forEach(([t2, v]) => { const tt = Math.min(1, Math.max(last + .00001, t2)); last = tt; kt.push(tt.toFixed(5)); vals.push(k.h ? `${v * cs} 0` : `0 ${v * cs}`); });
+          kt[0] = '0'; kt[kt.length - 1] = '1';
+          an = `<animateTransform attributeName="transform" type="translate" values="${vals.join(';')}" keyTimes="${kt.join(';')}" dur="${dur}s" repeatCount="indefinite"/>`;
+        }
+        return `<g>${an}<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="4" fill="${col[0]}" stroke="#1A0F45" stroke-width="${i === 0 ? 2 : 1.4}"/>${i === 0 ? `<circle cx="${x0 + w / 2}" cy="${y0 + h / 2}" r="2.4" fill="#fff"/>` : ''}</g>`;
+      }).join('');
+      const walls = P.walls.map(wl => `<rect x="${pad + (wl % W) * cs + 2}" y="${pad + Math.floor(wl / W) * cs + 2}" width="${cs - 4}" height="${cs - 4}" rx="5" fill="#FFD23F" stroke="#1A0F45" stroke-width="1.2"/>`).join('');
+      const exits = P.goals.map(([i, g], gi) => { const d = exitOf(gi), k = P.cars[i]; if(!d) return `<rect x="${pad + (k.h ? g : k.c) * cs}" y="${pad + (k.h ? k.r : g) * cs}" width="${(k.h ? k.len : 1) * cs}" height="${(k.h ? 1 : k.len) * cs}" rx="4" fill="none" stroke="#FF7A86" stroke-width="1.6" stroke-dasharray="3 2"/>`;
+        return k.h ? `<rect x="${d > 0 ? BW - 3 : 0}" y="${pad + k.r * cs}" width="3" height="${cs}" fill="#FF4D5E"/>` : `<rect x="${pad + k.c * cs}" y="${d > 0 ? BH - 3 : 0}" width="${cs}" height="3" fill="#FF4D5E"/>`; }).join('');
+      const cid = 'pkc' + x.r.pid.replace(/[^a-z0-9]/gi, '').slice(0, 10) + Math.floor(performance.now() % 1e5);
+      return `<svg viewBox="0 0 ${BW} ${BH}" width="${BW}" height="${BH}" aria-hidden="true"><defs><clipPath id="${cid}"><rect width="${BW}" height="${BH}" rx="7"/></clipPath></defs><g clip-path="url(#${cid})"><rect width="${BW}" height="${BH}" fill="#3A3170"/><rect x="${pad}" y="${pad}" width="${W * cs}" height="${H * cs}" rx="3" fill="#322A6A"/>${walls}${cars}</g>${exits}<rect width="${BW}" height="${BH}" rx="7" fill="none" stroke="#1A0F45" stroke-width="2"/></svg>`;
+    };
+    const nm = r => r.me ? '나' : esc(duelShortNick(r.nick));
+    const sum = runs.map(x => `${nm(x.r)} ${x.mv != null ? x.mv + '수' : '-'}`).join(' · ');
+    return `<div class="pk-rp" aria-label="풀이 다시 보기"><p class="pk-rph">풀이 다시 보기 <small>1.5배속</small></p><p class="pk-rps">${sum}</p>
+      <div class="pk-rpl">${runs.map(x => `<div class="pk-rpc${x.r.me ? ' me' : ''}" style="--sc:${x.r.col}">${board(x)}<b>${x.r.rank}위 ${nm(x.r)}</b><small>${x.r.ok ? '탈출 · ' : ''}${x.mv != null ? x.mv + '수' : ''}</small></div>`).join('')}</div></div>`;
+  }
+  /* 도움말 그림(320×180, 움직임·글자 없음): 막고 있는 세로 차를 아래로 밀고 → 빨간 내 차가 출구로 */
+  function howPic(){
+    const cs = 26, X = 82, Y = 12, dur = '3.6s', car = (r, c, L, h, col, kind, face, mark) => `<g transform="translate(${X + c * cs + 1} ${Y + r * cs + 1}) scale(${(((h ? L : 1) * cs - 2) / (h ? L * 100 : 100)).toFixed(4)} ${(((h ? 1 : L) * cs - 2) / (h ? 100 : L * 100)).toFixed(4)})">${carSvg(kind, L, col, h, face, mark).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`;
+    const mv = (vals, kt) => `<animateTransform attributeName="transform" type="translate" values="${vals}" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+    let grid = ''; for(let c = 1; c < 6; c++) grid += `<path d="M${X + c * cs} ${Y}v${cs * 6}"/>`;
+    return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="길을 막은 차를 비키면 빨간 차가 출구로 나가는 그림">
+      <rect width="320" height="180" fill="#D9D1FA"/><rect x="${X - 7}" y="${Y - 7}" width="${cs * 6 + 14}" height="${cs * 6 + 14}" rx="12" fill="#C9C1F0" stroke="#1A0F45" stroke-width="3"/>
+      <rect x="${X}" y="${Y}" width="${cs * 6}" height="${cs * 6}" rx="5" fill="#3A3170"/><g stroke="#fff" stroke-opacity=".2" stroke-width="1">${grid}</g>
+      <rect x="${X + cs * 6}" y="${Y + cs * 2}" width="20" height="${cs}" fill="#3A3170"/>
+      <path d="M${X + cs * 6 + 26} ${Y + cs * 2 + 5}l12 ${cs / 2 - 5}-12 ${cs / 2 - 5}z" fill="#FF4D5E" stroke="#1A0F45" stroke-width="2.2" stroke-linejoin="round"/>
+      ${car(0, 0, 2, true, PAL[1], 'mini', 1)}${car(4, 1, 3, true, PAL[3], 'truck', -1)}${car(0, 5, 2, false, PAL[2], 'van', 1)}
+      <g>${mv(`0 0;0 0;0 ${cs * 2};0 ${cs * 2};0 0`, '0;.1;.28;.92;1')}${car(1, 4, 2, false, PAL[0], 'car', 1)}</g>
+      <g>${mv(`0 0;0 0;${cs * 2} 0;${cs * 2} 0;${cs * 5} 0;${cs * 5} 0;0 0`, '0;.32;.5;.56;.74;.92;1')}<g><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.68;.76;.94;1" dur="${dur}" repeatCount="indefinite"/>${car(2, 1, 2, true, RED, 'car', 1, 'heart')}</g></g>
+      <g opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.03;.26;.3;1" dur="${dur}" repeatCount="indefinite"/>${mv(`${X + cs * 4.6} ${Y + cs * 2.4};${X + cs * 4.6} ${Y + cs * 2.4};${X + cs * 4.6} ${Y + cs * 4.4};${X + cs * 4.6} ${Y + cs * 4.4}`, '0;.1;.28;1')}<path d="M0 0c0-6 8-6 8 0v12c4-3 10-1 9 5l-3 11c-1 4-5 7-9 7h-6c-4 0-7-2-9-6l-5-11c-2-4 3-6 6-3l3 3z" fill="#fff" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round"/></g>
+    </svg>`;
+  }
   return {
     name:'자동차 주차하기', abil:'공간지각', col:['#FFB3BC', '#FF4D5E', '#B3122E'], time:'약 3분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 8.5A3.5 3.5 0 0 1 7.5 5h9A3.5 3.5 0 0 1 20 8.5v7a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 15.5z"/><rect x="8" y="7.5" width="6" height="9" rx="1.6" fill="#fff" opacity=".55"/><path d="M2 12h2M20 12h2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
@@ -578,8 +668,8 @@ NG.parking = (() => {
       ['막히면 힌트', '💡힌트는 다음에 밀 차와 갈 칸을 보여 줘요. 대신 점수가 ' + HINT_PEN + '점 줄어요.']
     ],
     /* 도움말 v2(공용 WP3가 읽음): 3줄 + 더 알아보기. 솔로 새 규칙은 개념 카드에서만 설명 */
-    howto:{ lines:['차를 끌거나, 누르고 화살표로 밀어요', '빨간 내 차를 출구까지 보내요', '적은 수로 풀수록 별이 많아요'],
-      more:[['한 수 세기', '같은 차를 이어서 밀면 한 수예요. 되돌리기·처음부터는 벌칙이 없어요.'], ['힌트', '다음에 밀 차와 갈 칸을 보여 줘요(점수 −' + HINT_PEN + ').'], ['대전', '같은 주차장을 동시에! 내 차를 먼저 빼면 이겨요(2분).']] },
+    howto:{ pic:howPic, lines:['차를 끌거나, 누르고 화살표로 밀어요', '빨간 내 차를 출구까지 보내요', '적은 수로 풀수록 별이 많아요'],
+      more:[['한 수 세기', '같은 차를 이어서 밀면 한 수예요. 되돌리기·처음부터는 벌칙이 없어요.'], ['힌트', '다음에 밀 차와 갈 칸을 보여 줘요(점수 −' + HINT_PEN + ').'], ['대전', '2~5명이 같은 주차장을 동시에! 내 차를 먼저 빼면 1등(2분). 못 빼면 남은 최단 수가 적은 사람이 앞서요. 끝나면 모두의 풀이를 나란히 다시 봐요.']] },
     helpExtra(){ const m = G && G.id === 'parking' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['동네 골목', '마트 주차장', '항구 하역장', '공항 주차빌딩', '눈꽃 스키장'],
     starRule:'★ 주차 성공 · ★★ 힌트 1번 이하, 최단+여유 수 안 · ★★★ 힌트 없이 최단 수로',
@@ -596,7 +686,7 @@ NG.parking = (() => {
       if(G.duel && !G.adv && !cfg.duel) cfg = Object.assign({}, cfg, DUEL);
       const b = makeBoard(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
-      G.m = { P:b.P, W:b.P.W, H:b.P.H, pos0:b.pos0.slice(), pos:b.pos0.slice(), used:0, look:b.look, opt:b.opt, path0:b.path,
+      G.m = { P:b.P, W:b.P.W, H:b.P.H, pos0:b.pos0.slice(), pos:b.pos0.slice(), used:0, look:b.look, opt:b.opt, path0:b.path, paths:{}, pathSent:'',
         moves:0, hist:[], hints:0, restarts:0, hintLeft:cfg.hints == null ? 3 : cfg.hints, capMax:cfg.cap ? b.opt + cfg.cap : 0,
         dist:b.opt, next:b.path[0] || null, memo:new Map(), phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips,
         lastSec:-1, sec:0, timers:new Set(), geo:{ cs:52, pad:10 }, sel:null };
@@ -619,8 +709,11 @@ NG.parking = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
+    _stepForTest(){ const m = G && G.m; if(!m || G.over || m.phase !== 'play') return false; const r = analyse(); if(!r || !r.path.length) return false; commit(r.path[0][0], r.path[0][1]); return true; },
     _make:makeBoard, _stage:stageCfg,
     duelCfg(){ return Object.assign({}, DUEL); },
+    onDuelEvent:onEvent, duelRank, duelResHtml:replayHtml,
+    duelDoneMsg:nick => `${nick} 탈출!`,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-parking">
@@ -757,6 +850,17 @@ body[data-mode="parking"] .fxfloat.pkf{font-family:var(--heavy); font-weight:400
 .ng-parking .pk-ctl{margin-top:8px}
 .ng-parking .pk-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-parking .pk-ctl .tool .cnt{font-style:normal}
+/* 대전 결과 창: 풀이 나란히 다시 보기 */
+body[data-mode="parking"] .pk-rp{margin:10px 0 2px; text-align:center}
+body[data-mode="parking"] .pk-rph{margin:0; font-family:var(--disp); font-size:15px; color:#1A0F45}
+body[data-mode="parking"] .pk-rph small{font-size:12px; color:#6A5884}
+body[data-mode="parking"] .pk-rps{margin:2px 0 6px; font-size:13px; font-weight:800; color:#B3122E}
+body[data-mode="parking"] .pk-rpl{display:flex; flex-wrap:wrap; justify-content:center; gap:8px}
+body[data-mode="parking"] .pk-rpc{display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px; border-radius:12px; background:#fff; border:2.5px solid var(--sc); box-shadow:0 2px 0 #1A0F45}
+body[data-mode="parking"] .pk-rpc.me{background:#FFF0F3}
+body[data-mode="parking"] .pk-rpc svg{display:block}
+body[data-mode="parking"] .pk-rpc b{font-family:var(--disp); font-weight:400; font-size:13px; color:#1A0F45; white-space:nowrap}
+body[data-mode="parking"] .pk-rpc small{font-size:12px; font-weight:800; color:#6A5884}
 @media (max-width:370px){ .ng-parking .pk-ctl .tool{font-size:14px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-parking .pk-car.glide{transition:none} .ng-parking .pk-lot.in .pk-car, .ng-parking .pk-sign svg, .ng-parking .pk-ghost, .ng-parking .pk-car.hint svg, .ng-parking .pk-car.rev svg, .ng-parking .pk-arw{animation:none} }
 `,
@@ -778,9 +882,10 @@ body[data-mode="parking"] .fxfloat.pkf{font-family:var(--heavy); font-weight:400
   };
 })();
 
-/* 대전: 같은 판을 누가 먼저·적은 수로(점수 = 시간 + 수 효율). AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-/* 대전 판: 10~12수 · 2분(DUEL). duelKind·duelMax·duelCfg는 대전 v3 엔진이 읽는 값(지금 엔진은 1:1, 2단계에서 duelMax 5로 올림) */
-Object.assign(NG.parking, { duelPace:[75, .75], duelStat:{ unit:'수', get:() => ({ v:G.m.moves, t:G.m.opt, lf:null, mis:0 }) }, duelHow:'같은 주차장 · 내 차를 먼저 빼면 1등!',
-  duelKind:'race', duelMax:2 });
+/* 대전: 같은 판을 누가 먼저 빼나(2~5명 경주, 대전 판 10~12수 · 2분, 느긋하게 4분 = 엔진 기본 limit×2).
+   진행 v = 처음 최단 − 남은 최단(막혔으면 0), tb = 움직인 수(순위 동점 가르기). 컴퓨터 평균 시간·성공률(duelPace) */
+Object.assign(NG.parking, { duelPace:[75, .75],
+  duelStat:{ unit:'수', get:() => { const m = G.m; return { v:m.phase === 'done' && m.dist === 0 ? m.opt : m.dist < 0 ? 0 : Math.max(0, m.opt - m.dist), t:m.opt, lf:null, mis:0, tb:m.moves }; } },
+  duelHow:'같은 주차장 · 내 차를 먼저 빼면 1등!', duelKind:'race', duelMax:5 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.parking.scene = { kind:'shapes', colors:['#FFFFFF', '#FFD23F', '#FF8FA0', '#9FD8FF'], density:.7, alpha:.55 };

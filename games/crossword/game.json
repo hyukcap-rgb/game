@@ -1,7 +1,7 @@
 {
   "id": "crossword",
   "name": "가로세로 낱말퀴즈",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "summary": "뜻풀이 열쇠를 보고 가로·세로로 엇갈린 한국어 낱말을 맞히는 추리 퍼즐",
   "js": [
     "crossword-words.js",

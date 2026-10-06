@@ -1,7 +1,7 @@
 {
   "id": "sudoku",
   "name": "스도쿠",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
   "js": [
     "sudoku-maker.js",

@@ -38,6 +38,7 @@ function cardBrag(k, e){
 
 /* 이미지 카드(1080×1350, 인스타·카톡에 그대로) */
 async function cardCanvas(o){
+  if(o && o.kind === 'duel') return duelCardCanvas(o);   /* 대전 결과 카드(세로 1080×1920) */
   try{ await Promise.all(['900 80px "Black Han Sans"', '60px Jua', '700 40px "Noto Sans KR"'].map(f => document.fonts.load(f))); }catch(_){}
   const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d'), HV = '"Black Han Sans", Jua, sans-serif', JU = 'Jua, "Noto Sans KR", sans-serif', NO = '"Noto Sans KR", sans-serif';
@@ -80,6 +81,63 @@ async function cardCanvas(o){
   return cv;
 }
 const escNick = v => cleanNick(v) || '나';
+/* 대전 공유 카드(WP2, 1080×1920 세로): 위 게임 그림 · 가운데 순위 표(최대 5줄, 자리 표식 + 이름 + 결과) · 아래 "같은 판으로 붙어 볼래?" + 방 코드·링크 */
+async function duelCardCanvas(o){
+  try{ await Promise.all(['900 80px "Black Han Sans"', '60px Jua', '700 40px "Noto Sans KR"'].map(f => document.fonts.load(f))); }catch(_){}
+  const W = 1080, H = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), HV = '"Black Han Sans", Jua, sans-serif', JU = 'Jua, "Noto Sans KR", sans-serif', NO = '"Noto Sans KR", sans-serif';
+  const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  const outl = (t, x, y, font, fill, st, lw) => { c.font = font; c.lineWidth = lw; c.strokeStyle = st; c.lineJoin = 'round'; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); };
+  let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3A2590'); g.addColorStop(.55, '#22166A'); g.addColorStop(1, '#140C40'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const rs = mulberry(seedFrom('dcard')); for(let i = 0; i < 90; i++){ c.fillStyle = `rgba(255,255,255,${.2 + rs() * .5})`; c.beginPath(); c.arc(rs() * W, rs() * H, 1 + rs() * 3, 0, 7); c.fill(); }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  const lg = c.createLinearGradient(0, 70, 0, 170); lg.addColorStop(0, '#FFF0A0'); lg.addColorStop(1, '#FFB020');
+  outl('하루퍼즐 리그', W / 2, 170, `96px ${HV}`, lg, '#1A0F45', 16);
+  const dt = new Date(); c.fillStyle = 'rgba(255,255,255,.75)'; c.font = `500 36px ${NO}`; c.fillText(`${dt.getFullYear()}.${dt.getMonth() + 1}.${dt.getDate()} · 대전 결과`, W / 2, 240);
+  /* 게임 그림(오리지널 SVG) */
+  try{
+    const svg = ART[o.g] ? ART[o.g]() : '';
+    if(svg){
+      const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.includes('xmlns') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"'));
+      const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+      c.save(); rr(W / 2 - 150, 300, 300, 300, 60); c.fillStyle = '#fff'; c.fill(); c.clip(); c.drawImage(im, W / 2 - 150, 300, 300, 300); c.restore();
+      rr(W / 2 - 150, 300, 300, 300, 60); c.lineWidth = 9; c.strokeStyle = '#1A0F45'; c.stroke();
+    }
+  }catch(_){}
+  outl(o.head, W / 2, 700, `72px ${JU}`, '#fff', '#1A0F45', 12);
+  const big = o.sub || '', bg = c.createLinearGradient(0, 740, 0, 900); bg.addColorStop(0, '#FFE066'); bg.addColorStop(1, '#FF9A1F');
+  outl(big, W / 2, 880, `170px ${HV}`, bg, '#1A0F45', 18);
+  /* 순위 표 */
+  const rows = (o.rows || []).slice(0, 5), px = 90, pw = W - 180, rh = 132, py = 960;
+  c.fillStyle = '#0E0830'; rr(px, py + 14, pw, rows.length * rh + 60, 48); c.fill();
+  c.fillStyle = '#FFF8EA'; rr(px, py, pw, rows.length * rh + 60, 48); c.fill(); c.lineWidth = 9; c.strokeStyle = '#1A0F45'; c.stroke();
+  const MED = ['#FFC93C', '#C9D2E3', '#E0A06A'];
+  const shape = (k, x, y, r, col) => { c.beginPath();
+    if(k === 'square') rr(x - r, y - r, r * 2, r * 2, 8);
+    else if(k === 'tri'){ c.moveTo(x, y - r * 1.1); c.lineTo(x + r, y + r * .8); c.lineTo(x - r, y + r * .8); c.closePath(); }
+    else if(k === 'diamond'){ c.moveTo(x, y - r * 1.1); c.lineTo(x + r * 1.1, y); c.lineTo(x, y + r * 1.1); c.lineTo(x - r * 1.1, y); c.closePath(); }
+    else if(k === 'star'){ for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r * .5 : r * 1.15; c[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rad, y + Math.sin(a) * rad); } c.closePath(); }
+    else c.arc(x, y, r, 0, Math.PI * 2);
+    c.fillStyle = col; c.fill(); c.lineWidth = 5; c.strokeStyle = '#1A0F45'; c.stroke(); };
+  rows.forEach((x, i) => {
+    const y = py + 30 + i * rh, cy = y + rh / 2;
+    if(x.me){ c.fillStyle = '#FFE3F0'; rr(px + 20, y + 6, pw - 40, rh - 12, 30); c.fill(); }
+    c.fillStyle = x.rank <= 3 ? MED[x.rank - 1] : '#fff'; c.beginPath(); c.arc(px + 90, cy, 42, 0, 7); c.fill(); c.lineWidth = 5; c.strokeStyle = '#1A0F45'; c.stroke();
+    c.fillStyle = '#1A0F45'; c.font = `52px ${HV}`; c.textAlign = 'center'; c.fillText(String(x.rank), px + 90, cy + 19);
+    shape(x.shape, px + 180, cy, 26, x.col || '#F0368A');
+    c.textAlign = 'left'; c.fillStyle = '#3A2261'; c.font = `56px ${JU}`;
+    let nm = x.me ? '나' : String(x.nick || '상대'); if(nm.length > 7) nm = nm.slice(0, 7) + '…';
+    c.fillText(nm + (x.ai ? ' (컴퓨터)' : ''), px + 230, cy + 4);
+    c.fillStyle = '#6A5884'; c.font = `700 34px ${NO}`; let tx = String(x.txt || ''); if(tx.length > 18) tx = tx.slice(0, 18) + '…'; c.fillText(tx, px + 230, cy + 48);
+    c.textAlign = 'center';
+  });
+  const by = py + rows.length * rh + 150;
+  c.fillStyle = '#FFE8A8'; c.font = `66px ${JU}`; c.fillText('같은 판으로 붙어 볼래?', W / 2, by);
+  if(o.code){ c.fillStyle = '#F0368A'; rr(W / 2 - 300, by + 40, 600, 110, 55); c.fill(); c.lineWidth = 7; c.strokeStyle = '#1A0F45'; c.stroke();
+    c.fillStyle = '#fff'; c.font = `60px ${HV}`; c.fillText('방 코드 ' + (o.code.length === 6 ? o.code.slice(0, 3) + ' ' + o.code.slice(3) : o.code), W / 2, by + 117); }
+  c.fillStyle = 'rgba(255,255,255,.65)'; c.font = `500 34px ${NO}`; c.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), W / 2, H - 80);
+  return cv;
+}
 
 /* 공유 시트: 카드 미리보기 + 기기 공유(카카오톡·메시지 등) / 이미지 저장 / 글·링크 복사 */
 function viralShare(o, back){
