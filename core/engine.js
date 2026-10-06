@@ -53,7 +53,7 @@ const LEVELS = { easy:{ name:'쉬움', mult:0.6 }, normal:{ name:'보통', mult:
                  또는 이미 등장 판이 정해진 게임은 { fixed:[{ at, key, name, desc }] } (카드·표시만).
                  각 게임의 stage(n)/advLevel은 planOf(id, n)을 읽어 mj(켜진 규칙)·tw(변주)·easy/hard/boss를 반영한다. */
 const TWISTS = {
-  flash:{ name:'번개', desc:'시간(또는 기준 이동·턴)이 짧아요. 빠르고 정확하게!' },
+  flash:{ name:'빠른 판', desc:'시간(또는 기준 이동·턴)이 짧아요. 빠르고 정확하게!' },
   tight:{ name:'외줄 타기', desc:'실수는 딱 한 번까지만 허용돼요.' },
   bare:{ name:'맨손', desc:'힌트와 아이템 없이 오직 실력으로 풀어요.' }
 };
@@ -98,9 +98,9 @@ function conceptInfo(id, key){
 function conceptLine(id, n){
   const p = planOf(id, n), nm = k => (conceptInfo(id, k) || {}).name || k, bits = [];
   if(p.intro) bits.push((p.introKind === 'twist' ? '새 변주' : '새 규칙') + ': ' + nm(p.intro));
-  else if(p.mj.length) bits.push((p.remix ? '리믹스' : '규칙') + ': ' + p.mj.map(nm).join(' + '));
+  else if(p.mj.length) bits.push((p.remix ? '섞기' : '규칙') + ': ' + p.mj.map(nm).join(' + '));
   if(p.tw && p.intro !== p.tw) bits.push('변주: ' + nm(p.tw));
-  if(p.boss) bits.unshift('보스(아주 어려움)'); else if(p.hard) bits.unshift('어려움');
+  if(p.boss) bits.unshift('대장 판(아주 어려움)'); else if(p.hard) bits.unshift('어려움');
   return bits.join(' · ');
 }
 function stageClass(id, n){ const p = planOf(id, n); return (p.boss ? ' xhard' : p.hard ? ' hard' : '') + (p.intro ? ' newc' : ''); }
@@ -108,9 +108,9 @@ function stageClass(id, n){ const p = planOf(id, n); return (p.boss ? ' xhard' :
 function conceptCard(id, n, go){
   const p = planOf(id, n), inf = conceptInfo(id, p.intro); if(!inf){ go(); return; }
   const tw = p.introKind === 'twist';
-  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">${tw ? 'NEW TWIST' : 'NEW RULE'}</p><div class="ttl">${tw ? '새 변주' : '새 규칙'} · ${inf.name}</div>
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">처음 나와요</p><div class="ttl">${tw ? '새 변주' : '새 규칙'} · ${inf.name}</div>
     <div class="ncard" style="--gc:${GCOL[id][1]}"><span class="nc-ic">${ic(id)}</span><p>${inf.desc}</p></div>
-    <p class="note">스테이지 ${n} · ${GAMES[id].name}<br>${tw ? '익숙한 판에 조건 하나가 더해져요.' : p.fixed ? '이 판부터 새로 나와요. 챕터 끝 보스에서 제대로 시험해요!' : '첫 판은 이 규칙만 나와서 쉬워요. 챕터 끝 보스에서 제대로 시험해요!'}</p>
+    <p class="note">스테이지 ${n} · ${GAMES[id].name}<br>${tw ? '익숙한 판에 조건 하나가 더해져요.' : p.fixed ? '이 판부터 새로 나와요. 챕터 끝 대장 판에서 제대로 시험해요!' : '첫 판은 이 규칙만 나와서 쉬워요. 챕터 끝 대장 판에서 제대로 시험해요!'}</p>
     <div class="mbtns one"><button class="b1" id="ncGo">도전!</button></div>`);
   $('#modal').classList.add('celebrate'); sfx('fanfare');
   $('#ncGo').onclick = () => { store.set('hp:seenC:' + id + ':' + p.intro, 1); closeModal(); go(); };
@@ -129,7 +129,7 @@ function registerGames(order){
     GAME_IDS.push(id);
     if(m.css && !document.querySelector(`style[data-ng="${id}"]`)){ const el = document.createElement('style'); el.dataset.ng = id; el.textContent = m.css; document.head.appendChild(el); }
     if(m.sounds) Object.assign(SFX_LIB, m.sounds);
-    if(m.gate) Object.assign(SFX_GATE, m.gate);
+    if(m.gate && typeof m.gate === 'object') Object.assign(SFX_GATE, m.gate);   /* 소리 간격(객체). 함수 gate는 시작 전 관문(startGateOf) */
     if(m.jingle) WIN_JINGLE[id] = m.jingle;
   }
 }
@@ -309,24 +309,43 @@ function lastLv(id){
 
 let SVG_UID = 0;
 
-/* ---- 모험 맵: 챕터 10칸, 10번은 보스 ---- */
+/* ---- 판 고르기(솔로 맵): 챕터 10칸, 10번은 대장 판. 위에 "판 번호 [  ] 가기", 판을 고르면 바닥에 내 기록 + [친구에게 보내기] [다시 풀기] ---- */
+const WARMUP = n => n <= 2;   /* 몸풀기 판(솔로 1·2판) */
+/* 판마다 내 가장 좋은 기록: hp:best:<게임>:<판> = { t:초, m?:수 }. 솔로 진도와 따로(다시 풀어도 갱신) */
+const bestKey = (id, n) => 'hp:best:' + id + ':' + n;
+function advBest(id, n){ return store.get(bestKey(id, n), null); }
+function advBestSave(id, n){   /* 성공한 판이 끝날 때 엔진이 부름 → { t, m, prev, better } */
+  const t = Math.max(0, Math.round(elapsed())), m0 = NG[id].recMoves ? NG[id].recMoves() : null, m = typeof m0 === 'number' && isFinite(m0) ? m0 : null;
+  const prev = advBest(id, n), better = !!prev && (t < prev.t || (t === prev.t && m != null && prev.m != null && m < prev.m));
+  if(!prev || better) store.set(bestKey(id, n), m != null ? { t, m } : { t });
+  return { t, m, prev, better };
+}
+const recTxt = r => r ? clock2(r.t).replace(/^0(?=\d:)/, '') + (r.m != null ? ' · ' + r.m + '수' : '') : '';
+const starTxt = s => '★'.repeat(s) + '☆'.repeat(3 - s);
 function openAdvMap(id, want){
-  const p = advProg(id);
+  const p = advProg(id), send = HOST.sendStage && !NG[id].noSend && !NG[id].age;   /* 판 보내기는 사이트만(HOST.sendStage). 연령 제한 게임(age)·noSend는 빼요 */
   let pick = Math.min(want || p.max, p.max), c = chOf(pick);
   const draw = () => {
     const cs = (c - 1) * 10;
     const cells = [1,2,3,4,5,10,9,8,7,6].map(k => { const n = cs + k, lock = n > p.max, s = p.stars[n] || 0;
-      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id].stageTag ? ' ' + NG[id].stageTag(n) : stageClass(id, n)}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + ' 잠김"' : 'aria-label="스테이지 ' + n + (k === 10 ? ' 보스' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}</button>`; }).join('');
-    const canNext = p.max > c * 10;
-    openModal(`<h3>${GAMES[id].name} 솔로</h3>
-      <div class="chhead"><button id="chPrev" aria-label="이전 챕터" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>챕터 ${c} · 별 ${chStars(id, c)}/30${chCleared(id, c) ? ' · 클리어' : ''}</small></div><button id="chNext" aria-label="다음 챕터" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
+      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id].stageTag ? ' ' + NG[id].stageTag(n) : stageClass(id, n)}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + '판 잠김"' : 'aria-label="' + n + '판' + (k === 10 ? ' 대장 판' : WARMUP(n) ? ' 몸풀기' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}${WARMUP(n) && !lock ? '<em class="wu">몸풀기</em>' : ''}</button>`; }).join('');
+    const canNext = p.max > c * 10, s = p.stars[pick] || 0, rec = advBest(id, pick), done = s > 0;
+    const info = `<b>${pick}판</b>${WARMUP(pick) ? ' · 몸풀기' : ''} · ${rec ? '내 기록 ' + recTxt(rec) : done ? '기록 없음' : '아직 안 깼어요'}${done ? ' · <span class="stx">' + starTxt(s) + '</span>' : ''}`;
+    openModal(`<h3>${GAMES[id].name} 판 고르기</h3><button class="amx" id="mClose" aria-label="닫기">✕</button>
+      <form class="amgo" id="amForm"><label for="amNum">판 번호</label><input id="amNum" type="number" inputmode="numeric" min="1" max="${p.max}" placeholder="1~${p.max}" enterkeyhint="go"><button class="b2" id="amGo" type="submit">가기</button></form>
+      <div class="chhead"><button type="button" id="chPrev" aria-label="이전 챕터" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>챕터 ${c} · 별 ${chStars(id, c)}/30${chCleared(id, c) ? ' · 클리어' : ''}</small></div><button type="button" id="chNext" aria-label="다음 챕터" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
       <div class="path">${cells}</div>
-      <p class="rule">${ADV_RULE[id]}<br>스테이지 ${pick}: <b>${advDesc(id, pick)}</b>${conceptLine(id, pick) ? `<br><span class="cline">${conceptLine(id, pick)}</span>` : ''}</p>
-      <p class="legend3"><span class="lg-n">NEW</span> 새 규칙 · <span class="lg-h"></span> 어려움 · <span class="lg-x"></span> 보스</p>
-      <div class="mbtns"><button class="b2" id="mClose">닫기</button><button class="b1" id="mGo">${pick} 시작 · 무료</button></div>`);
+      <p class="rule">${ADV_RULE[id]}<br>${pick}판: <b>${advDesc(id, pick)}</b>${conceptLine(id, pick) ? `<br><span class="cline">${conceptLine(id, pick)}</span>` : ''}</p>
+      <p class="legend3"><span class="lg-n">새 규칙</span> · <span class="lg-h"></span> 어려움 · <span class="lg-x"></span> 대장 판</p>
+      <div class="amfoot"><p class="aminfo">${info}</p><div class="ambtns${send && done ? '' : ' one'}">${send && done ? `<button class="b2" id="amSend">${ic('share')} 친구에게 보내기</button>` : ''}<button class="b1" id="mGo">${done ? '다시 풀기' : pick + '판 시작'} · 무료</button></div></div>`);
     const m = $('#modal'); m.classList.add('amap'); m.style.setProperty('--gc', GCOL[id][1]);
     $('#mClose').onclick = closeModal;
     $('#mGo').onclick = () => { closeModal(); startGame(id, null, { adv:pick }); };
+    const sb = $('#amSend'); if(sb) sb.onclick = () => HOST.sendStage(id, pick, { t:rec ? rec.t : 0, st:s }, () => openAdvMap(id, pick));
+    $('#amForm').onsubmit = e => { e.preventDefault(); const v = parseInt($('#amNum').value, 10);
+      if(!(v >= 1)){ toast('판 번호를 넣어 주세요'); return; }
+      if(v > p.max){ toast(p.max + '판까지 열려 있어요'); $('#amNum').value = p.max; return; }
+      pick = v; c = chOf(v); draw(); };
     $('#chPrev').onclick = () => { c--; pick = Math.min(p.max, c * 10); draw(); };
     $('#chNext').onclick = () => { c++; pick = Math.min(p.max, c * 10); draw(); };
     document.querySelectorAll('.st:not(.lock)').forEach(b => b.onclick = () => { pick = +b.dataset.n; draw(); });
@@ -391,12 +410,26 @@ function navBack(){
 const duelNoStop = () => !!(G && G.duel && !G.duel.fleet);
 function gPause(){ if(!G || G.over || G.paused || duelNoStop()) return false; G.paused = true; G.pauseAt = Date.now(); return true; }
 function gResume(){ if(!G || !G.paused) return; G.pausedMs += Date.now() - G.pauseAt; G.paused = false; G.lt = 0; }
+/* 도움말 v2(WP3): 게임 정의 howto = { pic?:() => SVG(320×180), lines:[3줄], more?:[[제목, 설명], …] }
+   있으면: 그림(있을 때만) + 3줄(16px) + "더 알아보기 ▾"(접힘, more 또는 help 단계) + 바닥 고정 [시작하기].
+   없으면: 지금 help 단계 목록 + 바닥 고정 버튼. 버튼 id는 예전과 같은 #mOk */
 function openHelp(id, first){
   if(duelNoStop() && !G.over){ duelRulesToggle(); return; }
-  const paused = gPause();
-  openModal(`<h3>${GAMES[id].name} 방법</h3><div class="help">${HELP[id].concat(NG[id].helpExtra ? NG[id].helpExtra() : []).map((s, i) => `<div class="hstep"><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span><div><b>${s[0]}</b><span>${s[1]}</span></div></div>`).join('')}</div>
-    <div class="mbtns one"><button class="b1" id="mOk">${first ? '시작하기' : '계속하기'}</button></div>`);
-  $('#mOk').onclick = () => { closeModal(); if(paused) gResume(); };
+  const paused = gPause(), m = NG[id] || {}, col = GAME_META[id].col;
+  let ho = null; try{ ho = typeof m.howto === 'function' ? m.howto() : m.howto; }catch(_){ ho = null; }
+  const steps = (ho && ho.more ? ho.more : HELP[id].concat(m.helpExtra ? m.helpExtra() : []));
+  const stepHtml = steps.map((s, i) => `<div class="hstep"><span class="hn" style="background:${col}">${i + 1}</span><div><b>${s[0]}</b><span>${s[1]}</span></div></div>`).join('');
+  let body;
+  if(ho && ho.lines && ho.lines.length){
+    let pic = ''; try{ pic = ho.pic ? ho.pic() : ''; }catch(_){ pic = ''; }
+    body = `${pic ? `<div class="hpic" style="--gc:${col}" aria-hidden="true">${pic}</div>` : ''}
+      <ol class="h3l">${ho.lines.slice(0, 3).map((l, i) => `<li><span class="hn" style="background:${col}">${i + 1}</span><span>${l}</span></li>`).join('')}</ol>
+      ${steps.length ? `<details class="hmore"><summary>더 알아보기 <span aria-hidden="true">▾</span></summary><div class="help">${stepHtml}</div></details>` : ''}`;
+  } else body = `<div class="help">${stepHtml}</div>`;
+  openModal(`<h3>${GAMES[id].name} 방법</h3>${body}
+    <div class="hfoot"><button class="b1" id="mOk">${first ? '시작하기' : '계속하기'}</button></div>`);
+  $('#modal').classList.add('helpm');
+  $('#mOk').onclick = () => { closeModal(); if(first && coachWant(id)){ coachStart(id, paused); return; } if(paused) gResume(); };
 }
 function confirmQuit(){
   if(!G || G.over){ HOST.exit(); return; }
@@ -424,14 +457,16 @@ function calcScore(){
 /* 판이 끝남(게임이 부름). 대전은 엔진이 마무리, 그 밖은 HOST(사이트·모듈)가 결과 창을 보여 준다 */
 function finish(win){
   if(G.over) return; G.over = true; clearInterval(tick);
-  ambStop();
+  ambStop(); coachStop();
+  if(G.adv && !G.duel){ try{ G.rec = win && !G.replay ? advBestSave(G.id, G.adv) : null; }catch(_){ G.rec = null; } }   /* 판마다 내 가장 좋은 기록 */
+  if(G.replay && !G.duel && HOST.replayFinish){ HOST.replayFinish(win); return; }
   if(win && NG[G.id].winSfx){ sfx('win', { g:G.id }); fxBuzz([30, 60, 30, 60, 80]); }
   if(G.duel){ duelFinish(win); return; }
   if(G.practice){ practiceFinish(win); return; }   /* 대전 뒤 계속 풀기: 기록 안 함 */
   HOST.finish(win);
 }
 /* 게임 화면 정리(다른 화면으로 나가기 전에) */
-function leavePlay(){ ambStop(); try{ sceneStart(null); }catch(_){} duelClose(); if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; } bodyModeSet(null); delete document.body.dataset.mode; clearInterval(tick); if(G && G.raf) cancelAnimationFrame(G.raf); }
+function leavePlay(){ ambStop(); coachStop(); hstarDrop(); try{ sceneStart(null); }catch(_){} duelClose(); if(G && G.cleanup){ try{ G.cleanup(); }catch(_){} G.cleanup = null; } bodyModeSet(null); delete document.body.dataset.mode; clearInterval(tick); if(G && G.raf) cancelAnimationFrame(G.raf); }
 function bodyModeSet(cls){ GAME_IDS.forEach(g => { const c = NG[g].bodyClass; if(c) document.body.classList.toggle(c, c === cls); }); }
 
 function renderPaws(){
@@ -444,6 +479,8 @@ let G = null, tick = null;
 
 function startGame(id, lv = 'normal', o = {}){
   const adv = o.adv || 0, duel = o.duel || null, m = NG[id];
+  /* 시작 전 관문(게임 정의 startGate(go), 예: 19세 확인): 개념 카드·도움말보다 먼저. 실시간 대전은 찾기 전에 gateThen()으로 */
+  if(!duel && !o.gateDone){ const gf = startGateOf(id); if(gf){ gf(() => startGame(id, lv, Object.assign({}, o, { gateDone:true }))); return; } }
   if(adv && !o.cardDone){ const p0 = planOf(id, adv); if(p0.intro && !store.get('hp:seenC:' + id + ':' + p0.intro, 0)){ conceptCard(id, adv, () => startGame(id, lv, Object.assign({}, o, { cardDone:true }))); return; } }
   const pre = HOST.beforeStart(id, lv, o);   /* 사이트: 하트·오늘 몇 번째 판. false면 시작 안 함 */
   if(pre === false) return;
@@ -459,11 +496,15 @@ function startGame(id, lv = 'normal', o = {}){
   G = { id, lv, adv, duel, L, attempt, chal:o.chal || null, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
   G.cfg = L[id]; m.init(L[id], rng, lv);
   HOST.showPlay();
+  G.replay = o.replay || null;   /* 다시 풀기·받은 판·지난 문제: 기록·진도에 넣지 않음(HOST.replayFinish가 결과 창) */
   const ex = m.titleExtra ? m.titleExtra() : '';
   $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || '컴퓨터')) : 'VS ' + esc(duel.vs || duel.opp.nick) + (duel.mode === 'ai' ? ' (컴퓨터)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
+  if(adv && !duel) $('#ptitle').innerHTML = GAMES[id].name + `<small>${G.replay && G.replay.kind === 'gift' ? '친구가 보낸 판 · ' + adv + '판' : '솔로 · ' + (WARMUP(adv) ? '몸풀기 판' : chName(id, chOf(adv))) + ' · ' + adv + '판'}${ex}</small>`;
+  hstarTick();   /* 솔로 별 목표선(판을 그리기 전에 자리를 잡아 판 크기 계산이 맞게) */
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();
   duelBarInit();
+  if(!duel && store.get('hp:help:' + id, false) && coachWant(id)) setTimeout(() => { if(G && !G.over && G.id === id && !$('#veil').classList.contains('on')) coachStart(id, gPause()); }, 400);
   if((!duel || duel.fleet) && !store.get('hp:help:' + id, false)){ store.set('hp:help:' + id, 1); setTimeout(() => { if(G && !G.over) openHelp(id, true); }, 50); }
   clearInterval(tick);
   tick = setInterval(updateClock, 250); updateClock();
@@ -482,7 +523,138 @@ function updateClock(){
   if(!G || G.over) return;
   const c = $('#clock'); if(c) c.textContent = mmss(elapsed());
   const sc = $('#sclock'); if(sc) sc.textContent = clock2(elapsed());
+  hstarTick();
   if(G.duel) duelTick();
 }
 
 function renderStage(){ NG[G.id].render($('#stage')); }
+
+/* ===================== 공용 쉬운 화면(WP3, 2026-10-06 세대별 테스트) =====================
+   큰 글씨 · 별 목표선 · 첫 판 손가락 안내 · 시작 전 관문 · 몸풀기 건너뛰기 · 기록 갱신 도장 · 대체 조작 부품(dpad·tapPlace).
+   모두 게임 이름을 모르고 게임 정의(NG.<id>)의 선택 항목만 본다. 판 상태(G)·씨앗·시계·대전은 바꾸지 않는다(시계는 gPause/gResume만). */
+
+/* ---- 큰 글씨(설정 "소리 · 글씨" 맨 위 스위치, hp:big) → body.big: 글자 +2px, 판 칸 크기는 그대로 ---- */
+const bigOn = () => !!store.get('hp:big', 0);
+function bigSet(on){ store.set('hp:big', on ? 1 : 0); document.body.classList.toggle('big', !!on); }
+try{ if(bigOn()) document.body.classList.add('big'); }catch(_){}
+
+/* ---- 시작 전 관문: 게임 정의 startGate(go)(함수). 예전 이름 gate가 함수면 그것도 관문으로 본다(객체 gate는 소리 간격) ---- */
+function startGateOf(id){ const m = NG[id] || {}; return typeof m.startGate === 'function' ? m.startGate : typeof m.gate === 'function' ? m.gate : null; }
+/* 실시간 대전·방처럼 startGame 전에 다른 화면이 먼저 뜨는 곳에서: gateThen(id, () => duelStart(id)) */
+function gateThen(id, fn){ const g = startGateOf(id); if(g){ try{ g(fn); }catch(_){ fn(); } } else fn(); }
+
+/* ---- 별 목표선(솔로만): 게임 제목 막대 아래 한 줄 .hstar. 게임 정의 starGoal() → [{ s:3, text:'1:30 안에', ok:true|false|null|() => … }]
+   없으면 starRule의 ★★★ 부분 글을 그대로. 지키는 중 = 초록, 놓침 = 회색 줄긋기. 오늘의 문제·대전에는 없음 ---- */
+function hstarItems(){
+  const m = NG[G.id];
+  if(m.starGoal){ try{ const a = m.starGoal(); if(Array.isArray(a) && a.length) return a; }catch(_){} }
+  const parts = String(ADV_RULE[G.id] || '').split(' · ').map(x => x.trim()).filter(Boolean);
+  const top = parts.find(x => /^★★★/.test(x)) || parts[parts.length - 1];
+  return top ? [{ s:3, text:top.replace(/^★+\s*/, ''), ok:null }] : [];
+}
+function hstarTick(){
+  try{
+    if(!G || !G.adv || G.duel){ hstarDrop(); return; }
+    const items = hstarItems().slice(0, 2); if(!items.length){ hstarDrop(); return; }
+    let el = $('#hstar');
+    if(!el){ el = document.createElement('div'); el.id = 'hstar'; el.className = 'hstar'; }
+    const bar = document.querySelector('#play > .pbar');
+    if(bar && el.previousElementSibling !== bar) bar.after(el);
+    const html = items.map(x => { const ok = typeof x.ok === 'function' ? x.ok() : x.ok;
+      return `<span class="hs${ok === false ? ' miss' : ok ? ' keep' : ''}"><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i>${x.text}</span>`; }).join('<b aria-hidden="true">·</b>');
+    if(el.dataset.h !== html){ el.dataset.h = html; el.innerHTML = html; el.setAttribute('aria-label', '별 목표: ' + items.map(x => (x.s || 3) + '개 ' + x.text).join(', ')); }
+  }catch(_){}
+}
+function hstarDrop(){ const el = $('#hstar'); if(el) el.remove(); }
+
+/* ---- 몸풀기 판: 1판을 별 3개로 깨면 결과 창 반반 자리에 "너무 쉬웠나요? 5판으로 건너뛰기"(건너뛴 판은 별 0으로 남음)
+   warmSkip(id, n, 별, after?) → resBtns의 pair 버튼 하나 또는 null ---- */
+function warmSkip(id, n, st, after){
+  if(n !== 1 || st < 3 || (G && G.replay) || advProg(id).max >= 5) return null;
+  return { id:'mSkip', label:'너무 쉬웠나요?<small>5판으로 건너뛰기</small>', cls:'b2', fn:() => {
+    const p = advProg(id); p.max = Math.max(p.max, 5); store.set(advKey(id), p);
+    if(after) try{ after(p); }catch(_){}
+    startGame(id, null, { adv:5 }); } };
+}
+
+/* ---- 기록 갱신 도장: 결과 창 기록 옆 "기록 갱신!"(다시 풀어 가장 좋은 기록을 넘었을 때) ---- */
+function recHtml(){
+  const r = G && G.rec; if(!r) return '';
+  return `<p class="recl">기록 <b class="num">${recTxt(r)}</b>${r.better ? '<span class="recst">기록 갱신!</span>' : r.prev ? `<small>내 최고 ${recTxt(r.prev)}</small>` : ''}</p>`;
+}
+function recFx(){ try{ const s = $('#modal .recst'); if(!s) return; setTimeout(() => { if(!s.isConnected) return; s.classList.add('on'); sfx('newRecord'); if(typeof fxPunch === 'function') fxPunch(s, 1.25); }, 900); }catch(_){} }
+
+/* ---- 첫 판 손가락 안내(coach): 게임 정의 coach = [{ at:() => 요소|{x,y}, text:'여기를 눌러요', act:'tap'|'drag'|'swipe', to?:() => 요소|{x,y} }]
+   처음 한 번만(hp:coach:<id>). 시계를 멈춘 채 판 위 손가락이 따라 하기를 보여 주고, 사용자가 그 동작을 하면 다음 단계.
+   마지막 단계에서 손가락을 대는 순간 시계를 다시 움직여 그 동작은 판에 그대로 들어간다(공식 판 시간에 안내 시간이 들어가지 않음). 대전에서는 안 나옴 ---- */
+const HAND_SVG = '<svg viewBox="0 0 48 56" aria-hidden="true"><path d="M17 30V9.5a4 4 0 0 1 8 0V25l.2-3.6a3.8 3.8 0 0 1 7.6.3l-.2 4 .4-2.4a3.7 3.7 0 0 1 7.3 1.1L39.6 37c-.8 9.4-7 15.5-15.3 15.5-6.7 0-10.4-3.4-14.2-9.4L4.7 34.8a3.6 3.6 0 0 1 5.7-4.4z" fill="#fff" stroke="#1A0F45" stroke-width="2.5" stroke-linejoin="round"/><path d="M25 24v8M32.6 26v7M17 30v4" stroke="#1A0F45" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>';
+let COACH = null;
+function coachWant(id){ const c = NG[id] && NG[id].coach; return !!(c && c.length && G && G.id === id && !G.duel && !G.over && !store.get('hp:coach:' + id, 0)); }
+function coachStart(id, paused){
+  coachStop();
+  const steps = NG[id].coach || [];
+  const el = document.createElement('div'); el.className = 'coach'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '따라 해 보세요');
+  el.innerHTML = `<div class="ch-hole"></div><div class="ch-hand">${HAND_SVG}</div><p class="ch-tx" aria-live="polite"></p><button class="ch-skip" type="button">건너뛰기</button>`;
+  document.body.appendChild(el);
+  const C = COACH = { el, id, paused, i:0, a:null, b:null, down:null, h:{} };
+  const pos = v => { if(!v) return null; if(v.getBoundingClientRect){ const r = v.getBoundingClientRect(); if(!r.width && !r.height) return null; return { x:r.left + r.width / 2, y:r.top + r.height / 2, r:Math.max(26, Math.min(80, Math.max(r.width, r.height) / 2 + 8)) }; } return isFinite(v.x) && isFinite(v.y) ? { x:v.x, y:v.y, r:v.r || 34 } : null; };
+  const finish = () => { store.set('hp:coach:' + id, 1); coachStop(); };
+  const show = () => {
+    if(COACH !== C) return;
+    const st = steps[C.i]; let a = null, b = null; try{ a = pos(st.at()); b = st.to ? pos(st.to()) : null; }catch(_){}
+    if(!a){ C.i++; if(C.i >= steps.length) finish(); else show(); return; }
+    C.a = a; C.b = b; C.act = st.act === 'drag' || st.act === 'swipe' ? st.act : 'tap';
+    const s = el.style; s.setProperty('--x', a.x + 'px'); s.setProperty('--y', a.y + 'px'); s.setProperty('--r', a.r + 'px');
+    s.setProperty('--dx', ((b ? b.x : a.x + (C.act === 'swipe' ? 80 : 0)) - a.x) + 'px'); s.setProperty('--dy', ((b ? b.y : a.y) - a.y) + 'px');
+    el.dataset.act = C.act; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    const tx = el.querySelector('.ch-tx'); tx.textContent = st.text || (C.act === 'tap' ? '여기를 눌러요' : '손가락을 대고 밀어요');
+    tx.classList.toggle('up', a.y > innerHeight * .6);
+  };
+  const near = e => C.a && Math.hypot(e.clientX - C.a.x, e.clientY - C.a.y) <= C.a.r * 1.7;
+  const last = () => C.i >= steps.length - 1;
+  C.h.down = e => { if(e.target.closest && e.target.closest('.ch-skip')) return; C.down = { x:e.clientX, y:e.clientY, ok:near(e) };
+    if(C.down.ok && last()){ finish(); return; }   /* 마지막 동작은 시계를 돌린 뒤 판에 그대로 */
+    if(C.act === 'tap' && C.down.ok){ C.i++; setTimeout(show, 60); } };
+  C.h.up = e => { const d = C.down; C.down = null; if(!d || C.act === 'tap') return; if(Math.hypot(e.clientX - d.x, e.clientY - d.y) > 24){ C.i++; if(C.i >= steps.length) finish(); else setTimeout(show, 60); } };
+  C.h.rs = () => show();
+  document.addEventListener('pointerdown', C.h.down, true); document.addEventListener('pointerup', C.h.up, true); addEventListener('resize', C.h.rs);
+  el.querySelector('.ch-skip').onclick = finish;
+  show();
+}
+function coachStop(){
+  const C = COACH; if(!C) return; COACH = null;
+  document.removeEventListener('pointerdown', C.h.down, true); document.removeEventListener('pointerup', C.h.up, true); removeEventListener('resize', C.h.rs);
+  try{ C.el.remove(); }catch(_){}
+  if(C.paused) gResume();
+}
+
+/* ---- 대체 조작 공용 부품 (게임 WP가 붙여 씀: 블록·주차·함대·여우 등) ----
+   dpadHtml({ okText:'확인', ok:false면 가운데 비움, cls, label }) → ▲▼◀▶ + [확인] 56px 버튼 묶음(엄지 자리)
+   dpadBind(rootEl, dir => …, { repeat:ms }) : dir = 'up'|'down'|'left'|'right'|'ok'. repeat를 주면 길게 누르는 동안 되풀이. 반환 = 풀기 함수 */
+function dpadHtml(o = {}){
+  return `<div class="dpad${o.cls ? ' ' + o.cls : ''}" role="group" aria-label="${o.label || '방향 버튼'}"><button type="button" class="dp-u" data-d="up" aria-label="위">▲</button><button type="button" class="dp-l" data-d="left" aria-label="왼쪽">◀</button>${o.ok === false ? '<span class="dp-c"></span>' : `<button type="button" class="dp-ok" data-d="ok">${o.okText || '확인'}</button>`}<button type="button" class="dp-r" data-d="right" aria-label="오른쪽">▶</button><button type="button" class="dp-d" data-d="down" aria-label="아래">▼</button></div>`;
+}
+function dpadBind(root, fn, o = {}){
+  const pad = root && (root.classList && root.classList.contains('dpad') ? root : root.querySelector('.dpad')); if(!pad) return () => {};
+  let t1 = 0, t2 = 0;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); };
+  const down = e => { const b = e.target.closest('button[data-d]'); if(!b || !pad.contains(b)) return; e.preventDefault(); stop();
+    const d = b.dataset.d; try{ fn(d); }catch(_){}
+    if(o.repeat && d !== 'ok') t1 = setTimeout(() => { t2 = setInterval(() => { try{ fn(d); }catch(_){ stop(); } }, o.repeat); }, 350); };
+  pad.addEventListener('pointerdown', down); ['pointerup', 'pointercancel', 'pointerleave'].forEach(k => pad.addEventListener(k, stop));
+  return () => { stop(); pad.removeEventListener('pointerdown', down); };
+}
+/* tapPlace(rootEl, { item:'.piece', cell:'.cell', place:(itemEl, cellEl) => false면 못 놓음, pick?:itemEl => false면 못 고름 })
+   끌기 대신 "대상 누르기 → 칸 누르기". 고른 대상에 .tp-sel, root에 .tp-on. 반환 { clear(), get(), off() } */
+function tapPlace(root, o){
+  let sel = null;
+  const clear = () => { if(sel) sel.classList.remove('tp-sel'); sel = null; root.classList.remove('tp-on'); };
+  const h = e => {
+    const it = o.item ? e.target.closest(o.item) : null, ce = o.cell ? e.target.closest(o.cell) : null;
+    if(sel && !sel.isConnected) clear();
+    if(sel && ce && root.contains(ce) && it !== sel){ let ok = false; try{ ok = o.place(sel, ce) !== false; }catch(_){} if(ok){ clear(); return; } }
+    if(it && root.contains(it)){ if(it === sel){ clear(); return; } if(o.pick && o.pick(it) === false) return; clear(); sel = it; it.classList.add('tp-sel'); root.classList.add('tp-on'); }
+  };
+  root.addEventListener('click', h);
+  return { clear, get:() => sel, off:() => { root.removeEventListener('click', h); clear(); } };
+}

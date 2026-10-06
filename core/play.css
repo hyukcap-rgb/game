@@ -7,11 +7,11 @@
 .amap .chhead .ico{width:20px; height:20px}
 .amap .chhead .rot{transform:rotate(180deg)}
 .amap .chname{font-family:var(--disp); font-size:19px; color:var(--ink); line-height:1.2}
-.amap .chname small{display:block; font-family:var(--font); font-size:12px; font-weight:700; color:var(--sub)}
+.amap .chname small{display:block; font-family:var(--font); font-size:13px; font-weight:700; color:var(--sub)}
 .path{position:relative; display:grid; grid-template-columns:repeat(5,1fr); gap:12px 8px; padding:14px 8px; margin-top:6px; border-radius:18px; background:color-mix(in srgb, var(--gc) 12%, #FFF8EA); border:2px solid color-mix(in srgb, var(--gc) 30%, #EADBC0)}
 .st{position:relative; aspect-ratio:1; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--heavy); font-size:17px; color:#fff;
   background:linear-gradient(180deg, color-mix(in srgb, var(--gc) 65%, #fff), var(--gc)); border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2); text-shadow:0 2px 0 rgba(0,0,0,.3)}
-.st i{position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); font-style:normal; font-size:12px; letter-spacing:-1px; white-space:nowrap; text-shadow:none; -webkit-text-stroke:0}
+.st i{position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); font-style:normal; font-size:13px; letter-spacing:-1px; white-space:nowrap; text-shadow:none; -webkit-text-stroke:0}
 .st i .on{color:#FFB020; text-shadow:0 1px 0 #7A4A00} .st i .off{color:#D8C8A8}
 .st.lock{background:#DCCFB4; color:#A8966F; border-color:#A8966F; box-shadow:0 3px 0 #A8966F; text-shadow:none}
 .st.lock .ico{width:18px; height:18px}
@@ -21,10 +21,10 @@
 .st.boss{border-radius:30%}
 .modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
 .modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}
-.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:12px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
+.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:13px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
 .rule .cline{display:inline-block; margin-top:4px; font-size:13.5px; color:#5B3FB5; background:#EFE7FF; border-radius:10px; padding:3px 9px}
-.legend3{font-size:12.5px; color:var(--sub); margin:6px 0 0; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap}
-.legend3 .lg-n{font:12px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
+.legend3{font-size:13px; color:var(--sub); margin:6px 0 0; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap}
+.legend3 .lg-n{font:13px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
 .legend3 .lg-h, .legend3 .lg-x{display:inline-block; width:12px; height:12px; border-radius:4px; background:linear-gradient(#FF7A7A,#B3122E)}
 .legend3 .lg-x{background:linear-gradient(#A77BFF,#4B1E9E)}
 .ncard{display:flex; gap:12px; align-items:center; text-align:left; background:#FFF8EA; border:3px solid var(--outline); border-radius:18px; padding:12px 14px; margin:10px 0 4px; box-shadow:0 4px 0 var(--outline2); color:var(--ink)}
@@ -32,7 +32,7 @@
 .ncard .nc-ic svg{width:28px; height:28px}
 .ncard p{margin:0; font-size:15px; line-height:1.55}
 .st.boss::after{content:""; position:absolute; top:-12px; width:22px; height:14px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 14'><path d='M1 13 2 3l5 5 4-7 4 7 5-5 1 10z' fill='%23FFC93C' stroke='%231A0F45' stroke-width='1.6' stroke-linejoin='round'/></svg>") no-repeat center/contain}
-.amap .rule{margin:12px 0 0; font-size:12.5px; color:var(--sub); line-height:1.5}
+.amap .rule{margin:12px 0 0; font-size:13px; color:var(--sub); line-height:1.5}
 .amap .rule b{color:#B87400}
 
 /* 결과(모험) */
@@ -44,7 +44,7 @@
 @keyframes starpop{to{opacity:1; transform:scale(1) rotate(0)}}
 .chprog{margin:10px 0 0; padding:10px 12px; border-radius:14px; background:#fff; border:2px solid var(--paper-line); text-align:left}
 .chprog .h{display:flex; justify-content:space-between; font-family:var(--disp); font-size:15px; color:var(--ink)}
-.chprog .h small{font-family:var(--font); font-size:12px; font-weight:700; color:var(--sub)}
+.chprog .h small{font-family:var(--font); font-size:13px; font-weight:700; color:var(--sub)}
 .chprog .xp{background:#EFE3CB; box-shadow:inset 0 1px 2px rgba(0,0,0,.15)}
 .chprog .xp-t{color:var(--sub)}
 .chprog .xp-t b{color:#B87400}
@@ -74,7 +74,7 @@
 .srow2{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:#fff; border:2px solid var(--paper-line)}
 .srow2.col{flex-direction:column; align-items:stretch; gap:8px}
 .srow2 b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; color:var(--ink)}
-.srow2 small{display:block; font-size:12.5px; color:var(--sub); font-weight:500; margin-top:1px}
+.srow2 small{display:block; font-size:13px; color:var(--sub); font-weight:500; margin-top:1px}
 .sw{position:relative; flex:none; width:58px; height:34px; border-radius:17px; background:#DCCFB4; box-shadow:inset 0 2px 4px rgba(0,0,0,.18); transition:background .2s}
 .sw i{position:absolute; top:3px; left:3px; width:28px; height:28px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.25); transition:transform .22s cubic-bezier(.3,1.5,.5,1)}
 .sw.on{background:linear-gradient(#8BF06A,#27B86A)}
@@ -115,7 +115,7 @@ body.duel-ready .duelbar{visibility:hidden}
 .dg-side{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0}
 .dg-side .av{width:60px; height:60px}
 .dg-side b{font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.dg-side small{font-size:12px; font-weight:700; color:var(--sub); white-space:nowrap}
+.dg-side small{font-size:13px; font-weight:700; color:var(--sub); white-space:nowrap}
 .dg-side small.ok{color:var(--success)}
 .dg-side.me{animation:dgInL .45s cubic-bezier(.2,1.4,.4,1) both}
 .dg-side.op{animation:dgInR .45s cubic-bezier(.2,1.4,.4,1) .08s both}
@@ -156,9 +156,9 @@ body.duel-ready .duelbar{visibility:hidden}
 .db-row.op .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
 .db-track b{position:absolute; top:-1px; bottom:-1px; width:2px; margin-left:-1px; background:rgba(255,255,255,.35)} /* 상대 위치 눈금(내 줄에만) */
 .db-val{min-width:58px; text-align:right; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums}
-.db-val small{font-family:var(--font); font-size:12px; font-weight:700; color:#B9AEE8; margin-left:1px}
-.db-val .tile{display:inline-block; min-width:30px; padding:2px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:12.5px}
-.db-sub{display:flex; gap:3px; align-items:center; min-width:0; font-size:12px; font-weight:800; color:#FFD9E6}
+.db-val small{font-family:var(--font); font-size:13px; font-weight:700; color:#B9AEE8; margin-left:1px}
+.db-val .tile{display:inline-block; min-width:30px; padding:2px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:13px}
+.db-sub{display:flex; gap:3px; align-items:center; min-width:0; font-size:13px; font-weight:800; color:#FFD9E6}
 .db-sub:empty{display:none}
 .db-sub .ico{width:11px; height:11px; color:#FF7A9A; vertical-align:0}
 .db-sub .pip{width:8px; height:8px; border-radius:50%; background:#FFD35C; box-shadow:0 0 0 1.5px var(--outline2)}
@@ -170,7 +170,7 @@ body.duel-ready .duelbar{visibility:hidden}
 .db-row.op.lead .db-val{color:#FFB3D1}
 .db-row.lead .db-track{box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
 .db-tag{position:absolute; top:-11px; right:10px; height:20px; padding:0 8px; display:flex; align-items:center; gap:3px; border-radius:99px;
-  font-family:var(--disp); font-size:12px; line-height:1; white-space:nowrap; border:2px solid var(--outline2); color:#fff; transition:background .3s}
+  font-family:var(--disp); font-size:13px; line-height:1; white-space:nowrap; border:2px solid var(--outline2); color:#fff; transition:background .3s}
 .db-tag[hidden]{display:none}
 .db-tag.me{background:linear-gradient(#5FD36B,#23A548)}
 .db-tag.op{background:linear-gradient(#FF8AC0,#F0368A)}
@@ -195,7 +195,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .pbar.has-duel .db-tag.flip{animation:tagFlipC .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes tagFlipC{0%{transform:translateX(-50%) scale(.5)} 60%{transform:translateX(-50%) scale(1.18)}}
 .pbar.has-duel .dping{top:calc(100% + 8px)}
-@media (max-width:370px){ .pbar.has-duel .db-val{min-width:50px; font-size:13px} .pbar.has-duel .db-val small{font-size:12px} }
+@media (max-width:370px){ .pbar.has-duel .db-val{min-width:50px; font-size:13px} .pbar.has-duel .db-val small{font-size:13px} }
 
 
 /* ---------- (3) 순간 알림(대전 말풍선): 막대 바로 아래, 판을 가리지 않게 ---------- */
@@ -224,28 +224,28 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
   border-radius:18px; background:linear-gradient(180deg,var(--paper),var(--paper2)); border:3px solid var(--outline); box-shadow:0 5px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.4)}
 .drules[hidden]{display:none}
 .drules h4{margin:0 0 6px; display:flex; justify-content:space-between; align-items:center; font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink)}
-.drules h4 em{font-style:normal; font-size:12px; color:#C0392B; font-family:var(--font); font-weight:800}
+.drules h4 em{font-style:normal; font-size:13px; color:#C0392B; font-family:var(--font); font-weight:800}
 .drules .dg-rules{border:0; padding:0; background:none}
 .drules .x{position:absolute; top:6px; right:8px; width:36px; height:36px; border-radius:50%; font-size:18px; color:var(--sub)}
 /* 대전 메뉴(구슬·디펜스 일시정지 버튼 대신) */
-.modal .dmenu-live{display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; padding:4px 10px; border-radius:99px; font-size:12.5px; font-weight:800; color:#C0392B; background:#FFE3E3; border:1.5px solid #F5B5B5}
+.modal .dmenu-live{display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; padding:4px 10px; border-radius:99px; font-size:13px; font-weight:800; color:#C0392B; background:#FFE3E3; border:1.5px solid #F5B5B5}
 .modal .dmenu-live i{width:8px; height:8px; border-radius:50%; background:#E5484D; animation:pulse 1.4s ease-in-out infinite}
 
 /* ---------- (5) 먼저 끝냈을 때 대기 창 ---------- */
 .dwait .dw-me{display:flex; align-items:center; justify-content:center; gap:8px; margin:4px 0 10px; padding:8px 10px; border-radius:14px; background:linear-gradient(180deg,#FFF6C8,#FFE08A); border:2px solid #E0A21C}
 .dwait .dw-me b{font-family:var(--heavy); font-weight:400; font-size:24px; color:#5A3300}
-.dwait .dw-me small{font-size:12px; font-weight:800; color:#8A5A00}
+.dwait .dw-me small{font-size:13px; font-weight:800; color:#8A5A00}
 .dwait .dw-op{display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; padding:10px; border-radius:14px; background:#fff; border:2px solid var(--paper-line); text-align:left}
 .dwait .dw-op .av{width:48px; height:48px}
 .dwait .dw-op b{display:block; font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink)}
 .dwait .dw-op .dw-stat{display:block; font-size:13px; font-weight:800; color:#D1145A}
-.dwait .aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:2px}
+.dwait .aitag{font-style:normal; font-family:var(--font); font-size:13px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:2px}
 .dwait .db-track{display:block; height:12px; margin-top:5px; background:#E9E0F7; border:2px solid var(--outline)}
 .dwait .db-track i{background:linear-gradient(90deg,#FF9CC4,#F0368A)}
 .dwait .dw-need{margin:10px 0 2px; font-size:13.5px; font-weight:700; color:var(--ink)}
 .dwait .dw-need b{color:#D1145A}
-.dwait .dw-eta{display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:4px 12px; border-radius:99px; background:#EFE8FF; font-size:12.5px; font-weight:800; color:var(--primary)}
-.dwait .dw-quiet{margin:8px 0 0; font-size:12px; color:var(--sub)}
+.dwait .dw-eta{display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:4px 12px; border-radius:99px; background:#EFE8FF; font-size:13px; font-weight:800; color:var(--primary)}
+.dwait .dw-quiet{margin:8px 0 0; font-size:13px; color:var(--sub)}
 
 @media (prefers-reduced-motion: reduce){ .dg-n.pop, .dg-n.go.pop, .dg-side.me, .dg-side.op, .db-tag.flip, .db-sub .pip.lost{animation:none!important} .dg-ring .fg{transition:none} }
 
@@ -256,7 +256,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .vs-side{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0}
 .vs-side .av{width:64px; height:64px}
 .vs-side b{font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.vs-side small{font-size:12px; font-weight:700; color:var(--sub); white-space:nowrap}
+.vs-side small{font-size:13px; font-weight:700; color:var(--sub); white-space:nowrap}
 .vs-x{font-family:var(--heavy); font-size:30px; color:#FFC93C; -webkit-text-stroke:6px var(--outline); paint-order:stroke fill; text-shadow:0 3px 0 var(--outline)}
 .ds-radar{position:relative; width:64px; height:64px; border-radius:50%; background:radial-gradient(circle,#DDEBFF,#9CC4FF); border:3px solid var(--outline); overflow:hidden}
 .ds-radar i{position:absolute; inset:50%; width:0; height:0; border-radius:50%; border:2px solid rgba(46,143,232,.7); animation:dsping 1.8s ease-out infinite}
@@ -269,7 +269,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .dr-side .av{width:56px; height:56px}
 .dr-side b{font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .dr-side .num{font-family:var(--heavy); font-size:20px; color:var(--ink)}
-.dr-side small{font-size:12.5px; font-weight:700; color:var(--sub)}
+.dr-side small{font-size:13px; font-weight:700; color:var(--sub)}
 .dr-side.win{background:linear-gradient(180deg,#FFF6C8,#FFE08A); border-color:#E0A21C; box-shadow:0 3px 0 #B87A00}
 .dr-side .crown{position:absolute; top:-15px; font-size:22px; filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
 .dr-vs{font-family:var(--heavy); font-size:22px; color:#FFC93C; -webkit-text-stroke:5px var(--outline); paint-order:stroke fill}
@@ -286,7 +286,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .hchip .ico, .hchip .hv svg{width:18px; height:18px; flex:none}
 .hchip b{font-family:var(--heavy); font-weight:400; font-size:20px; line-height:1; font-variant-numeric:tabular-nums}
 .hchip small{font-family:var(--disp); font-size:13px; color:#6A5884}
-.hchip em{font-style:normal; font-family:var(--disp); font-size:12px; line-height:1; color:#6A5884; letter-spacing:-.2px}
+.hchip em{font-style:normal; font-family:var(--disp); font-size:13px; line-height:1; color:#6A5884; letter-spacing:-.2px}
 .hchip.time{flex:1.25 1 0}
 .hchip.item{background:linear-gradient(180deg,#FFF6C4,#FFD45A)} .hchip.item em, .hchip.item small{color:#7A4A00}
 .hchip.skip{background:linear-gradient(180deg,#EAF7FF,#A9DBFF)} .hchip.skip em, .hchip.skip small{color:#124F92}
@@ -313,3 +313,91 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .tools-row{display:flex; gap:8px; width:100%} .tools-row > .tool{flex:1 1 0; min-width:0}
 @media (max-width:370px){ .hchip{height:44px; padding:0 6px} .hchip b{font-size:17px} .hud-row{gap:5px} .tool{font-size:13px} }
 @media (prefers-reduced-motion:reduce){ .hbar > i{transition:none} }
+
+
+/* ===== 공용 쉬운 화면 (WP3, 2026-10-06 세대별 테스트) ===== */
+/* 도움말 v2: 그림 1장 + 3줄 + 더 알아보기(접힘) + 바닥 고정 [시작하기] 56px */
+.modal.helpm{padding-bottom:0}
+.helpm .hpic{width:100%; aspect-ratio:16/9; margin:0 0 10px; border-radius:16px; overflow:hidden; background:var(--gc,#FF7A1F); border:2.5px solid var(--outline2); box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}
+.helpm .hpic svg, .helpm .hpic img{display:block; width:100%; height:100%}
+.h3l{list-style:none; margin:4px 0 6px; padding:0; display:flex; flex-direction:column; gap:8px; text-align:left}
+.h3l li{display:grid; grid-template-columns:30px 1fr; gap:10px; align-items:center; padding:8px 10px; border-radius:14px; background:#fff; border:2px solid var(--paper-line);
+  font-family:var(--disp); font-size:16px; line-height:1.5; color:var(--ink)}
+.h3l .hn{width:30px; height:30px; border-radius:10px; display:grid; place-items:center; color:#fff; font-family:var(--heavy); font-size:16px; border:2px solid var(--outline2); text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.hmore{margin:8px 0 0; text-align:left}
+.hmore summary{min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; list-style:none; cursor:pointer; font-family:var(--disp); font-size:16px; color:#4A3A6E; border-radius:12px}
+.hmore summary::-webkit-details-marker{display:none}
+.hmore[open] summary span{display:inline-block; transform:rotate(180deg)}
+.hmore .help{margin-top:2px}
+.hfoot{position:sticky; bottom:0; z-index:3; margin:12px -16px 0; padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg, rgba(251,235,203,.92), var(--paper2) 40%); box-shadow:0 -8px 14px -6px rgba(26,15,69,.22)}
+.modal > .hfoot, .modal > .amfoot{position:sticky}   /* .modal > *의 relative보다 우선 */
+.modal .hfoot .b1{display:flex; min-height:56px; align-items:center; justify-content:center; width:100%; height:56px; border-radius:16px; font-family:var(--disp); font-size:19px}
+
+/* 판 고르기(솔로 맵): 판 번호 가기 · 몸풀기 꼬리표 · 바닥 고정 판 정보 */
+.modal.amap{padding-bottom:0}
+.modal .amx{position:absolute; top:22px; right:24px; z-index:2; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:18px; color:var(--ink); background:#fff; border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2)}
+.amap h3{padding-right:52px; padding-left:52px}
+.amgo{display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 8px}
+.amgo label{font-family:var(--disp); font-size:16px; color:var(--ink)}
+.amgo input{width:120px; height:48px; padding:0 8px; border-radius:14px; border:2.5px solid var(--outline2); background:#fff; text-align:center; font-family:var(--heavy); font-size:20px; color:var(--ink); -moz-appearance:textfield}
+.amgo input::-webkit-outer-spin-button, .amgo input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.amgo input::placeholder{font-family:var(--disp); font-size:15px; color:#8C7AA6}
+.amgo .b2{width:64px; height:48px; border-radius:14px; font-family:var(--disp); font-size:17px; padding:0}
+.st .wu{position:absolute; top:-11px; left:50%; transform:translateX(-50%); z-index:2; white-space:nowrap; font:13px/1 var(--disp); font-style:normal; color:#5A3300; background:linear-gradient(#FFE98E,#FFB020); border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; text-shadow:none}
+.modal .path .st.newc:not(.lock)::before{content:"새 규칙"; right:-6px; font:13px/1 var(--disp); padding:2px 4px}
+.amfoot{position:sticky; bottom:0; z-index:3; margin:10px -16px 0; padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px)); background:linear-gradient(180deg, rgba(251,235,203,.94), var(--paper2) 40%); box-shadow:0 -8px 14px -6px rgba(26,15,69,.22)}
+.aminfo{margin:0 0 8px; font-size:15px; font-weight:700; color:#4A3A6E}
+.aminfo b{font-family:var(--disp); font-weight:400; font-size:17px; color:var(--ink)}
+.aminfo .stx{color:#E09A00; letter-spacing:1px}
+.ambtns{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.ambtns.one{grid-template-columns:1fr}
+.ambtns button{height:48px; border-radius:14px; font-family:var(--disp); font-size:16px; display:inline-flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; padding:0 8px}
+.ambtns .ico{width:18px; height:18px}
+
+/* 별 목표선(솔로): 제목 막대 아래 한 줄 28px */
+.hstar{display:flex; align-items:center; justify-content:center; gap:6px; height:28px; margin:-6px auto 8px; padding:0 12px; width:max-content; max-width:100%; border-radius:99px;
+  background:#FFF8EA; border:2px solid #1A0F45; font-family:var(--disp); font-size:14px; line-height:1; color:#4A3A6E; white-space:nowrap; overflow:hidden}
+.hstar .hs{display:inline-flex; align-items:center; gap:3px; min-width:0; overflow:hidden; text-overflow:ellipsis; transition:color .3s}
+.hstar .hs i{font-style:normal; color:#FFB020; text-shadow:0 1px 0 #7A4A00; letter-spacing:-1px; transition:color .3s}
+.hstar .hs.keep{color:#1F8A55}
+.hstar .hs.keep i{color:#FFB020}
+.hstar .hs.miss{color:#9A8FB0; text-decoration:line-through}
+.hstar .hs.miss i{color:#CFC6DE; text-shadow:none}
+.hstar > b{font-weight:400; color:#B9AEC9}
+
+/* 결과 창 기록 · 기록 갱신 도장 */
+.recl{margin:8px 0 0; font-family:var(--disp); font-size:16px; color:var(--ink)}
+.recl b{font-family:var(--heavy); font-weight:400; font-size:20px; margin-left:4px}
+.recl small{margin-left:8px; font-family:var(--font); font-size:13px; font-weight:700; color:var(--sub)}
+.recst{display:inline-block; margin-left:10px; padding:2px 8px; border:3px solid #E0243A; border-radius:8px; color:#E0243A; font-family:var(--disp); font-size:16px; line-height:1.2; transform:rotate(-10deg) scale(1.6); opacity:0; vertical-align:2px}
+.recst.on{opacity:1; transform:rotate(-10deg) scale(1); transition:transform .35s cubic-bezier(.2,1.8,.4,1), opacity .2s}
+.rb-pair button small{display:block; font-size:13px; font-family:var(--disp); opacity:.95}
+.rb-pair #mSkip{flex-direction:column; gap:0; min-height:48px; line-height:1.2}
+
+/* 첫 판 손가락 안내: 판 밖만 어둡게(55%) + 대상 자리 원형 구멍·맥박 링 + 손가락. 눌림은 판으로 그대로 지나감 */
+.coach{position:fixed; inset:0; z-index:38; pointer-events:none; --x:50vw; --y:50vh; --r:36px; --dx:0px; --dy:0px}
+.ch-hole{position:absolute; left:calc(var(--x) - var(--r)); top:calc(var(--y) - var(--r)); width:calc(var(--r) * 2); height:calc(var(--r) * 2); border-radius:50%;
+  box-shadow:0 0 0 200vmax rgba(10,4,30,.55); transition:left .3s, top .3s, width .3s, height .3s}
+.ch-hole::after{content:""; position:absolute; inset:-6px; border-radius:50%; border:3px solid #FFE27A; animation:chring 1.2s ease-out infinite}
+@keyframes chring{from{transform:scale(.85); opacity:1} to{transform:scale(1.35); opacity:0}}
+.ch-hand{position:absolute; left:calc(var(--x) - 12px); top:calc(var(--y) - 4px); width:44px; height:52px; filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))}
+.ch-hand svg{width:100%; height:100%; display:block}
+.coach.go[data-act="tap"] .ch-hand{animation:chtap 1.1s ease-in-out infinite}
+.coach.go[data-act="drag"] .ch-hand, .coach.go[data-act="swipe"] .ch-hand{animation:chdrag 2.2s ease-in-out infinite}
+@keyframes chtap{0%,100%{transform:translate(8px,14px) scale(1)} 45%{transform:translate(0,0) scale(.9)} 60%{transform:translate(0,0) scale(.86)}}
+@keyframes chdrag{0%{transform:translate(0,0); opacity:0} 12%{opacity:1} 25%{transform:translate(0,0) scale(.9)} 75%{transform:translate(var(--dx),var(--dy)) scale(.9); opacity:1} 90%,100%{transform:translate(var(--dx),var(--dy)); opacity:0}}
+.ch-tx{position:absolute; left:50%; top:calc(var(--y) + var(--r) + 58px); transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px); margin:0; padding:8px 16px; border-radius:16px;
+  font-family:var(--disp); font-size:16px; line-height:1.4; color:#fff; text-align:center; background:linear-gradient(#3D2A8F,#24186A); border:2.5px solid #FFD35C; box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.ch-tx.up{top:auto; bottom:calc(100% - var(--y) + var(--r) + 20px)}
+.ch-skip{position:absolute; right:16px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); pointer-events:auto; height:44px; padding:0 18px; border-radius:14px; font-family:var(--disp); font-size:16px; color:#fff; background:rgba(255,255,255,.16); border:2px solid rgba(255,255,255,.55)}
+@media (prefers-reduced-motion:reduce){ .coach .ch-hand, .ch-hole::after{animation:none!important} }
+
+/* 대체 조작: 방향 버튼(dpad) · 누르고 놓기(tapPlace) */
+.dpad{display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,56px); grid-template-areas:". u ." "l c r" ". d ."; gap:6px; justify-content:center; touch-action:manipulation; user-select:none; -webkit-user-select:none}
+.dpad button{width:56px; height:56px; border-radius:16px; display:grid; place-items:center; font-size:22px; line-height:1; color:#3A2261; background:linear-gradient(180deg,#FFFFFF,#F3EBDD); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45}
+.dpad button:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+.dpad .dp-u{grid-area:u} .dpad .dp-l{grid-area:l} .dpad .dp-r{grid-area:r} .dpad .dp-d{grid-area:d} .dpad .dp-ok, .dpad .dp-c{grid-area:c}
+.dpad .dp-ok{font-family:var(--disp); font-size:16px; color:#fff; background:linear-gradient(180deg,#A98BFF,#6C3CE0); text-shadow:0 1px 0 rgba(0,0,0,.25)}
+.tp-sel{outline:3px solid #FFB020; outline-offset:2px; animation:tpsel 1s ease-in-out infinite}
+@keyframes tpsel{50%{outline-color:#FF6FAE}}

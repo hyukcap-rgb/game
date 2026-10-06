@@ -56,7 +56,15 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `modes:['solo','duel']` | 이 게임에 있는 모드만(붙여 쓰는 모듈 첫 화면·명령에 반영). 없으면 오늘의 문제·솔로·연습·대전 모두. 사이트 오늘의 시험지는 `SUBJ`로 따로 정함 |
 | `age:19` | 이용 연령 표시 정보(고스톱). 표시·확인 화면은 게임이 직접 |
 | `cardNote()` | 사이트 솔로·대전 목록과 모듈 첫 화면에 덧붙일 짧은 한 줄(예: 고스톱 보유 포인트) |
-| `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임) |
+| `css` `sounds` `gate` `jingle` | 게임 안에 든 스타일·소리(모듈형 게임). `gate`는 **객체**(소리 간격 ms). 시작 전 관문은 아래 `startGate` |
+| `howto` | 도움말 v2(쉬운 화면): `{ pic?:() => SVG 문자열(320×180, 움직이는 그림·글자 없음), lines:['3줄', …](줄마다 24자 이하), more?:[[제목, 설명], …] }`. 있으면 첫 화면 = 그림(있을 때만) + 3줄 16px + "더 알아보기 ▾"(접힘, `more` 없으면 `help`+`helpExtra`) + 바닥 고정 [시작하기]. 없으면 `help` 단계 목록 + 바닥 고정 버튼. 함수로 줘도 됨(`howto:() => ({…})`). 솔로 새 규칙 설명은 3줄에 넣지 말고 개념 카드(`concepts`)로 |
+| `startGate(go)` | 시작 전 관문(예: 고스톱 19세 확인). `startGame`이 개념 카드·도움말보다 **먼저** 부른다. 확인되면 `go()`(이미 확인했으면 바로 `go()`). 실시간 대전 쪽은 엔진 `gateThen(id, fn)`으로 감싸 부름 |
+| `starGoal()` | 솔로 별 목표선(판 위 한 줄 `.hstar`): `[{ s:3, text:'1:30 안에 · 실수 0', ok:true|false|null }]`(최대 2개, `ok`는 함수여도 됨: 지키는 중 초록 · 놓침 회색 줄긋기). 없으면 `starRule`의 ★★★ 부분 글을 그대로 보여 줌 |
+| `coach` | 첫 판 손가락 안내(처음 한 번, `hp:coach:<id>`): `[{ at:() => 요소|{x,y}, text:'여기를 눌러요', act:'tap'|'drag'|'swipe', to?:() => 요소|{x,y} }]`. 시계 멈춘 채 따라 하기, 마지막 동작에서 시계 다시 감. 대전에서는 안 나옴 |
+| `recMoves()` | 판 기록(`hp:best:<id>:<판>`)에 시간과 같이 남길 수(이동 수 등). 없으면 시간만 |
+| `noSend` | `true`면 판 고르기 창에 [친구에게 보내기] 없음(`age`가 있는 게임은 자동으로 없음) |
+
+공용 조작 부품(엔진, 게임이 붙여 씀): `dpadHtml({ okText, ok:false, cls })` + `dpadBind(요소, dir => …, { repeat:ms })`(▲▼◀▶ + [확인] 56px), `tapPlace(요소, { item:'.조각', cell:'.칸', place:(조각, 칸) => false면 못 놓음, pick? })`(끌기 대신 누르고 놓기, 고른 것에 `.tp-sel`). 큰 글씨는 `body.big`(글자 +2px) — 게임 CSS에서 필요하면 `body.big .내클래스{…}`로 맞춘다.
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 
 ## 대전 v3 (선택, `core/duel.js`, docs/21 3절) — 2~5명 · 순위 · 사건 · 선점 · 차례

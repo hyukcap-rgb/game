@@ -78,7 +78,7 @@ body[data-mode="ball"]{background:linear-gradient(180deg,#2A1B6E 0%,#1C1250 55%,
 .res-ico svg{width:100%; height:100%; display:block}
 .res-val{display:flex; align-items:baseline; gap:6px; padding-right:6px; line-height:1}
 .res-val b{font-family:var(--heavy); font-weight:400; font-size:19px; letter-spacing:.5px}
-.res-val small{font-family:var(--heavy); font-size:12px; color:#FFD86B; letter-spacing:.5px}
+.res-val small{font-family:var(--heavy); font-size:13px; color:#FFD86B; letter-spacing:.5px}
 .res-plus{width:26px; height:26px; border-radius:9px; display:grid; place-items:center; font-family:var(--heavy); font-size:20px; line-height:1; color:#fff; background:linear-gradient(#8BF06A,#2BB24C); border:2px solid #0F5A23; box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 2px 0 #0F5A23; text-shadow:0 1px 0 #0F5A23}
 .mail{position:relative; width:48px; height:44px; border-radius:14px; display:grid; place-items:center; background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 4px 0 #0E0730}
 .mail svg{width:30px; height:30px}
@@ -162,7 +162,7 @@ body[data-mode="ball"]{background:linear-gradient(180deg,#2A1B6E 0%,#1C1250 55%,
 .g-art svg{display:block; width:100%; height:100%}
 .g-art::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 35%); pointer-events:none}
 .g-nm{font-family:var(--disp); font-size:18px; line-height:1.25; color:var(--ink); padding:0 4px}
-.g-st{flex:1; font-size:12.5px; line-height:1.45; color:var(--sub); font-weight:500; padding:0 4px}
+.g-st{flex:1; font-size:13px; line-height:1.45; color:var(--sub); font-weight:500; padding:0 4px}
 .g-st b{color:var(--ink)}
 .g-go{display:flex; align-items:center; justify-content:center; gap:6px; height:40px; margin-top:8px; border-radius:13px; font-family:var(--disp); font-size:16px; color:#fff;
   --c1:#FF8AC0; --c2:#F0368A; --c3:#8E0F4F; background:linear-gradient(180deg,var(--c1),var(--c2)); border:2.5px solid var(--c3); text-shadow:0 2px 0 var(--c3);
@@ -172,7 +172,7 @@ body[data-mode="ball"]{background:linear-gradient(180deg,#2A1B6E 0%,#1C1250 55%,
 .games .game:last-child:nth-child(odd){grid-column:1/-1; display:grid; grid-template-columns:48% 1fr; grid-template-rows:auto 1fr auto; column-gap:12px}
 .games .game:last-child:nth-child(odd) .g-art{grid-row:1/4; margin:0; align-self:stretch; aspect-ratio:auto; min-height:120px}
 .games .game:last-child:nth-child(odd) .g-nm{padding-top:4px}
-.newb, .live, .stamp{position:absolute; top:6px; z-index:2; font-family:var(--heavy); font-size:12px; letter-spacing:1px; line-height:1; color:#fff; border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2)}
+.newb, .live, .stamp{position:absolute; top:6px; z-index:2; font-family:var(--heavy); font-size:13px; letter-spacing:1px; line-height:1; color:#fff; border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2)}
 .newb{left:6px; padding:4px 8px 5px; border-radius:8px; background:linear-gradient(#FF6B6B,#E0243A); transform:rotate(-6deg)}
 .live{right:6px; display:inline-flex; align-items:center; gap:5px; padding:4px 8px 5px; border-radius:999px; background:linear-gradient(#FF6B6B,#E0243A)}
 .live i{width:7px; height:7px; border-radius:50%; background:#fff; animation:blink 1.2s infinite}
@@ -195,7 +195,7 @@ body[data-mode="ball"]{background:linear-gradient(180deg,#2A1B6E 0%,#1C1250 55%,
 img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-select:none}
 .who{min-width:0; line-height:1.2}
 .who b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.who small{display:flex; gap:3px; margin-top:4px; font-size:12px; color:var(--sub); font-weight:500; white-space:nowrap}
+.who small{display:flex; gap:3px; margin-top:4px; font-size:13px; color:var(--sub); font-weight:500; white-space:nowrap}
 .mini{display:inline-grid; place-items:center; width:19px; height:19px; border-radius:6px; background:#E9DCC0; color:#B7A27A}
 .mini .ico{width:13px; height:13px}
 .mini.on{color:#fff; background:var(--gc); box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
@@ -207,7 +207,7 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .send:disabled .ico{filter:none}
 
 /* ---------- 테스트 도구 ---------- */
-.proto{margin-top:30px; font-size:12.5px; color:#B9AEE6; text-align:center}
+.proto{margin-top:30px; font-size:13px; color:#B9AEE6; text-align:center}
 .proto summary{cursor:pointer; list-style:none; min-height:44px; display:inline-flex; align-items:center; font-family:var(--disp); font-size:14px}
 .proto summary::-webkit-details-marker{display:none}
 .proto .btn{margin:4px}
@@ -217,7 +217,7 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .pbar{display:grid; grid-template-columns:44px 1fr 44px; align-items:center; gap:8px; min-height:60px; margin:2px 0 12px; padding:6px 8px; border-radius:18px;
   background:linear-gradient(180deg,#4A33A8,#2C1C7C); border:3px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.25), 0 4px 0 #0E0730}
 .ptitle{text-align:center; font-family:var(--disp); font-size:19px; line-height:1.2; min-width:0; color:#fff; -webkit-text-stroke:4px var(--outline2); paint-order:stroke fill}
-.ptitle small{display:block; font-family:var(--font); font-size:12.5px; font-weight:700; color:#CFC5FF; -webkit-text-stroke:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ptitle small{display:block; font-family:var(--font); font-size:13px; font-weight:700; color:#CFC5FF; -webkit-text-stroke:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .iconbtn{width:44px; height:44px; min-width:44px; min-height:44px; flex:none; border-radius:50%; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 #0E0730}
 .iconbtn .ico{width:22px; height:22px}
 .iconbtn:active{transform:translateY(2px); box-shadow:0 1px 0 #0E0730}
@@ -273,7 +273,7 @@ img.toy{display:block; width:100%; height:100%; -webkit-user-drag:none; user-sel
 .opt .lvdots i{width:8px; height:8px; transform:rotate(45deg); border-radius:2px; background:var(--line)}
 .opt .lvdots i.on{background:linear-gradient(#FFE35A,#FF9A1F); box-shadow:0 0 0 1.5px #9A5A00}
 .opt b{font-family:var(--disp); font-weight:400; font-size:18px}
-.opt small{display:block; font-size:12.5px; color:var(--sub); font-weight:500; margin-top:1px}
+.opt small{display:block; font-size:13px; color:var(--sub); font-weight:500; margin-top:1px}
 .opt .rec{font-family:var(--disp); font-size:13px; color:#fff; background:linear-gradient(#FF8AC0,#F0368A); border:2px solid #8E0F4F; padding:1px 9px 2px; border-radius:999px}
 .hrow{display:flex; justify-content:center; gap:4px; margin:10px 0}
 .hrow .hi{width:40px; height:40px}
@@ -316,7 +316,7 @@ body[data-mode] .toast.on{transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){ .modal h3 .resface, .dr-side img.toy{animation:none} }
 /* 대전 결과 창 '계속 풀기'(상대가 먼저 끝나 판이 끊긴 쪽만) */
 .modal .dcont{display:flex; width:100%; margin:12px 0 0; min-height:52px; height:auto; padding:8px 14px; flex-wrap:wrap; column-gap:6px; row-gap:0}
-.modal .dcont small{flex-basis:100%; font-family:var(--font); font-size:12px; font-weight:700; opacity:.9}
+.modal .dcont small{flex-basis:100%; font-family:var(--font); font-size:13px; font-weight:700; opacity:.9}
 
 /* ===== 결과 창 v2 (UI 검수 2026-10-04): 요약 카드 1장 + 버튼 위계(주 1 · 반반 2 · 글자 줄) ===== */
 .rsum{margin:10px 0 2px; padding:10px 12px; border-radius:18px; background:#fff; border:2px solid var(--paper-line); text-align:center}
@@ -347,3 +347,38 @@ body.modal-open > .fxfx, body:has(.veil.on) > .fxfx{z-index:19}
 .runsub{margin:8px 0 2px; padding:12px; border-radius:16px; background:#fff; border:2px solid var(--paper-line); text-align:center}
 .runsub b{display:block; font-family:var(--disp); font-weight:400; font-size:18px; color:var(--ink)}
 .runsub span{display:block; margin-top:4px; font-size:14px; color:var(--sub); line-height:1.5}
+
+
+/* ===== 큰 글씨(설정 "소리 · 글씨" → body.big, WP3 2026-10-06): 글자 +2px. 칩·버튼은 글자에 맞춰 늘고(min-width) 판 칸 크기는 그대로 ===== */
+body.big{font-size:17px}
+body.big .note{font-size:16px}
+body.big .lose{font-size:23px}
+body.big .modal h3{font-size:23px}
+body.big .hstep b{font-size:19px} body.big .hstep span{font-size:17px}
+body.big .h3l li{font-size:18px}
+body.big .hmore summary{font-size:18px}
+body.big .rsum b{font-size:19px} body.big .rsum span{font-size:15px}
+body.big .rb-pri{font-size:21px} body.big .rb-pri small{font-size:15px}
+body.big .rb-pair button{font-size:18px} body.big .rb-links button{font-size:17px}
+body.big .mbtns button, body.big .mbtns .btn{font-size:19px}
+body.big .brk summary, body.big .brk div{font-size:16px}
+body.big .opt b{font-size:20px} body.big .opt small{font-size:15px}
+body.big .pill{font-size:17px}
+body.big .toast{font-size:18px}
+body.big .ptitle{font-size:20px} body.big .ptitle small{font-size:15px}
+body.big .who b{font-size:19px} body.big .who small{font-size:15px}
+body.big .g-nm{font-size:20px} body.big .g-st{font-size:15px}
+body.big .hchip{min-width:fit-content; padding:0 6px}
+body.big .hchip em{font-size:15px} body.big .hchip small{font-size:15px} body.big .hchip b{font-size:21px}
+body.big .hlives{font-size:15px}
+body.big .tool{font-size:16px}
+body.big .hstar{font-size:16px; height:32px}
+body.big .srow2 b{font-size:19px} body.big .srow2 small{font-size:15px}
+body.big .amap .rule{font-size:15px} body.big .legend3{font-size:15px} body.big .amap .chname small{font-size:15px}
+body.big .aminfo{font-size:17px} body.big .aminfo b{font-size:19px} body.big .ambtns button{font-size:18px}
+body.big .amgo label{font-size:18px}
+body.big .ncard p{font-size:17px}
+body.big .recl{font-size:18px}
+body.big .ch-tx{font-size:18px}
+body.big .dg-rules li{font-size:17.5px}
+body.big .db-who, body.big .db-val small, body.big .db-sub{font-size:15px}

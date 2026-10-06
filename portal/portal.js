@@ -360,6 +360,7 @@ function renderToday(d, tl, P, lv){
     row.querySelector('.g-art').onclick = () => quickStart(id);
     g.appendChild(row);
   }
+  if(typeof rpPastBtn === 'function') rpPastBtn();   /* 지난 7일 문제 다시 풀기(portal/replay.js) */
   $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>${GAME_IDS.length}가지 게임 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
   $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 오늘 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><small>같은 문제를 같은 시간에, 1:1</small></span>${ic('chev')}`;
 }
@@ -379,7 +380,7 @@ function renderAdv(lv){
       <div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
       ${NG[id].cardNote ? '<div class="ac-note"><b class="cnote">' + escH(NG[id].cardNote()) + '</b></div>' : ''}
       <div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
-      <div class="ac-btns"><button class="map" aria-label="${GAMES[id].name} 스테이지 맵">${ic('map')}</button><button class="gr-go adv" aria-label="${GAMES[id].name} 스테이지 ${cur} 시작, 무료">스테이지 ${cur}</button></div>`;
+      <div class="ac-btns"><button class="gr-go adv" aria-label="${GAMES[id].name} 이어 하기 ${cur}판, 무료">이어 하기 ${cur}판</button><button class="map" aria-label="${GAMES[id].name} 판 고르기">${ic('map')}판 고르기</button></div>`;
     el.querySelector('.map').onclick = () => openAdvMap(id);
     el.querySelector('.gr-go').onclick = () => startGame(id, null, { adv:cur });
     el.querySelector('.g-art').onclick = () => openAdvMap(id);
@@ -557,7 +558,7 @@ function advFinish(win){
       <div class="bigstars" aria-label="별 ${st}개">${[1,2,3].map(i => `<span class="s${i <= st ? '' : ' off'}" style="animation-delay:${(0.1 + i * 0.22).toFixed(2)}s">${STAR_G}</span>`).join('')}</div>
       ${first ? '<span class="pill new">첫 클리어!</span>' : better ? '<span class="pill new">별 기록 경신!</span>' : `<p class="note">최고 기록 별 ${p.stars[n]}개는 그대로예요</p>`}
       <div>${soloPill}${attPill}</div>${!first ? '<p class="note">솔로 점수는 새 스테이지를 처음 깰 때만 받아요.</p>' : ''}
-      ${chBox}<p class="note">${tip}</p>`;
+      ${recHtml()}${chBox}<p class="note">${tip}</p>`;
   } else {
     html = `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 솔로는 하트 없이 몇 번이든 다시 할 수 있어요.</p>${attPill ? '<div>' + attPill + '</div>' : ''}${chBox}`;
   }
@@ -567,6 +568,7 @@ function advFinish(win){
   const go = fn => () => { closeModal(); showCelebrations(cel.slice(), fn); cel.length = 0; };
   /* 결과 창 버튼 위계(공용): 주 버튼 1개 · 글자 버튼 줄 */
   const RB = { pri:{ id:'mPri', label:pri[0], sub:win ? `스테이지 ${n + 1}` : `스테이지 ${n} · 무료`, fn:go(pri[1]) },
+    pair:[ win ? warmSkip(id, n, st) : null ],   /* 몸풀기 1판 ★3 → 5판으로 건너뛰기(WP3) */
     links:[{ id:'mSec', label:`${ic('map')}스테이지 ${sec[0]}`, fn:go(sec[1]) }, { id:'mGh', label:'홈으로', fn:go(() => { goHome(); setTab('adv'); }) }] };
   html += resBtns(RB);
   setTimeout(() => {
@@ -579,6 +581,7 @@ function advFinish(win){
         sfx('star', { i:k + 1 }); fxPop(s, 'gold'); fxBuzz(18);
       }, (0.1 + (k + 1) * 0.22) * 1000 + 180));
       if(first || better) setTimeout(() => { const pl = $('#modal .pill.new'); if(pl){ sfx('newRecord'); fxPop(pl, 'spark'); } }, 1150);
+      recFx();   /* 기록 갱신 도장 */
     } else sfx('lose');
     resBind(RB);
     setTimeout(() => { const x = $('#advXp'); if(x){ x.style.width = xpTo + '%'; if(xpTo > xpFrom) sfx('xp'); } }, 250);
@@ -773,7 +776,7 @@ function examFinish(win){
     brk = `<details class="brk"><summary>점수 자세히</summary><div><span>${l1}</span><b>${base}</b></div><div><span>${l2}</span><b>${time}</b></div><div><span>${l3}</span><b>${paw}</b></div><div><span>${examLabel()} 시험지</span><b>배율 없음</b></div><div><span>오늘 점수(5과목 공식 답안 합)</span><b>${fmt(tl2.score)}점</b></div></details>`;
     html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${NG[id].winTitle || '클리어!'}</h3><div class="big" id="bigScore">0</div>
       <p class="note">${official ? '공식 답안으로 기록됐어요' : `다시 풀기 판이에요 · 공식 기록 ${fmt(prev)}점은 그대로예요`}</p>
-      ${sumCard(gradeLine(score), bits)}${brk}${chalBox(score)}`;
+      ${sumCard(gradeLine(score), bits)}${typeof rpFriendLine === 'function' ? rpFriendLine(id, d.best[id] || score) : ''}${brk}${chalBox(score)}`;
   } else {
     const best = d.best[id], part = official ? Math.round(examProgress() * 300) : 0;
     if(official){ d.best[id] = part; d.offDone = d.offDone || {}; d.offDone[id] = 1; saveDay(d); score = part; }
@@ -882,6 +885,7 @@ Object.assign(HOST, {
   duelQuitNote:'대전 점수는 받지 못하고 쓴 하트도 돌아오지 않아요.',
   beforeStart(id, lv, o){
     const adv = o.adv || 0, duel = o.duel || null;
+    if(o.replay) return { attempt:0 };   /* 지난 문제·받은 판·대전 판 다시 풀기: 하트 없음·기록 안 됨(portal/replay.js) */
     const freeRun = !adv && !duel && !(dayState().tries[id] > 0);   /* v9: 시험지 첫 판(공식 답안)은 무료 */
     if(!adv && !freeRun && !spendHeart()){ openHeartSheet('empty'); return false; }
     if(!adv && !freeRun) sfx('heartUse');
@@ -971,7 +975,7 @@ $('#pool').onclick = openDonateInfo;
 { const pr = $('#proto'); if(pr) pr.hidden = !DEV_TOOLS; }   /* 테스트 도구는 ?dev=1 일 때만 */
 $('#devWeek').onclick = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
 $('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
-$('#meSound').onclick = () => openSoundSheet(); $('#meFriends').onclick = () => frHub(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
+$('#meSound').onclick = () => openSoundSheet(); $('#meSound').textContent = '소리·글씨'; $('#meFriends').onclick = () => frHub(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
 if(!store.get('hp:advLv', 0)) store.set('hp:advLv', lvInfo().L);
 $('#devAdv').onclick = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };
 $('#devLvUp').onclick = () => { const L = lvInfo().L + 1; showCelebrations([{ kind:'level', L, from:L - 1, hearts:1 }], () => {}); };

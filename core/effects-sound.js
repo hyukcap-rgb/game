@@ -541,8 +541,10 @@ document.addEventListener('click', e => {
 /* ===== 소리·진동 설정 창 ===== */
 function openSoundSheet(back){
   const s = AUD.set, pc = v => Math.round(v * 100);
-  openModal(`<h3>소리 · 진동</h3>
+  const big = typeof bigOn === 'function' && bigOn();   /* 큰 글씨(WP3, core/engine.js) */
+  openModal(`<h3>소리 · 글씨</h3>
     <div class="sset">
+      <div class="srow2"><span><b>큰 글씨</b><small>글자를 조금 크게</small></span><button class="sw${big ? ' on' : ''}" id="ssBig" role="switch" aria-checked="${big}" aria-label="큰 글씨"><i></i></button></div>
       <div class="srow2"><span><b>전체 소리</b><small>끄면 모든 효과음과 배경 소리가 꺼져요</small></span><button class="sw${SND.on ? ' on' : ''}" id="ssOn" role="switch" aria-checked="${SND.on}" aria-label="전체 소리"><i></i></button></div>
       <label class="srow2 col"><span><b>효과음</b><small>맞힘·깨짐·폭발·버튼 소리</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.sfx)}" id="ssSfx" aria-label="효과음 크기"><em id="ssSfxV">${pc(s.sfx)}</em></span></label>
       <label class="srow2 col"><span><b>배경 소리</b><small>함대 = 바다, 디펜스 = 숲, 구슬 = 별밤 분위기</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.amb)}" id="ssAmb" aria-label="배경 소리 크기"><em id="ssAmbV">${pc(s.amb)}</em></span></label>
@@ -551,6 +553,7 @@ function openSoundSheet(back){
     <div class="snd-row"><button class="sdemo" data-d="fOk">맞힘</button><button class="sdemo" data-d="bBreak">깨짐</button><button class="sdemo" data-d="flBoom">폭발</button><button class="sdemo" data-d="fanfare">축하</button></div>
     <div class="mbtns one"><button class="b1" id="ssOk">${back ? '돌아가기' : '닫기'}</button></div>`);
   const upd = () => { $('#ssOn').classList.toggle('on', SND.on); $('#ssOn').setAttribute('aria-checked', SND.on); $('#ssHap').classList.toggle('on', AUD.set.hap); $('#ssHap').setAttribute('aria-checked', AUD.set.hap); };
+  $('#ssBig').onclick = () => { const on = !(typeof bigOn === 'function' && bigOn()); if(typeof bigSet === 'function') bigSet(on); const b = $('#ssBig'); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); sfx('toggle', { on }); };
   $('#ssOn').onclick = () => { sndSetOn(!SND.on); upd(); if(SND.on) sfx('toggle', { on:true }); };
   $('#ssHap').onclick = () => { AUD.set.hap = !AUD.set.hap; audSave(); upd(); sfx('toggle', { on:AUD.set.hap }); if(AUD.set.hap) fxBuzz(30); };
   const slide = (id, key, demo) => { const r = $(id); r.oninput = () => { AUD.set[key] = r.value / 100; $(id + 'V').textContent = r.value; audVol(); }; r.onchange = () => { audSave(); if(!SND.on) sndSetOn(true), upd(); demo(); }; };

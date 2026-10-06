@@ -90,10 +90,11 @@ function embMenu(){
       ${embHas('practice') ? row('practice', ic('play'), '연습', m.levelSheet ? '상대와 난이도를 골라요' : '쉬움 · 보통 · 어려움 중 골라 새 문제로') : ''}
       ${embHas('duel') ? row('duel', ic('duel'), '1:1 대전', `${m.duelHow || '같은 문제 · 점수가 높으면 승리'}${R.w + R.d + R.l ? ` · ${R.w}승 ${R.d}무 ${R.l}패` : ''}${m.cardNote ? ' · ' + esc(m.cardNote()) : ''}`) : ''}
     </div>
-    <div class="em-foot"><button id="emHelp">게임 방법</button>${EMB.close ? `<button id="emClose">나가기</button>` : ''}</div>`;
+    <div class="em-foot"><button id="emHelp">게임 방법</button><button id="emBig" aria-pressed="${bigOn()}">큰 글씨 ${bigOn() ? '켬' : '끔'}</button>${EMB.close ? `<button id="emClose">나가기</button>` : ''}</div>`;
   el.querySelectorAll('.em-go').forEach(b => b.onclick = () => embStart(b.dataset.m));
   const mp = $('#emMap'); if(mp) mp.onclick = () => openAdvMap(id);
   $('#emHelp').onclick = () => openHelp(id);
+  $('#emBig').onclick = () => { bigSet(!bigOn()); embEmit('setting', { big:bigOn() }); embMenu(); };   /* 큰 글씨(WP3): 글자 +2px */
   const cl = $('#emClose'); if(cl) cl.onclick = () => embEmit('close');
   window.scrollTo(0, 0);
   embEmit('menu');
@@ -155,15 +156,17 @@ function embSoloFinish(win){
     html = `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}스테이지 ${n} 클리어!</h3>
       <div class="bigstars" aria-label="별 ${st}개">${[1, 2, 3].map(i => `<span class="s${i <= st ? '' : ' off'}" style="animation-delay:${(0.1 + i * 0.22).toFixed(2)}s">${STAR_G}</span>`).join('')}</div>
       ${first ? '<span class="pill new">첫 클리어!</span>' : better ? '<span class="pill new">별 기록 경신!</span>' : `<p class="note">최고 기록 별 ${p.stars[n]}개는 그대로예요</p>`}
-      ${chBox}<p class="note">${st === 3 ? '완벽해요! 별 3개 달성' : '다시 하면 별을 더 모을 수 있어요 · ' + ADV_RULE[id].split(' · ')[st]}</p>`;
+      ${recHtml()}${chBox}<p class="note">${st === 3 ? '완벽해요! 별 3개 달성' : '다시 하면 별을 더 모을 수 있어요 · ' + ADV_RULE[id].split(' · ')[st]}</p>`;
   } else {
     html = `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="lose">스테이지 ${n}</p><p class="note">${lossProgress()} 몇 번이든 다시 할 수 있어요.</p>${chBox}`;
   }
   const pri = win ? ['다음 스테이지 ▶', () => startGame(id, null, { adv:n + 1 })] : ['다시 도전', () => startGame(id, null, { adv:n })];
   const sc = [`${ic('map')}스테이지 맵`, () => { embMenu(); openAdvMap(id, win ? n + 1 : n); }], gh = [{ id:'mGh', label:'처음으로', fn:embMenu }];
-  html += embButtons(pri, sc, gh);
+  const RB = embRes(pri, sc, gh);
+  RB.pair = [ win ? warmSkip(id, n, st, p2 => embEmit('progress', { solo:{ max:p2.max, stars:p2.stars, total:advStarsOf(id) } })) : null ];   /* 몸풀기 1판 ★3 → 5판으로 */
+  html += resBtns(RB);
   setTimeout(() => {
-    openModal(html); embBind(pri, sc, gh);
+    openModal(html); resBind(RB); recFx();
     if(win){
       fxConfetti(); sfx('result');
       document.querySelectorAll('#modal .bigstars .s').forEach((s, k) => setTimeout(() => {
@@ -217,6 +220,7 @@ window.HaruPuzzleEmbed = {
   start:(mode, opt) => embStart(mode, opt),
   menu:() => { if(G && !G.over){ G.over = true; } embMenu(); },
   sound:on => { sndSetOn(!!on); },
+  big:on => { bigSet(!!on); if(!G || G.over) embMenu(); },   /* 큰 글씨 켜기/끄기(더한 명령) */
   state:() => { const s = embState(); embEmit('state', { state:s }); return s; },
   restore:s => embRestore(s)
 };
@@ -226,6 +230,7 @@ window.addEventListener('message', e => {
   if(d.cmd === 'start') A.start(d.mode, d);
   else if(d.cmd === 'menu') A.menu();
   else if(d.cmd === 'sound') A.sound(d.on);
+  else if(d.cmd === 'big') A.big(d.on);
   else if(d.cmd === 'state') A.state();
   else if(d.cmd === 'restore') A.restore(d.state);
 });
@@ -242,6 +247,7 @@ playChromeInit();
 if(new URLSearchParams(location.search).get('back') === '1'){ HOST.historyGuard = true; navInit(); }
 if(embHas('duel')) netStart(); else ROOM_STATE = 'none';   /* 대전을 켠 곳에서만 대전 서버에 연결 */
 if(new URLSearchParams(location.search).get('sound') === '0') sndSetOn(false);
+{ const bg = new URLSearchParams(location.search).get('big'); if(bg === '1' || bg === '0') bigSet(bg === '1'); }   /* 주소 옵션 big=1|0: 큰 글씨 */
 embEmit('ready', { name:NG[EMB.id].name, modes:EMB.modes });
 embMenu();
 if(EMB.start !== 'menu' && embHas(EMB.start)) embStart(EMB.start);
