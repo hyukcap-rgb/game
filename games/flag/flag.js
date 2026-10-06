@@ -8,6 +8,7 @@ NG.flag = (() => {
   const FN = { b:'청기', w:'백기', y:'황기' };                 /* 깃발 이름 */
   const FC = { b:'#2F7BEA', w:'#FDFDFF', y:'#FFC21A' };         /* 깃발 천 색 */
   const FLAGS2 = ['b', 'w'], FLAGS3 = ['b', 'w', 'y'];
+  const WRONG_GAP = .4;   /* 오답 뒤 다음 명령까지(초): 짧게 보여 주고 바로 넘어간다(2026-10-06 사용자 지시) */
   const HOSTS = ['fox', 'rabbit', 'bear', 'panda', 'tiger'];    /* 챕터 진행자(솔로) */
   const HOST_NAME = { fox:'여우 대장', rabbit:'토끼 반장', bear:'곰 선생님', panda:'판다 코치', tiger:'호랑이 단장', mimic:'흉내쟁이 너구리' };
   const HOST_COL = { fox:'#FF7A12', rabbit:'#FF9EC2', bear:'#B06A30', panda:'#2C2838', tiger:'#FF9420' };
@@ -169,6 +170,9 @@ NG.flag = (() => {
     <g filter="url(#ps)"><ellipse cx="50" cy="64" rx="4.8" ry="3.4" fill="#2A1B14"/></g><path d="M45 70q5 4 10 0" fill="none" stroke="#4A2A14" stroke-width="2.2" stroke-linecap="round"/></svg>`).replace(/'/g, '%27'));
   /* 깃발·화살표 작은 아이콘(말풍선·버튼) */
   const flagIco = f => `<svg class="fl-fi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2" width="2.6" height="20" rx="1.3" fill="#C99A5B"/><path d="M6.6 3.2c4-1.6 7.5 1.6 13.4-.4v10.4c-5.9 2-9.4-1.2-13.4.4z" fill="${FC[f]}" stroke="${f === 'w' ? '#9AA6C4' : 'none'}" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 5.6c2.2-.6 3.8.4 5.6.2" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7" fill="none"/></svg>`;
+  /* 올려·내려 배지(명령 말풍선과 버튼에 같은 모양: ▲ 주황 동그라미 · ▼ 보라 동그라미 · 하지 마 ✕ 빨강) */
+  const badge = up => `<i class="fl-badge ${up ? 'up' : 'dn'}" aria-hidden="true">${arrIco(up)}</i>`;
+  const xBadge = () => '<i class="fl-badge neg" aria-hidden="true"><svg class="fl-ai" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg></i>';
   const arrIco = up => `<svg class="fl-ai" viewBox="0 0 24 24" aria-hidden="true"><path d="${up ? 'M12 4l8 9h-5v7H9v-7H4z' : 'M12 20l8-9h-5V4H9v7H4z'}" fill="currentColor"/></svg>`;
   const ICO = {
     flag:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2.5" width="2.4" height="19" rx="1.2" fill="#1A0F45"/><path d="M6.4 3.6c4-1.6 7.5 1.6 13.4-.4v10c-5.9 2-9.4-1.2-13.4.4z" fill="#2F7BEA"/><path d="M8.6 6c2.2-.6 3.8.4 5.6.2" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7" fill="none"/></svg>',
@@ -202,7 +206,7 @@ NG.flag = (() => {
   const flagsOf = m => m.third ? FLAGS3 : FLAGS2;
 
   function cmdHtml(q){
-    return q.parts.map((p, j) => `<span class="fl-pt"><span class="fl-fn ${p.f}">${flagIco(p.f)}${FN[p.f]}</span><span class="fl-vb ${p.neg ? 'neg' : p.up ? 'up' : 'dn'}">${p.neg ? '<i class="fl-x" aria-hidden="true">✕</i>' : arrIco(p.up)}${verbOf(p, j === q.parts.length - 1)}</span></span>`).join('<span class="fl-and" aria-hidden="true">+</span>');
+    return q.parts.map((p, j) => `<span class="fl-pt"><span class="fl-fn ${p.f}">${flagIco(p.f)}${FN[p.f]}</span><span class="fl-vb ${p.neg ? 'neg' : p.up ? 'up' : 'dn'}">${p.neg ? xBadge() : badge(p.up)}${verbOf(p, j === q.parts.length - 1)}</span></span>`).join('<span class="fl-and" aria-hidden="true">+</span>');
   }
   function answerText(q){
     if(q.stay) return '정답은 가만히!';
@@ -235,10 +239,18 @@ NG.flag = (() => {
   }
   function setBub(o){
     const b = $('#flBub'); if(!b) return;
-    b.className = 'fl-bub' + (o.cls ? ' ' + o.cls : '');
+    if(o.cls != null) b.className = 'fl-bub' + (o.cls ? ' ' + o.cls : '');
+    if(o.state !== undefined){ b.classList.toggle('is-ok', o.state === 'ok'); b.classList.toggle('is-bad', o.state === 'bad'); }
     if(o.who != null){ const w = $('#flWho'); if(w) w.innerHTML = o.who; }
-    if(o.cmd != null){ const c = $('#flCmd'); if(c){ c.innerHTML = o.cmd; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); } }
+    if(o.cmd != null){ const c = $('#flCmd'); if(c){ c.innerHTML = o.cmd; fitCmd(c); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); } }
     if(o.res != null){ const r = $('#flRes'); if(r){ r.innerHTML = o.res; r.className = 'fl-res' + (o.resCls ? ' ' + o.resCls : ''); } }
+  }
+  /* 명령 글자가 말풍선 폭을 넘으면 글자만 조금 줄인다(좁은 화면 · "올리지 마" 같은 긴 명령) */
+  function fitCmd(c){
+    c.style.fontSize = '';
+    const w = c.clientWidth; if(!w) return;
+    let fs = parseFloat(getComputedStyle(c).fontSize) || 32;
+    for(let k = 0; k < 8 && c.scrollWidth > w + 1 && fs > 24; k++){ fs -= 2; c.style.fontSize = fs + 'px'; }
   }
   const whoHtml = (kind, mimic) => `<img src="${mimic ? raccoonSrc() : toySrc(kind)}" alt="" aria-hidden="true"><b>${mimic ? HOST_NAME.mimic : HOST_NAME[kind]}</b>`;
   function stamp(ok, label){
@@ -283,7 +295,7 @@ NG.flag = (() => {
     const cd = $('#flCard'); if(cd) cd.classList.remove('on');
     m.cur = it; m.prevTgt = m.tgtNow; m.phase = 'cmd'; m.t0 = t; m.hurry = false;
     const mim = it.from === 'mimic';
-    setBub({ cls:(mim ? 'mimic' : '') + (it.parts.length > 1 ? ' two' : '') + (it.flip ? ' flipq' : ''), who:whoHtml(m.host, mim), cmd:cmdHtml(it), res:'', resCls:'' });
+    setBub({ cls:(mim ? 'mimic' : '') + (it.parts.length > 1 ? ' two' : '') + (it.flip ? ' flipq' : ''), who:whoHtml(m.host, mim), cmd:cmdHtml(it), res:'', resCls:'', state:null });
     const rc = $('#flRac'); if(rc) rc.classList.toggle('on', mim);
     const wb = $('#flWinW'); if(wb){ wb.className = 'fl-win'; }
     const bar = $('#flWin'); if(bar) bar.style.transform = 'scaleX(1)';
@@ -294,14 +306,14 @@ NG.flag = (() => {
     const m = S(), q = m.cur, t = judgeNow();
     m.phase = 'gap';
     m.tgtNow = q.tgt;
-    const rc = $('#flRac'); if(rc) T(() => rc.classList.remove('on'), 380);
+    const rc = $('#flRac'), at = m.pos; if(rc) T(() => { if(m.pos === at) rc.classList.remove('on'); }, 360);   /* 다음 명령이 이미 떴으면(흉내쟁이 연속) 건드리지 않음 */
     poseRig('flHost', q.tgt);
     if(ok){
       m.ok++; m.combo++; m.best = Math.max(m.best, m.combo);
       m.res.push({ ok:1, stay:q.stay ? 1 : 0, frac:info.frac, rt:info.rt });
       m.until = t + (q.stay ? .38 : .45);
       stamp(true, q.stay ? '참기 성공' : '정답');
-      setBub({ res:(q.stay ? talk(m.host, 'stay') : talk(m.host, 'ok') + ` <small>${info.rt.toFixed(2)}초</small>`), resCls:'ok' });
+      setBub({ res:(q.stay ? talk(m.host, 'stay') : talk(m.host, 'ok') + ` <small>${info.rt.toFixed(2)}초</small>`), resCls:'ok', state:'ok' });
       moodOf('flMe', 'fox', 'joy', 520);
       safe(() => {
         sfx(q.stay ? 'flagStay' : 'flagOk', { n:m.combo });
@@ -313,15 +325,21 @@ NG.flag = (() => {
       m.combo = 0; m.miss++;
       m.lives = Math.max(0, m.lives - 1); G.paws = m.lives;
       m.my = { b:q.tgt.b, w:q.tgt.w, y:q.tgt.y };   /* 틀리면 내 깃발을 정답 상태로 맞춰 준다(다음 명령이 이어지게) */
-      m.until = t + .62;
+      m.until = t + WRONG_GAP;   /* 오답은 짧게 보여 주고 바로 다음 명령(0.4초) */
       stamp(false, info.why === 'late' ? '늦었어요' : '땡!');
-      setBub({ res:answerText(q), resCls:'bad' });
+      setBub({ res:answerText(q), resCls:'bad', state:'bad' });
       moodOf('flMe', 'fox', 'sad', 900);
       T(() => { poseRig('flMe', m.my); lamps(); }, 260);
+      /* 어느 버튼이 맞았는지 버튼에 잠깐 표시(누른 버튼 빨간 테두리 · 정답 버튼 초록 테두리) */
+      safe(() => {
+        const mark = (f, d, c) => { const b = document.querySelector(`.ng-flag .fl-btn[data-f="${f}"][data-d="${d}"]`); if(b){ b.classList.add(c); T(() => b.classList.remove(c), Math.round(WRONG_GAP * 1000) - 20); } };
+        if(info.f) mark(info.f, info.d, 'miss');
+        if(!q.stay) flagsOf(m).forEach(f => { if(q.tgt[f] !== m.prevTgt[f]) mark(f, q.tgt[f], 'ans'); });
+      });
       safe(() => {
         sfx('flagBad'); fxBuzz(40);
         const e = $('#flEdge'); if(e){ e.classList.remove('on'); void e.offsetWidth; e.classList.add('on'); }
-        if(!FXR.reduce){ fxShake($('#flScene'), 4); fxFlash('#FF6B6B', .1, 240); }
+        if(!FXR.reduce) fxShake($('#flScene'), 3);   /* 화면 번쩍임 없이(눈 피로) 가장자리 붉은 빛 + 작은 흔들림 */
         const lost = document.querySelectorAll('#flLives i')[m.lives]; if(lost && lost.animate) lost.animate([{ transform:'scale(1.6)', color:'#FFE27A' }, { transform:'none' }], { duration:450, easing:'ease-out' });
       });
       if(!m.lives){ hud(); lose(); return; }
@@ -341,24 +359,29 @@ NG.flag = (() => {
     if(q.stay) finishQ(true, { frac:1, rt:0 });
     else finishQ(false, { why:'late' });
   }
-  /* 버튼·키·밀기 → 깃발 하나 올리기/내리기 */
+  /* 버튼·키·밀기 → 깃발 하나 올리기/내리기 (세 길 모두 여기 하나로 판정)
+     판정 규칙(2026-10-06): 이번 명령이 요구하는 동작 = "목표 상태와 지금 내 깃발이 다른 깃발을 목표 쪽으로" 뿐.
+     그 밖의 누르기는 모두 바로 오답 → 곧바로 다음 명령(이미 그 상태인 깃발 누르기, 같은 버튼 두 번, 가만히 명령에 누르기 포함).
+     두 개 한꺼번에는 요구된 두 동작을 어떤 순서로 해도 정답, 그 사이에 다른 누르기가 끼면 오답. */
   function press(f, d, src){
     const m = S(); if(!m || !G || G.over || G.paused) return;
     if(!flagsOf(m).includes(f)) return;
-    const now = performance.now();
     bump(f, d);
-    /* 막 누르기 방지: 0.25초 안에 3번 넘게 → "천천히!" 0.5초 잠금(벌점 없음) */
+    if(m.phase === 'cmd'){
+      const q = m.cur, t = judgeNow();
+      /* 창이 이미 끝났는데 화면 한 칸(loop)이 아직 안 돈 사이에 온 누르기: 먼저 창을 판정하고, 이 누르기는 간격에 온 것으로 본다 */
+      if(t - m.t0 >= q.win){ expire(); return; }
+      const need = !q.stay && q.tgt[f] === d && m.my[f] !== d;
+      m.my[f] = d; poseRig('flMe', m.my); lamps();
+      safe(() => sfx('flagSwish', { pan:f === 'b' ? -.4 : f === 'w' ? .4 : 0 }));
+      if(!need){ finishQ(false, { why:'press', f, d }); return; }
+      if(flagsOf(m).every(k => m.my[k] === q.tgt[k])){ const rt = Math.max(0, t - m.t0); finishQ(true, { rt, frac:Math.max(0, Math.min(1, 1 - rt / q.win)) }); }
+      return;
+    }
+    /* 명령이 없는 순간(준비·판정 뒤 간격·카드)의 누르기는 무시. 마구 누르면(0.25초 안에 3번 넘게) "천천히!"만 보여 준다(벌점 없음) */
+    const now = performance.now();
     m.taps = m.taps.filter(x => now - x < 250); m.taps.push(now);
-    if(now < m.lockUntil) return;
-    if(m.taps.length > 3){ m.lockUntil = now + 500; m.taps = []; note('천천히!'); sfx('flagSlow'); const d2 = document.querySelector('.ng-flag .fl-deck'); if(d2){ d2.classList.add('lock'); T(() => d2.classList.remove('lock'), 500); } return; }
-    if(m.phase !== 'cmd') return;   /* 문제가 없는 순간·판정이 끝난 뒤 누른 것은 무시 */
-    const q = m.cur, t = judgeNow();
-    if(q.stay){ m.my[f] = d; poseRig('flMe', m.my); lamps(); safe(() => sfx('flagSwish', { pan:f === 'b' ? -.4 : f === 'w' ? .4 : 0 })); finishQ(false, { why:'press' }); return; }
-    if(m.my[f] === d) return;   /* 이미 그 상태(바뀌는 것 없음)는 무시 */
-    m.my[f] = d; poseRig('flMe', m.my); lamps();
-    safe(() => sfx('flagSwish', { pan:f === 'b' ? -.4 : f === 'w' ? .4 : 0 }));
-    if(q.tgt[f] !== d){ finishQ(false, { why:'press' }); return; }
-    if(flagsOf(m).every(k => m.my[k] === q.tgt[k])){ const rt = Math.max(0, t - m.t0); finishQ(true, { rt, frac:Math.max(0, Math.min(1, 1 - rt / q.win)) }); }
+    if(m.taps.length > 3 && now >= m.lockUntil){ m.lockUntil = now + 500; m.taps = []; note('천천히!'); safe(() => sfx('flagSlow')); }
   }
   function bump(f, d){
     const b = document.querySelector(`.ng-flag .fl-btn[data-f="${f}"][data-d="${d}"]`); if(!b) return;
@@ -369,6 +392,11 @@ NG.flag = (() => {
     const m = S(); if(!m || G.over) return;
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
+    tick();
+  }
+  /* 한 화면 칸: 진행·창 막대·시간 초과 (도구용 _tick으로도 부름) */
+  function tick(){
+    const m = S(); if(!m || G.over) return;
     const t = elapsed();
     if(m.phase === 'ready'){ if(t >= m.until){ setBub({ cls:'' }); next(t); } return; }
     if(m.phase === 'gap' || m.phase === 'card'){ if(t >= m.until) next(t); return; }
@@ -411,15 +439,15 @@ NG.flag = (() => {
     root.style.height = H + 'px';
     const cl = (a, v, b) => Math.round(Math.max(a, Math.min(b, v)));
     const bh = cl(64, H * .11, 84);                                  /* 버튼 높이(엄지 자리, 64px 이상) */
-    const strip = m.third ? cl(84, H * .13, 102) : 0;                /* 노란 깃발 판: 버튼 위 내 캐릭터 줄 */
-    const deck = bh * 2 + 10 + (strip ? strip + 10 : 0);
-    const scene = H - 56 - deck - 12;
-    const bub = m.both ? 122 : cl(100, scene * .24, 118);   /* 두 개 한꺼번에가 나오는 판은 두 줄 명령 자리 */
+    const strip = m.third ? cl(70, H * .1, 86) : 0;                  /* 노란 깃발 판: 버튼 위 내 캐릭터 줄(빈 띠 없이 꼭 맞게) */
+    const deck = bh * 2 + 12 + (strip ? strip + 8 : 0);
+    const scene = H - 56 - deck - 14;
+    const bub = m.both ? cl(128, scene * .3, 140) : cl(108, scene * .26, 124);   /* 명령 말풍선(주인공). 두 개 한꺼번에 판은 두 줄 자리 */
     const free = scene - (30 + bub + 22);                             /* 말풍선 꼬리 아래 남는 높이 */
     const hs = cl(66, Math.min(W * .46, (free - 8) / (m.third ? 1.72 : 1.45)), 176);   /* 진행자 크기: 말풍선 아래 빈 곳을 채움 */
     const feet = cl(Math.round(hs * .38 + 8), free - hs * (m.third ? 1.3 : 1.08), Math.round(hs * .78 + 8));   /* 남는 높이는 구령대를 높여 진행자를 가운데로 */
     const center = m.third ? 0 : cl(108, W * .33, 132);
-    const fs = m.third ? cl(50, (strip + 4) / 1.5, 72) : cl(50, Math.min(center / 1.6, (bh * 2 + 2) / 1.86), 84);
+    const fs = m.third ? cl(52, strip * .92, 76) : cl(50, Math.min(center / 1.6, (bh * 2 + 2) / 1.86), 84);
     Object.entries({ '--bh':bh + 'px', '--strip':strip + 'px', '--deck':deck + 'px', '--bub':bub + 'px', '--hs':hs + 'px', '--feet':feet + 'px', '--fs':fs + 'px', '--mid':center + 'px' }).forEach(([k, v]) => root.style.setProperty(k, v));
   }
 
@@ -467,7 +495,7 @@ NG.flag = (() => {
     help:[
       ['명령을 봐요', '진행자가 "청기 올려", "백기 내려"처럼 명령해요. 말풍선의 글자와 그림(깃발·화살표)을 보고 판단해요. 소리가 없어도 똑같이 할 수 있어요.'],
       ['버튼으로 깃발을', '왼쪽 파란 버튼은 청기, 오른쪽 흰 버튼은 백기예요. ▲는 올리기, ▼는 내리기. 말풍선 아래 막대가 다 줄어들기 전에 눌러요.'],
-      ['가만히도 정답', '이미 올라간 깃발을 또 "올려"라고 하거나 "~하지 마"라고 하면 아무것도 누르지 않는 게 정답이에요. 막 누르면 손해!'],
+      ['가만히도 정답', '이미 올라간 깃발을 또 "올려"라고 하거나 "~하지 마"라고 하면 아무것도 누르지 않는 게 정답이에요. 시키지 않은 버튼을 누르면 바로 오답!'],
       ['기회 3번', '틀리거나 늦으면 기회 별이 하나 줄어요. 끝까지 버티면 성공, 정확하고 빠를수록 점수가 높아요.']
     ],
     helpExtra(){ const m = G && G.id === 'flag' && G.fl; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
@@ -501,8 +529,9 @@ NG.flag = (() => {
     },
     /* 테스트·도구용 */
     _gen:gen, _stage:stageCfg,
-    _state(){ const m = G && G.fl; if(!m) return null; return { phase:m.phase, pos:m.pos, cur:m.cur, my:Object.assign({}, m.my), lives:m.lives, ok:m.ok, res:m.res.length, N:m.N, third:m.third }; },
+    _state(){ const m = G && G.fl; if(!m) return null; return { phase:m.phase, pos:m.pos, cur:m.cur, my:Object.assign({}, m.my), lives:m.lives, ok:m.ok, res:m.res.length, last:m.res[m.res.length - 1] || null, until:m.until, t0:m.t0, N:m.N, third:m.third, flipOn:m.flipOn }; },
     _press(f, d){ press(f, d, 'test'); },
+    _tick(){ tick(); }, _wrongGap:WRONG_GAP,
     render(st){
       const m = S(), th = THEME[m.theme] || THEME[0];
       st.innerHTML = `<div class="ng-flag${m.third ? ' third' : ''}${m.flipOn ? ' flipped' : ''}${m.boss ? ' boss' : ''}" style="--sky1:${th.sky[0]};--sky2:${th.sky[1]};--fd1:${th.field[0]};--fd2:${th.field[1]}">${DEFS_SVG}
@@ -532,12 +561,17 @@ NG.flag = (() => {
         </div>
         <div class="fl-deck${m.third ? ' third' : ''}">
           <div class="fl-me">${rigHtml('fox', 'me', m.third, 'flMe')}<span class="fl-metag">나</span></div>
-          ${flagsOf(m).map(f => [1, 0].map(d => `<button class="fl-btn ${f} ${d ? 'up' : 'dn'}" data-f="${f}" data-d="${d}" style="grid-area:${f}${d ? 'u' : 'd'}" aria-label="${FN[f]} ${d ? '올리기' : '내리기'}"><span class="fl-bi">${flagIco(f)}${arrIco(!!d)}</span><span class="fl-bl">${FN[f]} ${d ? '올려' : '내려'}</span><i class="fl-lamp" aria-hidden="true"></i></button>`).join('')).join('')}
+          ${flagsOf(m).map(f => [1, 0].map(d => `<button class="fl-btn ${f} ${d ? 'up' : 'dn'}" data-f="${f}" data-d="${d}" style="grid-area:${f}${d ? 'u' : 'd'}" aria-label="${FN[f]} ${d ? '올리기' : '내리기'}"><span class="fl-bi">${flagIco(f)}${badge(!!d)}</span><span class="fl-bl">${FN[f]} ${d ? '올려' : '내려'}</span><i class="fl-lamp" aria-hidden="true"></i></button>`).join('')).join('')}
         </div>
         <div class="fl-edge" id="flEdge" aria-hidden="true"></div>
         <div class="fl-frame" aria-hidden="true"></div>
       </div>`;
-      document.querySelectorAll('.ng-flag .fl-btn').forEach(b => { b.onpointerdown = e => { e.preventDefault(); press(b.dataset.f, +b.dataset.d, 'btn'); }; b.onclick = e => { if(e.detail === 0) press(b.dataset.f, +b.dataset.d, 'btn'); }; });
+      document.querySelectorAll('.ng-flag .fl-btn').forEach(b => {   /* 누르고 있는 동안 .down(눌린 모양), 키보드·밀기는 .hit 잠깐 */
+        const up = () => b.classList.remove('down');
+        b.onpointerdown = e => { e.preventDefault(); b.classList.add('down'); press(b.dataset.f, +b.dataset.d, 'btn'); };
+        b.onpointerup = up; b.onpointercancel = up; b.onpointerleave = up;
+        b.onclick = e => { if(e.detail === 0) press(b.dataset.f, +b.dataset.d, 'btn'); };
+      });
       swipeBind($('#flScene'));
       poseRig('flHost', m.tgtNow); poseRig('flMe', m.my); lamps(); hud(); layout();
       if(m.boss && m.phase === 'ready') moodOf('flHost', m.host, 'wow', 1500);
