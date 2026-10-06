@@ -734,7 +734,7 @@ const G3={
   }
 };
 if(MULTI&&!ONLYW&&!ONLYS&&!ONLYT){
-  if(GAMES.includes('fox')) await G3.race('fox',()=>{G.mis=(G.mis||0)+1;},/여우를 잘못 놓았어요/);
+  /* 여우 3명 경주 점검은 뺌: 2026-10-07 여우를 10-04 판(1:1 대전)으로 되돌림 */
   if(GAMES.includes('mines')) await G3.race('mines',()=>{G.m.hits++;},/밤송이를 밟았어요/);
   if(GAMES.includes('match')) await G3.match();
   if(GAMES.includes('merge')) await G3.merge();
