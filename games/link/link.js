@@ -58,6 +58,25 @@ NG.link = (() => {
   const symCol = k => k === CLOCK ? '#5BD08A' : k === STONE ? '#8E8AA6' : SYM[baseOf(k)][1];
 
   const LIVES = 3;   /* 기본 기회 3번: 세 번째 실수에서 끝 */
+
+  /* ----- 오늘의 문제·연습 판 (2026-10-06 세대별 피드백: 하루 판이 길다 → 줄임). 문제 내용 변경은 적용일 다음 날 0시부터 ----- */
+  const LV_FROM = '2026-10-07';
+  const LV_OLD = {
+    easy:{ cols:7, rows:8, pairs:27, limit:170, hints:3, mixes:2 },
+    normal:{ cols:7, rows:10, pairs:33, limit:210, hints:3, mixes:2 },
+    hard:{ cols:8, rows:11, pairs:42, limit:250, hints:3, mixes:2 }
+  };
+  const LV_NEW = {
+    easy:{ cols:7, rows:8, pairs:24, limit:150, hints:3, mixes:2 },
+    normal:{ cols:7, rows:9, pairs:28, limit:170, hints:3, mixes:2 },
+    hard:{ cols:8, rows:9, pairs:34, limit:210, hints:3, mixes:2 }
+  };
+  const lvTable = () => { let d = ''; try{ d = dayKey(); }catch(_){} return d >= LV_FROM ? LV_NEW : LV_OLD; };
+
+  /* ----- 대전 전용 판(1:1 경주, 2분): 6×8 칸 · 20짝. 비슷한 파랑 그림은 한 판에 2개까지만 ----- */
+  const DUEL_CFG = { cols:6, rows:8, pairs:20, limit:120, hints:3, mixes:2, blueMax:2 };
+  const BLUE = ['drop', 'snow', 'anchor', 'cloud', 'gem'];
+  const ICE_MS = 6000, ICE_MAX = 6, COMBO_MS = 3000, FREEZE_MS = 1000;   /* 얼음 6초 · 판에 최대 6장 · 콤보 3초 안 · 대전 실수 1초 못 누름 */
   const ICO = {
     pair:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="14" y="9" width="8" height="10" rx="2" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><path d="M6 5V2h12v7" fill="none" stroke="#FF9A1F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
@@ -158,9 +177,9 @@ NG.link = (() => {
   const findPath = (m, a, b) => search(m.b, m.cols, m.rows, a, m.turns, b);
   const same = (x, y) => x != null && x === y && x !== STONE;
   /* 지금 지울 수 있는 짝 하나(없으면 null) */
-  function findMove(m){
+  function findMove(m, noIce){
     const by = {};
-    m.b.forEach((k, i) => { if(k != null && k !== STONE) (by[k] = by[k] || []).push(i); });
+    m.b.forEach((k, i) => { if(k != null && k !== STONE && !(noIce && m.ice && m.ice.has(i))) (by[k] = by[k] || []).push(i); });
     for(const k in by){ const L = by[k]; for(let x = 0; x < L.length; x++) for(let y = x + 1; y < L.length; y++){ const p = findPath(m, L[x], L[y]); if(p) return [L[x], L[y], p]; } }
     return null;
   }
@@ -171,7 +190,9 @@ NG.link = (() => {
     const cols = cfg.cols, rows = cfg.rows, N = cols * rows, pairs = cfg.pairs, turns = cfg.turns || 2;
     /* 짝 목록: 그림 하나에 보통 2짝(타일 4개), 닮은꼴은 두 번째 짝을 점 찍힌 타일로, 시계 짝은 따로 */
     const plain = pairs - (cfg.clocks || 0), types = Math.ceil(plain / 2);
-    const keys = shuffle(POOL.slice(), rng).slice(0, Math.min(types, POOL.length));
+    let pool = shuffle(POOL.slice(), rng);
+    if(cfg.blueMax != null){ let nb = 0; pool = pool.filter(k => !BLUE.includes(k) || nb++ < cfg.blueMax); }   /* 대전: 파랑 계열 제한(섞은 뒤 거르기라 다른 모드의 rng 순서는 그대로) */
+    const keys = pool.slice(0, Math.min(types, pool.length));
     const list = [];
     for(let i = 0; list.length < plain; i++){ const k = keys[i % keys.length]; list.push(k); if(list.length < plain) list.push(k); }
     const tw = Math.min(cfg.twins || 0, Math.floor(plain / 2));
@@ -280,12 +301,27 @@ NG.link = (() => {
       }
     }catch(_){}
   }
+  /* 선 끝 반짝(보이기만 함) */
+  function lineEndSpark(pts, col){
+    try{
+      const bd = $('#bd'); if(!bd || typeof fxEmit !== 'function' || FXR.reduce || pts.length < 2) return;
+      const r = bd.getBoundingClientRect(), ox = r.left + bd.clientLeft, oy = r.top + bd.clientTop;
+      [pts[0], pts[pts.length - 1]].forEach(([x, y], n) => { const q = px(x, y); fxEmit(ox + q[0], oy + q[1], { quantity:6, speed:{ min:30, max:90 }, lifespan:{ min:300, max:520 }, kind:'twinkle', tint:['#FFFFFF', '#FFE27A', col], scale:{ start:3, end:.3 }, alpha:{ start:1, end:0 }, delay:n ? 160 : 0 }); });
+    }catch(_){}
+  }
   function setSel(i, on){ const el = cellEl(i); if(el) el.classList.toggle('sel', on); }
   function tap(i){
     const m = S();
     if(!m || G.over || G.paused || m.phase !== 'play' || m.lock) return;
     const k = m.b[i]; if(k == null || k === STONE) return;
-    clearHint();
+    if(m.frozenUntil && Date.now() < m.frozenUntil) return;   /* 대전: 틀린 뒤 1초는 못 누름 */
+    if(m.ice && m.ice.has(i)){   /* 얼음 덮인 타일은 못 고름(실수 아님) */
+      const el = cellEl(i); try{ if(el) fxShake(el, 3); }catch(_){}
+      sfx('linkIceNo'); msg('<b class="ice">꽁꽁 얼었어요</b><span>' + Math.max(1, Math.ceil((m.ice.get(i) - Date.now()) / 1000)) + '초 뒤 녹아요 · 옆 짝을 지우면 바로</span>', 'lk-pop');
+      T(() => { if(m.phase === 'play') msg(playMsg()); }, 1100);
+      return;
+    }
+    clearHint(); coachOff();
     if(m.sel == null){ m.sel = i; setSel(i, true); sfx('linkPick'); return; }
     if(m.sel === i){ setSel(i, false); m.sel = null; sfx('linkPick', { off:1 }); return; }
     const a = m.sel;
@@ -293,12 +329,17 @@ NG.link = (() => {
     const p = diff ? null : findPath(m, a, i);
     if(p){ setSel(a, false); m.sel = null; clear(a, i, p); return; }
     /* 실수(마구 누르기 막기): 다른 그림을 고르거나, 같은 그림인데 길이 없으면 기회 하나를 잃는다. 기회를 다 쓰면 끝 */
-    m.misses++; m.combo = 0;
+    m.misses++; m.combo = 0; m.chain = 0;
     const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;   /* -1 = 기회 제한 없음(대전) */
     [a, i].forEach(j => { const el = cellEl(j); if(el){ el.classList.add('bad'); fxShake(el, 4); } });
     setSel(a, false); m.sel = null;
     sfx('linkMiss'); fxBuzz(25);
-    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left < 0 ? '점수 −25' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
+    if(left < 0){   /* 대전: 기회 대신 1초 동안 못 누름(막 누르기 막기) */
+      m.frozenUntil = Date.now() + FREEZE_MS;
+      const bd = $('#bd'); if(bd) bd.classList.add('frozen');
+      T(() => { const b2 = $('#bd'); if(b2) b2.classList.remove('frozen'); }, FREEZE_MS);
+    }
+    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left < 0 ? '−25점 · 1초 쉬어요' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
     const hs = document.querySelectorAll('.ng-link .hlives i'), lost = left >= 0 && hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
     if(m.tick){ m.pen += m.tick; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }
     hud();
@@ -311,14 +352,22 @@ NG.link = (() => {
     m.lock = true; m.found++; m.combo++; m.best = Math.max(m.best, m.combo);
     drawPath(p, col);
     pathSpark(p, col);
+    lineEndSpark(p, col);
+    /* 지울 때 두 타일이 가운데로 모이며 터짐(보이기만 함) */
+    const ea = cellEl(a), eb = cellEl(b);
+    let mid = null; try{ if(ea && eb){ const qa = fxCenter(ea), qb = fxCenter(eb); mid = { x:(qa.x + qb.x) / 2, y:(qa.y + qb.y) / 2, qa, qb }; } }catch(_){}
     [a, b].forEach((j, n) => {
       const el = cellEl(j); if(!el) return; el.classList.add('gone');
-      const q = fxCenter(el);
-      fxBurst(q.x, q.y, [col, '#FFE27A', '#FFFFFF'], 9, { speed:220, size:4.5, kinds:['star','dot','spark'], up:100, g:460, glow:n === 1, dur:.6 });
+      try{
+        const q = fxCenter(el), f = el.querySelector('.lk-face');
+        if(mid && f && f.animate && !FXR.reduce){ const dx = (mid.x - q.x) * .35, dy = (mid.y - q.y) * .35; f.animate([{ transform:'scale(1)' }, { transform:`translate(${dx}px,${dy}px) scale(1.12)`, opacity:1, offset:.45 }, { transform:`translate(${dx * 1.6}px,${dy * 1.6}px) scale(.2)`, opacity:0 }], { duration:300, easing:'cubic-bezier(.4,0,.6,1)', fill:'forwards' }); }
+        fxBurst(q.x, q.y, [col, '#FFE27A', '#FFFFFF'], 9, { speed:220, size:4.5, kinds:['star','dot','spark'], up:100, g:460, glow:n === 1, dur:.6 });
+      }catch(_){}
     });
+    if(m.duel) duelAfterClear(a, b);
     if(k === CLOCK){ m.pen -= CLOCK_SEC; m.bonus += CLOCK_SEC; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '+' + CLOCK_SEC + '초', 'good'); } sfx('linkClock'); }
     sfx('linkMatch', { n:m.combo - 1 }); fxBuzz(12);
-    if(m.combo >= 3) fxCombo(m.combo);
+    if(m.combo >= 3 && !m.duel) fxCombo(m.combo);   /* 대전은 콤보 글자를 얼음 공격 글자로 대신 보여 줌 */
     m.b[a] = null; m.b[b] = null; hud();
     T(() => {
       if(m.found >= m.pairs){ win(); return; }
@@ -357,8 +406,12 @@ NG.link = (() => {
   function mixBoard(){
     const m = S(), idx = m.b.map((k, i) => k != null && k !== STONE ? i : -1).filter(i => i >= 0);
     const keys = idx.map(i => m.b[i]), ids = idx.map(i => m.id[i]);
+    /* 대전: 섞기 결과 = 판 씨앗 + 섞기 번호(같은 상황이면 누구나 같은 섞기, 운 차이 줄이기) */
+    const rr = m.duel ? mulberry(seedFrom(m.seed + ':mix:' + m.mixes)) : m.rng;
+    if(m.sel != null){ setSel(m.sel, false); m.sel = null; }
+    coachOff();
     for(let t = 0; t < 60; t++){
-      const ord = shuffle(idx.map((_, n) => n), m.rng);
+      const ord = shuffle(idx.map((_, n) => n), rr);
       idx.forEach((i, n) => { m.b[i] = keys[ord[n]]; m.id[i] = ids[ord[n]]; });
       if(findMove(m)) break;
     }
@@ -381,7 +434,7 @@ NG.link = (() => {
   function clearHint(){ document.querySelectorAll('.ng-link .lk-cell.hint').forEach(e => e.classList.remove('hint')); }
   function useHint(){
     const m = S(); if(!m || G.over || G.paused || m.phase !== 'play' || m.lock || m.hintLeft <= 0) return;
-    const mv = findMove(m); if(!mv) return;
+    const mv = findMove(m, true) || findMove(m); if(!mv) return;   /* 얼음 안 덮인 짝 먼저 */
     m.hintLeft--; m.hints++; hud(); clearHint();
     [mv[0], mv[1]].forEach(j => { const el = cellEl(j); if(el) el.classList.add('hint'); });
     drawPath(mv[2], '#FFE27A', 'hint');
@@ -395,7 +448,8 @@ NG.link = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#lkBar');
-    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('linkGo'); } return; }
+    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('linkGo'); coachOn(); } return; }
+    if(m.duel){ try{ duelLoop(); }catch(_){} }   /* 미니 화면·얼음 공격(오류가 나도 판은 계속) */
     if(m.phase !== 'play') return;
     const rem = remTime(t), sec = Math.ceil(rem);
     if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / G.limit)})`;
@@ -427,11 +481,195 @@ NG.link = (() => {
   function timeUp(){ const e = $('#lkTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요', 'time'); }
   function failMiss(){ lose('기회를 다 썼어요', 'miss'); }
 
+  /* ===== 처음 하는 사람 손가락 안내(1단계): 지울 수 있는 짝 하나를 반짝이고 손가락으로 가리킴 ===== */
+  const FINGER = '<i class="lk-finger" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11 3.5a2.5 2.5 0 0 1 5 0V14l7.5 1.6c2 .5 3.2 2.4 2.8 4.4l-1.6 7.2c-.3 1.3-1.4 2.3-2.8 2.3H13.6c-1 0-1.9-.5-2.4-1.3L5.2 20c-.9-1.4.5-3.1 2.1-2.4L11 19.5z" fill="#fff" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/></svg></i>';
+  function coachOn(){
+    const m = S(); if(!m || m.duel) return;
+    try{ if(store.get('hp:lkCoach', 0)) return; }catch(_){ return; }
+    const mv = findMove(m); if(!mv) return;
+    m.coach = [mv[0], mv[1]];
+    m.coach.forEach((j, n) => { const el = cellEl(j); if(el){ el.classList.add('coach'); if(!n) el.insertAdjacentHTML('beforeend', FINGER); } });
+    msg('<span>반짝이는 <em class="lk-em">같은 그림 두 개</em>를 차례로 눌러요</span>');
+  }
+  function coachOff(){
+    const m = S(); if(!m || !m.coach) return;
+    m.coach = null; try{ store.set('hp:lkCoach', 1); }catch(_){}
+    document.querySelectorAll('.ng-link .lk-cell.coach').forEach(e => e.classList.remove('coach'));
+    document.querySelectorAll('.ng-link .lk-finger').forEach(e => e.remove());
+  }
+
+  /* ===== 대전(1:1): 상대 판 미니 화면 · 콤보 얼음 공격 =====
+     지금 엔진(대전 v2)의 방(G.duel.nr) presence에 이 게임 키 lk = { v:1, mv:판 글자열(0 빈칸·1 타일·2 얼음), ev:[[번호, 'ice', 장수, 섞기, 시각]…] }를
+     올리고 상대 것을 읽는다(오목이 om 키를 쓰는 방식과 같음). 받는 쪽은 번호가 더 큰 사건만 차례로 처리한다.
+     얼음 칸 = 판 씨앗 + 보낸 사람 + 사건 번호로 고름 → 같은 판·같은 사건이면 어느 기기에서 계산해도 같은 칸.
+     컴퓨터 상대: 같은 판을 미리 푼 순서로 미니 판을 보여 주고, 씨앗으로 정한 때에 얼음을 보낸다(내가 보낸 얼음은 미니 판에만 보임).
+     판 씨앗·시계·엔진 대전 값(pg·v·t·dn·sc)은 건드리지 않는다. */
+  const ICE_HTML = '<i class="lk-ice" aria-hidden="true"><svg viewBox="0 0 40 48" preserveAspectRatio="none"><path d="M5 9l9 8-3 9 8 6M35 7l-8 10 6 7-5 12M14 17h9M27 30l6 4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></i>';
+  const mvStr = (b, ice) => b.map((k, i) => k == null || k === STONE ? '0' : ice && ice.has(i) ? '2' : '1').join('');
+  const nb4 = (m, j) => { const x = j % m.cols, y = Math.floor(j / m.cols), r = []; if(x > 0) r.push(j - 1); if(x < m.cols - 1) r.push(j + 1); if(y > 0) r.push(j - m.cols); if(y < m.rows - 1) r.push(j + m.cols); return r; };
+  const oppNick = () => { try{ return String((G.duel.opp && G.duel.opp.nick) || '상대'); }catch(_){ return '상대'; } };
+  const oppFace = () => { try{ return typeof oppAv === 'function' ? oppAv(oppNick()) : ''; }catch(_){ return ''; } };
+  /* 얼음을 고를 칸: 판 씨앗 + 열쇠로 정한 순서(같은 판·같은 사건 → 같은 칸) */
+  function icePick(b, ice, n, key, seed){
+    const cand = b.map((k, i) => k != null && k !== STONE && !(ice && ice.has(i)) ? i : -1).filter(i => i >= 0);
+    shuffle(cand, mulberry(seedFrom(seed + ':ice:' + key)));
+    return cand.slice(0, Math.max(0, Math.min(n, ICE_MAX - (ice ? ice.size : 0))));
+  }
+  function duelSetup(m){
+    const D = G.duel;
+    m.duel = true; m.seed = String(D.seed || 'duel'); m.ice = new Map(); m.frozenUntil = 0; m.chain = 0; m.lastClr = 0;
+    m.evN = 0; m.evOut = []; m.evSeen = 0; m.inbox = []; m.netAt = 0; m.pubAt = 0; m.pubSig = ''; m.iceGot = 0; m.iceSent = 0;
+    m.mini = { s:'', flash:new Map(), dirty:true, drawnAt:0 };
+    if(D.mode === 'ai'){
+      /* 컴퓨터가 지우는 순서: 같은 판을 처음부터 풀어 본 순서(막히면 같은 그림 아무 짝) */
+      const c = { b:m.b.slice(), cols:m.cols, rows:m.rows, turns:m.turns }, ord = [];
+      for(let s = 0; s < m.pairs; s++){
+        let mv = findMove(c);
+        if(!mv){ const by = {}; c.b.forEach((k, i) => { if(k != null && k !== STONE) (by[k] = by[k] || []).push(i); }); const k = Object.keys(by).find(q => by[q].length >= 2); if(!k) break; mv = [by[k][0], by[k][1]]; }
+        ord.push([mv[0], mv[1]]); c.b[mv[0]] = null; c.b[mv[1]] = null;
+      }
+      const r = mulberry(seedFrom(m.seed + ':ai-ice'));
+      m.ai = { b0:m.b.slice(), ord, ice:new Map(), v:-1,
+        atk:[{ v:4 + Math.floor(r() * 3), n:2, shuf:0 }, { v:10 + Math.floor(r() * 4), n:3, shuf:0 }].concat(r() < .3 ? [{ v:15 + Math.floor(r() * 3), n:4, shuf:1 }] : []) };
+    }
+  }
+  /* 짝을 지운 뒤: 옆 얼음 녹이기 · 콤보(3초 안에 연달아) → 2콤보 2장, 3콤보 3장, 4콤보 4장 + 섞기(모자란 만큼 더 보냄) */
+  function duelAfterClear(a, b){
+    const m = S(), now = Date.now();
+    if(m.ice.size){ const melt = new Set(); [a, b].forEach(j => nb4(m, j).forEach(q => { if(m.ice.has(q)) melt.add(q); })); melt.forEach(q => iceMelt(q, true)); }
+    m.chain = m.lastClr && now - m.lastClr <= COMBO_MS ? m.chain + 1 : 1; m.lastClr = now;
+    const c = m.chain, add = c === 2 ? 2 : c === 3 || c === 4 ? 1 : 0;
+    if(add) iceSend(add, c === 4 ? 1 : 0, c);
+  }
+  function iceSend(n, shuf, c){
+    const m = S(), D = G.duel;
+    m.evN++; m.iceSent += n;
+    m.evOut.push([m.evN, 'ice', n, shuf, Date.now(), c]); if(m.evOut.length > 20) m.evOut.shift();
+    try{ alertShow(`<span class="tx"><b>${c}콤보!</b><small>${esc(oppNick())}님에게 얼음 ${n}장${shuf ? " + 섞기" : ""}</small></span>`, "good"); }catch(_){}
+    sfx('linkIceSend');
+    flyIce($('#bd'), $('#lkMini'));
+    if(D.mode === 'pvp') pubLk(true);
+    else if(m.ai){ const now = Date.now(); icePick(aiBoard(), m.ai.ice, n, 'me' + m.evN, m.seed).forEach(i => m.ai.ice.set(i, now + 600 + ICE_MS)); m.mini.dirty = true; }
+  }
+  function pubLk(force){
+    const m = S(), D = G.duel; if(!D || D.mode !== 'pvp' || !D.nr || !D.go) return;
+    const mv = mvStr(m.b, m.ice), now = Date.now(), sig = mv + ':' + m.evN;
+    if(sig === m.pubSig && now - m.pubAt < 5000) return;
+    if(!force && now - m.pubAt < 300) return;
+    m.pubAt = now; m.pubSig = sig;
+    try{ D.nr.presence({ lk:{ v:1, mv, ev:m.evOut.slice() } }).catch(() => {}); }catch(_){}
+  }
+  function oppLk(){
+    const D = G.duel; if(!D || !D.nr) return null;
+    let ps = []; try{ ps = D.nr.peers(); }catch(_){ return null; }
+    const o = ps.find(p => !p.sameTab && p.peer === D.oppPeer) || ps.find(p => !p.sameTab);
+    return (o && o.presence && o.presence.lk) || null;
+  }
+  /* 받은 공격: 알림 → 1초 뒤 내 판에 얼음 */
+  function iceIncoming(n, shuf, key, c){
+    const m = S(); if(!n) return;
+    m.inbox.push({ at:Date.now() + 1000, n, shuf, key });
+    try{ alertShow(`${oppFace()}<span class="tx"><b>${esc(oppNick())}님 공격!</b><small>${c ? c + "콤보 · " : ""}얼음 ${n}장${shuf ? " + 섞기" : ""}</small></span>`, "bad"); }catch(_){}
+    sfx('linkIceWarn');
+    flyIce($('#lkMini'), $('#bd'));
+  }
+  function iceApply(it){
+    const m = S(), now = Date.now();
+    if(it.shuf){ msg('<b class="ice">섞기 공격!</b><span>판이 섞였어요</span>', 'lk-pop'); mixBoard(); }
+    const pick = icePick(m.b, m.ice, it.n, it.key, m.seed);
+    pick.forEach(i => { m.ice.set(i, now + ICE_MS); if(m.sel === i){ setSel(i, false); m.sel = null; } const el = cellEl(i); if(el) el.outerHTML = cellHtml(i); });
+    m.iceGot += pick.length;
+    try{ pick.forEach(i => { const el = cellEl(i); if(el){ const q = fxCenter(el); fxBurst(q.x, q.y, ['#BFE6FF', '#FFFFFF', '#7CCBFF'], 7, { speed:160, size:4, kinds:['spark','dot'], up:40, g:300, dur:.5 }); } }); }catch(_){}
+    if(pick.length) sfx('linkIceHit');
+    if(!findMove(m)) autoMix();
+    T(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
+  }
+  function iceMelt(i, byClear){
+    const m = S(); if(!m.ice.has(i)) return;
+    m.ice.delete(i);
+    const el = cellEl(i); if(el && !el.classList.contains('gone')) el.outerHTML = cellHtml(i);
+    try{ const e2 = cellEl(i); if(e2){ const q = fxCenter(e2); fxBurst(q.x, q.y + 4, ['#7CCBFF', '#BFE6FF', '#FFFFFF'], 3, { speed:90, size:4.5, kinds:['dot'], up:-20, g:600, dur:.55 }); } }catch(_){}
+    if(byClear) sfx('linkMelt');
+  }
+  /* 컴퓨터 판: 처음 판에서 지운 짝 수만큼 지운 모습 + 내가 보낸 얼음 */
+  function aiBoard(){ const m = S(), a = m.ai, b = a.b0.slice(); for(let s = 0; s < Math.max(0, a.v) && s < a.ord.length; s++){ b[a.ord[s][0]] = null; b[a.ord[s][1]] = null; } return b; }
+  function aiTick(now){
+    const m = S(), D = G.duel, a = m.ai; if(!a || !D.go) return;
+    const v = Math.max(0, Math.min(m.pairs, Math.floor((D.opp.pg || 0) * m.pairs + 1e-6)));
+    a.v = v;
+    const b = aiBoard(); a.ice.forEach((t, i) => { if(now >= t || b[i] == null) a.ice.delete(i); });
+    miniSet(mvStr(b, a.ice));
+    if(!D.opp.dn && m.phase === 'play') a.atk.forEach((k, n) => { if(!k.done && v >= k.v){ k.done = 1; iceIncoming(k.n, k.shuf, 'ai' + n, k.n); } });
+  }
+  function miniSet(s){
+    const m = S(), M = m.mini, now = Date.now();
+    if(s === M.s) return;
+    if(M.s && M.s.length === s.length) for(let i = 0; i < s.length; i++) if(M.s[i] !== '0' && s[i] === '0') M.flash.set(i, now + 300);   /* 상대가 지운 두 칸이 0.3초 반짝 */
+    M.s = s; M.dirty = true;
+  }
+  function miniDraw(now){
+    const m = S(), M = m.mini, svg = $('#lkMiniB'); if(!svg || !M.s) return;
+    M.flash.forEach((t, i) => { if(now >= t) M.flash.delete(i); });
+    if(!M.dirty && !M.flash.size && now - M.drawnAt < 1000) return;
+    M.dirty = false; M.drawnAt = now;
+    const p = Math.min(48 / m.cols, 64 / m.rows), ox = (48 - p * m.cols) / 2, oy = (64 - p * m.rows) / 2;
+    let h = '';
+    for(let i = 0; i < M.s.length; i++){
+      const x = ox + (i % m.cols) * p + .6, y = oy + Math.floor(i / m.cols) * p + .6, w = (p - 1.2).toFixed(1), c = M.s[i];
+      if(c === '1') h += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${w}" rx="1.4" class="t"/>`;
+      else if(c === '2') h += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${w}" rx="1.4" class="i"/>`;
+      else if(M.flash.has(i)) h += `<rect x="${(x - .6).toFixed(1)}" y="${(y - .6).toFixed(1)}" width="${(p).toFixed(1)}" height="${(p).toFixed(1)}" rx="1.6" class="f" opacity="${((M.flash.get(i) - now) / 300).toFixed(2)}"/>`;
+    }
+    svg.innerHTML = h;
+  }
+  function duelLoop(){
+    const m = S(), D = G.duel, now = Date.now(); if(!D) return;
+    if(m.ice.size) m.ice.forEach((t, i) => { if(now >= t) iceMelt(i, false); });
+    if(m.frozenUntil && now >= m.frozenUntil){ m.frozenUntil = 0; const bd = $('#bd'); if(bd) bd.classList.remove('frozen'); }
+    if(now - m.netAt >= 150){
+      m.netAt = now;
+      if(D.mode === 'pvp'){
+        const q = oppLk();
+        if(q){
+          if(typeof q.mv === 'string' && q.mv.length <= 400) miniSet(q.mv.replace(/[^012]/g, '0'));
+          if(Array.isArray(q.ev) && m.phase === 'play') q.ev.slice().sort((x, y) => x[0] - y[0]).forEach(e => {
+            if(!Array.isArray(e) || e[1] !== 'ice' || !(e[0] > m.evSeen)) return;
+            m.evSeen = e[0];
+            iceIncoming(Math.max(0, Math.min(4, +e[2] || 0)), +e[3] ? 1 : 0, 'p' + e[0], Math.max(0, Math.min(99, +e[5] || 0)));
+          });
+        }
+        if(D.go && !G.over) pubLk(false);
+      } else aiTick(now);
+    }
+    /* 받은 공격 적용: 판이 움직이는 중(지우기·섞기)이면 잠깐 기다림 */
+    if(m.inbox.length && m.phase === 'play' && !m.lock && now >= m.inbox[0].at) iceApply(m.inbox.shift());
+    if(m.phase !== 'play') m.inbox.length = 0;
+    miniDraw(now);
+  }
+  /* 판 위 큰 알림(보이기만 함, 눌림 막지 않음) */
+  function alertShow(html, cls){
+    const e = $('#lkAlert'); if(!e) return;
+    e.className = 'lk-alert ' + (cls || ''); e.innerHTML = html; void e.offsetWidth; e.classList.add('on');
+    clearTimeout(S().alertT); S().alertT = T(() => { const x = $('#lkAlert'); if(x) x.classList.remove('on'); }, 1200);
+  }
+  /* 얼음 조각이 날아가는 모습(보이기만 함) */
+  function flyIce(from, to){
+    try{
+      if(!from || !to || FXR.reduce) return;
+      const a = fxCenter(from), b = fxCenter(to), d = document.createElement('div');
+      d.className = 'lk-fly'; d.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1l2.6 6.4L19 10l-6.4 2.6L10 19l-2.6-6.4L1 10l6.4-2.6z" fill="#BFE6FF" stroke="#1A0F45" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+      d.style.left = a.x + 'px'; d.style.top = a.y + 'px'; document.body.appendChild(d);
+      const an = d.animate([{ transform:'translate(-50%,-50%) scale(.6)', opacity:0 }, { transform:`translate(calc(-50% + ${(b.x - a.x) * .5}px), calc(-50% + ${(b.y - a.y) * .5 - 40}px)) scale(1.3) rotate(180deg)`, opacity:1, offset:.5 }, { transform:`translate(calc(-50% + ${b.x - a.x}px), calc(-50% + ${b.y - a.y}px)) scale(.8) rotate(360deg)`, opacity:.2 }], { duration:800, easing:'ease-in-out' });
+      an.onfinish = () => d.remove(); setTimeout(() => d.remove(), 1200);
+    }catch(_){}
+  }
+
   function cellHtml(i){
     const m = S(), k = m.b[i], x = i % m.cols, y = Math.floor(i / m.cols);
     if(k == null) return `<span class="lk-cell empty" data-i="${i}" aria-hidden="true"></span>`;
     if(k === STONE) return `<span class="lk-cell stone" data-i="${i}" role="img" aria-label="돌 ${y + 1}행 ${x + 1}열"><span class="lk-face">${STONE_SVG}</span></span>`;
-    return `<button class="lk-cell tile${k === CLOCK ? ' clk' : ''}${m.sel === i ? ' sel' : ''}" data-i="${i}" aria-label="${symName(k)} ${y + 1}행 ${x + 1}열"><span class="lk-face">${symSvg(k)}</span></button>`;
+    const iced = m.ice && m.ice.has(i);
+    return `<button class="lk-cell tile${k === CLOCK ? ' clk' : ''}${m.sel === i ? ' sel' : ''}${iced ? ' iced' : ''}" data-i="${i}" aria-label="${symName(k)} ${y + 1}행 ${x + 1}열${iced ? ', 얼음' : ''}"><span class="lk-face">${symSvg(k)}</span>${iced ? ICE_HTML : ''}</button>`;
   }
   function build(){
     const m = S(), bd = $('#bd'); if(!bd) return;
@@ -471,25 +709,21 @@ NG.link = (() => {
         <path d="${starPath(18, 50, 6, 2.6)}" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
     },
     help:[
-      ['같은 그림 두 개를 골라요', '같은 그림 타일 두 개를 차례로 누르면 길로 이어져 함께 사라져요. 고른 타일을 다시 누르면 취소돼요.'],
-      ['길은 두 번까지만 꺾여요', '길은 빈칸과 판 바깥 테두리로만 지나갈 수 있고, 꺾이는 곳은 두 번까지예요.'],
-      ['기회는 3번', '다른 그림을 고르거나 길이 막힌 짝을 고르면 기회 하나(★)를 잃어요. 세 번 틀리면 게임이 끝나요. 마구 누르지 말고 잘 보고 골라요!'],
-      ['시간 안에 판을 비워요', '제한 시간 안에 모든 짝을 지우면 성공! 막히면 💡힌트나 섞기를 쓸 수 있지만 점수가 조금 줄어요. 지울 짝이 하나도 없으면 저절로 섞여요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 돌 타일·닮은꼴·시계 타일·미끄럼 같은 새 규칙과 번개·외줄 타기·한 번 꺾기 같은 변주가 5판마다 하나씩 나와요.']
+      ['같은 그림 두 개를 눌러요', '같은 그림 타일 두 개를 차례로 눌러요. 고른 타일을 다시 누르면 취소돼요.'],
+      ['선이 두 번까지 꺾여 이어지면 사라져요', '선은 빈칸과 판 바깥 테두리로만 지나가요. 꺾이는 곳이 두 번까지면 OK!'],
+      ['판을 다 비우면 성공', '시간 안에 모든 짝을 지우면 성공! 막히면 💡힌트·섞기(점수 조금 줄어요). 짝이 하나도 없으면 저절로 섞여요.'],
+      ['틀리면 기회 ★ 하나', '다른 그림·막힌 짝을 고르면 기회를 잃고, 세 번 틀리면 끝나요. 대전은 끝나지 않고 −25점 + 1초 쉬기, 3초 안에 연달아 지우면 상대 판에 얼음을 보내요.']
     ],
     helpExtra(){ const m = G && G.id === 'link' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['꽃밭 산책','과일 장터','별빛 정원','바닷가 마을','눈꽃 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·섞기·실수 1번 이하 · ★★★ 힌트·섞기·실수 없이',
-    levels:{
-      easy:{ cols:7, rows:8, pairs:27, limit:170, hints:3, mixes:2 },
-      normal:{ cols:7, rows:10, pairs:33, limit:210, hints:3, mixes:2 },
-      hard:{ cols:8, rows:11, pairs:42, limit:250, hints:3, mixes:2 }
-    },
+    get levels(){ return lvTable(); },   /* 2026-10-07부터 짧은 판(LV_NEW), 그 전 날짜는 LV_OLD */
     concepts:CONC,
     stage(n){ return stageCfg(n); },
     stageDesc(n){ const c = stageCfg(n); return `${c.cols}×${c.rows} · ${c.pairs}짝 · ${mmss(c.limit)}${c.lives === 1 ? ' · 기회 1번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.cols}×${c.rows} · ${c.pairs}짝`; },
     init(cfg, rng){
+      if(G.duel && !G.duel.fleet && !cfg.duelOwn) cfg = Object.assign({}, DUEL_CFG, G.duel.slow ? { limit:DUEL_CFG.limit * 2 } : {});   /* 대전 전용 판(6×8 · 20짝 · 2분) */
       const d = deal(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { cols:cfg.cols, rows:cfg.rows, pairs:cfg.pairs, b:d.b, id:d.b.map((k, i) => k != null && k !== STONE ? i : null), turns:cfg.turns || 2, slide:!!cfg.slide, tick:cfg.tick || 0,
@@ -498,6 +732,7 @@ NG.link = (() => {
         phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, rng, lastSec:-1, sec:0, fail:null, timers:new Set(), geo:{ cw:40, ch:48, gap:3, pad:12 } };
       G.limit = cfg.limit; if(G.m.lives) G.paws = G.m.lives;
       const m = G.m;
+      if(G.duel && !G.duel.fleet) duelSetup(m);
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.onResize) removeEventListener('resize', m.onResize);
@@ -509,13 +744,15 @@ NG.link = (() => {
         const step = () => {
           if(G.over || G.m !== m || m.phase === 'done'){ res(m.found); return; }
           if(m.lock || m.phase !== 'play'){ setTimeout(step, 60); return; }
-          const mv = findMove(m); if(!mv){ setTimeout(step, 60); return; }
+          const mv = findMove(m, true); if(!mv){ setTimeout(step, 60); return; }
           tap(mv[0]); tap(mv[1]); setTimeout(step, 40);
         };
         step();
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
+    _stepForTest(){ const m = G && G.m; if(!m || m.lock || m.phase !== 'play') return false; const mv = findMove(m, true); if(!mv) return false; tap(mv[0]); tap(mv[1]); return true; },
+    _missForTest(){ const m = G && G.m; if(!m || m.phase !== 'play') return false; const t = m.b.map((k, i) => k != null && k !== STONE && !(m.ice && m.ice.has(i)) ? i : -1).filter(i => i >= 0); const a = t[0], b = t.find(j => m.b[j] !== m.b[a]); if(b == null) return false; tap(a); tap(b); return true; },
     _deal:deal, _search:search, _stage:stageCfg,
     render(st){
       const m = S();
@@ -528,8 +765,8 @@ NG.link = (() => {
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar lk-tbar" id="lkBarWrap"><i id="lkBar"></i></div>
-        <div class="lk-row"><div class="hlives" id="lkLives" role="img"></div><div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
-        <div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div>
+        <div class="lk-row${m.duel ? ' duel' : ''}">${m.duel ? `<div class="lk-mini" id="lkMini" role="img" aria-label="${esc(oppNick())}님의 판"><span class="lk-mface">${oppFace()}</span><svg id="lkMiniB" viewBox="0 0 48 64" aria-hidden="true"></svg></div>` : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
+        <div class="lk-wrap"><div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div>${m.duel ? '<div class="lk-alert" id="lkAlert" aria-live="polite"></div>' : ''}</div>
       </div>`;
       build(); wire(); hud();
       T(() => { const b = $('#bd'); if(b) b.classList.remove('in'); }, 900);
@@ -538,6 +775,13 @@ NG.link = (() => {
       if(G.raf) cancelAnimationFrame(G.raf);
       G.raf = requestAnimationFrame(loop);
     },
+    /* 대전 v3 선택 항목(공용 엔진이 준비되면 읽음. 지금은 init이 G.duel을 보고 대전 판을 고름). 1단계는 1:1 */
+    duelKind:'race', duelMax:2, duelEnd:'first',
+    duelCfg(){ return Object.assign({}, DUEL_CFG, { duelOwn:1 }); },
+    duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || DUEL_CFG.limit) * 2 }); },
+    _duelState(){ const m = G && G.m; return m && m.duel ? { mv:mvStr(m.b, m.ice), ice:[...m.ice.keys()].sort((a, b) => a - b), mini:m.mini.s, evN:m.evN, evSeen:m.evSeen, got:m.iceGot, sent:m.iceSent, frozen:m.frozenUntil > Date.now() } : null; },
+    _iceTest(n, shuf){ const m = G && G.m; if(m && m.duel) iceIncoming(n, shuf ? 1 : 0, 'test' + (++m.evN), n); },
+    _icePick:icePick,
     progress(){ const m = G && G.m; return m ? m.found / m.pairs : 0; },
     lossText(){ const m = G.m; return (m.fail === 'miss' ? '기회를 다 썼어요. ' : '') + `짝 ${m.found}/${m.pairs}개를 지웠어요.`; },
     score(){
@@ -619,12 +863,52 @@ body[data-mode="link"]{background:
 .ng-link .lk-chip.mj{background:#E3FAEC; color:#13703F}
 .ng-link .lk-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-link .lk-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
+.ng-link .lk-wrap{position:relative}
+.ng-link .lk-msg em.lk-em{font-style:normal; font-family:var(--heavy); color:#B8541A}
+.ng-link .lk-msg b.ice{color:#BFE6FF}
+/* 손가락 안내(처음 한 번) */
+.ng-link .lk-cell.coach .lk-face{animation:link-hint .7s ease-in-out infinite alternate}
+.ng-link .lk-finger{position:absolute; right:-10px; bottom:-14px; width:30px; height:30px; z-index:5; pointer-events:none; animation:link-finger .8s ease-in-out infinite alternate; filter:drop-shadow(0 2px 0 rgba(26,15,69,.35))}
+.ng-link .lk-finger svg{width:100%; height:100%; display:block}
+@keyframes link-finger{from{transform:translate(4px,6px)} to{transform:translate(-2px,-2px)}}
+/* 대전: 상대 미니 판 카드(72×64) · 얼음 덮개 · 1초 쉬기 · 판 위 알림 */
+.ng-link .lk-row.duel{height:68px; margin-top:4px}
+.ng-link .lk-mini{flex:none; display:flex; align-items:center; gap:2px; width:72px; height:64px; padding:0 2px; box-sizing:border-box; border-radius:12px; background:#fff; border:2.5px solid #2F7BFF; box-shadow:0 3px 0 #1A0F45}
+.ng-link .lk-mface{flex:none; width:20px; height:20px; display:grid; place-items:center; align-self:flex-start; margin-top:4px}
+.ng-link .lk-mface .av{width:20px !important; height:20px !important; min-width:0 !important; font-size:0}
+.ng-link .lk-mface .av svg{width:100%; height:100%}
+.ng-link #lkMiniB{width:44px; height:60px; flex:none; display:block}
+.ng-link #lkMiniB .t{fill:#7FD3A6; stroke:#1A0F45; stroke-width:.6}
+.ng-link #lkMiniB .i{fill:#BFE6FF; stroke:#2F7BFF; stroke-width:.9}
+.ng-link #lkMiniB .f{fill:#FFE27A}
+.ng-link .lk-ice{position:absolute; left:0; right:0; top:0; bottom:4px; border-radius:calc(var(--cw) * .2); background:rgba(191,230,255,.72); border:2.2px solid #2F7BFF; box-shadow:inset 0 0 0 2px rgba(255,255,255,.7); pointer-events:none; animation:link-ice-in .35s cubic-bezier(.2,1.5,.4,1)}
+.ng-link .lk-ice svg{position:absolute; inset:8%; width:84%; height:84%}
+@keyframes link-ice-in{from{transform:scale(1.5); opacity:0}}
+.ng-link .lk-cell.iced{cursor:not-allowed}
+.ng-link .lk-board.frozen{filter:saturate(.45) brightness(.96)}
+.ng-link .lk-board.frozen .lk-cell.tile{cursor:wait}
+.ng-link .lk-alert{position:absolute; left:50%; top:30%; width:min(300px, 92%); transform:translate(-50%,-50%) scale(.7); opacity:0; z-index:8; pointer-events:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:16px; border:3px solid #1A0F45; background:rgba(255,255,255,.85); font-family:var(--disp); font-size:17px; color:#1A0F45; text-align:center; transition:transform .25s cubic-bezier(.2,1.5,.4,1), opacity .2s}
+.ng-link .lk-alert.on{transform:translate(-50%,-50%) scale(1); opacity:1}
+.ng-link .lk-alert.bad{background:rgba(214,238,255,.88); border-color:#2F7BFF}
+.ng-link .lk-alert.good{background:rgba(255,240,248,.88); border-color:#F0368A}
+.ng-link .lk-alert .tx{display:flex; flex-direction:column; align-items:flex-start; min-width:0; line-height:1.15}
+.ng-link .lk-alert .tx b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#F0368A; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ng-link .lk-alert .tx small{font-size:15px; white-space:nowrap}
+.ng-link .lk-alert.bad b{color:#2F7BFF}
+.ng-link .lk-alert .av{width:32px !important; height:32px !important; flex:none}
+body[data-mode="link"] .lk-fly{position:fixed; width:26px; height:26px; z-index:60; pointer-events:none}
+body[data-mode="link"] .lk-fly svg{width:100%; height:100%; display:block}
 @media (max-width:370px){ .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:12px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-link .lk-line path{animation:link-fade .52s ease-in forwards; stroke-dasharray:none} .ng-link .lk-board.in .lk-cell.tile, .ng-link .lk-cell.mixin .lk-face, .ng-link .lk-cell.hint .lk-face{animation:none} }
 `,
     sounds:{
       linkPick(o){ if(o.off){ aTone({ f:660, f2:520, type:'triangle', d:.06, v:.04 }); return; } aNoise({ ft:'bandpass', f:2800, q:2, d:.04, v:.06 }); aTone({ f:880, f2:1040, type:'triangle', d:.07, v:.05 }); },
-      linkMatch(o){ const n = Math.min(10, o.n || 0); aWhoosh({ f:900, f2:3200, a:.01, d:.14, v:.035 }); aBell({ f:penta(n + 4, 72), t:.05, d:.6, v:.085, idx:1.4, rev:.35 }); aBell({ f:penta(n + 6, 72), t:.12, d:.7, v:.07, idx:1.2, rev:.4 }); if(n >= 2) aSparkle({ root:84 + Math.min(7, n), n:4, t:.16, v:.03 }); },
+      linkIceNo(){ aTone({ f:1500, f2:1200, type:'triangle', d:.06, v:.04 }); aNoise({ ft:'highpass', f:5000, d:.05, v:.04 }); },
+      linkIceSend(){ aWhoosh({ f:600, f2:3600, a:.02, d:.3, v:.06 }); aSparkle({ root:88, n:4, t:.05, v:.035 }); },
+      linkIceWarn(){ aTone({ f:1046, f2:880, type:'square', lp:2400, d:.09, v:.045, bus:'ui' }); aTone({ f:1046, f2:880, type:'square', lp:2400, t:.14, d:.09, v:.045, bus:'ui' }); },
+      linkIceHit(){ aNoise({ ft:'highpass', f:3500, d:.18, v:.08 }); aBell({ f:m2f(91), d:.5, v:.05, idx:2, rev:.4 }); },
+      linkMelt(){ aBell({ f:m2f(84), d:.3, v:.05, rev:.3 }); aTone({ f:700, f2:1300, type:'sine', t:.04, d:.1, v:.04 }); },
+      linkMatch(o){ const n = Math.min(10, o.n || 0); aWhoosh({ f:900, f2:3600, a:.01, d:.18, v:.06 });   /* 선 그어질 때 '슝' */ aBell({ f:penta(n + 4, 72), t:.05, d:.6, v:.085, idx:1.4, rev:.35 }); aBell({ f:penta(n + 6, 72), t:.12, d:.7, v:.07, idx:1.2, rev:.4 }); if(n >= 2) aSparkle({ root:84 + Math.min(7, n), n:4, t:.16, v:.03 }); },
       linkMiss(){ aTone({ f:330, f2:220, type:'triangle', d:.2, v:.1 }); aThump({ f:140, f2:70, d:.14, v:.12 }); },
       linkHint(){ aSparkle({ root:79, n:5, v:.04 }); },
       linkMix(){ aWhoosh({ f:500, f2:3200, q:1.2, a:.05, d:.35, v:.06 }); for(let k = 0; k < 7; k++) aNoise({ ft:'bandpass', f:rnd(1800, 3200), q:2, t:.05 + k * .06, d:.035, v:.04 }); },
@@ -641,6 +925,6 @@ body[data-mode="link"]{background:
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.link, { duelPace:[140,.72], duelStat:{ unit:"짝", lfMax:3, get:() => ({ v:G.m.found, t:G.m.pairs, lf:G.m.lives ? Math.max(0, G.m.lives - G.m.misses) : null }) } });
+Object.assign(NG.link, { duelPace:[85,.72], duelStat:{ unit:"짝", get:() => ({ v:G.m.found, t:G.m.pairs, lf:G.m.lives ? Math.max(0, G.m.lives - G.m.misses) : null, mis:G.m.misses }) } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.link.scene = { kind:'motes', colors:['#FFFFFF','#B8F0D0','#FFF3B0'], density:1 };
