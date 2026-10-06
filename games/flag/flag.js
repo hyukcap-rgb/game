@@ -447,7 +447,7 @@ NG.flag = (() => {
     const hs = cl(66, Math.min(W * .46, (free - 8) / (m.third ? 1.72 : 1.45)), 176);   /* 진행자 크기: 말풍선 아래 빈 곳을 채움 */
     const feet = cl(Math.round(hs * .38 + 8), free - hs * (m.third ? 1.3 : 1.08), Math.round(hs * .78 + 8));   /* 남는 높이는 구령대를 높여 진행자를 가운데로 */
     const center = m.third ? 0 : cl(108, W * .33, 132);
-    const fs = m.third ? cl(52, strip * .92, 76) : cl(50, Math.min(center / 1.6, (bh * 2 + 2) / 1.86), 84);
+    const fs = m.third ? cl(50, strip * .8, 70) : cl(50, Math.min(center / 1.6, (bh * 2 + 2) / 1.86), 84);
     Object.entries({ '--bh':bh + 'px', '--strip':strip + 'px', '--deck':deck + 'px', '--bub':bub + 'px', '--hs':hs + 'px', '--feet':feet + 'px', '--fs':fs + 'px', '--mid':center + 'px' }).forEach(([k, v]) => root.style.setProperty(k, v));
   }
 
@@ -568,7 +568,8 @@ NG.flag = (() => {
       </div>`;
       document.querySelectorAll('.ng-flag .fl-btn').forEach(b => {   /* 누르고 있는 동안 .down(눌린 모양), 키보드·밀기는 .hit 잠깐 */
         const up = () => b.classList.remove('down');
-        b.onpointerdown = e => { e.preventDefault(); b.classList.add('down'); press(b.dataset.f, +b.dataset.d, 'btn'); };
+        let lp = -1, lt = -1e9;   /* 같은 손가락(pointerId)의 겹친 pointerdown(일부 기기)이 두 번 누르기로 세지 않게 */
+        b.onpointerdown = e => { e.preventDefault(); b.classList.add('down'); const now = performance.now(); if(e.pointerId === lp && now - lt < 60) return; lp = e.pointerId; lt = now; press(b.dataset.f, +b.dataset.d, 'btn'); };
         b.onpointerup = up; b.onpointercancel = up; b.onpointerleave = up;
         b.onclick = e => { if(e.detail === 0) press(b.dataset.f, +b.dataset.d, 'btn'); };
       });

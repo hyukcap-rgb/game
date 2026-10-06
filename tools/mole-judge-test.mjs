@@ -32,19 +32,20 @@ function AGENT(off){
   const cnt = k => { out.taps[k] = (out.taps[k] || 0) + 1; };
   const fail = s => { if(out.fails.length < 40) out.fails.push(s); };
   const cellEl = h => document.querySelector(`.ng-mole .ml-cell[data-i="${h}"]`);
-  const MOM_B = ['appear', 'up', 'sink', 'skip', 'last', 'stun', 'key', 'up', 'appear', 'skip', 'last', 'sink'];   /* skip = 안 누름 → 참았다여야 함 */
+  const MOM_B = ['appear', 'up', 'sink', 'skip', 'last', 'stun', 'key', 'fuse', 'up', 'appear', 'skip', 'last', 'sink'];   /* fuse = 심지 불꽃 끝(그림 맨 위) */   /* skip = 안 누름 → 참았다여야 함 */
   const MOM_N = ['appear', 'up', 'up', 'appear', 'late'];
   let bi = off || 0, ni = off || 0, lastTap = -1, gapAt = 0;   /* 판마다 시작 순간을 바꿔 모든 순간이 고루 나오게 */
   const plan = new Map();   /* 두더지 기록 → 누를 순간 */
   /* 보이는 그림 위의 점: fy = 그림 상자 높이 비율(폭탄 공 가운데 .2, 얼굴 .5) */
-  function pt(h, fy){
+  function pt(h, fy, fx){
     const c = cellEl(h); if(!c) return null;
     const a = c.querySelector('.ml-img').getBoundingClientRect(), k = c.querySelector('.ml-clip').getBoundingClientRect();
-    const x = a.left + a.width / 2; let y = a.top + a.height * fy;
+    const x = a.left + a.width * (fx != null ? fx : .5); let y = a.top + a.height * fy;
     if(y < k.top + 2) y = k.top + 2;
     if(y > k.bottom - 3 || y > a.bottom - 3) return null;   /* 그 높이는 이미 구멍 속(안 보임) */
     return { x, y, visH:Math.min(k.bottom, a.bottom) - Math.max(k.top, a.top), cw:c.getBoundingClientRect().width, cell:c.getBoundingClientRect() };
   }
+  const k0 = h => cellEl(h).querySelector('.ml-clip').getBoundingClientRect().top;   /* 잘림 상자 위(불꽃이 잘려 안 보이면 건너뜀) */
   const plog = [];
   function press(p, why){ plog.push({ why:why || '?', t:G.m.t }); if(plog.length > 12) plog.shift(); const el = document.elementFromPoint(p.x, p.y); if(!el) return false; el.dispatchEvent(new PointerEvent('pointerdown', { bubbles:true, cancelable:true, clientX:p.x, clientY:p.y, pointerType:'touch', isPrimary:true })); return true; }
   const snap = m => ({ c:m.correct, w:m.wrong, e:m.empty, l:m.lives });
@@ -77,6 +78,7 @@ function AGENT(off){
         let p = null;
         if(mom === 'appear' && r.st === 'up' && age < .2) p = pt(r.hole, .2);
         else if(mom === 'up' && r.st === 'up' && age > .3) p = pt(r.hole, .2);
+        else if(mom === 'fuse' && r.st === 'up' && age > .35){ const q = pt(r.hole, .8 / 122, .62); if(q && q.y > k0(r.hole) + 2) p = q; else { plan.set(r, 'up'); continue; } }
         else if(mom === 'stun' && r.st === 'up' && age > .3){   /* 빈 구멍을 눌러 멍한 사이에 폭탄 */
           const free = Array.from(document.querySelectorAll('.ng-mole .ml-cell')).find(c => !m.act.some(x => x.st !== 'gone' && x.st !== 'wait' && (x.hole === +c.dataset.i || x.peek === +c.dataset.i)) && !c.classList.contains('lit'));
           if(free){ const b = free.getBoundingClientRect(); const q = [.25, .45, .65, .85].map(f => ({ x:b.left + b.width / 2, y:b.top + b.height * f })).find(q => !onAnyMole(q.x, q.y)); if(q) press(q, '멍 만들기 빈 칸'); }

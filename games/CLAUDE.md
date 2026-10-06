@@ -78,7 +78,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelSlow(cfg)` | `limit × 2` | '느긋하게'일 때 설정 바꾸기(차례 게임은 차례 시간 ×2 등). 없으면 엔진이 limit만 2배, `duelTurn.timeout`도 2배 |
 | `duelStat.get()` | | 돌려주는 값에 `mis`(틀린 횟수)를 **더함**. 경주·선점 게임은 넣는 것을 권함(없으면 엔진이 `lf`가 줄어든 횟수로 셈). `v`가 오른 시각(`la`)은 엔진이 셈 |
 | `duelRank(a, b)` | 엔진 기본 | 순위 비교를 바꿀 때만. `a`·`b` = `{ pg, v, t, lf, mis, la, dn, ok, sc, ft, left }`, 앞서면 음수 |
-| `duelEnd` | 종류별 | `'first'`(경주 기본: 누가 다 풀면 모두 끝) · `'all'`(점수 기본: 모두 끝나거나 시간) · `'game'`(선점·차례 기본: 게임이 `duelEndNow()`) |
+| `duelEnd` | 종류별 | `'first'`(경주 기본: 누가 다 풀면 모두 끝) · `'all'`(점수 기본: 모두 끝나거나 시간. 컴퓨터 대전에서 내가 먼저 끝나면 컴퓨터는 제 판을 끝까지 한 결과로 셈 — 일부러 빨리 끝내 이기기 막기) · `'game'`(선점·차례 기본: 게임이 `duelEndNow()`) |
 | `onDuelEvent(ev, from)` | | 다른 사람이 `duelSend`로 보낸 사건. `ev = { n, kind, data, at }`, `from` = 참가자 |
 | `onDuelClaim(key, owner, info)` | | 선점 주인이 정해지거나 바뀔 때(내 것 포함). `info = { mine, lost, at, sure }`(`lost` = 내 것으로 보였다가 더 이른 사람에게 뺏김 → "간발의 차" 알림은 엔진이 띄움, 게임은 표시·점수만 되돌림. `sure` = 0.4초 확인 끝) |
 | `duelKeys()` | | 선점 게임의 차지할 수 있는 열쇠 목록(컴퓨터 상대가 계단마다 하나씩 차지). 없으면 컴퓨터는 수만 올라감 |

@@ -215,7 +215,7 @@ NG.mole = (() => {
      두더지 머리(특히 폭탄)는 칸 위로 삐져나와 윗칸 영역에 그려질 수 있다. 예전에는 누른 '칸'만 보고 판정해서
      폭탄 머리를 누르면 윗칸(일반 두더지)이 정답으로 잡혔다. 이제는 화면에 보이는 두더지 그림을 먼저 본다:
      맨 위에 그려진(아래 줄일수록 위) 두더지 그림 안이면 그 두더지, 아니면 누른 칸. */
-  const TOPF = { bomb:.05, normal:.27, helmet:.17, gold:.16, hide:.12, num:.02, peek:.27 };   /* 그림 상자에서 실루엣이 시작하는 높이 */
+  const TOPF = { bomb:0, normal:.27, helmet:.17, gold:.16, hide:.12, num:.02, peek:.27 };   /* 그림 상자에서 실루엣이 시작하는 높이(폭탄은 심지 불꽃이 그림 맨 위 끝까지 닿아 0) */
   function visRect(c){
     const img = c && c.querySelector('.ml-img'), clip = c && c.querySelector('.ml-clip'); if(!img || !clip) return null;
     const a = img.getBoundingClientRect(), k = clip.getBoundingClientRect();

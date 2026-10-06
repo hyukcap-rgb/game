@@ -537,9 +537,9 @@ function duelAiSched(D){
   mis.sort((x, y) => x - y);
   return { N, K, at, mis, score, keys:null, kOrder:null };
 }
-function duelAiTick(D){
+function duelAiTick(D, tf){   /* tf: 이 시각(초)까지 한 번에 진행(점수전에서 내가 먼저 끝났을 때 컴퓨터 판을 끝까지) */
   const a = D.ai, P = D.P.ai; if(!a || !P || P.st.dn) return;
-  const S = duelStatOf(G.id) || {}, t = elapsed(), st = P.st;
+  const S = duelStatOf(G.id) || {}, t = tf != null ? tf : elapsed(), st = P.st;
   if(!D.aiS) D.aiS = duelAiSched(D);
   const H = D.aiS, me = duelStatNow();
   if(H.smooth){   /* 예전 방식(연속) */
@@ -1107,9 +1107,19 @@ function duelFinish(win){
     }, 400);
     return;
   }
-  /* 컴퓨터: 내가 끝나면 컴퓨터 판도 그 자리에서 끝 */
+  /* 컴퓨터: 경주·선점·차례는 내가 끝나면 컴퓨터 판도 그 자리에서 끝.
+     점수전(모두 끝까지, duelEnd 'all')은 사람끼리라면 상대가 끝까지 하므로, 컴퓨터도 제 판을 끝까지 한 결과로 센다
+     (예전: 일부러 빨리 져서 끝내면 컴퓨터 점수가 그 순간에서 잘려 이기는 문제). 시간 제한이 있으면 그 시각까지만 */
   const A = D.P.ai;
-  if(A && !A.st.dn){ try{ duelAiTick(D); }catch(_){} if(!A.st.dn){ A.st.dn = 1; A.st.ok = 0; A.st.sc = 0; A.cut = true; } }
+  if(A && !A.st.dn){
+    try{ duelAiTick(D); }catch(_){}
+    if(!A.st.dn && D.end === 'all' && D.ai && typeof D.ai.T === 'number' && isFinite(D.ai.T)){
+      try{ duelAiTick(D, G.limit ? Math.min(D.ai.T, G.limit) : D.ai.T); }catch(_){}
+      if(!A.st.dn && !(G.limit && D.ai.T > G.limit)){ A.st.dn = 1; A.st.ok = D.ai.ok ? 1 : 0; A.st.sc = D.ai.ok ? (D.ai.sc || 0) : 0; }
+      else if(!A.st.dn){ A.st.dn = 1; A.st.ok = 0; A.st.sc = 0; }
+    }
+    if(!A.st.dn){ A.st.dn = 1; A.st.ok = 0; A.st.sc = 0; A.cut = true; }
+  }
   duelSyncOpp(D);
   duelRender();
   duelResolveSoon(D, win ? 700 : 400);

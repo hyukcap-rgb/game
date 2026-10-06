@@ -592,7 +592,9 @@ function advFinish(win){
     pair:[ win ? warmSkip(id, n, st) : null ],   /* 몸풀기 1판 ★3 → 5판으로 건너뛰기(WP3) */
     links:[{ id:'mSec', label:`${ic('map')}스테이지 ${sec[0]}`, fn:go(sec[1]) }, { id:'mGh', label:'홈으로', fn:go(() => { goHome(); setTab('adv'); }) }] };
   html += resBtns(RB);
+  const g0 = G;   /* 결과 창이 늦게 열리는 사이 새 판이 시작됐으면 옛 결과로 새 판을 덮지 않는다 */
   setTimeout(() => {
+    if(G !== g0) return;
     openModal(html);
     if(win){
       fxConfetti(); sfx('result');
@@ -817,7 +819,9 @@ function examFinish(win){
       { id:'mGh', label:'홈으로', fn:goHome } ]
   };
   html += resBtns(R);
+  const g0 = G;   /* 결과 창이 늦게 열리는 사이 새 판이 시작됐으면 옛 결과로 새 판을 덮지 않는다 */
   setTimeout(() => {
+    if(G !== g0) return;
     openModal(html);
     if(win && !NG[id].noConfetti) fxConfetti();
     if(win) sfx('result'); else sfx('lose');
@@ -885,7 +889,9 @@ function portalDuelResult(r, a, b){
     : { pri:{ id:'mPri', label:'다시 대전 ' + costTag(), sub:GAMES[id].name, fn:() => { goHome(); duelStart(id); } },
     links:[{ id:'mSec', label:'대전 목록', fn:() => { goHome(); setTab('duel'); } }, { id:'mGh', label:'홈으로', fn:() => { goHome(); setTab('today'); } }] };
   html += resBtns(RB);
+  const g0 = G;   /* 결과 창이 늦게 열리는 사이 새 판이 시작됐으면 옛 결과로 새 판을 덮지 않는다 */
   setTimeout(() => {
+    if(G !== g0) return;
     openModal(html);
     if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
     resBind(RB);
