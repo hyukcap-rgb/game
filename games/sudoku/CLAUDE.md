@@ -5,6 +5,7 @@
 
 ## 사용자 지시
 <!-- 여기에 자유롭게 적으세요. 위에 적은 것이 가장 최근 지시예요. 개발팀은 이 목록을 지우지 않고 지킵니다. -->
+- 2026-10-06 세대별 테스트: 대전은 6×6(2×3 상자)·빈칸 18개·3분 작은 판, 틀려도 끝나지 않음(−30점·0.8초 쉼). 숫자 키는 판 바로 아래, 도구는 크림색 한 규격, 메모는 '메모 끔/메모 켬', 첫 도움말은 기본 규칙만.
 - 2026-10-04 UI 검수 결론: 공용 HUD 칩·기회 별·도구 버튼 규격을 따른다.
 
 ## 한 줄 소개
@@ -48,19 +49,20 @@
 | 46 | nomemo | 메모 없이 | 메모 못 씀(`noMemo`) |
 
 - 별(`stars()`, 솔로): 실수 0·힌트 0 → ★★★, 실수 1 이하 → ★★, 그 외 ★.
-- 대전: 보통 판(숫자 30개, 600초), 같은 씨앗 동시 시작. `duelPace:[420,.68]`(AI 평균 420초·성공률 68%), `duelStat:{ unit:'칸', lfMax:3, get:() => ({ v:채운 칸 수, t:빈칸 수, lf:G.paws }) }`.
+- 대전(WP10): **6×6 작은 판**(2×3 상자, 숫자 1~6, 빈칸 18개, 180초). `duelCfg()` = `{ size:6, holes:18, limit:180, duel:1 }`(지금 1:1 엔진은 보통 판을 넘겨 주므로 `init`에서 바꿔 끼움, 느긋하게 `duelSlow` = 시간 ×2). 생성기 `SUD6.gen`/`genSudoku6`(sudoku-maker.js): 줄·상자 규칙식 완성 판 → 띠·줄·기둥·칸·숫자를 rng로 섞음 → 칸을 비울 때마다 기술 판정(`SUD6.easy` = 네이키드·히든 싱글만)으로 끝까지 풀리는지 확인(= 답 하나, 찍기 없음), 시도 횟수로만 멈춤. 1,000판 점검: 빈칸 18·답 하나·싱글만으로 풀림 모두 통과(판당 약 1ms). 기회 별 없음: 틀리면 −30점(`SUD_DUEL_PEN`) + 0.8초 못 누름(`G.sLock`), 위 칩 '실수'. `duelPace:[110,.85]`, `duelStat:{ unit:'칸', get:() => ({ v:채운 칸 수, t:빈칸 수, mis:G.mis }) }`.
+- 판 크기 값: `G.S`(9|6)·`G.BR`(상자 줄 3|2)·`G.BC`(3)·`G.NN`(81|36). 칸·숫자판·메모·완성 판정·물결 효과 모두 이 값으로 그림(`boxOf`·`isPeer`가 `sudS()`를 봄). 솔로(`SX`)는 9×9 그대로.
 
 ## 점수
 `score()` → `calcScore()` = `round((base + time + extra) × G.L.mult)`
 - base = `G.earned` = 직접 맞힌 칸마다 `perCell = 500 / 빈칸 수`(힌트 칸 0점, 같은 칸 두 번 안 줌 — `earnedCells`)
 - time = `max(0, 350 − floor(경과초 × 350 / G.limit))`
-- extra = `G.paws × 50`(남은 기회; 실수할 때마다 −50)
+- extra = `G.paws × 50`(남은 기회; 실수할 때마다 −50). 대전은 `−30 × 실수`(끝난 판은 합계 최소 10점)
 - mult: 오늘의 문제·솔로·대전 1, 연습 0.6/1.0/1.4.
 
 ## 파일 지도
 | 파일 | 하는 일 | 주요 함수 |
 |---|---|---|
-| sudoku-maker.js | 오늘의 문제·대전용 기본 생성기 | `countSud`(답 세기), `genSudoku(rng, minGivens)` |
+| sudoku-maker.js | 오늘의 문제용 기본 생성기 + 대전 6×6 생성기 | `countSud`(답 세기), `genSudoku(rng, minGivens)`, `SUD6`(gen·easy·count)·`genSudoku6(rng, holes)` |
 | sudoku.js | 화면·조작·솔로 변형 엔진·게임 정의. 구간 표시 `SX-CORE` / `SX-PLAN` / `SX-CONCEPTS` | `sudStage`(판·숫자판·도구), `SX_MAKE`(model·fill·rate·dig·gen·count), `sudPlan`, `CONCEPTS.sudoku`, `sudGenStage`/`sudCache`/`sudPrefetch`, `sudSxInit`/`sudSxOverlay`/`sudSxChips`, `paintSud`, `sudInput`, `placeCorrect`, `sudHint`, `sudUndo`, `sudErase`, `miss`, `sudCelebrate`, `sudWin`, `togglePause`, `NG.sudoku` |
 | sudoku.css | 판·칸·숫자판·메모·변형 표시(대각선 `dg`, 창문 `wn`, 짝수 `ev`, 부등호 `iq`) 스타일 | — |
 
@@ -83,6 +85,7 @@ G의 주요 값: `sol, grid, given, notes, wrong, sel, memo, hints, hintUsed, un
 - 전용 점검 도구는 아직 없음. 솔로 판은 브라우저 콘솔에서 `SX.gen(sudPlan(n), mulberry(seedFrom('adv:sudoku:'+n)))` 결과의 `max`(쓴 최고 기술)·`gv`(숫자 수)와 `SX.count(puz, SX.model(rules, even, ineq), 2) === 1`로 확인.
 
 ## 바뀐 기록
+- 2026-10-06 v1.1.0 세대별 테스트(WP10): 대전 6×6(2×3 상자)·빈칸 18·3분 판과 새 생성기(싱글 기술만으로 풀리는 판), 대전은 틀려도 안 끝남(−30점·0.8초 쉼, 칩 '실수', duelStat `mis`), 숫자 키를 판 바로 아래로(도구는 그 아래), 도구 4개 크림색 `.tool`(메모만 `.tool.toggle`), '메모 끔/메모 켬', 짝수 칸 판 위 안내 한 줄, 첫 도움말에서 솔로 규칙 문단 뺌(솔로는 `helpExtra`로 이번 판 규칙), 도움말 v2 `howto`
 - 2026-10-04 UI 검수 반영: 위 정보줄을 공용 칩(점수·시간·기회)으로, 실수 동그라미를 기회 별(.hlives)로, 일시정지는 칩 줄 오른쪽 44px. 도구를 공용 .tool 3종(보통·메모 켜고 끄기·힌트 아이템)으로. 도구·숫자판을 엄지 자리(아래)로 내리고 숫자 키를 키움(최대 64px), 메모 숫자 12px(화면·CSS·마크업만, 규칙·점수 그대로)
 - 2026-10-03 이펙트 v2 적용, 움직이는 배경(옅은 별빛) 추가(보이기만 함 — 규칙·점수·대전 그대로)
 - 2026-10-03 게임별 폴더·게임 정의(NG.<id>)·붙여 쓰는 모듈(embed/<id>.html) 구조로 정리

@@ -46,6 +46,7 @@ NG.mines = (() => {
   ];
   const LIVES = 3;          /* 기회 3번: 밤송이를 세 번 건드리면 실패 */
   const STUN = 2.5;         /* 대전: 밤송이를 건드리면 2.5초 동안 못 누름(기회 제한 대신) */
+  const LONG_MS = 400;      /* 길게 누르기(0.4초) = 반대 동작(열기 모드면 깃발) */
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
@@ -83,12 +84,13 @@ NG.mines = (() => {
   function stageCfg(n){
     const p = planOf('mines', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x);
     const si = Math.max(0, Math.min(6, (c === 1 ? 0 : Math.min(4, c - 1)) + LT.KS[k]));
-    const [cols, rows] = SZ[si];
+    let [cols, rows] = SZ[si];
+    if(n === 1){ cols = 5; rows = 5; }   /* 솔로 1판 = 5×5 몸풀기(WP10) */
     const stones = has('stone') ? Math.round(cols * rows * .07) + (p.boss ? 1 : 0) : 0;
     let d = LT.DEN[Math.min(c, LT.DEN.length - 1)] + LT.KD[k];
     if(tw === 'dense') d += .035;
     d = Math.max(.08, Math.min(has('fog') ? .16 : .21, d));   /* 안개 칸은 정보가 적어 빽빽하면 찍기 없는 판이 드물다 */
-    const mines = Math.max(5, Math.round((cols * rows - stones) * d));
+    const mines = n === 1 ? 4 : Math.max(5, Math.round((cols * rows - stones) * d));
     let limit = (40 + mines * LT.SPM[Math.min(c, LT.SPM.length - 1)]) * LT.kTime[k];
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
@@ -339,7 +341,7 @@ NG.mines = (() => {
     const m = S(); m.st[i] = 3; m.known[i] = 2; m.hits++;
     redraw(i, 'blast');
     sfx('minesBoom'); fxBuzz([40, 30, 40]);
-    try{ const e = cellEl(i); if(e){ const q = fxCenter(e); fxBurst(q.x, q.y, ['#86C33A', '#8A4B1E', '#FFE27A', '#fff'], 14, { speed:260, size:5, kinds:['shard', 'dot', 'spark'], up:80, g:520, dur:.7 }); } fxShake($('#bd'), 5); }catch(_){}
+    try{ const e = cellEl(i); if(e){ const q = fxCenter(e); fxBurst(q.x, q.y, ['#86C33A', '#8A4B1E', '#FFE27A', '#fff'], 14, { speed:260, size:5, kinds:['shard', 'dot', 'spark'], up:80, g:520, dur:.7 }); } fxShake($('#bd'), 3); }catch(_){}   /* 판 흔들림 3px + 밤송이가 튀어 오름(CSS .blast) */
     const left = m.lives ? Math.max(0, m.lives - m.hits) : -1;
     const hs = document.querySelectorAll('.ng-mines .hlives i'), lost = left >= 0 && hs[left];
     if(lost){ lost.classList.add('lost'); try{ const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot', 'spark'], up:60, g:500, dur:.6 }); }catch(_){} }
@@ -445,7 +447,7 @@ NG.mines = (() => {
       press = { i, x:e.clientX, y:e.clientY, long:false };
       if(m.st[i] === 0 || m.st[i] === 2){
         el.classList.add('hold');
-        press.tm = setTimeout(() => { if(!press) return; press.long = true; const e2 = cellEl(press.i); if(e2) e2.classList.remove('hold'); act(press.i, m.mode === 'open' ? 'flag' : 'open'); }, 380);
+        press.tm = setTimeout(() => { if(!press) return; press.long = true; const e2 = cellEl(press.i); if(e2) e2.classList.remove('hold'); act(press.i, m.mode === 'open' ? 'flag' : 'open'); }, LONG_MS);
       }
     };
     bd.onpointermove = e => { if(press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 14) end(); };
@@ -486,12 +488,27 @@ NG.mines = (() => {
         <svg x="118" y="56" width="34" height="34" viewBox="0 0 64 64">${BURR_IN}</svg></svg>`;
     },
     help:[
-      ['숫자는 둘레 밤송이 수', '덮인 나뭇잎 칸 아래에 밤송이가 숨어 있어요. 연 칸의 숫자는 둘레 8칸에 있는 밤송이 수예요. 첫 칸은 미리 열어 뒀어요.'],
-      ['열기 · 깃발', '아래 단추로 열기/깃발 모드를 바꿔요. 길게 누르면 지금 모드와 반대로(열기 모드면 깃발) 해요. 깃발을 다 꽂은 숫자를 누르면 둘레가 한꺼번에 열려요.'],
-      ['기회는 3번', '밤송이를 열면 기회(★) 하나를 잃고 계속해요. 세 번이면 끝! 모든 판은 찍지 않고 논리로 풀 수 있어요. 확실한 칸만 여세요.'],
-      ['시간 안에 다 열어요', '밤송이가 아닌 칸을 모두 열면 성공. 막히면 💡힌트가 확실한 칸 하나를 알려 줘요(점수 조금 줄어요).'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 바위 칸·안개 칸·십자 숫자·넓은 숫자 같은 새 규칙과 번개·깃발 없이·외줄 타기 같은 변주가 5판마다 하나씩 나와요.']
+      ['밤송이 = 지뢰', '덮인 나뭇잎 아래 밤송이(지뢰)가 숨어 있어요. 연 칸의 숫자는 둘레 8칸의 밤송이 수예요.'],
+      ['열기 · 깃발', '아래 단추로 열기/깃발을 바꿔요. 길게 누르면(0.4초) 반대로 해요. 깃발을 다 꽂은 숫자를 누르면 둘레가 한꺼번에 열려요.'],
+      ['기회는 3번', '밤송이를 열면 기회(★) 하나를 잃어요. 세 번이면 끝(대전은 2.5초 쉬기). 밤송이 아닌 칸을 시간 안에 다 열면 성공!']
     ],
+    /* 도움말 v2(WP3 공용 도움말이 쓰는 칸): 그림 1장 + 3줄. 그림 = 숫자 2 둘레 8칸 중 밤송이 2개(S-MIN-4) */
+    howto:{
+      pic(){
+        const cs = 36, x0 = 106, y0 = 14, mine = { 0:1, 5:1 };
+        let g = '';
+        for(let k = 0; k < 9; k++){ const x = x0 + (k % 3) * cs, y = y0 + Math.floor(k / 3) * cs;
+          if(k === 4){ g += `<rect x="${x + 1}" y="${y + 1}" width="${cs - 2}" height="${cs - 2}" rx="6" fill="#FFF3DC" stroke="#1A0F45" stroke-width="2"/><text x="${x + cs / 2}" y="${y + 27}" text-anchor="middle" font-family="Black Han Sans,Jua,sans-serif" font-size="24" fill="${numCol(2)}">2</text>`; continue; }
+          g += `<rect x="${x + 1}" y="${y + 1}" width="${cs - 2}" height="${cs - 2}" rx="6" fill="#8CCB4A" stroke="#1A0F45" stroke-width="2"/>`;
+          if(mine[k]) g += `<svg x="${x + 3}" y="${y + 3}" width="${cs - 6}" height="${cs - 6}" viewBox="0 0 64 64" opacity="0">${BURR_IN}<animate attributeName="opacity" values="0;1" dur=".3s" begin="${k ? 1.1 : .7}s" fill="freeze"/></svg>`; }
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#FFE2B8"/>
+          <rect x="${x0 - 4}" y="${y0 - 4}" width="${cs * 3 + 8}" height="${cs * 3 + 8}" rx="10" fill="none" stroke="#E07B2A" stroke-width="3" stroke-dasharray="6 5"/>${g}
+          <text x="160" y="146" text-anchor="middle" font-family="Jua,sans-serif" font-size="16" fill="#5A2E0E">숫자 2 = 둘레 8칸에 밤송이 2개</text>
+          <text x="160" y="168" text-anchor="middle" font-family="Jua,sans-serif" font-size="13" fill="#8A4B1E">밤송이 = 지뢰예요</text></svg>`;
+      },
+      lines:['밤송이 = 지뢰예요', '숫자 = 둘레 8칸의 밤송이 수', '길게 누르면 깃발을 꽂아요'],
+      more:[['기회','밤송이를 열면 기회(★) 하나를 잃고, 세 번이면 끝나요. 대전은 끝나지 않고 2.5초 쉬어요.'],['힌트','막히면 💡힌트가 확실한 칸 하나를 알려 줘요(점수 조금 줄어요).']]
+    },
     helpExtra(){ const m = G && G.id === 'mines' && G.m; if(!m) return []; const r = []; if(m.lives === 0) r.push(['대전 규칙', '대전은 기회 제한이 없어요. 대신 밤송이를 열면 ' + STUN + '초 동안 못 누르고 점수가 줄어요.']); if(m.tips.length) r.push(['이번 판 규칙', m.tips.join(' · ')]); return r; },
     chapters:['도토리 언덕', '밤나무 숲', '단풍 골짜기', '버섯 오솔길', '달빛 숲속'],
     starRule:'★ 클리어 · ★★ 힌트·밤송이 1번 이하 · ★★★ 힌트·밤송이 없이',
@@ -504,7 +521,12 @@ NG.mines = (() => {
     stage(n){ return stageCfg(n); },
     stageDesc(n){ const c = stageCfg(n); return `${c.cols}×${c.rows} · 밤송이 ${c.mines} · ${mmss(c.limit)}${c.lives === 1 ? ' · 기회 1번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.cols}×${c.rows} · 밤송이 ${c.mines}`; },
+    /* 대전 전용 작은 판(WP10): 8×8 · 밤송이 10개 · 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
+    duelCfg(){ return { cols:8, rows:8, mines:10, limit:120, hints:2, duel:1 }; },
+    duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 4분 */
+    duelKind:'race',
     init(cfg, rng){
+      if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.mines.duelCfg(); G.cfg = cfg; }
       const b = deal(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       const known = new Uint8Array(b.N); for(let i = 0; i < b.N; i++) if(b.stone[i]) known[i] = 3;
@@ -623,8 +645,8 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-cell.flag > svg{width:78%; height:78%}
 .ng-mines .mn-cell.plant > svg{animation:mines-plant .35s cubic-bezier(.2,1.6,.4,1)}
 @keyframes mines-plant{from{transform:translateY(-40%) scale(.4); opacity:0}}
-.ng-mines .mn-cell.op{background:#FFF3DC; border:2px solid rgba(26,15,69,.35); box-shadow:inset 0 2px 3px rgba(120,60,10,.18); cursor:default}
-.ng-mines .mn-cell.op.zero{background:#F7E6C6; border-color:rgba(26,15,69,.18)}
+.ng-mines .mn-cell.op{background:#FFF3DC; border:2px solid rgba(26,15,69,.55); box-shadow:inset 0 2px 3px rgba(120,60,10,.18); cursor:default}
+.ng-mines .mn-cell.op.zero{background:#F7E6C6; border-color:rgba(26,15,69,.5)}   /* 칸 테두리 대비 3:1 이상(WP10 디자인 규격) */
 .ng-mines .mn-cell.op b{font-family:var(--heavy); font-weight:400; font-size:calc(var(--cw) * .62); line-height:1; -webkit-text-stroke:1.2px rgba(26,15,69,.55); paint-order:stroke fill; pointer-events:none}
 .ng-mines .mn-cell.op.cross .mk-x{position:absolute; left:2px; top:2px; width:calc(var(--cw) * .3); height:calc(var(--cw) * .3); pointer-events:none;
   background:linear-gradient(#1A0F45,#1A0F45) center/100% 28% no-repeat, linear-gradient(#1A0F45,#1A0F45) center/28% 100% no-repeat; opacity:.7}
@@ -636,7 +658,9 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-cell.pop{animation:mines-pop .3s cubic-bezier(.2,1.5,.4,1) both}
 @keyframes mines-pop{from{transform:scale(.4); opacity:.2}}
 .ng-mines .mn-cell.boom{background:radial-gradient(circle,#FFD0C8 0%,#FF7B6B 100%); border:2px solid #1A0F45}
-.ng-mines .mn-cell.blast{animation:mines-blast .45s cubic-bezier(.2,1.6,.4,1)}
+.ng-mines .mn-cell.blast{animation:mines-blast .45s cubic-bezier(.2,1.6,.4,1); z-index:3}
+.ng-mines .mn-cell.blast > svg{animation:mines-jump .6s cubic-bezier(.2,1.4,.4,1)}   /* 밟은 밤송이가 튀어 올랐다 떨어짐(S-MIN-3) */
+@keyframes mines-jump{0%{transform:translateY(0) scale(.6)} 40%{transform:translateY(-55%) scale(1.35) rotate(25deg)} 100%{transform:none}}
 @keyframes mines-blast{0%{transform:scale(1.5)} 100%{transform:none}}
 .ng-mines .mn-cell.hid.show, .ng-mines .mn-cell.hid.show:nth-child(odd){background:#E9DCC4; border-color:rgba(26,15,69,.4); box-shadow:none}
 .ng-mines .mn-cell.show > svg{opacity:.85}
@@ -674,6 +698,6 @@ body[data-mode="mines"]{background:
 })();
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat = 열린 안전 칸) */
-Object.assign(NG.mines, { duelPace:[150, .72], duelStat:{ unit:'칸', get:() => ({ v:G.m.opened, t:G.m.safeTotal, lf:null }) }, duelHow:'같은 밤숲, 누가 먼저 다 열까?' });
+Object.assign(NG.mines, { duelPace:[75, .85], duelStat:{ unit:'칸', get:() => ({ v:G.m.opened, t:G.m.safeTotal, mis:G.m.hits }) }, duelHow:'같은 밤숲, 누가 먼저 다 열까?' });   /* 8×8 판: 컴퓨터 평균 75초. mis = 밟은 밤송이 수 */
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.mines.scene = { kind:'petals', colors:['#FFB45A', '#E8742A', '#FFD27A', '#C9541C'], density:.8 };

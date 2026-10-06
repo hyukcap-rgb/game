@@ -302,6 +302,8 @@ NG.nono = (() => {
 
   /* ---------- 게임 상태 도우미 ---------- */
   const $n = s => document.querySelector(s);
+  const nnDuel = () => !!(G && G.duel && !G.duel.fleet);
+  const NN_DUEL_LOCK = 800, NN_DUEL_PEN = 30;   /* 대전: 틀리면 0.8초 못 누름 · −30점 */
   const cellEl = i => G.nnEls ? G.nnEls[i] : null;
   const isFilled = s => s === 1 || s === 4;
   function lineDone(kind, k){
@@ -328,6 +330,7 @@ NG.nono = (() => {
     drawPrev();
   }
   function lives(){
+    const mn = $n('#nnMis'); if(mn){ mn.textContent = G.miss || 0; $n('#nnMisC').setAttribute('aria-label', '실수 ' + (G.miss || 0) + '번'); }   /* 대전: 기회 대신 실수 횟수 */
     const el = $n('#nnLives'); if(!el) return;
     const MP = G.nnMaxP || 3, prev = +(el.dataset.n || MP);
     /* 기회 = 별(공용 .hlives). 하트는 사이트 재화 전용이라 쓰지 않는다 */
@@ -400,6 +403,13 @@ NG.nono = (() => {
     fxRing(p.x, p.y, '#E5484D', p.w * 2.2, .45, 7);
     fxBurst(p.x, p.y, ['#E5484D', '#FF9AA4', '#7A1030'], 10, { speed:190, size:3.6, kinds:['rect', 'dot'], g:900, up:20 });
     const fr = $n('#nnFrame'); if(fr && !FXR.reduce){ fr.classList.remove('shake'); void fr.offsetWidth; fr.classList.add('shake'); }
+    if(nnDuel()){   /* 대전(WP10): 기회 별 없음 — 틀리면 −30점 + 0.8초 못 누름, 판은 계속 */
+      G.nnLock = Date.now() + NN_DUEL_LOCK; if(drag) drag.act = null;
+      const bd = $n('#bd'); if(bd){ bd.classList.add('lock'); setTimeout(() => { const b2 = $n('#bd'); if(b2) b2.classList.remove('lock'); }, NN_DUEL_LOCK); }
+      sfx('fBad'); fxBuzz([70, 40, 110]); fxFloat(p.x, p.y - p.h * .6, '−' + NN_DUEL_PEN, 'bad');
+      const mc = $n('#nnMisC'); if(mc){ mc.classList.remove('hurt'); void mc.offsetWidth; mc.classList.add('hurt'); }
+      lives(); return;
+    }
     fxVignette(); sfx('fBad'); fxBuzz([70, 40, 110]);
     const hs = document.querySelectorAll('#nnLives i'), lostEl = hs[G.paws - 1];
     if(lostEl && !FXR.reduce){
@@ -460,7 +470,7 @@ NG.nono = (() => {
       if(G.over) return;
       fxConfetti(); sfx('win', { g:ID }); fxBuzz([30, 60, 30, 60, 80]);
       if(bd){ const d = document.createElement('div'); d.className = 'nn-stamp'; d.textContent = '그림 완성!'; bd.appendChild(d);
-        setTimeout(() => { const p = fxCenter(d); fxRing(p.x, p.y, '#FFD23F', p.w * .8, .6, 10); if(fr && !FXR.reduce){ fr.classList.remove('bump'); void fr.offsetWidth; fr.classList.add('bump'); } }, 300); }
+        setTimeout(() => { const p = fxCenter(d); fxRing(p.x, p.y, '#FFD23F', p.w * .8, .6, 10); if(fr && !FXR.reduce){ fr.classList.remove('bump'); void fr.offsetWidth; fr.classList.add('bump'); setTimeout(() => { if(fr.isConnected) fr.classList.add('won'); }, 520); } }, 300); }
     }, 350 + N * 40);
     setTimeout(() => { if(!G.over) finish(true); }, 1700 + N * 50);
   }
@@ -532,7 +542,7 @@ NG.nono = (() => {
     return [r, c];
   }
   function down(e){
-    if(G.over || G.paused || G.done || G.nnChk) return;
+    if(G.over || G.paused || G.done || G.nnChk || (G.nnLock && Date.now() < G.nnLock)) return;
     const p = cellFromPt(e.clientX, e.clientY, false); if(!p) return;
     e.preventDefault();
     try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
@@ -634,14 +644,15 @@ NG.nono = (() => {
     const maxH = Math.max(240, innerHeight - top - below - extra);
     const pad = G.twoC ? .34 : 0;   /* 두 색 단서는 동그란 배지라 폭이 조금 더 든다 */
     const wOf = (cl, f) => cl.reduce((a, v) => a + ((v >= 10 ? 1.12 : .62) + pad) * f, 0) + Math.max(0, cl.length - 1) * .42 * f + 9;
-    const fit = cs => {
-      const f = Math.max(12, Math.min(19, cs * .56));   /* 단서 숫자는 12px 아래로 줄이지 않는다 */
+    const fit = (cs, fx) => {
+      const f = Math.max(13, Math.min(fx || 19, cs * .56));   /* 단서 숫자는 13px 아래로 줄이지 않는다(15×15 솔로 판도, WP10) */
       let rw = Math.ceil(Math.max(...G.rows.map(cl => wOf(cl, f)))), ch = Math.ceil(Math.max(...G.cols.map(cl => cl.length)) * f * 1.06 + 8);
       rw = Math.max(rw, Math.round(cs * .9)); ch = Math.max(ch, Math.round(cs * .9));
       return { f, rw, ch };
     };
-    let cs = 56, m = fit(cs);
-    for(; cs >= 12; cs--){ m = fit(cs); if(m.rw + 3 + cs * N <= avail && m.ch + 3 + cs * N <= maxH) break; }
+    const fitAll = fx => { let c = 56, q = fit(c, fx); for(; c >= 12; c--){ q = fit(c, fx); if(q.rw + 3 + c * N <= avail && q.ch + 3 + c * N <= maxH) break; } return [c, q]; };
+    let [cs, m] = fitAll(19);
+    if(cs < 40 && N <= 8){ const [c2, m2] = fitAll(15); if(c2 > cs){ cs = c2; m = m2; } }   /* 작은 판(대전 7×7)은 단서 글자를 조금 줄여서라도 칸을 40px 이상으로(WP10) */
     const fr = $n('#nnFrame'), zoom = !!G.nnZoom && cs < 30;
     if(zoom){ cs = 32; m = fit(cs); }   /* 확대 보기: 칸을 손가락 크기로 키우고 판 틀 안에서 밀어 본다(숫자 줄은 붙어 있음) */
     if(fr){ fr.classList.toggle('zoom', zoom); fr.style.maxHeight = zoom ? (maxH + 16) + 'px' : ''; }
@@ -705,9 +716,30 @@ NG.nono = (() => {
     help:[
       ['숫자만큼 이어서 칠하기', '왼쪽 숫자는 그 가로줄, 위 숫자는 그 세로줄에서 이어서 칠할 칸 수예요. "3 1"이면 3칸 묶음, 한 칸 이상 띄고 1칸 묶음이에요.'],
       ['칠하기 · ✕ 표시', '아래 버튼으로 모드를 바꿔요. 누르면 한 칸, 손가락으로 끌면 한 줄로 여러 칸이 돼요. ✕는 비워 둘 칸 메모고, 다시 누르면 지워져요.'],
-      ['틀리면 기회 1개', '비어야 할 칸을 칠하면 빨간 ✕가 되고 위쪽 기회 별이 하나 꺼져요. 3번 틀리거나 시간이 다 되면 끝. 힌트는 한 줄을 통째로 알려줘요(판당 3번).'],
-      ['솔로의 새 규칙', '솔로는 5판마다 새 규칙이나 변주가 나와요. ?는 길이를 모르는 묶음, 두 가지 색은 색을 골라 칠하고, 거울 그림은 좌우 대칭이에요. 확인 없이 판은 다 칠한 뒤 [채점]을 눌러요.']
+      ['틀리면 기회 1개', '비어야 할 칸을 칠하면 빨간 ✕가 되고 기회 별이 하나 꺼져요. 3번 틀리거나 시간이 다 되면 끝(대전은 −30점). 힌트는 한 줄을 통째로(판당 3번).']
     ],
+    /* 도움말 v2(WP3 공용 도움말이 쓰는 칸): 그림 1장 + 3줄. 그림 = "3 1" 줄을 칠하는 움직임(S-NONO-4) */
+    howto:{
+      pic(){
+        const cs = 34, x0 = 104, y0 = 64, fill = [1, 1, 1, 0, 1, 0];
+        let g = '';
+        fill.forEach((f, k) => { const x = x0 + k * cs;
+          g += `<rect x="${x}" y="${y0}" width="${cs}" height="${cs}" fill="#FFFDF6" stroke="#D9C9A8"/>`;
+          g += f ? `<rect x="${x + 2}" y="${y0 + 2}" width="${cs - 4}" height="${cs - 4}" rx="3" fill="#3A2A92" opacity="0"><animate attributeName="opacity" values="0;1" dur=".2s" begin="${.5 + k * .35}s" fill="freeze"/></rect>`
+            : `<path d="M${x + 10} ${y0 + 10}l14 14M${x + 24} ${y0 + 10}l-14 14" stroke="#A89CC0" stroke-width="3" stroke-linecap="round" opacity="0"><animate attributeName="opacity" values="0;1" dur=".2s" begin="${.5 + k * .35}s" fill="freeze"/></path>`; });
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#ECE7FF"/>
+          <text x="${x0 - 10}" y="${y0 + 24}" text-anchor="end" font-family="Jua,sans-serif" font-size="22" fill="#2A1B5E">3 1</text>
+          <rect x="${x0}" y="${y0}" width="${cs * 6}" height="${cs}" fill="none" stroke="#1A0F45" stroke-width="2.5"/>${g}
+          <text x="160" y="38" text-anchor="middle" font-family="Jua,sans-serif" font-size="16" fill="#2A1B5E">"3 1" = 3칸 칠하고, 띄우고, 1칸</text>
+          <text x="160" y="140" text-anchor="middle" font-family="Jua,sans-serif" font-size="14" fill="#6A5884">✕는 비워 둘 칸 메모예요</text></svg>`;
+      },
+      lines:['숫자만큼 이어서 칠해요', '"3 1" = 3칸 · 띄우고 · 1칸', '아래에서 칠하기 / ✕ 표시를 골라요'],
+      more:[['끌어서 칠하기','손가락으로 끌면 한 줄로 여러 칸이 칠해져요.'],['틀리면','기회 별이 하나 꺼지고 3번이면 끝나요. 대전은 끝나지 않고 30점 줄고 0.8초 쉬어요.']]
+    },
+    helpExtra(){   /* 솔로: 이번 판 새 규칙·변주 설명(첫 도움말에서는 뺐음) */
+      if(!(G && G.id === ID && G.solo && !G.over)) return [];
+      return (G.mjOn || []).concat(G.tw ? [G.tw] : []).map(k => { const f = conceptInfo(ID, k) || {}; return [((G.mjOn || []).includes(k) ? '새 규칙 · ' : '변주 · ') + (f.name || k), f.desc || '']; });
+    },
     chapters:['모눈 공방', '픽셀 마을', '도트 정원', '타일 궁전', '모자이크 성'],
     starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수·힌트 없이',
     levels:{ easy:cfgFor(5, 180, { fill:.52 }), normal:cfgFor(10, 600, { fill:.5 }), hard:cfgFor(15, 1200, { fill:.48 }) },
@@ -750,7 +782,12 @@ NG.nono = (() => {
     stageDesc(n){ const s = this.stage(n); return s.N + '×' + s.N + ' 판' + (s.boss ? ' · 보스' : ''); },
     levelDesc(lv){ const s = this.levels[lv] || this.levels.normal; return s.N + '×' + s.N + ' 판 · ' + Math.round(s.limit / 60) + '분'; },
 
+    /* 대전 전용 작은 판(WP10): 7×7, 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
+    duelCfg(){ return cfgFor(7, 120, { fill:.5, duel:1 }); },
+    duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 4분 */
+    duelKind:'race',
     init(cfg, rng){
+      if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = cfgFor(7, 120, { fill:.5, duel:1 }); G.cfg = cfg; G.limit = cfg.limit; }
       const N = cfg.N || 10, t0 = performance.now();
       const solo = Array.isArray(cfg.mj);   /* 솔로 난이도 v2 판(오늘의 문제·대전은 예전 생성기 그대로) */
       const p = solo ? genSolo(N, rng, cfg) : gen(N, rng, cfg);
@@ -767,7 +804,7 @@ NG.nono = (() => {
         nomark:tw === 'nomark', nodone:tw === 'nodone', nnC:1, nnFixed:0, nnChk:false, fc:new Uint8Array(N * N), nnMaxP:tw === 'tight' ? 2 : 3,
         cells:new Uint8Array(N * N), rowDone:new Uint8Array(N), colDone:new Uint8Array(N),
         total, found:0, mine:0, miss:0, combo:0, hints:tw === 'bare' ? 0 : 3, hintLines:0, hintCells:0, mode:'fill', done:false, winSec:0,
-        nnPal:pal, nnZoom:false, nnEls:null, nnBase:null, nnHl:null, nnCur:-1, nnWin:false, nnPrev:null, nnQuiet:false, nnLastBeep:0 });
+        nnLock:0, nnPal:pal, nnZoom:false, nnEls:null, nnBase:null, nnHl:null, nnCur:-1, nnWin:false, nnPrev:null, nnQuiet:false, nnLastBeep:0 });
       G.paws = G.nnMaxP;   /* 외줄 타기: 두 번째 실수에서 끝 */
       G.nnCol = Array.from({ length:N * N }, (_, i) => p.pic[i] === 2 ? colorAt2(i) : colorAt(i));
       G.cleanup = () => {
@@ -806,7 +843,8 @@ NG.nono = (() => {
         <div class="hud-row nn-hud" id="nnHud">
           <div class="hchip" aria-label="${G.blind ? '칠한 칸' : '찾은 칸'}"><span class="hv">${SQ}<b id="nnCnt">0/${G.total}</b></span><em>${G.blind ? '칠한 칸' : '찾은 칸'}</em></div>
           <div class="hchip time" id="nnTimeP" aria-label="남은 시간"><span class="hv">${WATCH}<b id="nnClock">${mmss(G.limit || 0)}</b></span><em>남은 시간</em></div>
-          <div class="hchip nn-lv" id="nnLivesC"><span class="hv"><span class="hlives" id="nnLives" aria-label="남은 기회"></span></span><em>기회</em></div>
+          ${nnDuel() ? `<div class="hchip" id="nnMisC" aria-label="실수 0번"><span class="hv"><b id="nnMis">0</b></span><em>실수</em></div>`
+            : `<div class="hchip nn-lv" id="nnLivesC"><span class="hv"><span class="hlives" id="nnLives" aria-label="남은 기회"></span></span><em>기회</em></div>`}
         </div>${rules}
         <div class="nn-frame" id="nnFrame">
           <div class="nn-grid" id="nnGrid" style="--n:${N}">
@@ -816,13 +854,13 @@ NG.nono = (() => {
             <div class="nn-bd" id="bd" role="grid" aria-label="네모 그림 판 ${N}×${N}"></div>
           </div>
         </div>
-        <p class="nn-tip" id="nnTip">${tip}</p>
         <div class="tools-row nn-ctrl" id="nnCtrl">
           <div class="nn-seg" id="nnSeg" role="group" aria-label="칠하기 모드" data-m="fill">${segBtns}${markBtn}</div>
-          <button class="tool item nn-hint" id="nnHint" aria-label="힌트: 한 줄 알려주기${G.tw === 'bare' ? '(이번 판은 없어요)' : ''}">${BULB}<span>힌트</span><i class="cnt" id="nnHintN">${G.hints}</i></button>
+          <button class="tool nn-hint" id="nnHint" aria-label="힌트: 한 줄 알려주기${G.tw === 'bare' ? '(이번 판은 없어요)' : ''}">${BULB}<span>힌트</span><i class="cnt" id="nnHintN">${G.hints}</i></button>
           ${N >= 12 ? `<button class="tool toggle nn-zoom" id="nnZoom" aria-pressed="false" aria-label="판 확대해서 보기" hidden>${ZOOM}<span>확대</span></button>` : ''}
           ${G.blind ? `<button class="tool nn-check" id="nnChk" aria-label="채점: 다 칠했으면 눌러요" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>채점</span></button>` : ''}
         </div>
+        <p class="nn-tip" id="nnTip">${tip}</p>
       </div>`;
       const bd = $n('#bd'), frag = document.createDocumentFragment();
       G.nnEls = []; G.nnBase = [];
@@ -861,6 +899,8 @@ NG.nono = (() => {
       const sec = G.winSec || elapsed(), lim = G.limit || 600;
       const base = Math.round(500 * G.mine / G.total);
       const time = Math.max(0, 350 - Math.floor(sec * 350 / lim));
+      if(nnDuel()) return { base, time, extra:Math.max(10 - base - time, -(G.miss || 0) * NN_DUEL_PEN),   /* 대전: 실수마다 −30(끝난 판은 최소 10점) */
+        rows:['칸 채우기' + (G.hintCells ? ' (힌트 ' + G.hintCells + '칸 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '실수 ' + (G.miss || 0) + '번'] };
       const extra = Math.max(0, G.paws) * 50;
       return { base, time, extra, rows:['칸 채우기' + (G.hintCells ? ' (힌트 ' + G.hintCells + '칸 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '남은 기회 ' + Math.max(0, G.paws) + '개'] };
     },
@@ -915,7 +955,7 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-rc .nn-cl{height:var(--cs); flex:none; justify-content:flex-end; align-items:center; gap:.42em; padding-right:5px; border-radius:7px 0 0 7px}
 .ng-nono .nn-cc .nn-cl:nth-child(even), .ng-nono .nn-rc .nn-cl:nth-child(even){background:rgba(234,219,192,.45)}
 .ng-nono .nn-cl.on{background:#FFE27A!important; color:#1A0F45}
-.ng-nono .nn-cl.done{color:#B9AECB}
+.ng-nono .nn-cl.done{opacity:.4}   /* 다 맞은 줄 단서는 40%로 흐리게(S-NONO-9) */
 .ng-nono .nn-cl.done i{text-decoration:line-through; text-decoration-thickness:1.5px; text-decoration-color:rgba(142,107,209,.55)}
 .ng-nono .nn-cl.dpop{animation:nndpop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes nndpop{0%{background:#C9F5DF}40%{transform:scale(1.12); background:#C9F5DF}100%{}}
@@ -968,7 +1008,17 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-hint > svg, .ng-nono .nn-zoom > svg{width:24px; height:24px}
 .ng-nono .nn-hint .cnt.off{background:#B9AECB}
 .ng-nono .tool[hidden]{display:none}
-.ng-nono .nn-tip{text-align:center; font-size:13px; color:#6A5884; margin:0 8px; padding:12px 0 10px; line-height:1.4}
+.ng-nono .nn-tip{text-align:center; font-size:13px; color:#6A5884; margin:0 8px; padding:8px 0 4px; line-height:1.4}
+.ng-nono .nn-ctrl{margin-top:12px}
+.ng-nono .nn-frame{margin:4px auto 0}   /* 판 바로 아래 조작 줄(S-NONO-3) */
+/* 칠하기/✕ 표시: 고른 쪽 진한 색 + 체크(S-NONO-3) */
+.ng-nono .nn-seg .tool.on[data-m="fill"]{background:linear-gradient(180deg,#5A43D6,#2E2080)}
+.ng-nono .nn-seg .tool.on::after{content:"✓"; position:absolute; top:-9px; right:-6px; width:24px; height:24px; border-radius:50%; background:#2BB673; color:#fff; border:2px solid #1A0F45; font:15px/20px var(--heavy); text-align:center}
+.ng-nono .nn-bd.lock{filter:saturate(.55) brightness(.95)}
+.ng-nono #nnMisC.hurt{animation:nnhurt .5s}
+/* 완성 그림이 살짝 둥실(S-NONO-2) */
+.ng-nono .nn-frame.won{animation:nnwon 1.6s ease-in-out infinite alternate}
+@keyframes nnwon{from{transform:translateY(0) rotate(0)} to{transform:translateY(-6px) rotate(-.8deg)}}
 .ng-nono.nn-lost{position:fixed; z-index:19; pointer-events:none; width:28px; height:28px; font-size:24px; line-height:28px; text-align:center; color:#FFB020; text-shadow:0 1px 0 #7A4A00}
 .ng-nono .nn-rules{display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:-2px 4px 10px}
 .ng-nono .nn-rule{font-family:var(--disp); font-size:13.5px; line-height:1; padding:6px 11px; border-radius:999px; background:#E9DEFF; border:2px solid var(--grid); box-shadow:0 2px 0 var(--grid); white-space:nowrap}
@@ -1018,6 +1068,6 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.nono, { duelPace:[220,.72], duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:G.found, t:G.total, lf:Math.max(0, 3 - (G.miss || 0)) }) } });
+Object.assign(NG.nono, { duelPace:[90,.85], duelStat:{ unit:'칸', get:() => ({ v:G.found, t:G.total, mis:G.miss || 0 }) } });   /* 7×7 판: 컴퓨터 평균 90초. 대전은 기회가 없어 lf 대신 틀린 횟수(mis) */
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.nono.scene = { kind:'shapes', colors:['#8E6BD1','#5B8DEF','#F0368A'], density:1, alpha:.9 };

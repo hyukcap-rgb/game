@@ -1,7 +1,7 @@
 /* 스도쿠: 화면·조작·솔로 변형 엔진 */
 /* 스도쿠 화면 그리기(renderStage가 부름) */
 function sudStage(st){
-  const L = G.L;
+  const L = G.L, S = G.S, BR = G.BR, BC = G.BC;
   const ico = {
     undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5L4 9.5l5 5"/><path d="M4 9.5h10a5.5 5.5 0 0 1 0 11h-3"/></svg>',
     erase:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.8l5.7 5.7-9.8 9.8H6.3l-3-3z" fill="currentColor" fill-opacity=".14"/><path d="M8.6 9.7l5.7 5.7"/><path d="M13 20.3h7.5"/></svg>',
@@ -12,26 +12,27 @@ function sudStage(st){
   st.innerHTML = `<div class="sud-root"><div class="hud-row sud-hud">
       <span class="hchip"><span class="hv"><b id="sscore">0</b></span><em>점수</em></span>
       <span class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>시간</em></span>
-      <span class="hchip"><span class="hv"><span class="hlives" id="smis" role="img" aria-label="실수 0번, ${G.missCap || 3}번까지">${'<i>★</i>'.repeat(G.missCap || 3)}</span></span><em>기회</em></span>
+      ${sudDuel() ? `<span class="hchip" id="smisC" aria-label="실수 0번"><span class="hv"><b id="smisN">0</b></span><em>실수</em></span>`
+        : `<span class="hchip"><span class="hv"><span class="hlives" id="smis" role="img" aria-label="실수 0번, ${G.missCap || 3}번까지">${'<i>★</i>'.repeat(G.missCap || 3)}</span></span><em>기회</em></span>`}
       <button class="hpause" id="spause" aria-label="일시정지">${ico.pause}</button>
-    </div>${sudSxChips()}
-    <div class="swrap"><div class="board s9" id="bd" role="grid" aria-label="스도쿠 판"></div>
+    </div>${sudSxChips()}${G.sx && G.sx.rules.includes('parity') ? '<p class="sud-note">회색 동그라미 칸 = 짝수만</p>' : ''}
+    <div class="swrap${S === 6 ? ' w6' : ''}"><div class="board s9${S === 6 ? ' s6' : ''}" id="bd" role="grid" aria-label="스도쿠 판 ${S}×${S}"></div>
       <div class="pcover" id="pcover"><span class="pc-ico">${ico.pause}</span><b>잠깐 쉬는 중</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
     <div class="sud-ctl">
+    <div class="pad9" id="pad" style="grid-template-columns:repeat(${S},minmax(0,1fr))"></div>
     <div class="tools-row sud-tools">
       <button class="tool" id="tUndo" aria-label="실행 취소">${ico.undo}<span>실행 취소</span></button>
       <button class="tool" id="tErase" aria-label="지우기">${ico.erase}<span>지우기</span></button>
-      <button class="tool toggle" id="tMemo" aria-label="메모 꺼짐" aria-pressed="false">${ico.memo}<span>메모 <i class="tb off" id="memoBadge">OFF</i></span></button>
-      <button class="tool item" id="tHint" aria-label="힌트 3번 남음">${ico.hint}<span>힌트</span><i class="cnt" id="hintBadge">3</i></button>
-    </div>
-    <div class="pad9" id="pad"></div></div></div>`;
+      <button class="tool toggle" id="tMemo" aria-label="메모 꺼짐" aria-pressed="false">${ico.memo}<span id="memoTxt">메모 끔</span></button>
+      <button class="tool" id="tHint" aria-label="힌트 3번 남음">${ico.hint}<span>힌트</span><i class="cnt" id="hintBadge">3</i></button>
+    </div></div></div>`;
   const bd = $('#bd');
-  for(let i=0;i<81;i++){
-    const r = Math.floor(i/9), c = i%9;
+  for(let i=0;i<S*S;i++){
+    const r = Math.floor(i/S), c = i%S;
     const el = document.createElement('div'); el.className = 'cell'; el.dataset.i = i;
     const edge = '2px solid #2A1650', thin = '1px solid #D9CCF0';
-    el.style.borderTop = r===0 ? '0' : (r%3===0 ? edge : thin);
-    el.style.borderLeft = c===0 ? '0' : (c%3===0 ? edge : thin);
+    el.style.borderTop = r===0 ? '0' : (r%BR===0 ? edge : thin);
+    el.style.borderLeft = c===0 ? '0' : (c%BC===0 ? edge : thin);
     el.onclick = () => { if(G.over || G.paused) return; G.sel = i; paintSud(); sfx('sSel'); };
     bd.appendChild(el);
   }
@@ -40,7 +41,7 @@ function sudStage(st){
   const FXEND = { sok:'pop', swave:'wave', swin:'winw', sbad:'flash' };
   bd.addEventListener('animationend', e => { const c = FXEND[e.animationName]; if(c && e.target.classList) e.target.classList.remove(c); });
   const pad = $('#pad');
-  for(let v=1;v<=9;v++){ const b = document.createElement('button'); b.textContent = v; b.dataset.v = v; b.onclick = () => { b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); sudInput(v); }; pad.appendChild(b); }
+  for(let v=1;v<=S;v++){ const b = document.createElement('button'); b.textContent = v; b.dataset.v = v; b.onclick = () => { b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); sudInput(v); }; pad.appendChild(b); }
   $('#tUndo').onclick = sudUndo; $('#tErase').onclick = sudErase; $('#tHint').onclick = sudHint;
   $('#tMemo').onclick = () => { if(G.noMemo){ toast('이 판은 메모 없이 풀어요', 'err'); return; } G.memo = !G.memo; paintSud(); sfx('toggle', { on:G.memo }); };
   $('#spause').onclick = () => togglePause(true); $('#presume').onclick = () => togglePause(false);
@@ -318,9 +319,12 @@ function sudSxChips(){
   return bits.length ? `<div class="sxchips" aria-label="이번 판 규칙">${bits.join('')}</div>` : '';
 }
 
-const boxOf = i => Math.floor(Math.floor(i/9)/3)*3 + Math.floor((i%9)/3);
+/* 판 크기: 보통 9×9(3×3 상자), 대전 6×6(2×3 상자). G.S가 없으면 9×9 */
+const sudS = () => (G && G.S) || 9;
+const boxOf = i => { const S = sudS(), BR = S === 6 ? 2 : 3, BC = 3, r = Math.floor(i/S), c = i%S; return Math.floor(r/BR)*(S/BC) + Math.floor(c/BC); };
+const sudDuel = () => !!(G && G.duel && !G.duel.fleet);
 /* 솔로 변형 판이면 대각선·창문도 같은 무리(peers): 강조·메모 자동 지우기에 함께 반영 */
-const isPeer = (a, b) => a !== b && (G && G.sxP ? G.sxP[a * 81 + b] === 1 : (Math.floor(a/9) === Math.floor(b/9) || a%9 === b%9 || boxOf(a) === boxOf(b)));
+const isPeer = (a, b) => a !== b && (G && G.sxP ? G.sxP[a * 81 + b] === 1 : (Math.floor(a/sudS()) === Math.floor(b/sudS()) || a%sudS() === b%sudS() || boxOf(a) === boxOf(b)));
 const locked = i => G.given[i] || (G.grid[i] && !G.wrong[i]);
 
 function paintSud(){
@@ -337,32 +341,33 @@ function paintSud(){
     el.className = cls;
     if(v){ el.textContent = v; }
     else if(G.notes[i]){
-      let h = '<div class="nt">'; for(let d=1;d<=9;d++) h += `<span>${G.notes[i] & (1<<d) ? d : ''}</span>`; el.innerHTML = h + '</div>';
+      let h = '<div class="nt">'; for(let d=1;d<=G.S;d++) h += `<span>${G.notes[i] & (1<<d) ? d : ''}</span>`; el.innerHTML = h + '</div>';
     } else el.textContent = '';
   });
   document.querySelectorAll('#pad button').forEach(b => {
-    const v = +b.dataset.v; let n = 0; for(let i=0;i<81;i++) if(G.grid[i] === v && !G.wrong[i]) n++;
-    b.classList.toggle('gone', n >= 9);
+    const v = +b.dataset.v; let n = 0; for(let i=0;i<G.NN;i++) if(G.grid[i] === v && !G.wrong[i]) n++;
+    b.classList.toggle('gone', n >= G.S);
   });
   const mis = $('#smis'), mn = 3 - G.paws, cap = G.missCap || 3;
+  const mc = $('#smisN'); if(mc){ mc.textContent = G.mis || 0; $('#smisC').setAttribute('aria-label', '실수 ' + (G.mis || 0) + '번'); }
   if(mis){ [...mis.children].forEach((d, k) => d.classList.toggle('off', k >= cap - mn)); mis.setAttribute('aria-label', '실수 ' + mn + '번, ' + (G.missCap || 3) + '번까지'); }
-  $('#sscore').textContent = fmt(Math.round(G.earned * G.L.mult));
-  $('#memoBadge').textContent = G.memo ? 'ON' : 'OFF'; $('#memoBadge').classList.toggle('off', !G.memo);
+  $('#sscore').textContent = fmt(Math.max(0, Math.round((G.earned - (G.mis || 0) * SUD_DUEL_PEN) * G.L.mult)));
+  $('#memoTxt').textContent = G.memo ? '메모 켬' : '메모 끔';
   $('#tMemo').classList.toggle('on', G.memo); $('#tMemo').classList.toggle('used', !!G.noMemo); $('#tMemo').setAttribute('aria-pressed', G.memo); $('#tMemo').setAttribute('aria-label', '메모 ' + (G.memo ? '켜짐' : '꺼짐'));
   $('#hintBadge').textContent = G.hints; $('#tHint').classList.toggle('used', G.hints === 0); $('#tHint').setAttribute('aria-label', '힌트 ' + G.hints + '번 남음');
 }
 function snap(){ G.undo.push({ grid:G.grid.slice(), notes:G.notes.slice(), wrong:G.wrong.slice() }); if(G.undo.length > 200) G.undo.shift(); }
 function placeCorrect(i, v, earn){
   G.grid[i] = v; G.wrong[i] = false; G.notes[i] = 0;
-  for(let j=0;j<81;j++) if(isPeer(i, j)) G.notes[j] &= ~(1 << v);
+  for(let j=0;j<G.NN;j++) if(isPeer(i, j)) G.notes[j] &= ~(1 << v);
   if(!G.earnedCells[i]){ G.earnedCells[i] = 1; if(earn) G.earned += G.perCell; }
 }
-function sudCheckWin(){ for(let i=0;i<81;i++) if(G.grid[i] !== G.sol[i]) return false; return true; }
+function sudCheckWin(){ for(let i=0;i<G.NN;i++) if(G.grid[i] !== G.sol[i]) return false; return true; }
 function cellEl(i){ return document.querySelector(`#bd .cell[data-i="${i}"]`); }
 
 function sudInput(v){
   const i = G.sel;
-  if(G.over || G.paused || G.done || i < 0 || locked(i)) return;
+  if(G.over || G.paused || G.done || i < 0 || locked(i) || sudLocked()) return;
   if(G.memo){
     if(G.grid[i]) return;
     snap(); G.notes[i] ^= (1 << v); paintSud(); sfx('sNote', { on:!!(G.notes[i] & (1 << v)) }); return;
@@ -380,17 +385,17 @@ function sudInput(v){
 }
 /* ----- 스도쿠 효과(효과팀) ----- */
 function sudUnitsDone(){
-  const u = {}, ok = ids => ids.every(j => G.grid[j] && G.grid[j] === G.sol[j]);
-  for(let k=0;k<9;k++){
-    if(ok([...Array(9)].map((_, x) => k*9 + x))) u['r' + k] = 1;
-    if(ok([...Array(9)].map((_, x) => x*9 + k))) u['c' + k] = 1;
-    if(ok([...Array(81).keys()].filter(j => boxOf(j) === k))) u['b' + k] = 1;
+  const u = {}, ok = ids => ids.every(j => G.grid[j] && G.grid[j] === G.sol[j]), S = G.S;
+  for(let k=0;k<S;k++){
+    if(ok([...Array(S)].map((_, x) => k*S + x))) u['r' + k] = 1;
+    if(ok([...Array(S)].map((_, x) => x*S + k))) u['c' + k] = 1;
+    if(ok([...Array(G.NN).keys()].filter(j => boxOf(j) === k))) u['b' + k] = 1;
   }
   if(G.sx) G.sx.xu.forEach(x => { if(ok(x.ids)) u[x.key] = 1; });
   return u;
 }
 /* 이 숫자를 넣으면 9개가 다 채워지는지: 채워지면 숫자판 버튼 위치를 미리 기억(곧 사라지므로) */
-function sudPadRect(v){ let n = 0; for(let j=0;j<81;j++) if(G.grid[j] === v && !G.wrong[j]) n++; const b = document.querySelector(`#pad button[data-v="${v}"]`); return n >= 9 && b ? fxCenter(b) : null; }
+function sudPadRect(v){ let n = 0; for(let j=0;j<G.NN;j++) if(G.grid[j] === v && !G.wrong[j]) n++; const b = document.querySelector(`#pad button[data-v="${v}"]`); return n >= G.S && b ? fxCenter(b) : null; }
 function sudCelebrate(i, v, padR, hint){
   const el = cellEl(i); if(!el) return;
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
@@ -401,9 +406,9 @@ function sudCelebrate(i, v, padR, hint){
   if(hint){ fxFloat(p.x, p.y - p.h * .5, '힌트', 'sud'); sfx('fHint', { pan }); }
   else { fxFloat(p.x, p.y - p.h * .5, '+' + Math.round(G.perCell * G.L.mult), 'sud'); sfx('sNum', { v, n:G.scombo, pan }); fxBuzz(10); }
   /* 가로줄·세로줄·굵은 칸이 완성되면: 놓은 칸에서부터 물결 + 반짝임 + 차임 */
-  const r = Math.floor(i/9), c = i%9, b = boxOf(i), found = [];
+  const S = G.S, r = Math.floor(i/S), c = i%S, b = boxOf(i), found = [];
   const ok = ids => ids.every(j => G.grid[j] === G.sol[j] && !G.wrong[j]);
-  const units = [['r' + r, [...Array(9)].map((_, x) => r*9 + x), '가로줄'], ['c' + c, [...Array(9)].map((_, x) => x*9 + c), '세로줄'], ['b' + b, [...Array(81).keys()].filter(j => boxOf(j) === b), '굵은 칸']];
+  const units = [['r' + r, [...Array(S)].map((_, x) => r*S + x), '가로줄'], ['c' + c, [...Array(S)].map((_, x) => x*S + c), '세로줄'], ['b' + b, [...Array(G.NN).keys()].filter(j => boxOf(j) === b), '굵은 칸']];
   if(G.sx) G.sx.xu.forEach(x => { if(x.ids.includes(i)) units.push([x.key, x.ids, x.name]); });
   G.uDone = G.uDone || {};
   for(const [k, ids, nm] of units) if(!G.uDone[k] && ok(ids)){ G.uDone[k] = 1; found.push([ids, nm]); }
@@ -412,7 +417,7 @@ function sudCelebrate(i, v, padR, hint){
     found.forEach(([ids]) => ids.forEach(j => {
       if(seen.has(j)) return; seen.add(j);
       const e = cellEl(j); if(!e) return;
-      const dist = Math.max(Math.abs(Math.floor(j/9) - r), Math.abs(j%9 - c));
+      const dist = Math.max(Math.abs(Math.floor(j/S) - r), Math.abs(j%S - c));
       e.style.setProperty('--wd', dist * 55 + 'ms'); e.classList.remove('wave'); void e.offsetWidth; e.classList.add('wave');
       setTimeout(() => { if(!e.isConnected) return; const q = fxCenter(e); fxBurst(q.x, q.y, ['#FFE27A','#FFFFFF','#FFB020'], 4, { speed:120, size:3, kinds:['star','spark'], up:90, g:300, glow:true, dur:.55 }); }, dist * 55 + 120);
     }));
@@ -427,7 +432,7 @@ function sudCelebrate(i, v, padR, hint){
 /* 스도쿠 완성: 왼쪽 위에서 오른쪽 아래로 파도 → 완성 음악 → 색종이 → 결과 */
 function sudWin(){
   G.done = true; G.paused = true; G.pauseAt = Date.now(); G.sel = -1; paintSud();
-  document.querySelectorAll('#bd .cell').forEach(e => { const j = +e.dataset.i, d = Math.floor(j/9) + j%9; e.style.setProperty('--wd', d * 40 + 'ms'); e.classList.remove('winw', 'wave', 'pop'); void e.offsetWidth; e.classList.add('winw'); });
+  document.querySelectorAll('#bd .cell').forEach(e => { const j = +e.dataset.i, d = Math.floor(j/G.S) + j%G.S; e.style.setProperty('--wd', d * 40 + 'ms'); e.classList.remove('winw', 'wave', 'pop'); void e.offsetWidth; e.classList.add('winw'); });
   sfx('win', { g:'sudoku' }); fxBuzz([30, 60, 30, 60, 80]);
   const me = G;
   setTimeout(() => { if(G !== me) return; fxConfetti(); fxPop($('#bd'), 'gold'); }, 650);
@@ -448,7 +453,7 @@ function sudHint(){
   if(G.hints <= 0){ toast(G.sx && G.sx.tw === 'bare' ? '이 판은 힌트 없이 풀어요' : '힌트를 모두 썼어요', 'err'); return; }
   let i = G.sel;
   if(i < 0 || locked(i)){
-    const open = []; for(let j=0;j<81;j++) if(!locked(j)) open.push(j);
+    const open = []; for(let j=0;j<G.NN;j++) if(!locked(j)) open.push(j);
     if(!open.length) return; i = open[Math.floor(Math.random()*open.length)];
   }
   const hv = G.sol[i];
@@ -465,7 +470,21 @@ function togglePause(on){
   $('#pcover').classList.toggle('on', on); updateClock(); sfx('toggle', { on:!on });
 }
 
+/* 대전(WP10): 기회 별 없음 — 틀리면 −30점 + 0.8초 못 누름, 판은 계속 */
+const SUD_DUEL_LOCK = 800, SUD_DUEL_PEN = 30;
+const sudLocked = () => !!(G && G.sLock && Date.now() < G.sLock);
 function miss(el){
+  if(sudDuel()){
+    G.mis = (G.mis || 0) + 1; G.sLock = Date.now() + SUD_DUEL_LOCK;
+    const bd = $('#bd'); if(bd){ bd.classList.add('lock'); setTimeout(() => { const b2 = $('#bd'); if(b2) b2.classList.remove('lock'); }, SUD_DUEL_LOCK); }
+    try{
+      el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+      const p = fxCenter(el); sfx('sBad'); fxBuzz([60, 40, 90]); fxRing(p.x, p.y, '#E5484D', p.w * 1.6, .4, 6);
+      fxFloat(p.x, p.y - p.h * .5, '−' + SUD_DUEL_PEN, 'bad');
+      if(bd && !FXR.reduce){ bd.classList.remove('shake2'); void bd.offsetWidth; bd.classList.add('shake2'); }
+    }catch(_){}
+    return;
+  }
   G.paws--; renderPaws();
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   const p = fxCenter(el), bd = $('#bd');
@@ -497,17 +516,46 @@ NG.sudoku = {
       <rect x="${x0 - 6}" y="${y0 - 4}" width="94" height="94" rx="9" fill="#1A0F45"/><rect x="${x0 - 6}" y="${y0 - 6}" width="94" height="94" rx="9" fill="#FBEBCB" stroke="#2A1650" stroke-width="2.2"/><rect x="${x0 - 1}" y="${y0 - 1}" width="84" height="84" rx="2" fill="#2A1650"/><rect x="${x0}" y="${y0}" width="82" height="82" fill="#fff"/>${g}
       <g font-family="Black Han Sans, Jua, sans-serif" font-size="15" text-anchor="middle"><circle cx="18" cy="30" r="12" fill="#fff" stroke="#2A1650" stroke-width="2.5"/><text x="18" y="35.5" fill="#6C3CE0">7</text><circle cx="142" cy="70" r="12" fill="#FFD04D" stroke="#2A1650" stroke-width="2.5"/><text x="142" y="75.5" fill="#2A1650">9</text></g></svg>`;
   },
-  help:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 3×3 칸마다 1부터 9까지 한 번씩 넣어요.'],['메모로 예비 숫자','메모를 켜면 작은 예비 숫자를 적어둘 수 있어요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요. 힌트는 3번 쓸 수 있어요.'],['솔로의 새 규칙','솔로에서는 대각선·짝수 칸·창문·부등호 같은 규칙과 변주가 5판마다 하나씩 더해져요. 판 위 표시를 확인해요.']],
+  /* 도움말 첫 화면은 기본 규칙 3칸만(솔로 새 규칙은 개념 카드와 helpExtra로, S-SUD-7) */
+  help:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 칸마다 1부터 9까지 한 번씩 넣어요(대전 6×6 판은 1~6).'],['메모로 예비 숫자','[메모 켬]이면 작은 예비 숫자를 적어 둬요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남고, 3번 틀리면 끝나요(대전은 −30점). 힌트는 3번 쓸 수 있어요.']],
+  /* 도움말 v2(WP3 공용 도움말이 쓰는 칸): 그림 1장 + 3줄. 그림 = 가로줄 하나에 빈칸 숫자가 채워지는 모습 */
+  howto:{
+    pic(){
+      const v = [5, 3, 0, 6, 7, 0, 9, 1, 0], miss = { 2:4, 5:8, 8:2 }, cs = 30, x0 = 25, y0 = 50;
+      let g = '';
+      v.forEach((d, k) => { const x = x0 + k * cs;
+        g += `<rect x="${x}" y="${y0}" width="${cs}" height="${cs}" fill="${d ? '#fff' : '#FFF4C2'}" stroke="#2A1650" stroke-width="${k % 3 ? 1 : 2.5}"/>`;
+        g += d ? `<text x="${x + cs / 2}" y="${y0 + 22}" text-anchor="middle" font-family="Jua,sans-serif" font-size="19" fill="#2A1650">${d}</text>`
+          : `<text x="${x + cs / 2}" y="${y0 + 22}" text-anchor="middle" font-family="Jua,sans-serif" font-size="19" fill="#6C3CE0" opacity="0">${miss[k]}<animate attributeName="opacity" values="0;1" dur=".4s" begin="${.6 + k * .15}s" fill="freeze"/></text>`; });
+      return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#2B1A6B"/><rect x="${x0 - 2}" y="${y0 - 2}" width="${cs * 9 + 4}" height="${cs + 4}" fill="#2A1650"/>${g}
+        <text x="160" y="32" text-anchor="middle" font-family="Jua,sans-serif" font-size="16" fill="#fff">한 줄에 1~9가 한 번씩</text>
+        <text x="160" y="124" text-anchor="middle" font-family="Jua,sans-serif" font-size="15" fill="#FFE38A">빠진 숫자 = 2 · 4 · 8</text>
+        <text x="160" y="152" text-anchor="middle" font-family="Jua,sans-serif" font-size="13" fill="#D9CCF0">세로줄 · 굵은 칸도 똑같아요</text></svg>`;
+    },
+    lines:['줄·굵은 칸마다 숫자를 한 번씩', '칸을 고르고 아래 숫자를 눌러요', '모르면 [메모 켬]으로 적어 둬요'],
+    more:[['실수','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요(대전은 끝나지 않고 30점 줄고 0.8초 쉬어요).'],['대전 판','대전은 6×6 작은 판(숫자 1~6, 굵은 칸 2×3)이에요.']]
+  },
+  helpExtra(){   /* 솔로: 이번 판에 켜진 새 규칙·변주 설명 */
+    if(!(G && G.id === 'sudoku' && G.sx && !G.over)) return [];
+    return G.sx.rules.concat(G.sx.tw ? [G.sx.tw] : []).map(k => { const f = conceptInfo('sudoku', k) || {}; return [(G.sx.rules.includes(k) ? '새 규칙 · ' : '변주 · ') + (f.name || k), f.desc || '']; });
+  },
   chapters:['숫자 정원','고요한 서재','수정 동굴','시계탑','천문대'],
   starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수·힌트 없이',
   levels:{ easy:{ givens:38, limit:420 }, normal:{ givens:30, limit:600 }, hard:{ givens:0, limit:900 } },
   levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return c.givens ? '숫자 ' + c.givens + '개 제공' : '숫자 최소 제공'; },
   stage:n => ({ givens:0, limit:sudPlan(n).limit }),   /* 개념 사이클 + 기술 판정으로 만든다(sudPlan) */
   stageDesc:n => sudDesc(n),
+  /* 대전 전용 작은 판(WP10): 6×6(2×3 상자), 빈칸 18개, 3분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
+  duelCfg(){ return { size:6, holes:18, limit:180, duel:1 }; },
+  duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 6분 */
+  duelKind:'race',
   init(cfg, rng){
-    const X = G.adv ? sudGenStage(G.adv) : null, p = X ? X.r : genSudoku(rng, cfg.givens);
-    const empty = p.puz.filter(v => !v).length;
-    Object.assign(G, { sol:p.sol, grid:p.puz.slice(), given:p.puz.map(v => v>0), notes:new Array(81).fill(0), wrong:new Array(81).fill(false),
+    if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.sudoku.duelCfg(); G.cfg = cfg; G.limit = cfg.limit; }
+    const six = cfg.size === 6;
+    const X = G.adv ? sudGenStage(G.adv) : null, p = X ? X.r : six ? genSudoku6(rng, cfg.holes) : genSudoku(rng, cfg.givens);
+    const empty = p.puz.filter(v => !v).length, S = six ? 6 : 9, NN = S * S;
+    Object.assign(G, { S, BR:six ? 2 : 3, BC:3, NN, mis:0, sLock:0 });
+    Object.assign(G, { sol:p.sol, grid:p.puz.slice(), given:p.puz.map(v => v>0), notes:new Array(NN).fill(0), wrong:new Array(NN).fill(false),
       sel:-1, memo:false, hints:3, hintUsed:0, undo:[], earned:0, earnedCells:{}, perCell:500/empty, scombo:0, done:false });
     if(X) sudSxInit(X);
     G.uDone = sudUnitsDone();
@@ -515,11 +563,14 @@ NG.sudoku = {
   render:st => sudStage(st),
   progress:() => Object.keys(G.earnedCells).length / Math.max(1, Math.round(500 / G.perCell)),
   lossText(){ const empty = Math.round(500 / G.perCell); return `빈칸 ${Object.keys(G.earnedCells).length}/${empty}개를 채웠어요.`; },
-  score(){ const sec = elapsed(); return { base:Math.round(G.earned), time:Math.max(0, 350 - Math.floor(sec * 350 / G.limit)), extra:G.paws * 50,
+  score(){ const sec = elapsed(), base = Math.round(G.earned), time = Math.max(0, 350 - Math.floor(sec * 350 / G.limit));
+    if(sudDuel()) return { base, time, extra:Math.max(10 - base - time, -(G.mis || 0) * SUD_DUEL_PEN),   /* 대전: 실수마다 −30(끝난 판은 최소 10점) */
+      rows:['칸 채우기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '칸 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '실수 ' + (G.mis || 0) + '번'] };
+    return { base, time, extra:G.paws * 50,
     rows:['칸 채우기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '칸 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '실수 ' + (3 - G.paws) + '번'] }; },
   stars(){ const miss = (G.pawMax || 3) - G.paws; return miss === 0 && !G.hintUsed ? 3 : miss <= 1 ? 2 : 1; },
-  duelPace:[420,.68],
-  duelStat:{ unit:'칸',   lfMax:3,  get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), lf:G.paws }) }
+  duelPace:[110,.85],   /* 6×6 빈칸 18개: 컴퓨터 평균 110초 */
+  duelStat:{ unit:'칸', get:() => ({ v:Object.keys(G.earnedCells).length, t:Math.round(500 / G.perCell), mis:G.mis || 0 }) }   /* 대전은 기회 별이 없어 lf 대신 틀린 횟수(mis) */
 };
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.sudoku.scene = { kind:'stars', colors:['#FFFFFF','#BFD4FF','#CFC5FF'], density:.6, alpha:.8 };
