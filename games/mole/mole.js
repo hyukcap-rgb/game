@@ -10,6 +10,8 @@ NG.mole = (() => {
   const HOSTS = ['frog', 'chick', 'owl', 'bear', 'dog'];          /* 챕터 진행자(판 위 심판) */
   const PEEK = .5, PEEK_GAP = .2;                                  /* 숨바꼭질: 처음 쏙 보이는 시간, 옆 구멍으로 옮기는 틈 */
   const EMPTY_PTS = 5, STUN = .4, SPAM_N = 3, SPAM_WIN = .25, SPAM_LOCK = .5;
+  /* 폭탄이 들어가는 동안(보이는 동안)은 아직 '참았다'가 아니다: 내려가는 그림이 다 끝난 뒤에야 정답으로 센다(2026-10-06 P0) */
+  const SINK = .24, SINK_MS = 200, SINK_MAX = 1.2;
   const COMBO_MSG = { 5:'좋아요!', 10:'대단해요!', 20:'완벽해요!' };
 
   /* ===== 솔로 개념 사이클 ===== */
@@ -23,7 +25,7 @@ NG.mole = (() => {
     },
     twists:['flash', 'dark', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'두더지가 더 짧게 나와요. 침착하게, 그리고 재빨리!' },
+      flash:{ name:'빠른 판', desc:'두더지가 더 짧게 나와요. 침착하게, 그리고 재빨리!' },
       dark:{ name:'밤의 들판', desc:'들판이 어두워져요. 두더지가 나올 때만 구멍에 불이 켜져요.' },
       tight:{ name:'외줄 타기', desc:'기회가 2개뿐이에요. 폭탄 두더지를 특히 조심해요.' }
     }
@@ -160,11 +162,13 @@ NG.mole = (() => {
       <path d="M33 58l-12-2M33 62l-11 2M67 58l12-2M67 62l11 2" stroke="${P.ink}" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
       <g filter="url(#pm)"><ellipse cx="24" cy="86" rx="10.5" ry="8" fill="${P.paw}"/><ellipse cx="76" cy="86" rx="10.5" ry="8" fill="${P.paw}"/></g>
       <path d="M19 82v4M24 81v5M29 82v4M71 82v4M76 81v5M81 82v4" stroke="${P.ink}" stroke-width="1.5" stroke-linecap="round" opacity=".35"/>`;
-    if(kind === 'bomb' && face === '') s += `<g filter="url(#pb)"><circle cx="50" cy="3" r="16" fill="#2D2944"/></g>${TOY.GL(43, -4, 6, 4)}
-      <g filter="url(#ps)"><rect x="44.5" y="-16" width="11" height="7" rx="2.2" fill="#9C96B8"/></g>
-      <path d="M50 -16q2-6 9-6" fill="none" stroke="#D6B178" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M61 -28l2.2 4.6 5-1-3.2 3.9 3.2 3.9-5-1-2.2 4.6-2.2-4.6-5 1 3.2-3.9-3.2-3.9 5 1z" fill="#FFD23F"/><circle cx="61" cy="-21" r="2.6" fill="#FF6A2B"/>
-      <path d="M41 9l4-4M46 12l3-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".35"/>`;
+    /* 폭탄: 머리보다 넓은 검은 공 + 불붙은 심지 + 붉은 띠 하나 → 색을 못 봐도 실루엣(머리 위 큰 공·심지)으로 바로 구분 */
+    if(kind === 'bomb' && face === '') s += `<ellipse cx="50" cy="17" rx="21" ry="4.5" fill="#1A1430" opacity=".3"/>
+      <g filter="url(#pb)"><circle cx="50" cy="1" r="19.5" fill="#2A2540"/></g>${TOY.GL(42, -7, 7, 4.4)}
+      <path d="M31.5 5.5a19.5 19.5 0 0 0 37 0" fill="none" stroke="#E5484D" stroke-width="4.2" stroke-linecap="round" opacity=".95"/>
+      <g filter="url(#ps)"><rect x="43.5" y="-19.5" width="13" height="6.5" rx="2.4" fill="#A49EC0"/></g>
+      <path d="M53 -19.5q3-3 8-2" fill="none" stroke="#D6B178" stroke-width="2.8" stroke-linecap="round"/>
+      <circle cx="63" cy="-20.5" r="5.2" fill="#FFD23F" opacity=".55"/><circle cx="63" cy="-20.5" r="3" fill="#FF8A2B"/><circle cx="62.2" cy="-21.3" r="1.2" fill="#FFF6C8"/>`;
     if(kind === 'bomb' && face === 'boom') s += `<g fill="#3A3550" opacity=".55"><circle cx="38" cy="22" r="4"/><circle cx="60" cy="18" r="5"/><circle cx="48" cy="28" r="3"/></g>`;
     if(kind === 'gold') s += `<g filter="url(#pm)"><path d="M35 17l3.5-17 11.5 10 11.5-10 3.5 17z" fill="#FFE36A"/></g><g filter="url(#ps)"><circle cx="50" cy="9" r="3" fill="#FF5C8A"/><circle cx="39" cy="4" r="2" fill="#5FB8FF"/><circle cx="61" cy="4" r="2" fill="#5FB8FF"/></g>
       <path d="M86 20l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6zM13 40l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="#FFFBE0"/>`;
@@ -193,6 +197,9 @@ NG.mole = (() => {
     if(SPR) return SPR;
     SPR = { pit:pitSvg(), lip:lipSvg(), ham:hamSvg(), helm:helmSvg() };
     ['normal', 'bomb', 'gold', 'hide'].forEach(k => { SPR[k] = moleSvg(k, ''); SPR[k + '_hit'] = moleSvg(k, k === 'bomb' ? 'boom' : 'hit'); });
+    /* 미리 풀어 둠: 그림을 바꾸는 순간 예전 그림(예: 앞 두더지)이 한 프레임이라도 남아 보이지 않게 */
+    const keep = []; Object.keys(SPR).forEach(k => { try{ const i = new Image(); i.src = SPR[k]; if(i.decode) i.decode().catch(() => {}); keep.push(i); }catch(_){} });
+    Object.defineProperty(SPR, '_keep', { value:keep, enumerable:false });
     return SPR;
   }
   const sprOf = (kind, face) => { const S = sprites(), k = kind === 'helmet' || kind === 'num' ? 'normal' : kind; return S[face ? k + '_hit' : k]; };
@@ -203,6 +210,28 @@ NG.mole = (() => {
   const running = m => m && !G.over && !G.paused && !(G.duel && !G.duel.go);
   const cellEl = i => document.querySelector(`.ng-mole .ml-cell[data-i="${i}"]`);
   const fx = fn => { try{ fn(); }catch(_){} };
+
+  /* ---- 누른 자리 고르기(2026-10-06 P0) ----
+     두더지 머리(특히 폭탄)는 칸 위로 삐져나와 윗칸 영역에 그려질 수 있다. 예전에는 누른 '칸'만 보고 판정해서
+     폭탄 머리를 누르면 윗칸(일반 두더지)이 정답으로 잡혔다. 이제는 화면에 보이는 두더지 그림을 먼저 본다:
+     맨 위에 그려진(아래 줄일수록 위) 두더지 그림 안이면 그 두더지, 아니면 누른 칸. */
+  const TOPF = { bomb:.05, normal:.27, helmet:.17, gold:.16, hide:.12, num:.02, peek:.27 };   /* 그림 상자에서 실루엣이 시작하는 높이 */
+  function visRect(c){
+    const img = c && c.querySelector('.ml-img'), clip = c && c.querySelector('.ml-clip'); if(!img || !clip) return null;
+    const a = img.getBoundingClientRect(), k = clip.getBoundingClientRect();
+    const kind = c.dataset.k || 'normal', pad = kind === 'bomb' ? 4 : 0;
+    const L = Math.max(a.left + a.width * .12 - pad, k.left), R = Math.min(a.right - a.width * .12 + pad, k.right);
+    const T0 = Math.max(a.top + a.height * (TOPF[kind] != null ? TOPF[kind] : .2) - pad, k.top), B0 = Math.min(a.bottom, k.bottom);
+    return R - L > 2 && B0 - T0 > 2 ? { left:L, right:R, top:T0, bottom:B0 } : null;
+  }
+  const inR = (q, x, y) => q && x >= q.left && x <= q.right && y >= q.top && y <= q.bottom;
+  function moleShowing(hole){ return !!visRect(cellEl(hole)); }
+  function pickAt(x, y){
+    const cells = Array.from(document.querySelectorAll('.ng-mole .ml-cell'));
+    for(let i = cells.length - 1; i >= 0; i--) if(inR(visRect(cells[i]), x, y)) return { hole:+cells[i].dataset.i, onMole:true };
+    for(const c of cells) if(inR(c.getBoundingClientRect(), x, y)) return { hole:+c.dataset.i, onMole:false };
+    return null;
+  }
 
   function say(main, sub, cls){
     const e = $('#mlSay'); if(!e) return;
@@ -248,10 +277,13 @@ NG.mole = (() => {
   function hideMole(hole, how){
     const c = cellEl(hole); if(!c) return;
     const mo = c.querySelector('.ml-mole'), reduce = FXR.reduce;
-    if(how === 'hit') anim(mo, [{ transform:'translateY(0) scale(1,1)' }, { transform:'translateY(9%) scale(1.17,.76)', offset:.14 }, { transform:'translateY(6%) scale(.97,1.04)', offset:.3 }, { transform:'translateY(8%) scale(1.03,.97)', offset:.5 }, { transform:'translateY(104%) scale(.95,1.04)' }], { duration:reduce ? 1 : 560, easing:'cubic-bezier(.45,0,.55,1)' });
-    else anim(mo, [{ transform:getComputedStyle(mo).transform === 'none' ? 'translateY(0)' : getComputedStyle(mo).transform }, { transform:'translateY(104%) scale(1.04,.94)' }], { duration:reduce ? 1 : 200, easing:'cubic-bezier(.55,0,.8,.4)' });
+    const cur = (() => { try{ const v = getComputedStyle(mo).transform; return !v || v === 'none' ? 'translateY(0)' : v; }catch(_){ return 'translateY(0)'; } })();   /* 올라오는 중·들어가는 중에 맞아도 그 자리에서 이어서 */
+    const ty = (() => { try{ return new DOMMatrix(cur).m42 / Math.max(1, mo.offsetHeight); }catch(_){ return 0; } })();
+    if(how === 'hit' && ty > .25) anim(mo, [{ transform:cur }, { transform:`translateY(${Math.round(ty * 100 + 4)}%) scale(1.16,.8)`, offset:.25 }, { transform:'translateY(104%) scale(.96,1.03)' }], { duration:reduce ? 1 : 320, easing:'cubic-bezier(.45,0,.55,1)' });
+    else if(how === 'hit') anim(mo, [{ transform:cur }, { transform:'translateY(10%) scale(1.2,.74)', offset:.13 }, { transform:'translateY(5%) scale(.95,1.06)', offset:.3 }, { transform:'translateY(8%) scale(1.03,.97)', offset:.48 }, { transform:'translateY(104%) scale(.96,1.03)' }], { duration:reduce ? 1 : 540, easing:'cubic-bezier(.45,0,.55,1)' });
+    else anim(mo, [{ transform:cur }, { transform:'translateY(104%) scale(1.04,.94)' }], { duration:reduce ? 1 : SINK_MS, easing:'cubic-bezier(.55,0,.8,.4)' });
     const ms = how === 'hit' ? 520 : 180;
-    T(() => { const c2 = cellEl(hole); if(c2 && c2._r === undefined){ c2.classList.remove('lit', 'danger'); delete c2.dataset.k; } }, ms);
+    T(() => { const c2 = cellEl(hole); if(c2 && c2._r === undefined){ c2.classList.remove('lit', 'danger', 'sinking'); delete c2.dataset.k; } }, ms);
   }
   function stamp(hole, ok){
     const c = cellEl(hole); if(!c) return;
@@ -263,7 +295,7 @@ NG.mole = (() => {
     const c = cellEl(hole), h = $('#mlHam'), f = $('#mlField'); if(!c || !h || !f) return;
     const fr = f.getBoundingClientRect(), cr = c.getBoundingClientRect();
     const cw = cr.width, yb = (cr.height - cw * .92) / 2;   /* 망치 머리가 두더지 머리 위에 떨어지게(회전 중심 84% 88%) */
-    h.style.left = (cr.left - fr.left + cw * .37) + 'px'; h.style.top = (cr.top - fr.top + yb - cw * .19) + 'px';
+    h.style.left = (cr.left - fr.left + cw * .36) + 'px'; h.style.top = (cr.top - fr.top + yb - cw * .33) + 'px';   /* 맞는 순간(−16°) 망치 머리가 두더지 머리 위 */
     const reduce = FXR.reduce;
     anim(h, kind === 'whiff'
       ? [{ transform:'rotate(38deg)', opacity:1 }, { transform:'rotate(-6deg)', opacity:1, offset:.3 }, { transform:'rotate(-2deg) translateY(2px)', opacity:1, offset:.55 }, { transform:'rotate(8deg)', opacity:0 }]
@@ -280,7 +312,8 @@ NG.mole = (() => {
     const w = m.waves[wi];
     m.act = w.moles.map(x => Object.assign({}, x, { st:'wait', at:m.t + x.delay, upAt:0, endAt:0, goneAt:0, res:null, helm:x.kind === 'helmet', wave:wi }));
   }
-  function cellMole(m, hole){ return m.act.find(r => (r.st === 'up' || r.st === 'hitting') && r.hole === hole) || m.act.find(r => (r.st === 'peek' || r.st === 'pwait') && r.peek === hole) || null; }
+  /* 그 구멍에서 지금 판정할 두더지: 나와 있음(up) · 폭탄이 들어가는 중(sink) · 숨바꼭질 쏙(peek/pwait) */
+  function cellMole(m, hole){ return m.act.find(r => (r.st === 'up' || r.st === 'sink') && r.hole === hole) || m.act.find(r => (r.st === 'peek' || r.st === 'pwait') && r.peek === hole) || null; }
   function setCell(hole, r){ const c = cellEl(hole); if(c){ if(r) c._r = r; else delete c._r; } }
   function goUp(m, r){
     r.st = 'up'; r.upAt = m.t; r.endAt = m.t + r.win; m.shown++;
@@ -291,8 +324,22 @@ NG.mole = (() => {
     setCell(r.hole, null); hideMole(r.hole, how);
   }
   function resolveTimeout(m, r){
-    if(r.kind === 'bomb'){ m.correct++; m.sumFr += 1; m.resist++; gone(m, r, 'resist', 'down'); fx(() => { const c = cellEl(r.hole); if(c){ const q = fxCenter(c); sfx('moleResist', { pan:panX(q.x) }); } }); floatAt(r.hole, '참았다!', 'calm'); }
+    if(r.kind === 'bomb'){   /* 들어가기 시작: 보이는 동안 누르면 오답, 다 들어간 뒤에야 '참았다' */
+      r.st = 'sink'; r.sinkAt = m.t; r.sinkEnd = m.t + SINK; hideMole(r.hole, 'down');
+      const c = cellEl(r.hole); if(c) c.classList.add('sinking');
+    }
     else { m.missed++; gone(m, r, 'miss', 'down'); }
+    hud();
+  }
+  /* 폭탄 두더지의 그림이 아직 보이나(내려가는 애니메이션이 덜 끝남) */
+  function moleMoving(hole){ const c = cellEl(hole), mo = c && c.querySelector('.ml-mole'), a = mo && mo._an; try{ return !!(a && a.playState === 'running'); }catch(_){ return false; } }
+  function resist(m, r){
+    r.st = 'gone'; r.res = 'resist'; r.goneAt = m.t; m.judged++;
+    m.correct++; m.sumFr += 1; m.resist++;
+    setCell(r.hole, null);
+    const c = cellEl(r.hole); if(c && !c._r){ c.classList.remove('lit', 'danger', 'sinking'); delete c.dataset.k; }
+    fx(() => { const c2 = cellEl(r.hole); if(c2){ const q = fxCenter(c2); sfx('moleResist', { pan:panX(q.x) }); } });
+    floatAt(r.hole, '참았다!', 'calm');
     hud();
   }
   function step(m){
@@ -316,6 +363,7 @@ NG.mole = (() => {
         if(r.kind === 'bomb' && nonBombDone) r.endAt = Math.min(r.endAt, Math.max(t + .2, r.upAt + .6));   /* 칠 두더지가 다 끝나면 폭탄도 곧 들어감 */
         if(t >= r.endAt) resolveTimeout(m, r);
       }
+      else if(r.st === 'sink' && t >= r.sinkEnd && (!moleMoving(r.hole) || t >= r.sinkAt + SINK_MAX)) resist(m, r);
     }
     if(m.done) return;
     if(m.act.every(r => r.st === 'gone') && t >= Math.max(...m.act.map(r => r.goneAt)) + .25){
@@ -347,19 +395,23 @@ NG.mole = (() => {
   }
 
   /* ---- 누르기 판정 ---- */
-  function tap(hole){
+  /* 누르기 판정. hole = 누른 구멍(화면 좌표로 고른 결과 또는 숫자 키), o.onMole = 두더지 그림 위를 눌렀나 */
+  function tap(hole, o){
     const m = S(); if(!running(m) || m.done || m.phase === 'intro') return;
-    const now = m.t;
+    const now = m.t, r = cellMole(m, hole);
     m.taps = m.taps.filter(x => now - x < SPAM_WIN); m.taps.push(now);
+    /* P0 규칙: 보이는 폭탄 두더지(올라오는 중·나와 있음·들어가는 중)를 누르면 언제든 오답.
+       멍·잠금·마구 누르기 중이어도 넘어가지 않는다(넘어가면 나중에 '참았다'로 잘못 세짐) */
+    if(r && r.kind === 'bomb' && (r.st === 'up' || r.st === 'sink')){ hammer(hole, 'hit'); wrong(m, r, 'bomb'); return; }
     if(now < m.lockUntil){ return; }
     if(m.taps.length > SPAM_N){   /* 마구 누르기: 0.5초 잠금(벌점 없음) */
       m.lockUntil = now + SPAM_LOCK; m.taps = []; m.slow++;
       lockShow('천천히!', SPAM_LOCK); sfx('moleSlow'); say('천천히!', '잘 보고 눌러요', 'warn');
       return;
     }
-    const r = cellMole(m, hole);
     if(!r){
-      if(m.phase !== 'wave' || !m.act.some(x => x.st === 'up' || x.st === 'peek')){ hammer(hole, 'whiff'); return; }   /* 두더지가 없는 순간: 무시 */
+      if((o && o.onMole) || moleShowing(hole)){ hammer(hole, 'whiff'); return; }   /* 이미 판정이 끝나 들어가는 두더지: 무시(감점 없음) */
+      if(m.phase !== 'wave' || !m.act.some(x => x.st === 'up' || x.st === 'peek' || x.st === 'sink')){ hammer(hole, 'whiff'); return; }   /* 두더지가 없는 순간: 무시 */
       empty(m, hole, '빈 구멍'); return;
     }
     if(r.st === 'peek' || r.st === 'pwait'){ empty(m, hole, '빗나감'); return; }
@@ -390,7 +442,13 @@ NG.mole = (() => {
     floatAt(r.hole, '+' + val, r.kind === 'gold' ? 'gold' : 'ok');
     fx(() => {
       const q = fxCenter(c), y = q.y - q.h * .28;
-      fxEmit(q.x, y, { quantity:r.kind === 'gold' ? 16 : 10, speed:{ min:90, max:220 }, angle:{ min:200, max:340 }, lifespan:{ min:380, max:640 }, kind:'twinkle', tint:r.kind === 'gold' ? ['#FFE27A', '#FFFFFF', '#FFC93C'] : ['#FFFFFF', '#FFF2B0', '#C8F7C0'], scale:{ start:5, end:0, ease:'quad.in' }, gravityY:260, drag:1.2 });
+      if(!FXR.reduce){   /* 흙먼지: 구멍 테두리에서 옆으로 살짝(잔잔하게) */
+        const yr = q.y + q.h * .5 - (q.h - q.w * .92) / 2 - q.w * .3;
+        fxEmit(q.x - q.w * .22, yr, { quantity:3, speed:{ min:20, max:60 }, angle:{ min:190, max:250 }, lifespan:{ min:380, max:560 }, kind:'smoke', tint:['#E6CBA4', '#D2AE84'], scale:{ start:5, end:12 }, alpha:{ start:.5, end:0 }, gravityY:-20 });
+        fxEmit(q.x + q.w * .22, yr, { quantity:3, speed:{ min:20, max:60 }, angle:{ min:290, max:350 }, lifespan:{ min:380, max:560 }, kind:'smoke', tint:['#E6CBA4', '#D2AE84'], scale:{ start:5, end:12 }, alpha:{ start:.5, end:0 }, gravityY:-20 });
+        fxRing(q.x, y, 'rgba(255,255,255,.75)', q.w * .32, .28, 3);
+      }
+      fxEmit(q.x, y, { quantity:r.kind === 'gold' ? 16 : 8, speed:{ min:90, max:220 }, angle:{ min:200, max:340 }, lifespan:{ min:380, max:640 }, kind:'twinkle', tint:r.kind === 'gold' ? ['#FFE27A', '#FFFFFF', '#FFC93C'] : ['#FFFFFF', '#FFF2B0', '#C8F7C0'], scale:{ start:5, end:0, ease:'quad.in' }, gravityY:260, drag:1.2 });
       if(r.kind === 'gold'){ fxRing(q.x, y, '#FFE27A', q.w * .55, .45, 6); fxEmit(q.x, y, { quantity:8, speed:{ min:40, max:120 }, lifespan:{ min:500, max:800 }, kind:'star', tint:['#FFD23F', '#FFF6C8'], scale:{ start:6, end:0 }, glow:true }); }
     });
     if(COMBO_MSG[m.combo]) combo(m);
@@ -407,12 +465,12 @@ NG.mole = (() => {
         const q = fxCenter(c), y = q.y - q.h * .3;
         fxEmit(q.x, y, { quantity:14, speed:{ min:140, max:320 }, lifespan:{ min:350, max:650 }, kind:'shard', tint:['#FFB547', '#FF6A2B', '#FFE07A'], scale:{ start:6, end:1 }, gravityY:500, drag:1.4 });
         fxEmit(q.x, y, { quantity:9, speed:{ min:20, max:80 }, angle:{ min:200, max:340 }, lifespan:{ min:700, max:1100 }, kind:'smoke', tint:['#8C86A0', '#B9B3C8'], scale:{ start:10, end:24 }, alpha:{ start:.55, end:0 }, gravityY:-60 });
-        fxFlash('#FF6B6B', .16, 320); fxShake($('#mlField'), 5);
+        fxFlash('#FF6B6B', .12, 300); fxShake($('#mlField'), 3);
       });
       say('앗, 폭탄!', m.lives ? '폭탄 두더지는 참아요' : '', 'bad');
     } else {
       sfx('moleWrong'); fxBuzz([30, 40, 30]);
-      fx(() => { fxFlash('#FF6B6B', .12, 260); fxShake($('#mlField'), 4); });
+      fx(() => { fxFlash('#FF6B6B', .1, 240); fxShake($('#mlField'), 3); });
       say('순서가 달라요', want ? want + '번부터 쳐요' : '', 'bad');
     }
     gone(m, r, 'wrong', 'hit'); stamp(r.hole, false);
@@ -474,28 +532,47 @@ NG.mole = (() => {
   }
 
   /* ---- 화면 맞추기: 390×844·360×740에서 스크롤 없이, 판은 크게 ---- */
+  /* 화면 맞추기: 390×844·360×740에서 스크롤 없이. 판(칸)은 폭에 맞춰 크게 → 칸 높이는 폭의 0.95~1.3배 →
+     그래도 남는 높이는 판 위쪽 언덕 풍경(--sc, 최대 120px) → 진행자 크기 순. 판은 아래(엄지 자리) */
   function layout(){
     const m = S(), f = $('#mlField'), root = document.querySelector('.ng-mole'); if(!m || !f || !root) return;
     const W = root.clientWidth || 340, vh = window.innerHeight || 700, sy = window.scrollY || 0;
-    const rt = root.getBoundingClientRect().top + sy, total = Math.max(320, vh - rt - 12);
-    const hudH = (root.querySelector('.hud-row') || {}).offsetHeight || 48;
-    const pad = 10, gap = 4, cols = m.cols, rows = m.rows, HS0 = 58;
-    const availH = Math.max(220, total - hudH - 8 - (HS0 + 6) - 18);
+    let below = 0;   /* 게임 화면 아래 바깥 여백(모듈 .wrap 아래 여백 등)까지 빼야 스크롤이 안 생김 */
+    for(let e = root.parentElement; e && e !== document.documentElement; e = e.parentElement){ const cs = getComputedStyle(e); below += (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderBottomWidth) || 0) + (parseFloat(cs.marginBottom) || 0); }
+    const rt = root.getBoundingClientRect().top + sy, total = Math.max(320, vh - rt - below - 4);
+    const hudH = ((root.querySelector('.hud-row') || {}).offsetHeight || 48) + 8, metH = ((root.querySelector('.ml-meter') || {}).offsetHeight || 28) + 8;
+    const pad = 8, gap = 4, cols = m.cols, rows = m.rows, HS0 = 54;
+    const availH = Math.max(220, total - hudH - metH - (HS0 + 8));
+    const inner = availH - 2 * pad - (rows - 1) * gap;
     const cwW = (W - 2 * pad - (cols - 1) * gap) / cols;
-    const cwH = (availH - 2 * pad - (rows - 1) * gap) / (rows * .92);
-    const cw = Math.floor(Math.max(56, Math.min(cwW, cwH, 150)));
-    const asp = Math.max(.92, Math.min(1.6, (availH - 2 * pad - (rows - 1) * gap) / (rows * cw)));   /* 남는 높이는 칸 사이 풀밭으로 */
+    const cw = Math.floor(Math.max(56, Math.min(cwW, inner / (rows * .95), 160)));
+    const asp = Math.max(.95, Math.min(1.22, inner / (rows * cw)));
     const ch = Math.floor(cw * asp), fh = rows * ch + (rows - 1) * gap + 2 * pad;
-    const hs = Math.round(Math.max(HS0, Math.min(90, HS0 + (availH - fh))));   /* 그래도 남으면 진행자를 크게 */
-    f.style.setProperty('--cw', cw + 'px'); f.style.setProperty('--ch', ch + 'px');
+    let left = Math.max(0, availH - fh);
+    const sc = left >= 26 ? Math.min(140, left) : 0; left -= sc;   /* 언덕 풍경 */
+    const hs = Math.round(HS0 + Math.min(22, left));               /* 그래도 남으면 진행자를 조금 크게 */
+    f.style.setProperty('--cw', cw + 'px'); f.style.setProperty('--ch', ch + 'px'); f.style.setProperty('--sc', sc + 'px');
     f.style.width = (cols * cw + (cols - 1) * gap + 2 * pad) + 'px';
+    f.classList.toggle('noscene', !sc);
     root.style.setProperty('--hs', hs + 'px');
-    root.style.minHeight = Math.floor(total) + 'px';   /* 판은 엄지 자리(아래)로 */
+    root.style.minHeight = Math.floor(total) + 'px';
+  }
+  /* 판 위쪽 언덕 풍경(보이기만). 색은 챕터 CSS 변수(--h1·--h2·--h3) */
+  function sceneSvg(){
+    return `<svg viewBox="0 0 360 120" preserveAspectRatio="xMidYMax slice" focusable="false">
+      <circle cx="296" cy="52" r="14" class="ml-sun"/>
+      <path d="M0 74C40 56 82 52 128 64s90 4 132-8 74-4 100 8V120H0z" fill="var(--h1)"/>
+      <path d="M0 96c46-18 104-22 160-10s110 10 150-2 40-4 50-2V120H0z" fill="var(--h2)"/>
+      <g fill="var(--h3)"><circle cx="40" cy="82" r="13"/><circle cx="56" cy="86" r="10"/><circle cx="318" cy="84" r="12"/><circle cx="302" cy="88" r="8"/></g>
+      <g class="ml-fence"><path d="M86 98h188M86 108h188" stroke-width="4" stroke-linecap="round"/>
+        ${[92, 128, 164, 200, 236, 268].map(x => `<rect x="${x - 3.5}" y="88" width="7" height="28" rx="3"/>`).join('')}</g>
+      <path d="M0 112c60-8 120-10 180-6s120 4 180-2V120H0z" fill="var(--g1,#A6E07C)"/>
+    </svg>`;
   }
 
   function cellHtml(i, S0){
     return `<div class="ml-cell" data-i="${i}" role="button" aria-label="구멍 ${i + 1}">
-      <img class="ml-pit" src="${S0.pit}" alt="" draggable="false">
+      <img class="ml-pit" src="${S0.pit}" alt="" draggable="false"><span class="ml-ring"></span>
       <div class="ml-clip"><div class="ml-mole"><img class="ml-img" src="${S0.normal}" alt="" draggable="false"><img class="ml-helm" src="${S0.helm}" alt="" draggable="false" hidden><span class="ml-num" hidden></span></div></div>
       <img class="ml-lip" src="${S0.lip}" alt="" draggable="false">
       <span class="ml-tbar"><i></i></span><span class="ml-stamp"></span></div>`;
@@ -563,22 +640,26 @@ NG.mole = (() => {
         </div>
         <div class="ml-top">
           <div class="ml-hostw"><img class="toy ml-host" id="mlHost" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></div>
-          <div class="ml-say" id="mlSay" aria-live="polite"><b>${m.boss ? '보스 판!' : '준비…'}</b><span>${playSub(m)}</span></div>
-          <div class="hlives" id="mlLives" role="img"></div>
+          <div class="ml-say" id="mlSay" aria-live="polite"><b>${m.boss ? '대장 판!' : '준비…'}</b><span>${playSub(m)}</span></div>
         </div>
-        <div class="hbar ml-wbar idle" id="mlBarW" aria-hidden="true"><i id="mlBar"></i></div>
+        <div class="ml-meter">
+          <div class="hlives" id="mlLives" role="img"></div>
+          <div class="hbar ml-wbar idle" id="mlBarW" aria-hidden="true"><i id="mlBar"></i></div>
+        </div>
         <div class="ml-field" id="mlField" style="--cols:${m.cols}">
+          <div class="ml-scene" aria-hidden="true">${sceneSvg()}</div>
           <div class="ml-grid">${Array.from({ length:m.cols * m.rows }, (_, i) => cellHtml(i, S0)).join('')}</div>
           <img class="ml-ham" id="mlHam" src="${S0.ham}" alt="" draggable="false">
           <div class="ml-lock" id="mlLock" aria-live="assertive"></div>
           <div class="ml-banner" id="mlBanner" aria-hidden="true"></div>
-          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>보스!</b><span>끝까지 침착하게</span></div>' : ''}
+          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>대장 판!</b><span>끝까지 침착하게</span></div>' : ''}
         </div>
       </div>`;
-      const f = $('#mlField');
-      f.addEventListener('pointerdown', e => {
-        const c = e.target.closest && e.target.closest('.ml-cell'); if(!c) return;
-        e.preventDefault(); tap(+c.dataset.i);
+      const f = st.querySelector('.ng-mole');   /* 판 밖으로 삐져나온 윗줄 두더지 머리도 받도록 게임 화면 전체에서 받음 */
+      f.addEventListener('pointerdown', e => {   /* 화면 좌표로 고름(칸 모양이 아니라 보이는 두더지 그림 기준) */
+        if(e.button > 0) return;
+        const p = pickAt(e.clientX, e.clientY); if(!p) return;
+        e.preventDefault(); tap(p.hole, p);
       });
       hud(); layout();
       m.onResize = () => layout();
@@ -611,10 +692,11 @@ body[data-mode="mole"]{background:
 .ng-mole .hchip small{font-size:13px}
 .ng-mole #mlOkP.goal{background:linear-gradient(180deg,#E9FFD9,#B8F09A)}
 .ng-mole #mlOkP.goal em, .ng-mole #mlOkP.goal small{color:#2F6E22}
-.ng-mole .ml-top{display:flex; align-items:center; gap:8px; width:100%; height:var(--hs,58px); margin:0 0 6px}
-.ng-mole .ml-hostw{flex:none; width:var(--hs,58px); height:var(--hs,58px); border-radius:50%; background:radial-gradient(circle at 50% 40%,#FFFFFF,#E6F7D2); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; display:flex; align-items:center; justify-content:center; overflow:hidden}
-.ng-mole .ml-host{width:calc(var(--hs,58px) - 6px); height:calc(var(--hs,58px) - 6px); display:block; transform-origin:50% 90%}
-.ng-mole .ml-say{position:relative; flex:1; min-width:0; height:clamp(50px, calc(var(--hs,58px) * .7), 64px); padding:0 12px; border-radius:16px; background:#fff; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45;
+.ng-mole .ml-top{display:flex; align-items:center; gap:10px; width:100%; height:var(--hs,54px); margin:0 0 8px}
+.ng-mole .ml-meter{display:flex; align-items:center; gap:8px; width:100%; margin:auto 0 8px}
+.ng-mole .ml-hostw{flex:none; width:var(--hs,54px); height:var(--hs,54px); border-radius:50%; background:radial-gradient(circle at 50% 40%,#FFFFFF,#E6F7D2); border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; display:flex; align-items:center; justify-content:center; overflow:hidden}
+.ng-mole .ml-host{width:calc(var(--hs,54px) - 6px); height:calc(var(--hs,54px) - 6px); display:block; transform-origin:50% 90%}
+.ng-mole .ml-say{position:relative; flex:1; min-width:0; height:clamp(50px, calc(var(--hs,54px) * .86), 64px); padding:0 14px; border-radius:16px; background:#fff; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45;
   display:flex; flex-direction:column; justify-content:center; gap:2px; line-height:1.1; overflow:hidden}
 .ng-mole .ml-say::before{content:""; position:absolute; left:-9px; top:50%; width:12px; height:12px; background:#fff; border-left:2.5px solid #1A0F45; border-bottom:2.5px solid #1A0F45; transform:translateY(-50%) rotate(45deg)}
 .ng-mole .ml-say b{font-family:var(--heavy); font-weight:400; font-size:19px; color:#2B1D55; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -629,36 +711,46 @@ body[data-mode="mole"]{background:
 .ng-mole .hlives i.lost{animation:mole-lost .5s ease-out}
 .ng-mole .hlives.last{background:#FFE3E3}
 @keyframes mole-lost{0%{transform:scale(1.7); color:#FF6B6B} 100%{transform:none}}
-.ng-mole .ml-wbar{height:10px; margin:auto 0 8px}
+.ng-mole .ml-wbar{flex:1; min-width:0; height:12px; margin:0}
 .ng-mole .ml-wbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#9BEA7A,#47B23A)}
 .ng-mole .ml-wbar.yel > i{background:linear-gradient(180deg,#FFE27A,#F5B31E)}
 .ng-mole .ml-wbar.red > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-mole .ml-wbar.idle > i{opacity:.0}
 .ng-mole .ml-wbar.hurry{animation:mole-hurry .16s linear infinite}
 @keyframes mole-hurry{25%{transform:translateX(-1.5px)} 75%{transform:translateX(1.5px)}}
-.ng-mole .ml-field{position:relative; --cw:100px; --ch:92px; padding:10px; border-radius:22px; border:2.5px solid #1A0F45; touch-action:none;
+.ng-mole .ml-field{position:relative; display:flex; flex-direction:column; --cw:100px; --ch:92px; --sc:0px; padding:8px; border-radius:22px; border:2.5px solid #1A0F45; touch-action:none;
   box-shadow:0 4px 0 #1A0F45, 0 14px 26px rgba(30,70,20,.22), inset 0 2px 0 rgba(255,255,255,.5), inset 0 -10px 24px rgba(20,60,10,.18);
   background:
-    radial-gradient(120% 70% at 50% -10%, rgba(255,255,255,.45), rgba(255,255,255,0) 60%),
     radial-gradient(60% 40% at 15% 85%, rgba(255,255,255,.12), rgba(255,255,255,0) 70%),
-    linear-gradient(180deg,var(--g1,#A6E07C) 0%,var(--g2,#7CC657) 55%,var(--g3,#5DAF45) 100%)}
+    linear-gradient(180deg,var(--g1,#A6E07C) 0,var(--g1,#A6E07C) var(--sc),var(--g2,#7CC657) calc(var(--sc) + (100% - var(--sc)) * .55),var(--g3,#5DAF45) 100%)}
 .ng-mole.ch-2 .ml-field{--g1:#B9DE7A; --g2:#93C657; --g3:#76AE42}
 .ng-mole.ch-3 .ml-field{--g1:#8DC9A0; --g2:#5FA67E; --g3:#3F8466}
 .ng-mole.ch-4 .ml-field{--g1:#B4E48A; --g2:#86CB5F; --g3:#5FAE4A}
 .ng-mole.ch-5 .ml-field{--g1:#B4A6C6; --g2:#9483AE; --g3:#74638E}
 .ng-mole.ch-5 .ml-field::before{background-image:radial-gradient(circle,#FFFFFF 1.4px,transparent 2px), radial-gradient(circle,#9DF0FF 1.6px,transparent 2.2px); opacity:.45}
-.ng-mole .ml-field::before{content:""; position:absolute; inset:0; border-radius:20px; pointer-events:none; opacity:.35;
+.ng-mole .ml-field::before{content:""; position:absolute; inset:var(--sc) 0 0 0; border-radius:0 0 20px 20px; pointer-events:none; opacity:.35;
   background-image:radial-gradient(circle,#FFFFFF 1.4px,transparent 2px), radial-gradient(circle,#FFE98A 1.6px,transparent 2.2px);
   background-size:97px 89px, 131px 113px; background-position:13px 21px, 61px 47px}
 .ng-mole.ch-2 .ml-field::before{background-image:radial-gradient(circle,#FFFFFF 1.4px,transparent 2px), radial-gradient(circle,#FFB36B 1.8px,transparent 2.4px); opacity:.45}
 .ng-mole.ch-3 .ml-field::before{background-image:radial-gradient(circle,#FFF7C2 1.2px,transparent 2px), radial-gradient(circle,#C9F0FF 1.4px,transparent 2px); opacity:.5}
+.ng-mole .ml-scene{position:relative; flex:none; height:var(--sc); margin:-8px -8px 0; border-radius:20px 20px 0 0; overflow:hidden; pointer-events:none;
+  background:linear-gradient(180deg,var(--s1,#DDF1FF) 0%,var(--s2,#F1FAE6) 100%); --h1:#C3E6A4; --h2:#A2D681; --h3:#7CC05C}
+.ng-mole .ml-scene svg{display:block; width:100%; height:100%}
+.ng-mole .ml-scene .ml-sun{fill:#FFF3C4; opacity:.9}
+.ng-mole .ml-scene .ml-fence{fill:#E2B07C; stroke:#D29A62}
+.ng-mole .ml-field.noscene .ml-scene{display:none}
+.ng-mole.ch-2 .ml-scene{--s1:#FFF0D8; --s2:#F6F7DE; --h1:#D2E3A0; --h2:#B4D57E; --h3:#8FC160}
+.ng-mole.ch-3 .ml-scene{--s1:#B9D4E6; --s2:#D6E9E4; --h1:#A2CBB2; --h2:#7EB596; --h3:#5E9E7E}
+.ng-mole.ch-3 .ml-scene .ml-sun{fill:#FFFBE8}
+.ng-mole.ch-4 .ml-scene{--s1:#E2F2FF; --s2:#F2FAE8; --h1:#C9E9A8; --h2:#A6D886; --h3:#80C462}
+.ng-mole.ch-5 .ml-scene{--s1:#D8CCEB; --s2:#E6E0F0; --h1:#BEB0D2; --h2:#A595C0; --h3:#8C7BAA}
 .ng-mole .ml-grid{position:relative; display:grid; grid-template-columns:repeat(var(--cols), var(--cw)); grid-auto-rows:var(--ch); gap:4px}
-.ng-mole .ml-cell{--yb:calc((var(--ch) - var(--cw) * .92) / 2); position:relative; width:var(--cw); height:var(--ch); cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-mole .ml-cell{--yb:calc((var(--ch) - var(--cw) * .92) / 2); position:relative; isolation:isolate; width:var(--cw); height:var(--ch); cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-mole .ml-cell > *{pointer-events:none}
 .ng-mole .ml-pit, .ng-mole .ml-lip{position:absolute; left:0; top:var(--yb); width:var(--cw); height:calc(var(--cw) * .92); display:block}
 .ng-mole .ml-lip{z-index:3}
-.ng-mole .ml-clip{position:absolute; left:0; right:0; top:calc(var(--cw) * -.3); height:calc(var(--yb) + var(--cw) * 1.07); overflow:hidden; z-index:2}
-.ng-mole .ml-mole{position:absolute; left:12%; width:76%; bottom:0; aspect-ratio:100/122; transform:translateY(104%); transform-origin:50% 100%; will-change:transform}
+.ng-mole .ml-clip{position:absolute; left:0; right:0; top:calc(var(--cw) * -.34); height:calc(var(--yb) + var(--cw) * 1.11); overflow:hidden; z-index:2}
+.ng-mole .ml-mole{position:absolute; left:7%; width:86%; bottom:0; aspect-ratio:100/122; transform:translateY(104%); transform-origin:50% 100%; will-change:transform}
 .ng-mole .ml-img, .ng-mole .ml-helm{position:absolute; inset:0; width:100%; height:100%; display:block}
 .ng-mole .ml-helm[hidden], .ng-mole .ml-num[hidden]{display:none}
 .ng-mole .ml-num{position:absolute; left:50%; top:15%; transform:translate(-50%,-50%); width:calc(var(--cw) * .3); height:calc(var(--cw) * .3); min-width:26px; min-height:26px; border-radius:50%;
@@ -674,6 +766,9 @@ body[data-mode="mole"]{background:
 .ng-mole .ml-cell::before{content:""; position:absolute; left:2%; right:2%; top:calc(var(--yb) + var(--cw) * .38); height:calc(var(--cw) * .46); border-radius:50%; z-index:0; opacity:0; transition:opacity .15s;
   background:radial-gradient(closest-side, rgba(255,240,170,.75), rgba(255,240,170,0))}
 .ng-mole .ml-cell.danger::before{opacity:1; background:radial-gradient(closest-side, rgba(255,90,90,.42), rgba(255,90,90,0))}
+.ng-mole .ml-ring{position:absolute; left:1%; width:98%; top:calc(var(--yb) + var(--cw) * .44); height:calc(var(--cw) * .43); border-radius:50%; z-index:1; pointer-events:none; opacity:0; transition:opacity .12s;
+  border:3px solid #E5484D; box-shadow:0 0 0 3px rgba(229,72,77,.16), inset 0 0 0 2px rgba(255,255,255,.35)}
+.ng-mole .ml-cell.danger .ml-ring{opacity:1}
 .ng-mole .ml-cell.dizzy .ml-lip, .ng-mole .ml-cell.dizzy .ml-pit{animation:mole-dizzy .4s ease-out}
 @keyframes mole-dizzy{30%{transform:translateY(2px)} 60%{transform:translateY(-1px)}}
 .ng-mole .ml-stamp{position:absolute; left:50%; top:calc(var(--yb) + var(--cw) * .22); z-index:6; width:calc(var(--cw) * .42); height:calc(var(--cw) * .42); border-radius:50%; transform:translate(-50%,-50%) scale(.3); opacity:0; display:flex; align-items:center; justify-content:center; border:3px solid #1A0F45; box-shadow:0 3px 0 #1A0F45}
@@ -682,7 +777,7 @@ body[data-mode="mole"]{background:
 .ng-mole .ml-stamp.x{background:linear-gradient(180deg,#FF8A8F,#E5484D)}
 .ng-mole .ml-stamp.on{animation:mole-stamp .65s cubic-bezier(.2,1.5,.4,1) both}
 @keyframes mole-stamp{0%{opacity:0; transform:translate(-50%,-50%) scale(1.8)} 20%{opacity:1; transform:translate(-50%,-50%) scale(.95)} 30%{transform:translate(-50%,-50%) scale(1)} 75%{opacity:1} 100%{opacity:0; transform:translate(-50%,-70%) scale(1)}}
-.ng-mole .ml-ham{position:absolute; left:0; top:0; width:calc(var(--cw) * .62); height:calc(var(--cw) * .62); z-index:7; pointer-events:none; opacity:0; transform-origin:84% 88%; filter:drop-shadow(0 4px 3px rgba(20,40,10,.3))}
+.ng-mole .ml-ham{position:absolute; left:0; top:0; width:calc(var(--cw) * .68); height:calc(var(--cw) * .68); z-index:7; pointer-events:none; opacity:0; transform-origin:84% 88%; filter:drop-shadow(0 4px 3px rgba(20,40,10,.3))}
 .ng-mole .ml-lock{position:absolute; left:50%; top:50%; z-index:9; pointer-events:none; transform:translate(-50%,-50%) scale(.6); opacity:0; transition:opacity .12s, transform .18s cubic-bezier(.2,1.5,.4,1)}
 .ng-mole .ml-lock b{display:block; font-family:var(--heavy); font-weight:400; font-size:22px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:6px 16px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap}
 .ng-mole .ml-lock.soft b{background:#8C6A4A; font-size:18px; padding:4px 13px}
@@ -711,6 +806,9 @@ body[data-mode="mole"]{background:
 .ng-mole.dark .ml-cell.lit::before{opacity:1}
 .ng-mole.dark .ml-cell.lit.danger::before{opacity:1}
 .ng-mole.dark .ml-banner span{background:#0E1830}
+.ng-mole.dark .ml-scene{--s1:#14213A; --s2:#22384A; --h1:#25405A; --h2:#203A4C; --h3:#1B3242}
+.ng-mole.dark .ml-scene .ml-sun{fill:#FFF4C8; opacity:.85}
+.ng-mole.dark .ml-scene .ml-fence{fill:#3B4E5E; stroke:#33454F}
 @media (max-width:370px){ .ng-mole .ml-say b{font-size:17px} .ng-mole .ml-say span{font-size:13px} .ng-mole .hlives{padding:0 7px 0 6px} }
 @media (prefers-reduced-motion: reduce){ .ng-mole .ml-say.pop, .ng-mole .ml-banner.on, .ng-mole .ml-stamp.on, .ng-mole .ml-field.cleared, .ng-mole .ml-cell.dizzy .ml-lip, .ng-mole .ml-cell.dizzy .ml-pit{animation-duration:.01s} .ng-mole .ml-wbar.hurry{animation:none} }
 .ml-float{font-family:var(--heavy); font-weight:400; font-size:24px}
@@ -737,11 +835,24 @@ body[data-mode="mole"]{background:
   };
 })();
 
-/* 대전: 같은 씨앗·보통 설정. 누가 더 많이, 더 빨리 맞혔나(끝났을 때 점수가 높은 쪽 승) */
+/* 대전: 같은 씨앗·보통 설정. 끝났을 때 점수가 높은 쪽 승.
+   대전 v3 엔진의 기본(경주: 먼저 끝낸 사람 1위)은 이 게임에 맞지 않는다. 두더지는 모두 같은 시간표로 끝나서
+   몇 ms 먼저 끝난 쪽이 이기고 상대 판이 잘렸다. 그래서 점수전(모두 끝까지, 점수 순)으로 둔다(2026-10-06).
+   막대 값 = 지금까지 점수(결과 창 점수와 같은 식, 남은 기회 점수는 진행만큼 반영 → 끝나면 결과 점수와 같음) */
 Object.assign(NG.mole, {
-  duelPace:[50, .8],
-  duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:G.m.lives }) },
-  duelHow:'같은 두더지 · 폭탄은 참고 누가 더 많이 잡나'
+  duelKind:'score', duelMax:2, duelEnd:'all',
+  duelPace:[42, .8],
+  duelAi(rng, o){   /* 컴퓨터: 판 길이(약 40초)에 맞춘 결과. 실패해도 그때까지 점수(pts)는 있음 */
+    const ok = rng() < .8, T = 42 * (.88 + rng() * .24) * (o && o.pace === 's' ? 1.3 : 1), sc = ok ? Math.round((600 + rng() * 330) / 10) * 10 : 0;
+    return { ok, T, sc, fail:.35 + rng() * .5, pts:ok ? sc : Math.round((200 + rng() * 220) / 10) * 10 };
+  },
+  duelStat:{ unit:'점', score:true, lfMax:3, get:() => {
+    const m = G.m, N = Math.max(1, m.N), pr = Math.min(1, m.judged / N);
+    const base = Math.round(500 * Math.min(1, m.correct / N)), time = Math.max(0, Math.round(350 * Math.min(1, m.sumFr / N)) - 5 * m.empty);
+    const extra = Math.round(50 * Math.max(0, m.lives) * (m.done && !m.fail ? 1 : pr));
+    return { v:Math.round((base + time + extra) * ((G.L && G.L.mult) || 1)), t:m.N, lf:m.lives, mis:m.wrong };
+  } },
+  duelHow:'같은 두더지 · 폭탄은 참고 점수가 높은 쪽이 이겨요'
 });
 /* 움직이는 배경(core/scene.js): 잔잔한 꽃가루. 보이기만 하고 게임·대전에는 영향 없음 */
 NG.mole.scene = { kind:'motes', colors:['#FFFFFF', '#FFF3B0', '#D8F5C8'], density:.6, alpha:.7 };
