@@ -63,6 +63,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `coach` | 첫 판 손가락 안내(처음 한 번, `hp:coach:<id>`): `[{ at:() => 요소|{x,y}, text:'여기를 눌러요', act:'tap'|'drag'|'swipe', to?:() => 요소|{x,y} }]`. 시계 멈춘 채 따라 하기, 마지막 동작에서 시계 다시 감. 대전에서는 안 나옴 |
 | `recMoves()` | 판 기록(`hp:best:<id>:<판>`)에 시간과 같이 남길 수(이동 수 등). 없으면 시간만 |
 | `noSend` | `true`면 판 고르기 창에 [친구에게 보내기] 없음(`age`가 있는 게임은 자동으로 없음) |
+| `duelReplay` | 대전 결과 창 "이 판 다시 풀기 · 친구에게 보내기"(R11) 켜기/끄기. 없으면 경주(`race`)·점수(`score`)만 켜짐, 선점·차례·`duelLaunch`는 꺼짐. 상대 수에 따라 판이 달라지는 게임은 `false`(예: 오목). 다시 풀기는 대전과 같은 씨앗·`duelCfg`로 `init`을 부르고, `init` 동안만 `G.duel = { replay:true, … }`(가짜 표식)이 있어 대전 전용 판 갈래를 그대로 탄 뒤 `G.duel = null`로 혼자 푼다(대전 뒤 계속 풀기와 같은 모양) |
 
 공용 조작 부품(엔진, 게임이 붙여 씀): `dpadHtml({ okText, ok:false, cls })` + `dpadBind(요소, dir => …, { repeat:ms })`(▲▼◀▶ + [확인] 56px), `tapPlace(요소, { item:'.조각', cell:'.칸', place:(조각, 칸) => false면 못 놓음, pick? })`(끌기 대신 누르고 놓기, 고른 것에 `.tp-sel`). 큰 글씨는 `body.big`(글자 +2px) — 게임 CSS에서 필요하면 `body.big .내클래스{…}`로 맞춘다.
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |

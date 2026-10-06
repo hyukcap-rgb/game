@@ -353,6 +353,39 @@ function openAdvMap(id, want){
   draw();
 }
 
+/* ---- 대전 판 다시 풀기 · 보내기(R11, 결정 221) ----
+   대전 결과(res)의 g·seed·lv·n·pace로 같은 판을 혼자 다시 연다: 기록·포인트·하트 영향 없음(G.replay.kind 'duel', 사이트 portal/replay.js · 모듈 embed/shell.js가 결과 창).
+   판 설정은 대전 때처럼 duelCfgFor(게임, 난이도, { n, pace })로 다시 만든다(같은 값 → 같은 판). 혼자 의미 없는 대전은 res.rp가 false(core/duel.js duelReplayOk).
+   보내기 링크(사이트 index.html · 모듈 embed/<게임>.html 같은 이름): ds=씨앗 · g=게임 · lv=난이도 · pn=인원 · pc=느긋하게(s) · rk=보낸 사람 순위 · rt=결과 글 · t=다 푼 초 · sc=점수 · n=별명 */
+const DS_SEED = /^[\w:.\-]{1,120}$/;
+const dsLv = v => /^[a-z]{2,10}$/.test(String(v || '')) ? String(v) : 'normal';
+function duelReplayOf(res){
+  if(!res || !res.rp || !res.g || !NG[res.g] || !DS_SEED.test(String(res.seed || ''))) return null;
+  const me = (res.rows || []).find(x => x.me) || {};
+  return { g:res.g, seed:String(res.seed), lv:dsLv(res.lv), n:Math.max(2, Math.min(5, res.n | 0 || 2)), pace:res.pace === 's' ? 's' : 'n', dk:res.kind || 'race',
+    rk:res.rank | 0, rt:String(me.txt || '').replace(/<[^>]*>/g, '').slice(0, 40), t:typeof res.t === 'number' ? res.t : null, sc:res.sc | 0 };
+}
+/* 링크 주소 옵션 ↔ 다시 풀기 값 */
+function duelReplayQ(x){ const q = { ds:x.seed, g:x.g, lv:x.lv, pn:x.n }; if(x.pace === 's') q.pc = 's'; if(x.rk) q.rk = x.rk; if(x.rt) q.rt = x.rt; if(x.t != null) q.t = x.t; if(x.sc) q.sc = x.sc; return q; }
+function duelReplayParse(q){
+  try{
+    const seed = q.get('ds'), g = q.get('g');
+    if(!seed || !DS_SEED.test(seed) || !g || !GAME_IDS.includes(g) || !NG[g] || NG[g].age || !duelReplayOk(g)) return null;
+    const num = (k, hi) => { const v = parseInt(q.get(k), 10); return v >= 0 ? Math.min(hi, v) : null; };
+    return { g, seed, lv:dsLv(q.get('lv')), n:Math.max(2, Math.min(5, num('pn', 5) || 2)), pace:q.get('pc') === 's' ? 's' : 'n', dk:duelKindOf(g),
+      rk:num('rk', 5) || 0, rt:String(q.get('rt') || '').replace(/[<>&"'`\\\n\r\t]/g, '').slice(0, 40), t:num('t', 99999), sc:num('sc', 9999999) || 0,
+      from:String(q.get('n') || '').replace(/[<>&"'`\\\n\r\t]/g, '').trim().slice(0, 12) };
+  }catch(_){ return null; }
+}
+/* 같은 판으로 혼자 시작(대전 결과 창·받은 링크). x = duelReplayOf(res) 또는 duelReplayParse(…) (+ from: 보낸 사람) */
+function duelReplayStart(x){
+  if(!x || !NG[x.g]) return;
+  let cfg = null; try{ cfg = duelCfgFor(x.g, x.lv, { n:x.n, pace:x.pace, avoid:[] }); }catch(_){ cfg = null; }
+  try{ leavePlay(); }catch(_){}
+  closeModal();
+  startGame(x.g, x.lv, { seed:x.seed, cfg, replay:Object.assign({}, x, { kind:'duel' }) });
+}
+
 function openModal(html){ if(!$('#veil').classList.contains('on')) sfx('open'); const m = $('#modal'); m.className = 'modal'; m.style.removeProperty('--gc'); m.innerHTML = html; $('#veil').classList.add('on'); document.body.classList.add('modal-open'); m.scrollTop = 0; }
 function closeModal(){ $('#veil').classList.remove('on'); document.body.classList.remove('modal-open'); }
 
@@ -492,14 +525,20 @@ function startGame(id, lv = 'normal', o = {}){
   if(!adv && !duel && HOST.flatMult) L = Object.assign({}, L, { mult:1 });   /* 시험지는 배율 없음 */
   if(duel && duel.cfg) L = Object.assign({}, L, { [id]:duel.cfg });   /* 대전 판 설정(duelCfg·느긋하게, core/duel.js) */
   if(adv) lv = m.stageLevel ? L.ai : 'adv';
+  if(!adv && !duel && o.cfg && typeof o.cfg === 'object') L = Object.assign({}, L, { [id]:o.cfg });   /* 대전 판 다시 풀기(R11): 그 대전의 판 설정 그대로 */
   const rng = adv ? mulberry(seedFrom('adv:' + id + ':' + adv)) : duel ? mulberry(seedFrom(duel.seed || ('duel:' + id + ':' + Date.now()))) : mulberry(seedFrom(o.seed || ('exam:' + dayKey() + ':' + id)));   /* 날짜 씨앗 = 전 국민(모든 사이트) 같은 문제 */
   G = { id, lv, adv, duel, L, attempt, chal:o.chal || null, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
-  G.cfg = L[id]; m.init(L[id], rng, lv);
+  G.cfg = L[id];
+  /* 대전 판 다시 풀기(R11): init이 대전 때와 같은 갈래(대전 전용 판·규칙)를 타도록 init 동안만 가짜 대전 표식을 두고 바로 뗀다(대전 뒤 계속 풀기와 같은 모양) */
+  const rpd = !adv && !duel && o.replay && o.replay.kind === 'duel';
+  if(rpd) G.duel = { v:3, replay:true, mode:'replay', kind:duelKindOf(id), seed:o.seed || '', pace:o.replay.pace === 's' ? 's' : 'n', slow:o.replay.pace === 's', pl:[], P:{}, avoid:[], go:false, myPid:'me', cfg:o.cfg || null };
+  try{ m.init(L[id], rng, lv); } finally { if(rpd) G.duel = null; }
   HOST.showPlay();
   G.replay = o.replay || null;   /* 다시 풀기·받은 판·지난 문제: 기록·진도에 넣지 않음(HOST.replayFinish가 결과 창) */
   const ex = m.titleExtra ? m.titleExtra() : '';
   $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || '컴퓨터')) : 'VS ' + esc(duel.vs || duel.opp.nick) + (duel.mode === 'ai' ? ' (컴퓨터)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
   if(adv && !duel) $('#ptitle').innerHTML = GAMES[id].name + `<small>${G.replay && G.replay.kind === 'gift' ? '친구가 보낸 판 · ' + adv + '판' : '솔로 · ' + (WARMUP(adv) ? '몸풀기 판' : chName(id, chOf(adv))) + ' · ' + adv + '판'}${ex}</small>`;
+  if(G.replay && G.replay.kind === 'duel') $('#ptitle').innerHTML = GAMES[id].name + `<small>${G.replay.from ? esc(G.replay.from) + '님이 보낸 대전 판' : '대전 판 다시 풀기'} · 기록 안 됨${ex}</small>`;
   hstarTick();   /* 솔로 별 목표선(판을 그리기 전에 자리를 잡아 판 크기 계산이 맞게) */
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();

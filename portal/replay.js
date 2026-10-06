@@ -4,7 +4,9 @@
    - 지난 문제: 오늘의 시험지 아래 "지난 7일 문제 다시 풀기" → 날짜 → 그날 게임(씨앗 'exam:날짜:게임', 하트 없음·기록 안 됨).
      보내기는 지금 도전장 링크(c·d·s·lv)에 그 날짜를 그대로 넣는다. 받는 쪽은 7일 안의 날짜면 그날 문제로 연다.
    - 엔진(core/engine.js)과의 약속: startGame(…, { replay:{ kind } }) → G.replay, 끝나면 HOST.replayFinish(win).
-     판 고르기 창의 [친구에게 보내기] = HOST.sendStage(id, 판, { t, st }, back). 모듈(embed)에는 없음. */
+     판 고르기 창의 [친구에게 보내기] = HOST.sendStage(id, 판, { t, st }, back). 모듈(embed)에는 없음.
+   - 대전 판(R11, 결정 221): 대전 결과 창 "이 판 다시 풀기"·"친구에게 보내기" → 링크 ?ds=<씨앗>&g=<게임>&lv&pn&pc&rk&rt&t&sc&n
+     (core/engine.js duelReplayOf·duelReplayQ·duelReplayParse·duelReplayStart). 받은 사람은 같은 판을 혼자 풀고 보낸 사람 기록과 나란히 봄. 기록·포인트·하트 영향 없음. */
 const RP_DAYS = 7;
 let RP_IN = null;
 const rpInt = (v, lo, hi) => Math.max(lo, Math.min(hi, parseInt(v, 10) || 0));
@@ -16,6 +18,7 @@ const rpWd = k => WD_KO[wdOf(k)];
 /* ---- 링크 읽기: readLink(viral.js)가 주소를 지우기 전에 ?p=를 먼저 읽는다 ---- */
 function rpParse(){
   let q; try{ q = new URLSearchParams(location.search); }catch(_){ return null; }
+  const ds = duelReplayParse(q); if(ds) return Object.assign(ds, { kind:'dgift', from:cleanNick(q.get('n')) });   /* 대전 판 보내기(R11) */
   const m = /^([a-z0-9_-]{1,20})\.(\d{1,4})$/.exec(q.get('p') || '');
   if(!m || !GAME_IDS.includes(m[1]) || !NG[m[1]].stage || NG[m[1]].age || NG[m[1]].noSend) return null;
   return { kind:'gift', g:m[1], n:Math.max(1, +m[2]), t:rpInt(q.get('s'), 0, 99999), st:rpInt(q.get('st'), 0, 3), from:cleanNick(q.get('n')) };
@@ -26,7 +29,7 @@ function rpParse(){
   onArrive = function(o){
     if(RP_IN){ const x = RP_IN; RP_IN = null;
       if(o && o.n && !(o.f && typeof frApi === 'function' && frApi())) linkFriendAdd(o.n);
-      store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0))); renderHome(); rpShowGift(x); return true; }
+      store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0))); renderHome(); if(x.kind === 'dgift') rpShowDuelGift(x); else rpShowGift(x); return true; }
     if(o && o.g && o.d && o.d !== dayKey() && rpPastOk(o.d) && !isAdult(o.g)){   /* 지난 문제 도전장 */
       if(o.n && !(o.f && typeof frApi === 'function' && frApi())) linkFriendAdd(o.n);
       store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0))); renderHome(); rpShowPastChal(o); return true; }
@@ -54,6 +57,29 @@ function rpShowGift(x){
   $('#rpGo').onclick = () => { closeModal(); rpPlayGift(x); };
 }
 function rpPlayGift(x){ startGame(x.g, null, { adv:x.n, replay:{ kind:'gift', g:x.g, n:x.n, from:x.from, t:x.t, st:x.st } }); }
+
+/* ---- 대전 판 보내기 · 받은 대전 판(R11) ---- */
+function rpDuelRec(x){   /* 보낸 사람(또는 대전 때 나) 기록 한 줄: "2위 · 1:42" */
+  return [x.rk ? x.rk + '위' : '', x.dk !== 'score' && x.t > 0 ? rpT(x.t) : (x.rt || (x.sc ? fmt(x.sc) + '점' : ''))].filter(Boolean).join(' · ');
+}
+function cardDuelSend(x){
+  const name = GAMES[x.g].name, rec = x.dk === 'score' && x.sc ? fmt(x.sc) + '점' : x.t != null ? rpT(x.t) : '';
+  const big = x.rk ? { big:x.rk, unit:'위' } : x.dk === 'score' && x.sc ? { big:x.sc, unit:'점' } : { big:x.t || 0, unit:'초' };
+  return Object.assign({ kind:'chal', title:'친구에게 대전 판 보내기', head:name + ' 대전 판', sub:(x.rk ? '대전 ' + x.rk + '위' : '내 기록') + (rec ? ' · ' + rec : ''),
+    text:`🦊 하루퍼즐 ${name} 대전 판${rec ? ', 나는 ' + rec : ''}${x.rk ? ' (대전 ' + x.rk + '위)' : ''}.\n같은 판으로 나를 이겨 볼래?`, q:duelReplayQ(x) }, big);
+}
+HOST.sendDuel = (x, back) => viralShare(cardDuelSend(x), back);
+function rpShowDuelGift(x){
+  const nm = escH(x.from || '친구'), name = GAMES[x.g].name, rec = rpDuelRec(x);
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">친구가 보낸 대전 판</p><div class="ttl rpttl rpds">${nm}님의<br>${name}</div>
+    <span class="chal-art">${ART[x.g] ? ART[x.g]() : ''}</span>
+    ${rec ? `<p class="rprec">${nm} <b class="num">${escH(rec)}</b></p>` : ''}
+    <p class="rpnote">혼자 같은 판을 풀어요 · 하트 없이 · 기록·포인트에 안 들어가요</p>
+    <div class="mbtns"><button class="b2" id="chLater">나중에</button><button class="b1" id="rpGo">풀어 보기</button></div>`);
+  $('#modal').classList.add('celebrate'); sfx('fanfare');
+  $('#chLater').onclick = () => { closeModal(); renderHome(); };
+  $('#rpGo').onclick = () => { closeModal(); duelReplayStart(x); };
+}
 
 /* ---- 지난 7일 문제 ---- */
 function rpPastBtn(){
@@ -100,7 +126,20 @@ HOST.replayFinish = function(win){
   const R = G.replay, id = G.id;
   const dd = dayState(); if(!dd.att){ dd.att = true; saveDay(dd); }   /* 끝까지 한 판 = 출석(다른 판과 같음) */
   let html, B, score = 0;
-  if(R.kind === 'gift'){
+  if(R.kind === 'duel'){   /* 대전 판 다시 풀기 · 받은 대전 판(R11) */
+    const t = Math.round(elapsed()), isSc = R.dk === 'score', from = R.from || '';
+    score = win || isSc ? (() => { try{ return calcScore().score; }catch(_){ return 0; } })() : 0;
+    const meTxt = isSc ? fmt(score) + '점' : win ? rpT(t) : '못 깸', opTxt = isSc ? (R.sc ? fmt(R.sc) + '점' : (R.rt || '–')) : (R.t != null ? rpT(R.t) : (R.rt || '–'));
+    const meWin = isSc ? score > (R.sc || 0) : win && (R.t == null || t < R.t), opWin = isSc ? (R.sc || 0) > score : R.t != null && (!win || t > R.t);
+    html = (win ? `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${NG[id].winTitle || '다 풀었어요!'}</h3>`
+      : `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="note">${lossProgress()}</p>`)
+      + rpVs(meTxt, meWin, from || '대전 때 나', opTxt + (R.rk ? ` <small>${R.rk}위</small>` : ''), opWin)
+      + `<p class="note">${from ? (meWin ? `${escH(from)}님보다 잘했어요! 내 기록으로 다시 보내 봐요.` : opWin ? `이번엔 ${escH(from)}님이 앞섰어요.` : '똑같아요!') : (meWin ? '대전 때보다 잘했어요!' : '몇 번이든 다시 풀 수 있어요.')}<br>대전 판 다시 풀기라 기록·포인트·하트에 영향이 없어요.</p>`;
+    const mine = Object.assign({}, R, { rk:0, rt:meTxt, t:win ? t : null, sc:isSc ? score : 0, from:'' });
+    B = { pri:{ id:'mPri', label:'다시 풀기', sub:`${GAMES[id].name} 같은 판 · 무료`, fn:() => duelReplayStart(R) },
+      pair:[ win || (isSc && score > 0) ? { id:'rpSend', label:`${ic('share')} 내 기록 보내기`, cls:'gold', keep:true, fn:() => HOST.sendDuel(mine, reopen) } : null ],
+      links:[ { id:'rpDuel', label:`${ic('duel')}대전 하러 가기`, fn:() => { goHome(); setTab('duel'); } }, { id:'mGh', label:'홈으로', fn:goHome } ] };
+  } else if(R.kind === 'gift'){
     const t = Math.round(elapsed()), st = win ? advStarCalc() : 0, from = R.from || '친구';
     const meWin = win && (!R.t || t < R.t), opWin = !!R.t && (!win || t > R.t);
     html = win ? `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${R.n}판 클리어!</h3>

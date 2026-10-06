@@ -338,6 +338,7 @@ body[data-mode] .toast.on{transform:translate(-50%,0)}
 .rb-links button{min-height:44px; padding:0 12px; font-size:15px; color:var(--sub); background:none; border:0; text-decoration:underline; text-decoration-color:rgba(106,88,132,.35); text-underline-offset:4px}
 .rb-links button .ico{width:16px; height:16px; vertical-align:-3px; margin-right:3px}
 .rb-links i{font-style:normal; color:var(--line)}
+.dz-rp{margin:10px 0 -4px}   /* 대전 결과 창 "이 판 다시 풀기 · 친구에게 보내기" 글자 버튼 줄(R11) */
 .modal .rbtns + .note{margin-top:4px}
 /* 꽃가루·효과 층: 창이 열려 있으면 창 뒤로(글자·버튼 위로 지나가지 않게) */
 .veil > .fxfx{z-index:0}

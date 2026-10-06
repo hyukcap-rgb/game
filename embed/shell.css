@@ -77,3 +77,5 @@ html, body{min-height:100%}
 body.big .dz-nm b{font-size:17px} body.big .dz-nm small, body.big .dz-why, body.big .dz-pts p{font-size:15px} body.big .dz-mine{font-size:19px}
 .dz-rec{margin:10px 0 0; font-family:var(--disp); font-size:15px; color:var(--ink)}
 .rmwait{display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px 0 8px}
+.em-dsart{display:block; width:96px; margin:6px auto}   /* 친구가 보낸 대전 판 창 그림(R11) */
+.em-rpvs{margin:10px 0 4px}   /* 대전 판 다시 풀기 결과: 나 · 보낸 사람 나란히(R11) */

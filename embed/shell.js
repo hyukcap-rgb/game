@@ -215,13 +215,16 @@ function embDuelResult(r, a, b, res){
     <h3 class="dz-h${r1 ? ' r1' : ''}" data-r="${R.tie && R.rank === 1 ? 'd' : r1 ? 'w' : 'l'}">${r1 ? EMB_CROWN : ''}<span class="num">${t}</span></h3>
     ${me.txt ? `<p class="dz-mine">${esc(me.txt)}</p>` : ''}${R.why ? `<p class="dz-why">${R.why}</p>` : ''}${rows}${typeof duelResX === 'function' ? duelResX() : ''}
     <p class="dz-rec">대전 기록 1위 ${x.w}번 · 판 ${tot}번</p><p class="dz-again" id="dzAgain" aria-live="polite"></p>`;
+  const RPX = typeof duelReplayOf === 'function' ? duelReplayOf(res) : null;   /* 이 판 다시 풀기 · 친구에게 보내기(R11) */
+  const rpRow = RPX ? `<div class="rb-links dz-rp"><button id="dzRp">${ic('play')}이 판 다시 풀기</button><i aria-hidden="true">·</i><button id="dzSend">${ic('share')}친구에게 보내기</button></div>` : '';
   const quickAgain = R.room && R.room.canAgain && !R.ai;
   const pri = EMB.room ? ['한 판 더', () => embRoomDuel(EMB.roomRd + 1), '같은 방 코드로 새 문제']
     : quickAgain ? ['한 판 더', () => embDuelAgain(), '같은 상대와 새 문제로'] : ['다시 대전', () => { embMenu(); embStart('duel'); }, quickAgain ? '' : '새 상대를 찾아요'];
   const sc = ['처음으로', embMenu], ex = quickAgain ? [{ id:'mNew', label:'새 상대 찾기', fn:() => { embMenu(); duelStart(id); } }] : [];
   const RB = embRes(pri, sc, ex); if(quickAgain) RB.pri.keep = true;
   setTimeout(() => {
-    openModal(html + duelContinueHtml() + resBtns(RB) + '</div>'); $('#modal').classList.add('duelm', 'dzm'); resBind(RB); duelContinueBind();
+    openModal(html + duelContinueHtml() + rpRow + resBtns(RB) + '</div>'); $('#modal').classList.add('duelm', 'dzm'); resBind(RB); duelContinueBind();
+    if(RPX){ $('#dzRp').onclick = () => duelReplayStart(RPX); $('#dzSend').onclick = () => embSendDuel(RPX); }
     if(r1){ fxConfetti(); sfx('fanfare'); } else if(R.tie) sfx('result'); else sfx('lose');
     try{ toyMood($('#modal .dz-rows li.me'), r1 ? 'joy' : R.tie ? 'wow' : 'sad'); }catch(_){}
     if(quickAgain) embAgainLoop(id);
@@ -241,10 +244,57 @@ function embAgainLoop(id){
   tick(); embAgainLoop.t = setInterval(tick, 400);
 }
 
+/* ---- 대전 판 다시 풀기 · 보내기(R11, 더함) ----
+   보내기: 이 모듈 주소 + ?ds=<씨앗>&g&lv&pn&pc&rk&rt&t&sc(core/engine.js duelReplayQ) → 기기 공유 시트, 안 되면 복사. 붙인 곳에는 'send' 이벤트(url 포함).
+   받기: 주소에 ds=가 있으면 첫 화면 위에 "친구가 보낸 대전 판" 창 → 풀어 보기(기록 안 됨). 시작·끝에 'replay' 이벤트(phase:'start'|'finish') */
+const embT = t => t > 0 ? clock2(t).replace(/^0(?=\d:)/, '') : '–';
+function embDsUrl(x){
+  const u = new URL(location.origin + location.pathname), now = new URLSearchParams(location.search), q = duelReplayQ(x);
+  for(const k of ['ns', 'sound', 'big']){ const v = now.get(k); if(v != null) u.searchParams.set(k, v); }   /* 기록 나누기·소리·큰 글씨는 그대로 */
+  for(const k in q) u.searchParams.set(k, q[k]);
+  return u.toString();
+}
+async function embSendDuel(x){
+  const url = embDsUrl(x), name = NG[EMB.id].name, rec = x.dk === 'score' && x.sc ? fmt(x.sc) + '점' : x.t != null ? embT(x.t) : '';
+  const text = `${name} 대전 판${rec ? ', 나는 ' + rec : ''}${x.rk ? ' (대전 ' + x.rk + '위)' : ''}. 같은 판으로 나를 이겨 볼래?`;
+  embEmit('send', { kind:'duel', url, text, seed:x.seed, level:x.lv, rank:x.rk || null, time:x.t == null ? null : x.t, score:x.sc || 0 });
+  try{ if(navigator.share){ await navigator.share({ title:name, text, url }); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  let ok = false; try{ await navigator.clipboard.writeText(text + '\n' + url); ok = true; }catch(_){}
+  toast(ok ? '링크를 복사했어요 · 친구에게 붙여 넣어 보내 주세요' : '링크를 만들었어요');
+}
+function embDsGift(x){
+  const nm = esc(x.from || '친구'), m = NG[EMB.id], rec = [x.rk ? x.rk + '위' : '', x.rt || (x.t != null ? embT(x.t) : x.sc ? fmt(x.sc) + '점' : '')].filter(Boolean).join(' · ');
+  openModal(`<h3>${nm}님이 보낸 대전 판</h3><span class="g-art em-dsart">${ART[EMB.id]()}</span>
+    <p class="note"><b>${m.name}</b> 대전 판을 혼자 풀어요${rec ? `<br>${nm} 기록 <b>${esc(rec)}</b>` : ''}</p><p class="note">기록·별에는 안 들어가요</p>
+    <div class="mbtns two"><button class="b2" id="mClose">나중에</button><button class="b1" id="dsGo">풀어 보기</button></div>`);
+  $('#mClose').onclick = closeModal;
+  $('#dsGo').onclick = () => duelReplayStart(x);
+}
+function embReplayFinish(win){
+  const R = G.replay, id = G.id, m = NG[id];
+  if(!R || R.kind !== 'duel'){ embPlayFinish(win); return; }
+  const t = Math.round(elapsed()), isSc = R.dk === 'score', from = R.from || '';
+  let score = 0; if(win || isSc){ try{ score = calcScore().score; }catch(_){ score = 0; } }
+  const meTxt = isSc ? fmt(score) + '점' : win ? embT(t) : '못 깸', opTxt = isSc ? (R.sc ? fmt(R.sc) + '점' : (R.rt || '–')) : (R.t != null ? embT(R.t) : (R.rt || '–'));
+  const meWin = isSc ? score > (R.sc || 0) : win && (R.t == null || t < R.t), opWin = isSc ? (R.sc || 0) > score : R.t != null && (!win || t > R.t);
+  embEmit('replay', { phase:'finish', win, time:t, score, seed:R.seed, from:from || null });
+  /* 나란히: 대전 결과 창과 같은 순위표 모양(나 · 보낸 사람 또는 대전 때 나), 앞선 쪽이 위 */
+  const even = !meWin && !opWin, two = [ { me:true, nm:'나', txt:meTxt, w:meWin }, { me:false, nm:from || '대전 때 나', txt:opTxt + (R.rk ? ' · 대전 ' + R.rk + '위' : ''), w:opWin } ];
+  if(opWin) two.reverse();
+  const vs = `<ol class="dz-rows em-rpvs">${two.map(y => `<li class="${y.me ? 'me' : ''}${y.w ? ' win' : ''}"><span class="dz-medal ${y.w || even ? 'm1' : 'm2'}">${y.w || even ? 1 : 2}</span>${y.me || !from ? avatar({ me:true }) : oppAv(from)}<span class="dz-nm"><b>${esc(y.nm)}</b><small>${esc(y.txt)}</small></span></li>`).join('')}</ol>`;
+  const html = (win ? `<div class="burst" aria-hidden="true"></div><h3 class="ok">${resFace('joy')}${m.winTitle || '다 풀었어요!'}</h3>` : `<h3 class="bad">${resFace('sad')}아쉬워요!</h3><p class="note">${lossProgress()}</p>`)
+    + vs + `<p class="note">대전 판 다시 풀기라 기록에 안 들어가요</p>`;
+  const mine = Object.assign({}, R, { rk:0, rt:meTxt, t:win ? t : null, sc:isSc ? score : 0, from:'' });
+  const RB = { pri:{ id:'mPri', label:'다시 풀기', sub:'같은 판 · 기록 안 됨', fn:() => duelReplayStart(R) },
+    links:[ win || (isSc && score > 0) ? { id:'dzSend', label:`${ic('share')}내 기록 보내기`, keep:true, fn:() => embSendDuel(mine) } : null, { id:'mGh', label:'처음으로', fn:embMenu } ] };
+  setTimeout(() => { openModal(html + resBtns(RB)); resBind(RB); if(win){ if(!m.noConfetti) fxConfetti(); sfx('result'); } else sfx('lose'); }, win ? 500 : 250);
+}
+
 /* ---- 엔진에 알려 주기 ---- */
 Object.assign(HOST, {
   heartCost:false,
   beforeStart(id, lv, o){
+    if(o.replay){ EMB.cur = 'replay'; embEmit('replay', { phase:'start', seed:o.replay.seed || null, level:lv, from:o.replay.from || null }); return { attempt:0 }; }   /* 더함(R11): 대전 판 다시 풀기 — 기록 안 됨 */
     if(o.adv) EMB.cur = 'solo'; else if(o.duel) EMB.cur = 'duel'; else if(!o.seed && EMB.cur !== 'practice') EMB.cur = 'daily';
     if(EMB.cur === 'practice' && !o.adv && !o.duel && !o.seed) o.seed = 'prac:' + id + ':' + Date.now() + ':' + Math.random();   /* 연습은 매번 새 문제 */
     let attempt = 0;
@@ -258,7 +308,8 @@ Object.assign(HOST, {
   finish(win){ if(G.adv) embSoloFinish(win); else embPlayFinish(win); },
   exit(){ embEmit('quit', { mode:EMB.cur }); embMenu(); },
   canDuel:() => true,
-  duelResult:(r, a, b, res) => embDuelResult(r, a, b, res)
+  duelResult:(r, a, b, res) => embDuelResult(r, a, b, res),
+  replayFinish:win => embReplayFinish(win)
 });
 Object.defineProperty(HOST, 'flatMult', { get:() => EMB.cur === 'daily' });   /* 오늘의 문제는 배율 없이(사이트와 같은 점수) */
 
@@ -298,4 +349,5 @@ if(EMB.pace) store.set('hp:duelPace', EMB.pace);   /* 주소 옵션 pace=slow|no
 { const bg = new URLSearchParams(location.search).get('big'); if(bg === '1' || bg === '0') bigSet(bg === '1'); }   /* 주소 옵션 big=1|0: 큰 글씨 */
 embEmit('ready', { name:NG[EMB.id].name, modes:EMB.modes });
 embMenu();
-if(EMB.start !== 'menu' && embHas(EMB.start)) embStart(EMB.start);
+{ const ds = duelReplayParse(new URLSearchParams(location.search));   /* 주소 옵션 ds=(더함, R11): 친구가 보낸 대전 판 → 첫 화면 위에 창 */
+  if(ds && ds.g === EMB.id) embDsGift(ds); else if(EMB.start !== 'menu' && embHas(EMB.start)) embStart(EMB.start); }

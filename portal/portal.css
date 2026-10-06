@@ -656,6 +656,7 @@ details.more[open] > summary::after{content:"▴"}
 .rprow em{font-style:normal; display:flex; flex-direction:column; align-items:center; padding:5px 10px; border-radius:12px; font-family:var(--disp); font-size:15px; color:#fff; background:linear-gradient(#86D6FF,#2E8FE8); border:2px solid #124F92; white-space:nowrap; line-height:1.15}
 .rprow em small{font-size:13px; opacity:.95}
 .celebrate .rpttl{font-size:30px; -webkit-text-stroke:6px var(--outline2)}
+.celebrate .rpttl.rpds{font-size:26px; word-break:keep-all; overflow-wrap:anywhere}   /* 받은 대전 판 제목(R11): 긴 별명·게임 이름도 한 줄씩 */
 .rprec{margin:6px 0 0; font-family:var(--disp); font-size:18px; color:#fff}
 .rprec b{font-family:var(--heavy); font-weight:400; font-size:24px; color:#FFE35A}
 .rprec .stx{color:#FFC93C}

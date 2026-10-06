@@ -33,6 +33,9 @@ function duelShapeSvg(shape, col, px = 14){
 /* ---- 게임 정의에서 읽는 대전 설정 ---- */
 const duelNG = id => NG[id] || {};
 const duelKindOf = id => ['race', 'score', 'shared', 'turn'].includes(duelNG(id).duelKind) ? duelNG(id).duelKind : 'race';
+/* 대전 판 다시 풀기·보내기(R11, 결정 221): 혼자 다시 풀어 의미 있는 대전만. 게임 정의 duelReplay(true|false)가 있으면 그것,
+   없으면 경주(race)·점수(score)만 켜짐. 선점(shared)·차례(turn)·자기 방식(duelLaunch)은 꺼짐(게임 이름은 모름) */
+const duelReplayOk = id => { const m = duelNG(id); if(typeof m.duelReplay === 'boolean') return m.duelReplay; return !m.duelLaunch && ['race', 'score'].includes(duelKindOf(id)); };
 const duelMaxOf = id => Math.max(2, Math.min(5, Math.floor(+duelNG(id).duelMax || 2)));
 function duelEndOf(id){ const e = duelNG(id).duelEnd, k = duelKindOf(id); return ['first', 'all', 'game'].includes(e) ? e : k === 'race' ? 'first' : k === 'score' ? 'all' : 'game'; }
 const duelPaceGet = () => store.get('hp:duelPace', 'n') === 's' ? 's' : 'n';
@@ -1099,6 +1102,7 @@ function duelFinish(win){
   if(win){ D.fin.pg = 1; if(D.fin.t != null && D.kind === 'race' && !(duelStatOf(id) || {}).tile && !(duelStatOf(id) || {}).score) D.fin.v = D.fin.t; }
   if(D.fin.ft == null) delete D.fin.ft;
   D.meStat = D.fin; D.me = { sc, pg:D.fin.pg };
+  D.myT = win ? Math.round(elapsed()) : null;   /* 다 푼 시간(초) — 판 보내기 기록(R11) */
   if(win && !D.endBy) D.endBy = D.end === 'first' ? { k:'first', pid:D.myPid } : { k:'me' };
   if(!win && !D.endBy && G.limit && elapsed() >= G.limit - .5) D.endBy = { k:'time' };
   duelSeenPush(id);
@@ -1164,6 +1168,7 @@ function duelResolve(){
   clearInterval(D.waitIv); clearTimeout(D.waitShowT); clearTimeout(D.resolveT);
   duelSyncOpp(D);
   const rk = duelRanks(), myR = rk[D.myPid], tie = duelTieAt(rk, D.myPid), n = D.pl.length;
+  const id0 = G.id;
   let r = myR === 1 ? (tie ? 'd' : 'w') : 'l';
   const lostNet = D.netLost && D.pl.some(pid => pid !== D.myPid && !D.P[pid].st.dn && !D.P[pid].left);
   if(lostNet) r = 'd';
@@ -1174,7 +1179,8 @@ function duelResolve(){
   if(D.R){ const ser = DUEL_SERIES[D.R] = DUEL_SERIES[D.R] || {}; const w = D.pl.filter(pid => rk[pid] === 1); if(w.length === 1) ser[w[0]] = (ser[w[0]] || 0) + 1; }
   const canAgain = D.mode === 'pvp' && D.quick && !lostNet && D.pl.some(pid => pid !== D.myPid && !D.P[pid].left);
   D.res = { kind:D.kind, n, ai:D.mode === 'ai', pace:D.pace, rank:myR, tie, rows, why:lostNet ? '연결이 끊겨서 무승부로 처리했어요' : duelWhyV3(D, rk),
-    round:duelRound(), room:{ code:D.room && D.room.id != null ? D.room.id : null, canAgain }, seed:D.seed, cfg:D.cfg || (G.L ? G.L[G.id] : null) };
+    round:duelRound(), room:{ code:D.room && D.room.id != null ? D.room.id : null, canAgain }, seed:D.seed, cfg:D.cfg || (G.L ? G.L[G.id] : null),
+    g:id0, lv:G.lv, rp:duelReplayOk(id0) && !!D.seed, t:D.myT == null ? null : D.myT, sc:D.fin.sc || 0 };   /* 더함(R11): 이 판을 다시 만들 값 — 게임·난이도·다시 풀기 되는지·내 시간·점수 */
   const op = D.P[D.pl.find(p => p !== D.myPid)] || { st:{} };
   const top = n > 2 ? D.P[rows.find(x => !x.me).pid] : op;
   const a = { sc:D.fin.sc, pg:D.fin.pg, rank:myR, txt:duelRowTxt(D, D.fin, true) }, b = { sc:top.st.sc || 0, pg:top.st.pg || 0, dn:top.st.dn ? 1 : 0, rank:rk[top.pid], txt:duelRowTxt(D, top.st, true) };
