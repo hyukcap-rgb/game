@@ -40,7 +40,8 @@ NG.rps = (() => {
   const fg = (f, s) => `<g filter="url(#${f})">${s}</g>`;
   function handBody(h, glove, cuff, dk){
     const gl = TOY.GL, tip = (x, y) => gl(x, y, 3.2, 3.2, 0);
-    const cf = fg('pm', R(30, 79, 40, 18, 8, cuff)) + gl(40, 84, 7, 2.2, 0);
+    /* 소매: 둥근 밴드 + 위 테두리 밝은 줄 + 아래 골 한 줄(납작한 회색 받침처럼 보이지 않게) */
+    const cf = fg('pm', R(28, 78, 44, 20, 9, cuff)) + `<rect x="31" y="80.5" width="38" height="3.6" rx="1.8" fill="#fff" opacity=".3"/><rect x="31" y="90.5" width="38" height="2.2" rx="1.1" fill="#1A0F45" opacity=".14"/>` + gl(41, 86, 8, 2.2, 0);
     if(h === 1){   /* 바위: 꽉 쥔 주먹(접힌 손가락 4개 + 앞으로 감싼 엄지) */
       return cf + fg('pb', R(19, 32, 62, 54, 25, glove)) + gl(34, 46, 10, 6)
         + [28, 42.5, 57, 71].map(x => fg('pm', R(x - 7.6, 22, 15.2, 30, 7.6, glove))).join('')
@@ -205,8 +206,8 @@ NG.rps = (() => {
     const m = S(), cuff = HOST_COL[m.host] || '#FF8A1A';
     a.className = 'rp-opp' + (q && q.two ? ' two' : '') + (pump ? ' pump' : ' rv');
     const hs = q && q.two ? [q.h, q.h2] : [q ? q.h : 1];
-    a.innerHTML = hs.map((h, i) => `<img class="rp-hand${q && q.two && i === 0 ? ' fl' : ''}" src="${handSrc(pump ? 1 : h, cuff)}" alt="${pump ? '' : '상대 ' + HN[h]}" draggable="false">`).join('')
-      + (pump ? '' : '<i class="rp-burst" aria-hidden="true"></i>');
+    a.innerHTML = hs.map((h, i) => `<i class="rp-shd s${i}" aria-hidden="true"></i><img class="rp-hand${q && q.two && i === 0 ? ' fl' : ''}" src="${handSrc(pump ? 1 : h, cuff)}" alt="${pump ? '' : '상대 ' + HN[h]}" draggable="false">`).join('')
+      + (pump ? '' : '<i class="rp-burst" aria-hidden="true"></i><i class="rp-ring" aria-hidden="true"></i>');
     if(pump) a.setAttribute('aria-label', '가위 바위');
     else a.setAttribute('aria-label', q.two ? `상대 왼쪽 ${HN[q.h]}, 오른쪽 ${HN[q.h2]}` : '상대 ' + HN[q.h]);
   }
@@ -229,6 +230,7 @@ NG.rps = (() => {
     if(q.perm.join() !== el('rpBtns').dataset.perm){ clearMarks(); el('rpBtns').dataset.perm = q.perm.join(); setBtns(q.perm, true); }
     else document.querySelectorAll('.ng-rps .rp-b.ok').forEach(b => b.classList.remove('ok'));   /* 틀린 표시(정답 알려 주기)는 다음 손이 나올 때까지 남겨 둔다 */
     setHost('');
+    fx(() => { const my = el('rpMy'); if(my && my.classList.contains('on')) my.className = 'rp-my out'; const ck = el('rpClash'); if(ck) ck.className = 'rp-clash'; });
     setOpp(q, true); signWait('가위 바위…');
     const w = el('rpWin'); if(w){ w.className = 'rp-win'; w.firstElementChild.style.transform = 'scaleX(1)'; }
     sfx('rpsPump'); hud();
@@ -239,15 +241,34 @@ NG.rps = (() => {
     clearMarks(); setOpp(q, false); signShow(q); sfx('rpsGo', { t:q.last ? 'last' : q.t });
     hud();
   }
-  function flyMine(pos, hand){
+  /* 내 손 던지기: 버튼에서 무대로 휙 → 상대 손과 맞부딪힘(정답 = 상대 손이 밀려남 · 오답 = 내 손이 흔들리며 처짐). 보이기만 함 */
+  function flyMine(pos, hand, ok){
     fx(() => {
-      const b = document.querySelectorAll('.ng-rps .rp-b')[pos], my = el('rpMy'); if(!b || !my) return;
-      const im = my.querySelector('img'); im.src = handSrc(hand, '#FF6F9F'); my.className = 'rp-my on';
-      if(FXR.reduce || !my.animate) return;
+      const b = document.querySelectorAll('.ng-rps .rp-b')[pos], my = el('rpMy'), ar = el('rpArena'); if(!b || !my || !ar) return;
+      const im = my.querySelector('img'); im.src = handSrc(hand, '#FF6F9F'); my.className = 'rp-my on' + (ok ? ' win' : ' miss');
+      const opp = el('rpOpp'), m = S(), q = m && m.Q[m.i];
+      const hit = () => fx(() => {
+        if(opp){ opp.classList.remove('hit', 'won'); void opp.offsetWidth; opp.classList.add(ok ? 'hit' : 'won'); }
+        /* 맞부딪히는 점: 움직임(transform)을 뺀 제자리 기준(무대 좌표) = 내 손 윗부분과 상대 손 아랫부분 사이 */
+        const ck = el('rpClash'), r0 = ar.getBoundingClientRect();
+        const tgt = q && q.two ? opp.querySelectorAll('.rp-hand')[q.side] : opp && opp.querySelector('.rp-hand');
+        const mx = my.offsetLeft + my.offsetWidth * .45, my0 = my.offsetTop + my.offsetHeight * .22;
+        const ox = tgt ? opp.offsetLeft + tgt.offsetLeft + tgt.offsetWidth * .5 : mx, oy = tgt ? opp.offsetTop + tgt.offsetTop + tgt.offsetHeight * .8 : my0;
+        const lx = (mx + ox) / 2, ly = (my0 + oy) / 2, x = r0.left + lx, y = r0.top + ly;
+        if(ck){ ck.style.left = lx + 'px'; ck.style.top = ly + 'px'; ck.className = 'rp-clash ' + (ok ? 'ok' : 'no'); void ck.offsetWidth; ck.classList.add('on'); }
+        if(ok && !FXR.reduce) fxEmit(x, y, { quantity:9, speed:{ min:90, max:220 }, lifespan:{ min:260, max:460 }, kind:'spark', tint:['#FFFFFF', '#FFE27A', '#FFC2A8'], scale:{ start:4.5, end:0 }, drag:1.6, glow:true });
+      });
+      if(FXR.reduce || !my.animate){ hit(); return; }
       const a = b.getBoundingClientRect(), c = my.getBoundingClientRect();
       const dx = a.left + a.width / 2 - (c.left + c.width / 2), dy = a.top + a.height * .4 - (c.top + c.height / 2);
-      my.animate([{ transform:`translate(${dx}px,${dy}px) scale(.55) rotate(-14deg)`, opacity:.6 }, { transform:'translate(0,0) scale(1.12) rotate(4deg)', opacity:1, offset:.72 }, { transform:'translate(0,0) scale(1) rotate(0)', opacity:1 }], { duration:230, easing:'cubic-bezier(.3,.9,.4,1)' });
+      my.animate([{ transform:`translate(${dx}px,${dy}px) scale(.6) rotate(-20deg)`, opacity:.7 }, { transform:'translate(0,-6%) scale(1.1) rotate(6deg)', opacity:1, offset:.7 }, { transform:'translate(0,0) scale(1) rotate(0)', opacity:1 }], { duration:200, easing:'cubic-bezier(.3,.9,.4,1)' });
+      T(hit, 140);
     });
+  }
+  /* 손이 나오기 전(흔들기 중)에 누름: 판정하지 않고 버튼만 살짝 도리도리(아직이에요). 벌점·잠금 없음 */
+  function early(pos){
+    fx(() => { const b = document.querySelectorAll('.ng-rps .rp-b')[pos]; if(!b || FXR.reduce || !b.animate) return;
+      b.animate([{ transform:'translateX(0)' }, { transform:'translateX(-5px)' }, { transform:'translateX(5px)' }, { transform:'translateX(-3px)' }, { transform:'translateX(0)' }], { duration:220, easing:'ease-out' }); });
   }
   function press(pos){
     const m = S(); if(!m || G.over || G.paused) return;
@@ -255,25 +276,27 @@ NG.rps = (() => {
     if(now < m.lockUntil) return;
     m.taps = m.taps.filter(x => now - x < 250); m.taps.push(now);
     if(m.taps.length > 3){ m.lockUntil = now + 500; m.taps = []; slow(); return; }   /* 마구 누르기: "천천히!" 0.5초 잠금(벌점 없음) */
-    if(m.phase !== 'go' || m.tapped) return;
-    judge(pos);
+    if(m.phase !== 'go' || m.tapped){ if(m.phase === 'pump' || m.phase === 'ready') early(pos); return; }   /* 손이 나오기 전·판정 뒤 누름은 무시 */
+    /* 판단 시간: 마지막 화면 프레임 시각 + 그 뒤 흐른 시간(프레임 사이에 누른 것도 정확하게) */
+    const extra = m.lf ? Math.max(0, Math.min(.05, (now - m.lf) / 1000)) : 0;
+    judge(pos, m.t - m.t0 + extra);
   }
   function slow(){
     sfx('rpsSlow');
     const s = el('rpSlow'); if(s){ s.classList.remove('on'); void s.offsetWidth; s.classList.add('on'); }
     T(() => { const s2 = el('rpSlow'); if(s2) s2.classList.remove('on'); }, 600);
   }
-  function judge(pos){
-    const m = S(), q = m.Q[m.i], rt = m.t - m.t0;
+  function judge(pos, rt0){
+    const m = S(), q = m.Q[m.i], rt = Math.min(q.win, rt0 != null ? rt0 : m.t - m.t0);
     m.tapped = true;
     const bs = document.querySelectorAll('.ng-rps .rp-b');
     const hand = pos >= 0 ? q.perm[pos] : -1, ok = pos >= 0 && q.ans.includes(hand);
     const ratio = ok ? Math.max(0, Math.min(1, 1 - rt / q.win)) : 0;
     m.res.push({ ok, rt, ratio, to:pos < 0 });
     const w = el('rpWin'); if(w) w.classList.add('stop');
-    if(pos >= 0) flyMine(pos, hand);
+    if(pos >= 0) flyMine(pos, hand, ok);
     if(ok){
-      m.ok++; m.combo++; m.best = Math.max(m.best, m.combo);
+      m.ok++; m.combo++; m.best = Math.max(m.best, m.combo); m.ratio += ratio;
       const pts = Math.round((500 + 350 * ratio) / m.N);
       bs[pos].classList.add('ok'); setHost('joy');
       sfx('rpsOk', { n:m.combo });
@@ -319,6 +342,7 @@ NG.rps = (() => {
     const b = el('rpEnd');
     if(b){ b.innerHTML = `<b>${win ? '지령 완료!' : '기회를 다 썼어요'}</b>${rec ? `<span>${rec}</span>` : ''}`; b.className = 'rp-end on' + (win ? ' win' : ''); }
     setHost(win ? 'joy' : 'sad');
+    fx(() => { const s = el('rpSign'); if(s){ signWait(win ? '지령 끝!' : '여기까지!'); s.classList.add('done'); } const w = el('rpWin'); if(w) w.className = 'rp-win stop'; });
     if(win){ sfx('rpsEnd'); fx(() => { const a = el('rpArena'); if(a){ const r = fxCenter(a); fxEmit(r.x, r.y, { quantity:26, speed:{ min:140, max:360 }, lifespan:{ min:600, max:1000 }, kind:'twinkle', tint:['#FFFFFF', '#FFE27A', '#FFC2DD'], scale:{ start:6, end:0 }, gravityY:200, drag:1.2, glow:true }); } }); }
     T(() => finish(win), win ? 1300 : 1500);
   }
@@ -327,7 +351,7 @@ NG.rps = (() => {
     G.raf = requestAnimationFrame(loop);
     const dt = m.lt ? Math.min(.1, (now - m.lt) / 1000) : 0; m.lt = now;
     if(G.paused) return;
-    m.t += dt;
+    m.t += dt; m.lf = now;
     if(m.phase === 'ready'){ if(m.t >= m.until) startPump(); }
     else if(m.phase === 'pump'){ if(m.t >= m.until) reveal(); }
     else if(m.phase === 'go'){
@@ -344,13 +368,17 @@ NG.rps = (() => {
     const h = Math.max(470, Math.min(820, (innerHeight || 740) - top - 10));
     root.style.height = h + 'px';
     const a = el('rpArena'); if(!a) return;
-    const ah = a.clientHeight, aw = a.clientWidth;
-    const hs = Math.min(ah * .36, aw * .34, 150), hz = Math.min(ah * .52, aw * .48, 210), band = S() && S().boss ? 26 : 0;
+    /* 지령 판이 무대 아래쪽을 COVER px 덮는다(판이 무대에 걸린 간판처럼). 덮인 곳은 땅이라 그림이 가리지 않게 뺀다 */
+    const COVER = 20, band = S() && S().boss ? 26 : 0;
+    const ah = a.clientHeight - COVER - band, aw = a.clientWidth;
+    const hs = Math.min(ah * .3, aw * .3, 132), hz = Math.min(ah * .5, aw * .5, 220), mz = Math.min(ah * .3, aw * .28, 118);
+    root.style.setProperty('--cover', COVER + 'px');
     root.style.setProperty('--hs', Math.round(hs) + 'px');
     root.style.setProperty('--hz', Math.round(hz) + 'px');
-    root.style.setProperty('--hz2', Math.round(Math.min(ah * .42, aw * .38, 170)) + 'px');
-    root.style.setProperty('--mz', Math.round(Math.min(ah * .25, aw * .24, 104)) + 'px');
-    root.style.setProperty('--gy', Math.round(band + Math.max(6, (ah - band - hs * .84 - hz) * .4)) + 'px');   /* 진행자 + 손 묶음을 무대 가운데 약간 위로 */
+    root.style.setProperty('--hz2', Math.round(Math.min(ah * .44, aw * .4, 176)) + 'px');
+    root.style.setProperty('--mz', Math.round(mz) + 'px');
+    /* 진행자 + 상대 손 묶음을 위쪽에, 아래에는 내 손이 올라와 맞부딪힐 자리 */
+    root.style.setProperty('--gy', Math.round(band + Math.max(4, (ah - hs * .8 - hz - mz * .5) * .45)) + 'px');
   }
   function arenaBg(pal){
     const u = 'rpbg' + (++UID), P = PAL[pal % PAL.length], s = P[4];
@@ -391,7 +419,7 @@ NG.rps = (() => {
     },
     help:[
       ['상대 손과 지령을 봐요', '진행자가 가위·바위·보 중 하나를 내밀어요. 아래 지령 판에 이겨라·져라·비겨라가 글자와 그림으로 나와요. 왕관은 이겨라, 눈물은 져라, 악수는 비겨라!'],
-      ['지령에 맞는 손을 내요', '아래 큰 버튼 세 개 중 맞는 손을 눌러요. 지령 판 아래 막대가 다 줄기 전에! 키보드는 1·2·3.'],
+      ['지령에 맞는 손을 내요', '아래 큰 버튼 세 개 중 맞는 손을 눌러요. 지령 판 안의 막대가 다 줄기 전에! 키보드는 1·2·3.'],
       ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄어요. 별이 다 없어지면 끝. 침착하게 바로 판단할수록 점수가 높아요.'],
       ['솔로: 새 지령', '그림 지령·하지 마라·두 손·아까처럼 같은 새 규칙과 번개·자리 바꾸기·외줄 타기 같은 변주가 나와요.']
     ],
@@ -411,7 +439,7 @@ NG.rps = (() => {
       const Q = gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       const lives = G.duel ? 3 : cfg.lives || 3;
-      G.m = { Q, N:Q.length, i:0, t:0, t0:0, lt:0, until:.95, phase:'ready', pumpT:.3, ok:0, wrong:0, combo:0, best:0, res:[],
+      G.m = { Q, N:Q.length, i:0, t:0, t0:0, lt:0, lf:0, ratio:0, until:.95, phase:'ready', pumpT:.3, ok:0, wrong:0, combo:0, best:0, res:[],
         lives, maxLives:lives, lostAt:0, taps:[], lockUntil:0, tapped:false, mood:'', done:false, win:false,
         host:cfg.host || 'cat', pal:cfg.pal || 0, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, timers:new Set(), bubT:0 };
       G.paws = lives;
@@ -426,7 +454,8 @@ NG.rps = (() => {
     },
     render(st){
       const m = S(), pal = PAL[m.pal % PAL.length];
-      const tags = (m.boss ? '<span class="rp-tag boss">보스</span>' : '') + m.mj.map(k => `<span class="rp-tag">${tagName(k)}</span>`).join('') + (m.tw ? `<span class="rp-tag tw">${tagName(m.tw)}</span>` : '');
+      /* 꼬리표: 이번 판 규칙·변주(보스는 무대 위 빨간 띠가 알려 줘서 뺌: 좁은 폭에서 두 줄이 되어 기회 칸이 눌리던 것) */
+      const tags = m.mj.map(k => `<span class="rp-tag">${tagName(k)}</span>`).join('') + (m.tw ? `<span class="rp-tag tw">${tagName(m.tw)}</span>` : '');
       st.innerHTML = `<div class="ng-rps${m.boss ? ' boss' : ''}" style="--p0:${pal[0]};--p1:${pal[1]};--p2:${pal[2]}">
         <div class="hud-row">
           <div class="hchip" aria-label="지령 진행"><span class="hv">${ICO.cmd}<b id="rpCnt">0</b><small>/${m.N}</small></span><em>지령</em></div>
@@ -439,12 +468,12 @@ NG.rps = (() => {
           <div class="rp-bub" id="rpBub" aria-hidden="true"></div>
           <div class="rp-opp pump" id="rpOpp" role="img"></div>
           <div class="rp-my" id="rpMy" aria-hidden="true"><img src="${handSrc(1, '#FF6F9F')}" alt="" draggable="false"></div>
+          <i class="rp-clash" id="rpClash" aria-hidden="true"></i>
           <div class="rp-ctxt" id="rpCtxt" aria-hidden="true"></div>
           <div class="rp-slow" id="rpSlow" aria-hidden="true">천천히!</div>
           <div class="rp-end" id="rpEnd" role="status"></div>
         </div>
-        <div class="rp-sign wait" id="rpSign" role="status" aria-live="polite"><div class="rp-med" id="rpMed"></div><div class="rp-tx"><span class="rp-sub" id="rpSub"></span><b id="rpTxt"></b></div></div>
-        <div class="rp-win" id="rpWin" aria-hidden="true"><i></i></div>
+        <div class="rp-sign wait" id="rpSign" role="status" aria-live="polite"><div class="rp-med" id="rpMed"></div><div class="rp-tx"><span class="rp-sub" id="rpSub"></span><b id="rpTxt"></b></div><div class="rp-win" id="rpWin" aria-hidden="true"><i></i></div></div>
         <div class="rp-btns" id="rpBtns" data-perm="0,1,2">${[0, 1, 2].map(p => `<button class="rp-b h${p}" data-p="${p}" data-h="${p}" aria-label="${HN[p]} 내기 (${p + 1})"><img src="${handSrc(p, '#FF6F9F', true)}" alt="" draggable="false"><span>${HN[p]}</span></button>`).join('')}</div>
       </div>`;
       document.querySelectorAll('.ng-rps .rp-b').forEach(b => { b.onpointerdown = e => { e.preventDefault(); press(+b.dataset.p); }; b.onclick = e => { if(e.detail === 0) press(+b.dataset.p); }; });
@@ -452,6 +481,8 @@ NG.rps = (() => {
       setOpp(m.Q[0], true); signWait(m.boss ? '보스 등장!' : '준비!');
       hud(); layout();
       fx(() => [ '', 'joy', 'sad', 'wow' ].forEach(md => { const im = new Image(); im.src = toySrc(m.host, md); }));   /* 표정 그림 미리 만들기 */
+      /* 상대 손·내 손 그림 미리 풀어 두기: 손이 나온 순간(판단 시간 시작)에 그림이 늦게 뜨지 않게 */
+      fx(() => [0, 1, 2].forEach(h => [handSrc(h, HOST_COL[m.host] || '#FF8A1A'), handSrc(h, '#FF6F9F')].forEach(src => { const im = new Image(); im.src = src; if(im.decode) im.decode().catch(() => {}); m.pre = (m.pre || []).concat(im); })));
       const lines = HOST_LINE[m.host] || HOST_LINE.cat;
       T(() => bubble(m.boss ? '보스 판이다!' : lines[0], 1100), 120);
       if(m.boss){ m.mood = 'wow'; sfx('rpsBoss'); }
@@ -501,7 +532,20 @@ NG.rps = (() => {
   };
 })();
 
-/* 대전: 같은 지령 · 끝났을 때 점수가 높은 쪽 승(엔진 기본 대전). AI 상대 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.rps, { duelPace:[55, .75], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m ? G.m.ok : 0, t:G.m ? G.m.N : 25, lf:G.m ? Math.max(0, G.m.lives) : 3 }) }, duelHow:'같은 지령 25개 · 점수가 높은 쪽이 이겨요' });
+/* 대전: 같은 지령 25개 · 모두 끝났을 때 점수가 높은 쪽 승(기획 docs/20 1절).
+   대전 v3 기본값은 '경주'(먼저 끝낸 사람이 1등, 0.7초 뒤 모두 끝)라서, 판단 시간이 정해진 이 게임에서는 실수가 많아도 빨리 끝낸 쪽이 이기고
+   늦은 사람이 끝나기 직전에 잘렸다 → 점수전('score', 모두 끝까지)으로 맞춤. 막대 수치 v = 지금까지 점수(정답 + 판단 속도, 배율 전).
+   끝난 두 사람은 결과 점수(sc, 남은 기회 포함)로, 성공한 사람이 실패한 사람보다 앞. 컴퓨터 상대도 같은 점수 눈금으로(duelAi) */
+const rpsLive = () => { const m = G && G.m; if(!m || !m.N) return 0; return Math.round(500 * m.ok / m.N) + Math.round(350 * (m.ratio || 0) / m.N); };
+Object.assign(NG.rps, { duelKind:'score', duelMax:2, duelEnd:'all', duelPace:[55, .75],
+  duelStat:{ unit:'점', score:true, lfMax:3, get:() => ({ v:rpsLive(), t:G.m ? G.m.N : 25, lf:G.m ? Math.max(0, G.m.lives) : 3, mis:G.m ? G.m.wrong : 0 }) },
+  duelRank(a, b){ if(a.dn && b.dn){ if(!!a.ok !== !!b.ok) return a.ok ? -1 : 1; if(a.ok && (a.sc || 0) !== (b.sc || 0)) return (b.sc || 0) - (a.sc || 0); } return 0; },
+  duelAi(rng, o){
+    const ok = rng() < .75, T = 55 * (.7 + rng() * .6) * (o && o.pace === 's' ? 1.5 : 1);
+    const acc = ok ? .92 + rng() * .08 : .55 + rng() * .3, sp = .3 + rng() * .35;   /* 정답 비율 · 남은 창 비율 */
+    const pts = Math.round(500 * acc + 350 * acc * sp), lv = ok ? (acc > .99 ? 3 : 1 + Math.floor(rng() * 2)) : 0;
+    return { ok, T, pts, sc:ok ? pts + 50 * lv : 0, fail:.3 + rng() * .6 };
+  },
+  duelHow:'같은 지령 25개 · 모두 끝나면 점수가 높은 쪽이 이겨요' });
 /* 움직이는 배경(core/scene.js): 노을 놀이터의 따뜻한 빛 알갱이. 보이기만 함 */
 NG.rps.scene = { kind:'motes', colors:['#FFE2B8', '#FFC9C2', '#FFFFFF'], density:.6, alpha:.6 };
