@@ -244,4 +244,101 @@ if(MULTI){
     await L[1].pg.screenshot({path:SHOT+'/duel2-bar.png'});
     ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L); }
 }
+/* ================= 3) 경주 게임 여러 명(2단계: 짝 잇기·별빛 구슬·블록·주차, duelMax 5) =================
+   3명: 같은 판 · 미니 화면/칩 줄 · 게임별(짝 잇기 얼음은 나를 뺀 1위에게·모든 브라우저에서 같은 칸, 블록 미니 판 같음, 주차 '탈출!'·풀이 다시 보기)
+        · 한 명 나감 · 순위 모두 같음 · 나간 사람 맨 뒤. 5명: 390px 화면(칩 줄·미니 카드 4장) 스크린샷 + 결과 순위 같음.
+   짝 잇기는 컴퓨터 대전에서 얼음을 보내면 컴퓨터가 실제로 늦어지는지도 본다. */
+async function raceMulti(g){
+  const L=[await mk('A'),await mk('B'),await mk('C')], [A,Bq,C]=L;
+  for(const x of L){ await x.pg.evaluate(g=>duelStart(g),g); await w(250); }
+  const go=await goAll(L,30000);
+  const sig=g==='link'?'JSON.stringify(G.m.b)':g==='ball'?'ballMiniGet()+":"+G.total':g==='block'?'JSON.stringify(NG.block._state().tray)':'JSON.stringify([G.m.pos0,G.m.opt,G.m.P.goals])';
+  const I=await Promise.all(L.map(x=>x.pg.evaluate(s=>({seed:G.duel.seed,pl:G.duel.pl.join(','),me:G.duel.myPid,sig:eval(s),lim:G.limit}),sig)));
+  const same=I.every(i=>i.seed===I[0].seed&&i.pl===I[0].pl&&i.sig===I[0].sig);
+  ok(go&&same&&I[0].pl.split(',').length===3, `${g} 3명: 같은 방·같은 판=${same} 인원=${I[0].pl.split(',').length} 제한 ${I[0].lim}초`);
+  await w(3300);
+  const mini=g!=='parking';
+  const ui=await A.pg.evaluate(m=>m?document.querySelectorAll('#dMinis .dmini').length:document.querySelectorAll('#dChips .dpchip').length,mini);
+  ok(ui===(mini?2:3), `${g} ${mini?'미니 카드':'칩 줄'} ${ui}개`);
+  const pid=x=>I[L.indexOf(x)].me;
+  if(g==='link'){   /* A가 3초 안에 두 짝 → 2콤보 → 얼음 2장이 나를 뺀 1위(같으면 자리 순서)에게 */
+    await A.pg.evaluate(()=>NG.link._stepForTest()); await w(450); await A.pg.evaluate(()=>NG.link._stepForTest());
+    await w(STRESS?4000:2600);
+    const S=await Promise.all(L.map(x=>x.pg.evaluate(()=>NG.link._duelState())));
+    const to=Object.keys(S[0].sentTo)[0], tx=L.find(x=>pid(x)===to), other=L.find(x=>x!==A&&x!==tx);
+    const plOrd=I[0].pl.split(','), want=plOrd.filter(p=>p!==pid(A))[0];
+    const st=S[L.indexOf(tx)], so=S[L.indexOf(other)];
+    ok(to===want&&st.ice.length===2&&so.ice.length===0, `link 얼음: 받은 사람=자리 순서 첫 상대(${to===want}) 얼음 ${st.ice.length}장 · 다른 사람 ${so.ice.length}장`);
+    await w(1600);
+    const S2=await Promise.all(L.map(x=>x.pg.evaluate(()=>NG.link._duelState())));
+    const mv=S2[L.indexOf(tx)].mv, seen=S2.filter((_,i)=>L[i]!==tx).map(s=>s.minis[to]);
+    ok(seen.every(v=>v===mv)&&/2/.test(mv), `link 얼음 칸이 모든 브라우저에서 같음(미니 판 = 받은 사람 판) ${seen.map(v=>v===mv).join(',')}`);
+  }
+  if(g==='block'){
+    for(let k=0;k<3;k++){ await A.pg.evaluate(()=>NG.block._step()); await w(300); }
+    await w(1800);
+    const mine=await A.pg.evaluate(()=>NG.block.duelMini.get()), seen=await Promise.all([Bq,C].map(x=>x.pg.evaluate(p=>G.duel.P[p].mv,pid(A))));
+    ok(seen.every(v=>v===mine)&&/[1-9a-e]/.test(mine), `block 미니 판이 다른 두 브라우저에서 같음 ${seen.map(v=>v===mine).join(',')}`);
+  }
+  await A.pg.screenshot({path:SHOT+`/race3-${g}-play.png`});
+  /* C가 기권하고 나감 */
+  await C.pg.evaluate(()=>{ G.over=true; HOST.exit(); });
+  const left=(await Promise.all([A,Bq].map(x=>until(x,p=>G.duel.P[p]&&G.duel.P[p].left,pid(C),8000)))).every(Boolean);
+  ok(left,`${g} 한 명 나감을 나머지가 봄`);
+  if(g==='parking'){   /* B가 한 수 → A가 끝까지 풀어 탈출 → B에게 'A 탈출!' 알림 · 순위 A, B, C(나감) · 풀이 다시 보기 */
+    await Bq.pg.evaluate(()=>NG.parking._stepForTest()); await w(600);
+    await A.pg.evaluate(()=>NG.parking._solveForTest());
+    const note=await until(Bq,()=>/탈출!/.test((document.querySelector('#dNote')||{}).textContent||''),null,8000);
+    ok(note,'parking 다른 사람에게 "○○ 탈출!" 알림');
+  } else await A.pg.evaluate(()=>finish(true));
+  const res=(await Promise.all([A,Bq].map(x=>until(x,()=>G.duel&&G.duel.resolved,null,15000)))).every(Boolean); await w(1500);
+  const rk=await ranksOf([A,Bq]);
+  const R=await A.pg.evaluate(()=>({rank:G.duel.res.rank,last:G.duel.res.rows[G.duel.res.rows.length-1].txt,n:G.duel.res.rows.length,
+    rp:document.querySelectorAll('#modal .pk-rpc').length,be:document.querySelectorAll('#modal .bk-end').length}));
+  const rB=await Bq.pg.evaluate(()=>G.duel.res.rank), cl=await bodyClean([A,Bq]);
+  ok(res&&rk[0]===rk[1]&&R.rank===1&&rB===2&&R.last==='나감'&&R.n===3&&cl.every(Boolean), `${g} 결과: 순위 같음 ${rk[0]} · A 1위 · B 2위 · 나간 사람 맨 뒤("${R.last}")`);
+  if(g==='parking') ok(R.rp===2,`parking 결과 창 풀이 나란히 다시 보기 ${R.rp}칸(움직인 A·B, 안 움직이고 나간 C는 풀이 없음)`);
+  if(g==='block') ok(R.be===3,`block 결과 창 끝 판 나란히 ${R.be}칸`);
+  await A.pg.screenshot({path:SHOT+`/race3-${g}-result.png`});
+  ok(!errsOf(L).length,`${g} 오류 없음 `+errsOf(L).join(' | ')); await closeAll(L);
+}
+async function race5(g){
+  const L=[]; for(const t of ['A','B','C','D','E']) L.push(await mk(t));
+  await Promise.all(L.map(x=>x.pg.evaluate(g=>duelStart(g),g)));
+  const go=await goAll(L,30000), I=await info(L);
+  ok(go&&I.every(i=>i.seed===I[0].seed)&&I[0].pl.split(',').length===5, `${g} 5명 모임: 인원=${I[0].pl.split(',').length}`);
+  await w(3500);
+  if(g==='link') await L[1].pg.evaluate(()=>NG.link._stepForTest());
+  if(g==='block') await L[1].pg.evaluate(()=>NG.block._step());
+  if(g==='parking') await L[1].pg.evaluate(()=>NG.parking._stepForTest());
+  await w(1800);
+  const ui=await L[0].pg.evaluate(()=>({mini:document.querySelectorAll('#dMinis .dmini').length,chip:document.querySelectorAll('#dChips .dpchip').length,
+    over:[...document.querySelectorAll('#duelBar .dmini, #duelBar .dpchip, #duelBar .dm-rank')].some(e=>{const r=e.getBoundingClientRect();return r.left<0||r.right>390;})
+      ||(()=>{const b=document.querySelector('#duelBar'),h=document.querySelector('.hud-row');return !b||(h&&b.getBoundingClientRect().bottom>h.getBoundingClientRect().top+1);})()}));   /* 카드·칩이 화면 밖으로 안 나가고, 판 위 칩 줄을 가리지 않음 */
+  await L[0].pg.screenshot({path:SHOT+`/race5-${g}.png`});
+  ok((g==='parking'?ui.chip===5:ui.mini===4)&&!ui.over, `${g} 5명 390px: ${g==='parking'?'칩 '+ui.chip+'개':'미니 카드 '+ui.mini+'장'} · 넘침 없음(화면: ${SHOT}/race5-${g}.png)`);
+  await L[2].pg.evaluate(()=>finish(true));
+  await Promise.all(L.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,15000))); await w(1200);
+  const rk=await ranksOf(L);
+  ok(rk.every(x=>x===rk[0]),`${g} 5명 결과 순위 같음`);
+  await L[0].pg.screenshot({path:SHOT+`/race5-${g}-result.png`});
+  ok(!errsOf(L).length,`${g} 5명 오류 없음 `+errsOf(L).join(' | ')); await closeAll(L);
+}
+async function linkAiIce(){
+  const X=await mk('A');
+  await X.pg.evaluate(()=>{ startGame('link','normal',{ duel:duelMakeAI('link','나','n') }); });
+  await until(X,()=>G&&G.duel&&G.duel.go&&G.m&&G.m.phase==='play',null,15000);
+  const t0=await X.pg.evaluate(()=>G.duel.ai.T);
+  await X.pg.evaluate(()=>NG.link._stepForTest()); await w(450); await X.pg.evaluate(()=>NG.link._stepForTest()); await w(1500);
+  const s=await X.pg.evaluate(()=>NG.link._duelState());
+  ok(s.aiIce>=1&&s.aiT>t0, `link 컴퓨터에게 얼음 → 컴퓨터 미니 판 얼음 ${s.aiIce}장 · 끝나는 시각 ${t0.toFixed(1)} → ${s.aiT.toFixed(1)}초(실제로 늦어짐)`);
+  ok(!X.errs.length,'link 컴퓨터 대전 오류 없음 '+X.errs.join(' | ')); await closeAll([X]);
+}
+const RACE=['link','ball','block','parking'].filter(g=>GAMES.includes(g));
+if(MULTI&&RACE.length){
+  console.log('— 경주 게임 여러 명(2단계) —');
+  for(const g of RACE) await raceMulti(g);
+  for(const g of RACE) await race5(g);
+  if(RACE.includes('link')) await linkAiIce();
+}
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);

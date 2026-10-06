@@ -785,7 +785,8 @@ NG.ball = {
   stage:n => ballStageCfg(n),
   stageDesc(n){ const b = ballStageCfg(n); return b.rows + '줄 · 구슬 ' + b.start + '개' + (b.intro ? ' · 새 블록: ' + BSP_INFO[b.intro][0] : b.evIntro ? ' · 이벤트 블록: ' + BEV_INFO[b.evIntro][0] : ''); },
   /* 대전이면(지금 엔진은 levels.normal을 넘김) 대전 판 설정으로 바꿈. 공용 v3가 duelCfg를 넘기면 그대로 씀 */
-  init(cfg, rng){ if(G.duel && !G.duel.fleet && !cfg.fixed) cfg = Object.assign({}, ballDuelCfg(), cfg.limit > 180 ? { limit:cfg.limit } : {}); ballInit(genBall(rng, cfg)); },
+  init(cfg, rng){ if(G.duel && !G.duel.fleet && !cfg.fixed) cfg = Object.assign({}, ballDuelCfg(), cfg.limit > 180 ? { limit:cfg.limit } : {}); ballInit(genBall(rng, cfg));
+    if(G.duel && G.fixed) G.map0 = ballMiniGet(); },   /* 대전: 처음 블록 지도(컴퓨터 미니 화면이 아래 줄부터 지워 보여 줌) */
   render:st => ballStage(st),
   progress:() => G.total ? G.broken / G.total : 0,
   lossText:() => `${G.timeUp ? '시간이 다 됐어요 · ' : ''}블록 ${G.broken}/${G.total}개를 깼어요${G.next < G.rowsN ? ' · 남은 줄 ' + (G.rowsN - G.next) + '줄' : ''}.`,
@@ -793,16 +794,49 @@ NG.ball = {
     rows:['스테이지 클리어', '턴 보너스 (' + G.turn + '턴, 기준 ' + G.R + '턴)', (G.shield ? '방어막 지킴' : '방어막 씀') + ' · ' + (G.itemUsed ? '아이템 씀' : '아이템 안 씀')] }; },
   stars:() => ballStars(G.turn, G.R, G.shield > 0),
   winSfx:true, amb:'stars',
-  /* 대전 = 고정 7줄 판 모든 블록 먼저 없애기(3분). 1단계는 지금 엔진 1:1(duelMax 2), 다인원은 공용 v3에서 */
-  duelKind:'race', duelMax:2, duelCfg:() => ballDuelCfg(),
+  /* 대전 = 고정 7줄 판 모든 블록 먼저 없애기(3분, 느긋하게 6분 = 엔진 기본 limit×2). 2~5명 경주.
+     순위: 다 깬 사람(먼저) → 깬 블록 많은 → 쏜 턴 적은(tb) → 마지막으로 깬 시각 */
+  duelKind:'race', duelMax:5, duelCfg:() => ballDuelCfg(),
+  howto:{ pic:() => ballHowPic(), lines:['끌어서 조준하고 손을 떼면 쏴요', '구슬이 닿을 때마다 블록 숫자가 줄어요', '블록이 바닥에 닿기 전에 다 깨요'] },
   duelHow:'같은 7줄 판을 3분 안에 먼저 다 깨면 이겨요',
   duelPace:[110,.65],
-  duelStat:{ unit:'개',             get:() => ({ v:G.broken, t:G.total, mis:0 }) },
-  /* 미니 화면(공용 v3): 남은 블록 지도 8×7(줄 1~7) → '0'/'1' 56글자 */
-  duelMini:{ w:72, h:56,
-    get:() => { let s = ''; for(let r=1;r<=7;r++) for(let c=0;c<BC;c++){ const o = G.gridB[r] && G.gridB[r][c]; s += o && !o.star && o.hp > 0 ? '1' : '0'; } return s; },
-    draw(el, s){ try{ let h = ''; for(let i=0;i<56;i++) if(s[i] === '1') h += `<rect x="${(i % 8) * 9 + 1}" y="${Math.floor(i / 8) * 8 + 1}" width="7" height="7" rx="2" fill="#B9A6EE"/>`;
-      el.innerHTML = `<svg viewBox="0 0 72 56" width="72" height="56"><rect width="72" height="56" rx="6" fill="#211A4A"/>${h}</svg>`; }catch(_){} } }
+  duelStat:{ unit:'개',             get:() => ({ v:G.broken, t:G.total, mis:0, tb:G.turn }) },
+  /* 미니 화면(공용 v3): 남은 블록 지도 8×7(줄 1~7) → '0'/'1' 56글자. 컴퓨터는 처음 지도에서 깬 수만큼 아래 줄부터 지움 */
+  duelMini:{ get:() => ballMiniGet(), draw:(el, s, p) => ballMiniDraw(el, s, p) }
 };
+/* 대전 미니 화면: 남은 블록 지도(줄 1~7 × 8칸) */
+function ballMiniGet(){ let s = ''; for(let r=1;r<=7;r++) for(let c=0;c<BC;c++){ const o = G.gridB && G.gridB[r] && G.gridB[r][c]; s += o && !o.star && o.hp > 0 ? '1' : '0'; } return s; }
+function ballMiniDraw(el, s, p){
+  try{
+    if(p && p.ai && G.map0){   /* 컴퓨터: 처음 지도에서 깬 블록 수만큼 아래 줄부터 지운 모습 */
+      const a = G.map0.split(''), n = Math.max(0, Math.floor((p.st && p.st.v) || 0)); let k = 0;
+      for(let i = a.length - 1; i >= 0 && k < n; i--) if(a[i] === '1'){ a[i] = '0'; k++; }
+      s = a.join('');
+    }
+    s = String(s || '');
+    if(el._bm === s) return; el._bm = s;
+    let h = ''; for(let i=0;i<56;i++) if(s[i] === '1') h += `<rect x="${(i % 8) * 9 + 1}" y="${Math.floor(i / 8) * 8 + 1}" width="7" height="7" rx="2" fill="#B9A6EE"/>`;
+    el.innerHTML = `<svg class="b-mini" viewBox="0 0 72 56" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect width="72" height="56" rx="6" fill="#211A4A"/>${h}</svg>`;
+  }catch(_){}
+}
+/* 도움말 그림(320×180, 움직임·글자 없음): 끌어 조준 → 구슬이 날아가 블록에 튕기고 → 블록이 깨짐 */
+function ballHowPic(){
+  const dur = '3.2s', R = (k, x, y, c, gone) => `<g>${gone || ''}<rect x="${x}" y="${y}" width="40" height="30" rx="8" fill="${c}" stroke="#1A0F45" stroke-width="2.5"/></g>`;
+  const pop = `<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.5;.56;.94;1" dur="${dur}" repeatCount="indefinite"/>`;
+  const shake = `<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -3;0 0;0 0" keyTimes="0;.42;.45;.5;1" dur="${dur}" repeatCount="indefinite"/>`;
+  const path = 'M160 160L224 66L266 108';
+  const ball = (dl, o) => `<circle r="6" fill="#fff" stroke="#1A0F45" stroke-width="2" opacity="0"><animateMotion path="${path}" keyPoints="0;0;1;1" keyTimes="0;${(.25 + dl).toFixed(2)};${(.62 + dl).toFixed(2)};1" calcMode="linear" dur="${dur}" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;${o};${o};0;0" keyTimes="0;${(.24 + dl).toFixed(2)};${(.25 + dl).toFixed(2)};${(.6 + dl).toFixed(2)};${(.63 + dl).toFixed(2)};1" dur="${dur}" repeatCount="indefinite"/></circle>`;
+  const shard = (dx, dy) => `<rect x="-3" y="-3" width="6" height="6" rx="1.5" fill="#F2B08A" stroke="#1A0F45" stroke-width="1.2" opacity="0"><animateTransform attributeName="transform" type="translate" values="224 50;224 50;${224 + dx} ${50 + dy};${224 + dx} ${50 + dy}" keyTimes="0;.5;.66;1" dur="${dur}" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;.5;.52;.68;1" dur="${dur}" repeatCount="indefinite"/></rect>`;
+  return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="끌어서 조준하면 구슬이 날아가 블록을 깨는 그림">
+    <rect width="320" height="180" fill="#2A2160"/><rect x="40" y="10" width="240" height="160" rx="14" fill="#211A4A" stroke="#1A0F45" stroke-width="3"/>
+    <g fill="#fff" opacity=".5"><circle cx="20" cy="24" r="1.6"/><circle cx="300" cy="40" r="1.4"/><circle cx="16" cy="140" r="1.2"/><circle cx="304" cy="150" r="1.8"/></g>
+    ${R(0, 60, 20, '#9ED8C8')}${R(0, 108, 20, '#9EC3F0')}${R(0, 156, 20, '#B9A6EE')}<g>${pop}${shake}${R(0, 204, 36, '#F2B08A')}</g>${R(0, 252, 72, '#9EC3F0')}${R(0, 84, 58, '#E88A9E')}${R(0, 252, 20, '#9ED8C8')}
+    <path d="${path.split('L').slice(0, 2).join('L')}" fill="none" stroke="#FFE27A" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round" opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.08;.24;.26;1" dur="${dur}" repeatCount="indefinite"/></path>
+    ${ball(0, 1)}${ball(.04, .85)}${ball(.08, .7)}
+    ${shard(-26, -18)}${shard(22, -22)}${shard(-18, 20)}${shard(26, 14)}${shard(0, -30)}
+    <circle cx="160" cy="160" r="9" fill="#FFE27A" stroke="#1A0F45" stroke-width="2.5"/>
+    <g opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.04;.22;.26;1" dur="${dur}" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="150 176;150 176;120 168;120 168" keyTimes="0;.06;.22;1" dur="${dur}" repeatCount="indefinite"/><path d="M0 0c0-6 8-6 8 0v12c4-3 10-1 9 5l-3 11c-1 4-5 7-9 7h-6c-4 0-7-2-9-6l-5-11c-2-4 3-6 6-3l3 3z" fill="#fff" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round" transform="rotate(180)"/></g>
+  </svg>`;
+}
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.ball.scene = { kind:'stars', colors:['#FFFFFF','#E3C8FF','#9FD8FF'], density:.55 };   /* 판 바깥만, 밀도 절반(눈 편하게) */

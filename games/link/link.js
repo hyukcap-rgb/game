@@ -448,7 +448,7 @@ NG.link = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#lkBar');
-    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('linkGo'); coachOn(); } return; }
+    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; if(!G.duel){ G.start = Date.now(); G.pausedMs = 0; } msg(playMsg()); sfx('linkGo'); coachOn(); } return; }   /* 대전은 모두 같은 시계(엔진 시작 시각)라 다시 맞추지 않음 */
     if(m.duel){ try{ duelLoop(); }catch(_){} }   /* 미니 화면·얼음 공격(오류가 나도 판은 계속) */
     if(m.phase !== 'play') return;
     const rem = remTime(t), sec = Math.ceil(rem);
@@ -498,28 +498,37 @@ NG.link = (() => {
     document.querySelectorAll('.ng-link .lk-finger').forEach(e => e.remove());
   }
 
-  /* ===== 대전(1:1): 상대 판 미니 화면 · 콤보 얼음 공격 =====
-     지금 엔진(대전 v2)의 방(G.duel.nr) presence에 이 게임 키 lk = { v:1, mv:판 글자열(0 빈칸·1 타일·2 얼음), ev:[[번호, 'ice', 장수, 섞기, 시각]…] }를
-     올리고 상대 것을 읽는다(오목이 om 키를 쓰는 방식과 같음). 받는 쪽은 번호가 더 큰 사건만 차례로 처리한다.
-     얼음 칸 = 판 씨앗 + 보낸 사람 + 사건 번호로 고름 → 같은 판·같은 사건이면 어느 기기에서 계산해도 같은 칸.
-     컴퓨터 상대: 같은 판을 미리 푼 순서로 미니 판을 보여 주고, 씨앗으로 정한 때에 얼음을 보낸다(내가 보낸 얼음은 미니 판에만 보임).
-     판 씨앗·시계·엔진 대전 값(pg·v·t·dn·sc)은 건드리지 않는다. */
+  /* ===== 대전(대전 v3 엔진, 2~5명): 상대 판 미니 화면 · 콤보 얼음 공격 =====
+     - 미니 화면 = 엔진 duelMini(내 판 글자열 0 빈칸·1 타일·2 얼음 → 엔진이 0.7초마다 올리고, 다른 사람 카드에 draw로 그림).
+     - 공격 = duelSend('ice', { to, n, s:섞기, c:콤보 }) → 모두가 받지만 to가 나인 사람만 얼음을 맞음(onDuelEvent).
+       받는 사람: 2명이면 상대, 3명 이상이면 나를 뺀 1위(같으면 자리 순서). 내가 1위면 자연히 2위.
+     - 얼음 칸 = 판 씨앗 + 보낸 사람 + 사건 번호(icePick) → 같은 판·같은 사건이면 어느 기기에서 계산해도 같은 칸.
+     - 컴퓨터 상대: 같은 판을 미리 푼 순서로 미니 판을 보여 주고, 씨앗으로 정한 때에 얼음을 보냄.
+       내가 보낸 얼음은 컴퓨터 미니 판에 덮이고 컴퓨터가 실제로 늦어짐(엔진 duelAiDelay).
+     판 씨앗·시계·엔진 대전 값(pg·v·t·dn·sc)은 건드리지 않는다. 알림은 엔진 duelNotify. */
   const ICE_HTML = '<i class="lk-ice" aria-hidden="true"><svg viewBox="0 0 40 48" preserveAspectRatio="none"><path d="M5 9l9 8-3 9 8 6M35 7l-8 10 6 7-5 12M14 17h9M27 30l6 4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></i>';
+  const AI_SLOW = 1.2, AI_SLOW_MIX = 2;   /* 컴퓨터가 얼음 한 장에 늦어지는 초 · 섞기 공격 */
   const mvStr = (b, ice) => b.map((k, i) => k == null || k === STONE ? '0' : ice && ice.has(i) ? '2' : '1').join('');
   const nb4 = (m, j) => { const x = j % m.cols, y = Math.floor(j / m.cols), r = []; if(x > 0) r.push(j - 1); if(x < m.cols - 1) r.push(j + 1); if(y > 0) r.push(j - m.cols); if(y < m.rows - 1) r.push(j + m.cols); return r; };
-  const oppNick = () => { try{ return String((G.duel.opp && G.duel.opp.nick) || '상대'); }catch(_){ return '상대'; } };
-  const oppFace = () => { try{ return typeof oppAv === 'function' ? oppAv(oppNick()) : ''; }catch(_){ return ''; } };
+  const miniCard = pid => document.querySelector(`#duelBar .dmini[data-pid="${pid}"]`);
+  const pubOf = pid => { try{ return duelPlayers().find(p => p.pid === pid) || null; }catch(_){ return null; } };
   /* 얼음을 고를 칸: 판 씨앗 + 열쇠로 정한 순서(같은 판·같은 사건 → 같은 칸) */
   function icePick(b, ice, n, key, seed){
     const cand = b.map((k, i) => k != null && k !== STONE && !(ice && ice.has(i)) ? i : -1).filter(i => i >= 0);
     shuffle(cand, mulberry(seedFrom(seed + ':ice:' + key)));
     return cand.slice(0, Math.max(0, Math.min(n, ICE_MAX - (ice ? ice.size : 0))));
   }
+  /* 공격 받는 사람: 나를 뺀(나간 사람·끝낸 사람 빼고) 순위가 가장 높은 사람, 같으면 자리 순서 */
+  function iceTarget(){
+    let ps = []; try{ ps = duelPlayers(); }catch(_){ return null; }
+    const c = ps.filter(p => !p.me && !p.left && !(p.st && p.st.dn));
+    c.sort((a, b) => (a.rank || 9) - (b.rank || 9) || a.seat - b.seat);
+    return c[0] || null;
+  }
   function duelSetup(m){
     const D = G.duel;
     m.duel = true; m.seed = String(D.seed || 'duel'); m.ice = new Map(); m.frozenUntil = 0; m.chain = 0; m.lastClr = 0;
-    m.evN = 0; m.evOut = []; m.evSeen = 0; m.inbox = []; m.netAt = 0; m.pubAt = 0; m.pubSig = ''; m.iceGot = 0; m.iceSent = 0;
-    m.mini = { s:'', flash:new Map(), dirty:true, drawnAt:0 };
+    m.evN = 0; m.inbox = []; m.iceGot = 0; m.iceSent = 0; m.sentTo = {};
     if(D.mode === 'ai'){
       /* 컴퓨터가 지우는 순서: 같은 판을 처음부터 풀어 본 순서(막히면 같은 그림 아무 짝) */
       const c = { b:m.b.slice(), cols:m.cols, rows:m.rows, turns:m.turns }, ord = [];
@@ -529,7 +538,7 @@ NG.link = (() => {
         ord.push([mv[0], mv[1]]); c.b[mv[0]] = null; c.b[mv[1]] = null;
       }
       const r = mulberry(seedFrom(m.seed + ':ai-ice'));
-      m.ai = { b0:m.b.slice(), ord, ice:new Map(), v:-1,
+      m.ai = { b0:m.b.slice(), ord, ice:new Map(), v:0,
         atk:[{ v:4 + Math.floor(r() * 3), n:2, shuf:0 }, { v:10 + Math.floor(r() * 4), n:3, shuf:0 }].concat(r() < .3 ? [{ v:15 + Math.floor(r() * 3), n:4, shuf:1 }] : []) };
     }
   }
@@ -542,36 +551,31 @@ NG.link = (() => {
     if(add) iceSend(add, c === 4 ? 1 : 0, c);
   }
   function iceSend(n, shuf, c){
-    const m = S(), D = G.duel;
-    m.evN++; m.iceSent += n;
-    m.evOut.push([m.evN, 'ice', n, shuf, Date.now(), c]); if(m.evOut.length > 20) m.evOut.shift();
-    try{ alertShow(`<span class="tx"><b>${c}콤보!</b><small>${esc(oppNick())}님에게 얼음 ${n}장${shuf ? " + 섞기" : ""}</small></span>`, "good"); }catch(_){}
+    const m = S(), D = G.duel, to = iceTarget(); if(!to) return;
+    m.evN++; m.iceSent += n; m.sentTo[to.pid] = (m.sentTo[to.pid] || 0) + n;
+    try{ duelSend('ice', { to:to.pid, n, s:shuf, c }); }catch(_){}
+    try{ duelNotify(`<b>${c}콤보!</b> ${esc(to.nick)}님에게 얼음 ${n}장${shuf ? ' + 섞기' : ''}`, { from:{ pid:D.myPid, me:true }, kind:'good', force:true }); }catch(_){}
     sfx('linkIceSend');
-    flyIce($('#bd'), $('#lkMini'));
-    if(D.mode === 'pvp') pubLk(true);
-    else if(m.ai){ const now = Date.now(); icePick(aiBoard(), m.ai.ice, n, 'me' + m.evN, m.seed).forEach(i => m.ai.ice.set(i, now + 600 + ICE_MS)); m.mini.dirty = true; }
+    flyIce($('#bd'), miniCard(to.pid));
+    if(to.ai && m.ai){   /* 컴퓨터: 미니 판에 얼음이 덮이고 실제로 늦어짐 */
+      const now = Date.now(); icePick(aiBoard(), m.ai.ice, n, 'me' + m.evN, m.seed).forEach(i => m.ai.ice.set(i, now + 600 + ICE_MS));
+      try{ duelAiDelay(n * AI_SLOW + (shuf ? AI_SLOW_MIX : 0)); }catch(_){}
+    }
   }
-  function pubLk(force){
-    const m = S(), D = G.duel; if(!D || D.mode !== 'pvp' || !D.nr || !D.go) return;
-    const mv = mvStr(m.b, m.ice), now = Date.now(), sig = mv + ':' + m.evN;
-    if(sig === m.pubSig && now - m.pubAt < 5000) return;
-    if(!force && now - m.pubAt < 300) return;
-    m.pubAt = now; m.pubSig = sig;
-    try{ D.nr.presence({ lk:{ v:1, mv, ev:m.evOut.slice() } }).catch(() => {}); }catch(_){}
-  }
-  function oppLk(){
-    const D = G.duel; if(!D || !D.nr) return null;
-    let ps = []; try{ ps = D.nr.peers(); }catch(_){ return null; }
-    const o = ps.find(p => !p.sameTab && p.peer === D.oppPeer) || ps.find(p => !p.sameTab);
-    return (o && o.presence && o.presence.lk) || null;
+  /* 엔진이 넘겨주는 다른 사람의 사건(번호 순서대로, 나에게는 내 것이 안 옴) */
+  function onEvent(ev, from){
+    const m = G && G.m, d = ev && ev.data; if(!m || !m.duel || !d || ev.kind !== 'ice') return;
+    const D = G.duel, n = Math.max(0, Math.min(4, +d.n || 0)), c = Math.max(0, Math.min(99, +d.c || 0));
+    if(d.to === D.myPid){ if(m.phase === 'play' && !G.over) iceIncoming(n, +d.s ? 1 : 0, from.pid + ':' + ev.n, c, from); return; }
+    flyIce(miniCard(from.pid), miniCard(d.to));   /* 다른 두 사람 사이 공격: 날아가는 모습만 */
   }
   /* 받은 공격: 알림 → 1초 뒤 내 판에 얼음 */
-  function iceIncoming(n, shuf, key, c){
+  function iceIncoming(n, shuf, key, c, from){
     const m = S(); if(!n) return;
     m.inbox.push({ at:Date.now() + 1000, n, shuf, key });
-    try{ alertShow(`${oppFace()}<span class="tx"><b>${esc(oppNick())}님 공격!</b><small>${c ? c + "콤보 · " : ""}얼음 ${n}장${shuf ? " + 섞기" : ""}</small></span>`, "bad"); }catch(_){}
+    try{ duelNotify(`${esc(from ? from.nick : '상대')}님이 얼음 ${n}장!${shuf ? ' + 섞기' : ''}${c ? ` <small>${c}콤보</small>` : ''}`, { from, kind:'bad', force:true }); }catch(_){}
     sfx('linkIceWarn');
-    flyIce($('#lkMini'), $('#bd'));
+    flyIce(from ? miniCard(from.pid) : null, $('#bd'));
   }
   function iceApply(it){
     const m = S(), now = Date.now();
@@ -595,62 +599,37 @@ NG.link = (() => {
   function aiBoard(){ const m = S(), a = m.ai, b = a.b0.slice(); for(let s = 0; s < Math.max(0, a.v) && s < a.ord.length; s++){ b[a.ord[s][0]] = null; b[a.ord[s][1]] = null; } return b; }
   function aiTick(now){
     const m = S(), D = G.duel, a = m.ai; if(!a || !D.go) return;
-    const v = Math.max(0, Math.min(m.pairs, Math.floor((D.opp.pg || 0) * m.pairs + 1e-6)));
-    a.v = v;
+    const P = (D.P || {}).ai, st = (P && P.st) || {};
+    a.v = Math.max(0, Math.min(m.pairs, Math.floor(st.v || 0)));
     const b = aiBoard(); a.ice.forEach((t, i) => { if(now >= t || b[i] == null) a.ice.delete(i); });
-    miniSet(mvStr(b, a.ice));
-    if(!D.opp.dn && m.phase === 'play') a.atk.forEach((k, n) => { if(!k.done && v >= k.v){ k.done = 1; iceIncoming(k.n, k.shuf, 'ai' + n, k.n); } });
+    if(!st.dn && m.phase === 'play') a.atk.forEach((k, n) => { if(!k.done && a.v >= k.v){ k.done = 1; iceIncoming(k.n, k.shuf, 'ai' + n, k.n, pubOf('ai')); } });
   }
-  function miniSet(s){
-    const m = S(), M = m.mini, now = Date.now();
-    if(s === M.s) return;
-    if(M.s && M.s.length === s.length) for(let i = 0; i < s.length; i++) if(M.s[i] !== '0' && s[i] === '0') M.flash.set(i, now + 300);   /* 상대가 지운 두 칸이 0.3초 반짝 */
-    M.s = s; M.dirty = true;
-  }
-  function miniDraw(now){
-    const m = S(), M = m.mini, svg = $('#lkMiniB'); if(!svg || !M.s) return;
-    M.flash.forEach((t, i) => { if(now >= t) M.flash.delete(i); });
-    if(!M.dirty && !M.flash.size && now - M.drawnAt < 1000) return;
-    M.dirty = false; M.drawnAt = now;
-    const p = Math.min(48 / m.cols, 64 / m.rows), ox = (48 - p * m.cols) / 2, oy = (64 - p * m.rows) / 2;
+  /* 미니 화면(엔진 카드 안 그림 칸 약 60×42): 남은 타일 · 얼음 · 방금 지운 두 칸 0.3초 반짝 */
+  const miniGet = () => { const m = G && G.m; return m && m.duel ? mvStr(m.b, m.ice) : ''; };
+  function miniDraw(el, s, p){
+    const m = G && G.m; if(!el || !m) return;
+    if(p && p.ai && m.ai) s = mvStr(aiBoard(), m.ai.ice);   /* 컴퓨터는 판 글자 대신 미리 푼 순서로 */
+    s = String(s || '').replace(/[^012]/g, '0');
+    if(el._lk === s) return;
+    const prev = el._lk || ''; el._lk = s;
+    const C = m.cols, R = m.rows, u = 6;
     let h = '';
-    for(let i = 0; i < M.s.length; i++){
-      const x = ox + (i % m.cols) * p + .6, y = oy + Math.floor(i / m.cols) * p + .6, w = (p - 1.2).toFixed(1), c = M.s[i];
-      if(c === '1') h += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${w}" rx="1.4" class="t"/>`;
-      else if(c === '2') h += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${w}" rx="1.4" class="i"/>`;
-      else if(M.flash.has(i)) h += `<rect x="${(x - .6).toFixed(1)}" y="${(y - .6).toFixed(1)}" width="${(p).toFixed(1)}" height="${(p).toFixed(1)}" rx="1.6" class="f" opacity="${((M.flash.get(i) - now) / 300).toFixed(2)}"/>`;
+    for(let i = 0; i < C * R; i++){
+      const x = (i % C) * u + .5, y = Math.floor(i / C) * u + .5, c = s[i] || '0';
+      if(c === '1') h += `<rect x="${x}" y="${y}" width="5" height="5" rx="1.2" class="t"/>`;
+      else if(c === '2') h += `<rect x="${x}" y="${y}" width="5" height="5" rx="1.2" class="i"/>`;
+      else if(prev.length === s.length && prev[i] && prev[i] !== '0') h += `<rect x="${x - .5}" y="${y - .5}" width="6" height="6" rx="1.4" class="f"/>`;
     }
-    svg.innerHTML = h;
+    el.innerHTML = `<svg class="lk-mb" viewBox="0 0 ${C * u} ${R * u}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${h}</svg>`;
   }
   function duelLoop(){
     const m = S(), D = G.duel, now = Date.now(); if(!D) return;
     if(m.ice.size) m.ice.forEach((t, i) => { if(now >= t) iceMelt(i, false); });
     if(m.frozenUntil && now >= m.frozenUntil){ m.frozenUntil = 0; const bd = $('#bd'); if(bd) bd.classList.remove('frozen'); }
-    if(now - m.netAt >= 150){
-      m.netAt = now;
-      if(D.mode === 'pvp'){
-        const q = oppLk();
-        if(q){
-          if(typeof q.mv === 'string' && q.mv.length <= 400) miniSet(q.mv.replace(/[^012]/g, '0'));
-          if(Array.isArray(q.ev) && m.phase === 'play') q.ev.slice().sort((x, y) => x[0] - y[0]).forEach(e => {
-            if(!Array.isArray(e) || e[1] !== 'ice' || !(e[0] > m.evSeen)) return;
-            m.evSeen = e[0];
-            iceIncoming(Math.max(0, Math.min(4, +e[2] || 0)), +e[3] ? 1 : 0, 'p' + e[0], Math.max(0, Math.min(99, +e[5] || 0)));
-          });
-        }
-        if(D.go && !G.over) pubLk(false);
-      } else aiTick(now);
-    }
+    if(D.mode === 'ai') aiTick(now);
     /* 받은 공격 적용: 판이 움직이는 중(지우기·섞기)이면 잠깐 기다림 */
     if(m.inbox.length && m.phase === 'play' && !m.lock && now >= m.inbox[0].at) iceApply(m.inbox.shift());
     if(m.phase !== 'play') m.inbox.length = 0;
-    miniDraw(now);
-  }
-  /* 판 위 큰 알림(보이기만 함, 눌림 막지 않음) */
-  function alertShow(html, cls){
-    const e = $('#lkAlert'); if(!e) return;
-    e.className = 'lk-alert ' + (cls || ''); e.innerHTML = html; void e.offsetWidth; e.classList.add('on');
-    clearTimeout(S().alertT); S().alertT = T(() => { const x = $('#lkAlert'); if(x) x.classList.remove('on'); }, 1200);
   }
   /* 얼음 조각이 날아가는 모습(보이기만 함) */
   function flyIce(from, to){
@@ -691,6 +670,28 @@ NG.link = (() => {
     const x = $('#lkMix'); if(x) x.onclick = useMix;
   }
 
+  /* 도움말 그림(320×180, 움직임·글자 없음): 별 두 개를 차례로 누르면 두 번 꺾인 선이 그어지고 둘 다 사라짐 */
+  function howPic(){
+    const W = 40, H = 48, SX = 46, SY = 54, X0 = 48, Y0 = 52, dur = '3.6s', at = (c, r) => [X0 + c * SX, Y0 + r * SY];
+    const tile = (c, r, k, extra) => { const [x, y] = at(c, r); return `<g>${extra || ''}<rect x="${x}" y="${y + 4}" width="${W}" height="${H - 4}" rx="8" fill="#7FC9A0" stroke="#1A0F45" stroke-width="2.4"/><rect x="${x}" y="${y}" width="${W}" height="${H - 4}" rx="8" fill="#FFFDF4" stroke="#1A0F45" stroke-width="2.4"/><g transform="translate(${x + 5} ${y + 4}) scale(${((W - 10) / 64).toFixed(4)})">${SYM[k][2]}</g></g>`; };   /* 안쪽 <svg>는 도움말 CSS(svg 100%)에 늘어나므로 g로 */
+    const lift = kt => `<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -5;0 -5;0 0" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+    const gone = `<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.66;.93;1" dur="${dur}" repeatCount="indefinite"/>`;
+    const [ax, ay] = at(0, 1), [bx, by] = at(3, 0), cxA = ax + W / 2, cxB = bx + W / 2, top = Y0 - 18;
+    const d = `M${cxA} ${ay + H / 2 - 2}V${top}H${cxB}V${by + H / 2 - 2}`;
+    const rest = [[1, 0, 'leaf'], [2, 0, 'drop'], [4, 0, 'moon'], [1, 1, 'cherry'], [2, 1, 'gem'], [3, 1, 'leaf'], [4, 1, 'drop']].map(([c, r, k]) => tile(c, r, k)).join('');
+    const line = w => `<path d="${d}" fill="none" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100" ${w}><animate attributeName="stroke-dashoffset" values="100;100;0;0;100" keyTimes="0;.3;.48;.93;1" dur="${dur}" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.29;.3;.6;.68;1" dur="${dur}" repeatCount="indefinite"/></path>`;
+    const finger = `<g opacity="0"><animate attributeName="opacity" values="0;1;1;1;0;0" keyTimes="0;.04;.14;.26;.3;1" dur="${dur}" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="${cxA + 6} ${ay + 34};${cxA + 6} ${ay + 34};${cxB + 6} ${by + 34};${cxB + 6} ${by + 34}" keyTimes="0;.12;.2;1" dur="${dur}" repeatCount="indefinite"/><path d="M0 0c0-6 8-6 8 0v12c4-3 10-1 9 5l-3 11c-1 4-5 7-9 7h-6c-4 0-7-2-9-6l-5-11c-2-4 3-6 6-3l3 3z" fill="#fff" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round"/></g>`;
+    const ring = (x, y) => `<circle cx="${x}" cy="${y}" r="6" fill="none" stroke="#FFE27A" stroke-width="5" opacity="0"><animate attributeName="r" values="6;6;40;40" keyTimes="0;.55;.7;1" dur="${dur}" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;1;0;0" keyTimes="0;.55;.57;.7;1" dur="${dur}" repeatCount="indefinite"/></circle>`;
+    return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="같은 별 두 개를 누르면 두 번 꺾인 선으로 이어져 사라지는 그림">
+      <rect width="320" height="180" fill="#DFF7E6"/><rect x="${X0 - 12}" y="${Y0 - 30}" width="${SX * 5 + 18}" height="${SY * 2 + 36}" rx="18" fill="#BFEBD0" stroke="#1A0F45" stroke-width="3"/>
+      ${rest}
+      <g>${gone}<g>${lift('0;.06;.1;.55;.6')}${tile(0, 1, 'star')}</g></g>
+      <g>${gone}<g>${lift('0;.16;.2;.55;.6')}${tile(3, 0, 'star')}</g></g>
+      ${line('stroke="#1A0F45" stroke-width="9"')}${line('stroke="#FFB020" stroke-width="5"')}
+      ${ring(cxA, ay + H / 2)}${ring(cxB, by + H / 2)}${finger}
+    </svg>`;
+  }
+
   return {
     name:'짝 잇기', abil:'공간지각', col:['#9EE6C3','#2BB673','#13703F'], time:'약 3분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 9A1.5 1.5 0 0 1 5 7.5h4A1.5 1.5 0 0 1 10.5 9v9A1.5 1.5 0 0 1 9 19.5H5A1.5 1.5 0 0 1 3.5 18zm10 3A1.5 1.5 0 0 1 15 10.5h4a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M7 7V3.2h10V10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -714,6 +715,8 @@ NG.link = (() => {
       ['판을 다 비우면 성공', '시간 안에 모든 짝을 지우면 성공! 막히면 💡힌트·섞기(점수 조금 줄어요). 짝이 하나도 없으면 저절로 섞여요.'],
       ['틀리면 기회 ★ 하나', '다른 그림·막힌 짝을 고르면 기회를 잃고, 세 번 틀리면 끝나요. 대전은 끝나지 않고 −25점 + 1초 쉬기, 3초 안에 연달아 지우면 상대 판에 얼음을 보내요.']
     ],
+    /* 도움말 v2: 그림 + 3줄(더 알아보기 = help) */
+    howto:{ pic:howPic, lines:['같은 그림 두 개를 눌러요', '선이 두 번까지 꺾여 이어지면 사라져요', '판을 다 비우면 성공'] },
     helpExtra(){ const m = G && G.id === 'link' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['꽃밭 산책','과일 장터','별빛 정원','바닷가 마을','눈꽃 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·섞기·실수 1번 이하 · ★★★ 힌트·섞기·실수 없이',
@@ -765,8 +768,8 @@ NG.link = (() => {
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar lk-tbar" id="lkBarWrap"><i id="lkBar"></i></div>
-        <div class="lk-row${m.duel ? ' duel' : ''}">${m.duel ? `<div class="lk-mini" id="lkMini" role="img" aria-label="${esc(oppNick())}님의 판"><span class="lk-mface">${oppFace()}</span><svg id="lkMiniB" viewBox="0 0 48 64" aria-hidden="true"></svg></div>` : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
-        <div class="lk-wrap"><div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div>${m.duel ? '<div class="lk-alert" id="lkAlert" aria-live="polite"></div>' : ''}</div>
+        <div class="lk-row">${m.duel ? '' : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
+        <div class="lk-wrap"><div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div></div>
       </div>`;
       build(); wire(); hud();
       T(() => { const b = $('#bd'); if(b) b.classList.remove('in'); }, 900);
@@ -775,12 +778,16 @@ NG.link = (() => {
       if(G.raf) cancelAnimationFrame(G.raf);
       G.raf = requestAnimationFrame(loop);
     },
-    /* 대전 v3 선택 항목(공용 엔진이 준비되면 읽음. 지금은 init이 G.duel을 보고 대전 판을 고름). 1단계는 1:1 */
-    duelKind:'race', duelMax:2, duelEnd:'first',
+    /* 대전 v3(2~5명 경주): 대전 판·느긋하게·미니 화면·얼음 사건 */
+    duelKind:'race', duelMax:5, duelEnd:'first',
+    duelMini:{ get:miniGet, draw:miniDraw },
+    onDuelEvent:onEvent,
     duelCfg(){ return Object.assign({}, DUEL_CFG, { duelOwn:1 }); },
     duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || DUEL_CFG.limit) * 2 }); },
-    _duelState(){ const m = G && G.m; return m && m.duel ? { mv:mvStr(m.b, m.ice), ice:[...m.ice.keys()].sort((a, b) => a - b), mini:m.mini.s, evN:m.evN, evSeen:m.evSeen, got:m.iceGot, sent:m.iceSent, frozen:m.frozenUntil > Date.now() } : null; },
-    _iceTest(n, shuf){ const m = G && G.m; if(m && m.duel) iceIncoming(n, shuf ? 1 : 0, 'test' + (++m.evN), n); },
+    _duelState(){ const m = G && G.m, D = G && G.duel; if(!m || !m.duel) return null;
+      const minis = {}; try{ D.pl.forEach(pid => { if(pid !== D.myPid) minis[pid] = (D.P[pid] || {}).mv || ''; }); }catch(_){}
+      return { me:D.myPid, mv:mvStr(m.b, m.ice), ice:[...m.ice.keys()].sort((a, b) => a - b), minis, evN:m.evN, got:m.iceGot, sent:m.iceSent, sentTo:Object.assign({}, m.sentTo), frozen:m.frozenUntil > Date.now(), aiIce:m.ai ? m.ai.ice.size : null, aiT:D.ai ? D.ai.T : null }; },
+    _iceTest(n, shuf){ const m = G && G.m; if(m && m.duel) iceIncoming(n, shuf ? 1 : 0, 'test' + (++m.evN), n, pubOf('ai')); },
     _icePick:icePick,
     progress(){ const m = G && G.m; return m ? m.found / m.pairs : 0; },
     lossText(){ const m = G.m; return (m.fail === 'miss' ? '기회를 다 썼어요. ' : '') + `짝 ${m.found}/${m.pairs}개를 지웠어요.`; },
@@ -872,30 +879,18 @@ body[data-mode="link"]{background:
 .ng-link .lk-finger svg{width:100%; height:100%; display:block}
 @keyframes link-finger{from{transform:translate(4px,6px)} to{transform:translate(-2px,-2px)}}
 /* 대전: 상대 미니 판 카드(72×64) · 얼음 덮개 · 1초 쉬기 · 판 위 알림 */
-.ng-link .lk-row.duel{height:68px; margin-top:4px}
-.ng-link .lk-mini{flex:none; display:flex; align-items:center; gap:2px; width:72px; height:64px; padding:0 2px; box-sizing:border-box; border-radius:12px; background:#fff; border:2.5px solid #2F7BFF; box-shadow:0 3px 0 #1A0F45}
-.ng-link .lk-mface{flex:none; width:20px; height:20px; display:grid; place-items:center; align-self:flex-start; margin-top:4px}
-.ng-link .lk-mface .av{width:20px !important; height:20px !important; min-width:0 !important; font-size:0}
-.ng-link .lk-mface .av svg{width:100%; height:100%}
-.ng-link #lkMiniB{width:44px; height:60px; flex:none; display:block}
-.ng-link #lkMiniB .t{fill:#7FD3A6; stroke:#1A0F45; stroke-width:.6}
-.ng-link #lkMiniB .i{fill:#BFE6FF; stroke:#2F7BFF; stroke-width:.9}
-.ng-link #lkMiniB .f{fill:#FFE27A}
+/* 대전: 엔진 미니 카드(#duelBar .dmini) 안 판 그림 · 얼음 덮개 · 1초 쉬기 */
+body[data-mode="link"] .dmini .lk-mb{display:block; width:100%; height:100%}
+body[data-mode="link"] .dmini .lk-mb .t{fill:#7FD3A6; stroke:#1A0F45; stroke-width:.6}
+body[data-mode="link"] .dmini .lk-mb .i{fill:#BFE6FF; stroke:#2F7BFF; stroke-width:.9}
+body[data-mode="link"] .dmini .lk-mb .f{fill:#FFE27A; animation:link-mf .3s ease-out forwards}
+@keyframes link-mf{to{opacity:0}}
 .ng-link .lk-ice{position:absolute; left:0; right:0; top:0; bottom:4px; border-radius:calc(var(--cw) * .2); background:rgba(191,230,255,.72); border:2.2px solid #2F7BFF; box-shadow:inset 0 0 0 2px rgba(255,255,255,.7); pointer-events:none; animation:link-ice-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-link .lk-ice svg{position:absolute; inset:8%; width:84%; height:84%}
 @keyframes link-ice-in{from{transform:scale(1.5); opacity:0}}
 .ng-link .lk-cell.iced{cursor:not-allowed}
 .ng-link .lk-board.frozen{filter:saturate(.45) brightness(.96)}
 .ng-link .lk-board.frozen .lk-cell.tile{cursor:wait}
-.ng-link .lk-alert{position:absolute; left:50%; top:30%; width:min(300px, 92%); transform:translate(-50%,-50%) scale(.7); opacity:0; z-index:8; pointer-events:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:16px; border:3px solid #1A0F45; background:rgba(255,255,255,.85); font-family:var(--disp); font-size:17px; color:#1A0F45; text-align:center; transition:transform .25s cubic-bezier(.2,1.5,.4,1), opacity .2s}
-.ng-link .lk-alert.on{transform:translate(-50%,-50%) scale(1); opacity:1}
-.ng-link .lk-alert.bad{background:rgba(214,238,255,.88); border-color:#2F7BFF}
-.ng-link .lk-alert.good{background:rgba(255,240,248,.88); border-color:#F0368A}
-.ng-link .lk-alert .tx{display:flex; flex-direction:column; align-items:flex-start; min-width:0; line-height:1.15}
-.ng-link .lk-alert .tx b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#F0368A; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.ng-link .lk-alert .tx small{font-size:15px; white-space:nowrap}
-.ng-link .lk-alert.bad b{color:#2F7BFF}
-.ng-link .lk-alert .av{width:32px !important; height:32px !important; flex:none}
 body[data-mode="link"] .lk-fly{position:fixed; width:26px; height:26px; z-index:60; pointer-events:none}
 body[data-mode="link"] .lk-fly svg{width:100%; height:100%; display:block}
 @media (max-width:370px){ .ng-link .lk-msg b{font-size:18px} .ng-link .lk-chip{font-size:12px; padding:4px 7px} }

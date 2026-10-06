@@ -796,7 +796,7 @@ NG.block = (function(){
       ['줄을 꽉 채우면 사라져요','가로줄이나 세로줄을 빈틈없이 채우면 지워져요. 여러 줄을 한 번에, 또 연달아 지우면 점수가 커져요.'],
       ['목표 줄 수를 채우면 성공','목표만큼 줄을 지우면 클리어! 남은 조각을 놓을 곳이 없으면 끝나요. 조각을 적게 쓸수록 점수와 별이 많아요.']],
     /* 도움말 v2(공용 WP3가 읽음): 3줄 + 더 알아보기. 솔로 특별한 칸(보석·얼음·폭탄·덩굴)은 개념 카드에서만 설명 */
-    howto:{ lines:['아래 조각을 판에 놓아요', '가로·세로 줄을 채우면 사라져요', '목표 줄을 지우면 성공'],
+    howto:{ pic:() => bkHowPic(), lines:['아래 조각을 판에 놓아요', '가로·세로 줄을 채우면 사라져요', '목표 줄을 지우면 성공'],
       more:[['누르고 놓기', '조각을 누른 뒤 판 칸을 누르면 그 칸에 놓여요.'], ['점수·별', '여러 줄을 한 번에·연달아 지우면 점수가 커지고, 조각을 적게 쓸수록 별이 많아요.'], ['대전', '같은 조각 순서로 동시에! 12줄을 먼저 지우면 이겨요(3분).']] },
     chapters:['나무 상자','보석 광산','얼음 궁전','용암 동굴','덩굴 숲'],
     concepts:{
@@ -890,6 +890,15 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 @keyframes bkPick{from{transform:translate(var(--ox),var(--oy)) scale(var(--s0))}to{transform:none}}
 body[data-mode="block"] .fxfloat.bkf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#fff; -webkit-text-stroke:5px #1A0F45}
 body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
+/* 대전 결과 창: 모두의 끝 판 나란히 */
+body[data-mode="block"] .bk-ends{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:10px 0 2px}
+body[data-mode="block"] .bk-end{position:relative; width:64px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px 4px; border-radius:12px; background:#fff; border:2.5px solid var(--sc); box-shadow:0 2px 0 #1A0F45}
+body[data-mode="block"] .bk-end.me{background:#FFF0F7}
+body[data-mode="block"] .bk-end svg{display:block; border-radius:6px}
+body[data-mode="block"] .bk-end .bk-none{width:54px; height:54px; display:grid; place-items:center; border-radius:6px; background:#1B1550; color:#8C86A6; font-family:var(--heavy); font-size:22px}
+body[data-mode="block"] .bk-end .bk-er{position:absolute; left:-6px; top:-8px; padding:1px 5px; border-radius:99px; background:var(--sc); color:#fff; font-family:var(--heavy); font-size:12px; border:2px solid #1A0F45}
+body[data-mode="block"] .bk-end b{font-family:var(--disp); font-weight:400; font-size:13px; color:#1A0F45; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+body[data-mode="block"] .bk-end small{font-size:12px; font-weight:800; color:#6A5884}
 @media (prefers-reduced-motion: reduce){ .ng-block .bk-multi{animation-duration:.01s} .ng-block.bk-drag canvas{animation:none} .ng-block .bk-slot.sel .bk-pc{animation:none} }
 `,
     sounds:{
@@ -925,18 +934,53 @@ body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-/* 대전 판: 12줄 먼저 · 3분(DUEL). duelKind·duelMax·duelMini는 대전 v3 엔진이 읽는 값(지금 엔진은 1:1, 2단계에서 duelMax 5로 올림).
-   duelMini = 상대에게 보내는 내 판(칸마다 글자 하나: 0 빈칸, 1~e 블록 색) + 8×8 작은 그림(칸 6px) */
+/* 대전 판: 12줄 먼저 · 3분(DUEL, 느긋하게 6분 = 엔진 기본 limit×2). 2~5명 경주(duelMax 5), 순위 = 다 지운 사람 → 지운 줄 → 마지막으로 지운 시각.
+   duelMini = 상대에게 보내는 내 판(칸마다 글자 하나: 0 빈칸, 1~e 블록 색) + 작은 그림, duelResHtml = 결과 창 끝 판 나란히. 공격(돌 보내기)은 보류 */
+const BK_MINI_C = ['#2B2360','#F2434E','#FF8A1A','#FFCF1F','#3ACB50','#1CC6D6','#2F7DF2','#9A4BF0','#F54BA6','#8C86A6','#A9E6F7','#BFDDEA','#E6DEF7','#E0602E','#6FA033'];
+/* 판 글자열(칸마다 16진 글자 64개) → 8×8 작은 SVG(결과 창 끝 판) */
+function bkMiniSvg(str, px){
+  let h = ''; for(let i = 0; i < 64; i++){ const v = parseInt((str || '')[i] || '0', 16) || 0; if(v) h += `<rect x="${1 + (i % 8) * 6}" y="${1 + ((i / 8) | 0) * 6}" width="5" height="5" rx="1" fill="${BK_MINI_C[v] || BK_MINI_C[1]}"/>`; }
+  return `<svg viewBox="0 0 49 49" width="${px}" height="${px}" aria-hidden="true"><rect width="49" height="49" rx="4" fill="#1B1550"/><g fill="#2B2360">${Array.from({ length:64 }, (_, i) => `<rect x="${1 + (i % 8) * 6}" y="${1 + ((i / 8) | 0) * 6}" width="5" height="5" rx="1"/>`).join('')}</g>${h}</svg>`;
+}
 Object.assign(NG.block, { duelPace:[130,.7], duelStat:{ unit:'줄', get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target, mis:0 }) },
-  duelHow:'같은 조각 순서 · 12줄을 먼저 지우면 1등!', duelKind:'race', duelMax:2,
-  duelMini:{ w:56, h:56,
+  duelHow:'같은 조각 순서 · 12줄을 먼저 지우면 1등!', duelKind:'race', duelMax:5,
+  duelMini:{
     get:() => { const g = G && G.bk && G.bk.g; return g ? Array.from(g, v => v.toString(16)).join('') : ''; },
-    draw(el, st){
-      const str = typeof st === 'string' ? st : (st && st.mv) || ''; if(!el) return;
-      let cv = el.querySelector('canvas.bk-mini'); if(!cv){ cv = document.createElement('canvas'); cv.className = 'bk-mini'; cv.width = cv.height = 50; cv.style.width = cv.style.height = '50px'; el.appendChild(cv); }
-      const x = cv.getContext('2d'), C = ['#2B2360','#F2434E','#FF8A1A','#FFCF1F','#3ACB50','#1CC6D6','#2F7DF2','#9A4BF0','#F54BA6','#8C86A6','#A9E6F7','#BFDDEA','#E6DEF7','#E0602E','#6FA033'];
-      x.fillStyle = '#1B1550'; x.fillRect(0, 0, 50, 50);
-      for(let i = 0; i < 64; i++){ const v = parseInt(str[i] || '0', 16) || 0; x.fillStyle = C[v] || C[1]; x.fillRect(1 + (i % 8) * 6, 1 + ((i / 8) | 0) * 6, 5, 5); }
-    } } });
+    /* 엔진 카드 그림 칸(약 60×42) 안에 42px 정사각(선명하게 2배 캔버스). 컴퓨터는 판이 없어 빈 판 */
+    draw(el, st, p){
+      const str = p && p.ai ? '' : typeof st === 'string' ? st : (st && st.mv) || ''; if(!el) return;
+      if(el._bk === str && el.querySelector('canvas.bk-mini')) return; el._bk = str;
+      let cv = el.querySelector('canvas.bk-mini'); if(!cv){ cv = document.createElement('canvas'); cv.className = 'bk-mini'; cv.width = cv.height = 98; cv.style.cssText = 'width:42px;height:42px;display:block;margin:0 auto'; el.appendChild(cv); }
+      const x = cv.getContext('2d'), C = BK_MINI_C;
+      x.fillStyle = '#1B1550'; x.fillRect(0, 0, 98, 98);
+      for(let i = 0; i < 64; i++){ const v = parseInt(str[i] || '0', 16) || 0; x.fillStyle = C[v] || C[1]; x.fillRect(2 + (i % 8) * 12, 2 + ((i / 8) | 0) * 12, 10, 10); }
+    } },
+  /* 결과 창: 모두의 끝 판을 작게 나란히(미니 화면 글자열 재사용). 나는 지금 판, 컴퓨터는 판이 없어 줄 수만 */
+  duelResHtml(rows){
+    const me = (() => { try{ return NG.block.duelMini.get(); }catch(_){ return ''; } })();
+    return `<div class="bk-ends" aria-label="끝 판 나란히">${rows.map(r => {
+      const mv = r.me ? me : r.mv, txt = r.left ? '나감' : (r.v != null ? r.v : 0) + '줄';
+      return `<div class="bk-end${r.me ? ' me' : ''}" style="--sc:${r.col}"><span class="bk-er">${r.rank}위</span>${r.ai || !mv ? '<span class="bk-none">?</span>' : bkMiniSvg(mv, 54)}<b>${r.me ? '나' : esc(duelShortNick(r.nick))}</b><small>${txt}</small></div>`;
+    }).join('')}</div>`;
+  } });
+/* 도움말 그림(320×180, 움직임·글자 없음): 아래 조각을 끌어 빈 곳에 놓으면 가로줄이 꽉 차 사라짐 */
+function bkHowPic(){
+  const dur = '3.4s', cs = 18, X = 88, Y = 14, C = BK_MINI_C, cell = (c, r, col, extra) => `<rect x="${X + c * cs + 1}" y="${Y + r * cs + 1}" width="${cs - 2}" height="${cs - 2}" rx="4" fill="${col}" stroke="#1A0F45" stroke-width="1.6">${extra || ''}</rect>`;
+  let bg = ''; for(let r = 0; r < 8; r++) for(let c = 0; c < 8; c++) bg += `<rect x="${X + c * cs + 1}" y="${Y + r * cs + 1}" width="${cs - 2}" height="${cs - 2}" rx="3" fill="#2B2360" stroke="#8274DA" stroke-width="1.2"/>`;
+  const fill = [[0,2],[0,3],[1,3],[1,7],[1,6],[2,6],[3,6],[3,5],[6,4],[7,4],[6,3],[7,1]];
+  const row = 5, gap = [3, 4, 5];   /* 5번째 줄의 빈 세 칸을 조각이 채움 */
+  const clr = `<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.58;.68;.95;1" dur="${dur}" repeatCount="indefinite"/>`;
+  const flash = `<animate attributeName="fill" values="#3ACB50;#3ACB50;#FFF6B0;#FFF6B0" keyTimes="0;.5;.56;1" dur="${dur}" repeatCount="indefinite"/>`;
+  let line = ''; for(let c = 0; c < 8; c++) if(!gap.includes(c)) line += cell(c, row, C[4], flash);
+  const piece = gap.map((c, k) => `<rect x="${k * cs + 1}" y="1" width="${cs - 2}" height="${cs - 2}" rx="4" fill="#2F7DF2" stroke="#1A0F45" stroke-width="1.6">${flash.replace(/#3ACB50/g, '#2F7DF2')}</rect>`).join('');
+  const from = `${X + 60} ${Y + 8 * cs + 4}`, to = `${X + gap[0] * cs} ${Y + row * cs}`;
+  return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="조각을 끌어 놓으면 가로줄이 꽉 차서 사라지는 그림">
+    <rect width="320" height="180" fill="#3A2F86"/><rect x="${X - 6}" y="${Y - 6}" width="${cs * 8 + 12}" height="${cs * 8 + 12}" rx="10" fill="#1B1550" stroke="#1A0F45" stroke-width="3"/>${bg}
+    ${fill.map(([r, c]) => cell(c, r, C[1 + ((r + c) % 7)])).join('')}
+    <g>${clr}${line}<g><animateTransform attributeName="transform" type="translate" values="${from};${from};${to};${to};${from}" keyTimes="0;.12;.42;.95;1" dur="${dur}" repeatCount="indefinite"/><g transform="scale(1)">${piece}</g></g></g>
+    <rect x="${X}" y="${Y + row * cs}" width="${cs * 8}" height="${cs}" rx="5" fill="#FFF6B0" opacity="0"><animate attributeName="opacity" values="0;0;.9;0;0" keyTimes="0;.5;.56;.7;1" dur="${dur}" repeatCount="indefinite"/></rect>
+    <g opacity="0"><animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.08;.42;.48;1" dur="${dur}" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="${from};${from};${to};${to}" keyTimes="0;.12;.42;1" dur="${dur}" repeatCount="indefinite"/><path d="M30 26c0-6 8-6 8 0v12c4-3 10-1 9 5l-3 11c-1 4-5 7-9 7h-6c-4 0-7-2-9-6l-5-11c-2-4 3-6 6-3l3 3z" fill="#fff" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round"/></g>
+  </svg>`;
+}
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.block.scene = { kind:'shapes', colors:['#FFFFFF','#FFD24C','#62AEFF','#FF7A9E'], density:1.1, alpha:1.2 };

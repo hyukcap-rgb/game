@@ -5,6 +5,7 @@
 
 ## 사용자 지시
 <!-- 여기에 자유롭게 적으세요. 위에 적은 것이 가장 최근 지시예요. 개발팀은 이 목록을 지우지 않고 지킵니다. -->
+- 2026-10-06 세대별 테스트(2단계): 대전 2~5명 경주(duelMax 5). 먼저 빼면 1등 + 모두에게 "○○ 탈출!" 알림. 순위 = 뺀 사람 → 움직인 수 적은 순, 못 뺀 사람은 남은 최단 수 적은 순. 결과 창에 모두의 풀이를 나란히 다시 재생(1.5배속). 게임 중 상대 판 미니 화면은 계속 넣지 않음.
 - 2026-10-06 세대별 테스트: 대전은 10~12수 짧은 판 2분 · 먼저 빼면 1등(2~5명은 대전 v3에서). 출구 표지판 크게(2칸 폭·빨간 화살·"출구" 15px), 차를 누르면 화살표(56px)로 밀기, 내 차 '부릉' 출차, 판을 화면 폭 끝까지. 게임 중 상대 판 미니 화면은 넣지 않음(상대 움직임이 풀이 힌트).
 - 2026-10-04 UI 검수 결론: 공용 HUD 칩·기회 별·도구 버튼 규격을 따른다.
 - 2026-10-04 사용자 요청으로 추가(자동차 주차하기). 꽉 찬 주차장에서 차를 앞뒤로만 밀어 빨간 내 차를 '내 주차 자리'(출구 또는 판 안 표시 칸)까지 보내는 슬라이딩 퍼즐. 상용 제품 이름·판 디자인·카드 문제는 베끼지 않고, 판은 rng + 최단해(BFS) 검증으로. 차 그림은 직접 그린 귀여운 위에서 본 SVG.
@@ -63,7 +64,10 @@
 
 **별**: 힌트 0 + 최단 수 이하 → ★★★, 힌트 ≤1 + 최단 + max(2, 최단×25%) 수 이하 → ★★, 그 외 ★.
 
-**대전**(경주 `duelKind:'race'`, 지금은 1:1 `duelMax:2`): 대전 판 `DUEL` = 6×6 최단 10~12수 · 2분 · 힌트 3(`duelCfg()`; 지금 엔진은 levels.normal로 시작하므로 `init`에서 `G.duel`이면 바꿔 끼움). 먼저 빼면 이김. 대전에서는 차 세우기(0.45초) 뒤 시계를 다시 맞추지 않는다(두 사람 같은 시계). `duelStat = { unit:'수', v:움직인 수, t:최단 수, mis:0 }`, `duelPace:[75, .75]`, `duelHow:'같은 주차장 · 내 차를 먼저 빼면 1등!'`. 진행률 = 1 − (지금 상태의 남은 최단 수 / 처음 최단 수).
+**대전**(경주 `duelKind:'race'`, 2~5명 `duelMax:5`, 느긋하게 4분 = 엔진 기본 limit×2): 대전 판 `DUEL` = 6×6 최단 10~12수 · 2분 · 힌트 3(`duelCfg()`; 지금 엔진은 levels.normal로 시작하므로 `init`에서 `G.duel`이면 바꿔 끼움). 먼저 빼면 이김. 대전에서는 차 세우기(0.45초) 뒤 시계를 다시 맞추지 않는다(두 사람 같은 시계). `duelStat = { unit:'수', v:처음 최단 − 남은 최단(막히면 0), t:처음 최단 수, mis:0, tb:움직인 수 }`, `duelPace:[75, .75]`, `duelHow:'같은 주차장 · 내 차를 먼저 빼면 1등!'`. 진행률 = 1 − (지금 상태의 남은 최단 수 / 처음 최단 수).
+- 순위 `duelRank`: 뺀 사람 → (뺀 사람끼리) 움직인 수 적은 → 먼저 뺀 / 못 뺀 사람은 남은 최단 수 적은(v 큰) → 움직인 수 적은. 다른 사람이 빼면 엔진 알림 "○○ 탈출!"(`duelDoneMsg`).
+- 게임 중 미니 화면 없음(칩 줄·막대). 결과 창 `duelResHtml` = **풀이 나란히 다시 보기**(`replayHtml`, SMIL, 한 수 0.45초 = 1.5배속, 뺀 사람은 차가 출구 밖으로, "나 8수 · 토끼 12수"). 풀이는 움직일 때마다 사건 `pk`(`{ p:'A3C0…' }` 차 글자+위치, 되돌린 수 뺀 길, 90수까지)로 보냄(`pathSend`, 게임 중에는 아무 화면에도 안 보임). 컴퓨터는 최단 풀이(못 뺐으면 진행만큼).
+- 도움말 그림 `howPic`(막은 세로 차를 비키면 빨간 차가 출구로).
 
 ## 점수
 엔진 `calcScore()` = round((base + time + extra) × 배율). `score()`:
@@ -85,7 +89,9 @@
 | `SIGN, exitSides`, `.pk-sign` | 출구 표지판(판 밖 2칸 폭)·표지판 쪽 자리 비우기 |
 | `clearSel, drawArw, selCar, stepSel` | 누르고 화살표로 밀기 |
 | `loop, win, lose, timeUp` | 시계·끝 |
-| `return { … }` | NG.parking 계약(levels·concepts·stage·init·render·score·stars·css·sounds …), `_solveForTest`, 도구용 `_make/_stage` |
+| `pathOf, pathEnc, pathDec, pathSend, onEvent, duelRank, replayHtml` | 대전 풀이 기록·순위·결과 창 다시 보기 |
+| `howPic` | 도움말 그림 |
+| `return { … }` | NG.parking 계약(levels·concepts·stage·init·render·score·stars·css·sounds …, 대전 v3 onDuelEvent·duelRank·duelResHtml·duelDoneMsg), `_solveForTest`·`_stepForTest`(최단 다음 한 수), 도구용 `_make/_stage` |
 | 파일 끝 `Object.assign(NG.parking, { duelPace, duelStat, duelHow })`, `scene` | 대전 설정·움직이는 배경 |
 
 ## 고칠 때 지킬 것
@@ -101,6 +107,7 @@
 - 생성 점검(node): `PKS`·`PARKING_BANK`를 불러 `NG.parking._make(NG.parking._stage(n), mulberry(seed))`로 판을 만들고 `PKS.solve`로 최단 수·시간 확인. 게임 중 `NG.parking._solveForTest()`로 끝까지 자동 풀기.
 
 ## 바뀐 기록
+- 2026-10-06 v1.2.0 세대별 테스트 2단계: 대전 2~5명(duelMax 5), 진행 = 남은 최단 수 기준·순위 규칙(duelRank, tb = 움직인 수), "○○ 탈출!" 알림(duelDoneMsg), 결과 창 풀이 나란히 다시 보기(duelResHtml, 사건 pk), 도움말 그림(howto.pic), `_stepForTest`
 - 2026-10-06 v1.1.0 세대별 테스트(WP13): 대전 판 10~12수·2분(`DUEL`/`duelCfg`, `duelKind:'race'`, `duelMax:2`), 대전 시작 시계 어긋남 고침(차 세우기 뒤 G.start 재설정을 대전에선 안 함), 출구 표지판 크게(2칸 폭·빨간 화살·"출구" 15px), 누르고 화살표(56px)로 밀기, '부릉' 출차 연출(떨림·매연·소리 pkVroom·"부릉!"), 판 크게(표지판 쪽만 여백, 칸 52→54px), 도움말 4칸(솔로 규칙은 개념 카드로) + `howto` 3줄
 - 2026-10-04 v1.0.0 새 게임 추가(슬라이딩 주차 퍼즐, 미리 만든 문제 목록 + BFS 최단 수, 오리지널 차 SVG, 솔로 개념 사이클·대전 지원)
 - 2026-10-04 v1.0.1 UI 검수 반영: 위쪽 정보줄을 공용 `.hud-row/.hchip`(움직인 수/최단·남은 시간)으로, 되돌리기·처음부터(보통)·힌트(아이템) 도구 버튼을 공용 `.tool`로 화면 아래에, 주차장이 양옆 8px를 더 써서 커지고 화면 가운데에, "출구" 글자 11→13px.
