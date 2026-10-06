@@ -366,25 +366,10 @@ NG.hidden = (() => {
     const u = 'hd' + Math.floor(rng() * 1e6);
     return { key:sc.key, tk:sc.key, T:{ name:sc.name, k:ART.K }, bg:ART.svgOf(sc, u), top:'', items, list, ok:check(items, list, ART.ZX, ART.ZY), v2:true };
   }
-  /* 대전에서 같은 그림이 다시 나오지 않게
-     - 컴퓨터 대전: 이 기기에서 최근 본 장면 3개를 피한다.
-     - 실시간 대전: 같은 상대와 "다시 대전"하면 씨앗이 같을 수 있어서, 이 씨앗으로 몇 번째 판인지(두 기기가 똑같이 셈)를
-       씨앗에 붙이고, 앞 판들의 장면(두 기기가 똑같이 다시 계산)을 피한다. 공용 엔진이 avoid(방장 목록)를 주면 그것도 피한다. */
-  const SEEN_KEY = 'hp:hidden:seen', ROUND_KEY = 'hp:hidden:rounds';
-  const seenGet = () => { try{ const a = store.get(SEEN_KEY, []); return Array.isArray(a) ? a.filter(k => SCN.includes(k)).slice(-3) : []; }catch(_){ return []; } };
-  const seenAdd = k => { try{ store.set(SEEN_KEY, seenGet().filter(x => x !== k).concat(k).slice(-3)); }catch(_){} };
-  function duelRound(seed){
-    try{ const m = store.get(ROUND_KEY, {}) || {}, h = String(seedFrom(seed)), j = m[h] || 0; m[h] = j + 1; const ks = Object.keys(m); if(ks.length > 40) ks.slice(0, ks.length - 40).forEach(x => delete m[x]); store.set(ROUND_KEY, m); return j; }catch(_){ return 0; }
-  }
-  function duelBoard(rng, isNew = true){
-    const d = G.duel, shared = [].concat(d.avoid || (d.cf && d.cf.av) || []);
-    if(d.mode === 'ai' || !d.seed) return { rng, scene:isNew ? pickScene(rng, shared.concat(seenGet())) : null };
-    /* 판 번호: 공용 엔진이 주면(대전 v3 G.duel.round) 그것을, 없으면 이 씨앗으로 몇 번째 판인지 기기마다 센 값 */
-    const j = d.round != null && isFinite(+d.round) ? Math.max(0, Math.floor(+d.round)) : duelRound(String(d.seed)), seen = [];
-    let r = rng, k = null;
-    for(let i = 0; i <= j; i++){ r = mulberry(seedFrom(i ? d.seed + '#r' + i : String(d.seed))); if(isNew){ k = pickScene(r, shared.concat(seen.slice(-3))); seen.push(k); } }
-    return { rng:r, scene:k, round:j };
-  }
+  /* 대전에서 같은 그림이 다시 나오지 않게(대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고,
+     최근 본 장면 3개(duelAvoidKey로 엔진이 저장 → G.duel.avoid, 빠른 대전은 방장 목록을 모두가 같이 씀)를 피해 고른다.
+     예전에 게임 안에서 세던 판 번호(hp:hidden:rounds)·최근 장면(hp:hidden:seen)은 엔진으로 옮겼다. */
+  const duelAvoid = cfg => [].concat((G.duel && G.duel.avoid) || [], (cfg && cfg.avoid) || []).filter(k => SCN.includes(k));
 
   /* ===== 플레이 ===== */
   const S = () => G.h;
@@ -418,6 +403,10 @@ NG.hidden = (() => {
   }
   function chipHtml(L, li){
     const m = S(), done = L.got >= L.need, cur = m.order && li === curLi(m);
+    if(SHR()){   /* 선점 대전: 차지한 사람 자리 색으로 칠하고 줄 긋기 + 자리 모양 표식 */
+      const o = m.items.find(x => x.li === li), P = o && m.own[o.i] ? plOf(m.own[o.i]) : null;
+      if(P) return `<div class="hd-chip done own" style="--oc:${P.col}" data-li="${li}" role="listitem" aria-label="${ITEMS[L.k][0]} ${P.me ? '내가' : esc(P.nick) + '님이'} 차지"><span class="hd-ci">${iconSvg(L.k, false)}</span><span class="hd-cn">${ITEMS[L.k][0]}</span><em class="sh">${shapeIco(P.shape, P.col)}</em></div>`;
+    }
     const nm = m.shadow && !done ? '???' : ITEMS[L.k][0];
     return `<div class="hd-chip${done ? ' done' : ''}${cur ? ' cur' : ''}${m.order && !done && !cur ? ' wait' : ''}" data-li="${li}" role="listitem" aria-label="${m.shadow && !done ? '그림자 물건' : ITEMS[L.k][0]}${L.need > 1 ? ' ' + L.got + '/' + L.need + '개' : ''}${done ? ' 찾음' : ''}"><span class="hd-ci">${iconSvg(L.k, m.shadow && !done)}</span><span class="hd-cn">${nm}</span>${L.need > 1 ? `<em>${done ? '✔' : '×' + (L.need - L.got)}</em>` : done ? '<em class="ok">✔</em>' : ''}</div>`;
   }
@@ -455,11 +444,11 @@ NG.hidden = (() => {
   function setLight(x, y){ const m = S(); m.light = [Math.max(0, Math.min(W, x)), Math.max(0, Math.min(H, y))]; const c = $('#hdLight'), g = $('#hdGlow'); if(c){ c.setAttribute('cx', r1(m.light[0])); c.setAttribute('cy', r1(m.light[1])); } if(g){ g.setAttribute('cx', r1(m.light[0])); g.setAttribute('cy', r1(m.light[1])); } }
 
   /* 누르기 판정: 아직 못 찾은 물건 중 가까운 것. 판정 반지름 = 물건 반지름 + 화면 14px(작은 물건도 관대하게) */
-  function hitAt(x, y){
+  function hitAt(x, y, all){   /* all: 이미 찾은(선점 대전에서는 누가 차지한) 물건도 판정 → 남의 것을 눌러도 빗나감이 아님 */
     const m = S(), t = elapsed(), tol = Math.max(14 / pxPerUnit(), 5);
     let best = null, bd = 1e9;
     for(const o of m.items){
-      if(m.got.has(o.i)) continue;
+      if(m.got.has(o.i) && !all) continue;
       const [px, py] = posOf(o, t), d = Math.hypot(px - x, py - y), lim = Math.max(o.r + tol, 22 / pxPerUnit());
       if(d < lim && d / lim < bd){ bd = d / lim; best = o; }
     }
@@ -471,6 +460,7 @@ NG.hidden = (() => {
     const p = scenePt(cx, cy); if(!p) return;
     if(Date.now() < m.coolUntil){ const c = $('#hdCool'); if(c) fxShake(c, 3); return; }
     if(m.night && Math.hypot(p[0] - m.light[0], p[1] - m.light[1]) > LIGHT_R){ setLight(p[0], p[1]); sfx('hdLight'); return; }
+    if(SHR()){ const o = hitAt(p[0], p[1], true); if(o) claimTap(o); else miss(p[0], p[1], cx, cy); return; }
     const o = hitAt(p[0], p[1]);
     if(o && m.order && o.li !== curLi(m)){ msg('<b class="boss">차례가 아니에요</b><span>반짝이는 물건부터 찾아요</span>', 'hd-pop'); T_(() => { if(m.phase === 'play') msg(playMsg()); }, 900); return; }
     if(o) found(o); else miss(p[0], p[1], cx, cy);
@@ -540,6 +530,102 @@ NG.hidden = (() => {
     if(Math.abs(hx - v.cx) > vw / 2 - 20 || Math.abs(hy - v.cy) > vh / 2 - 20){ v.cx = hx; v.cy = hy; applyView(); }
     if(m.night) setLight(hx, hy);
     sfx('hdHint');
+  }
+
+  /* ===== 선점 대전(대전 v3 'shared', docs/21 WP6 3번·11절) =====
+     2~5명이 같은 장면을 같이 보고, 물건을 먼저 누른 사람이 차지한다. 열쇠 = 'o' + 물건 번호.
+     주인은 엔진이 정한다(서버 시각이 가장 이른 사람, 늦게 온 더 이른 기록이 있으면 바뀜 → onDuelClaim의 lost).
+     게임은 보이기만 바꾼다: 그 사람 자리 색·모양 테두리(내 화면에서 나는 늘 분홍 원), 이름표 1.2초, 목록 칸 색·줄긋기, 내 찾은 수.
+     끝: 다 차지되거나, 남은 것을 다 가져가도 1위를 못 따라잡으면(2명이면 6개 중 4개 먼저) duelEndNow — 모든 기기가 같은 주인 표로 같은 판단 */
+  const SHR = () => !!(G && G.id === 'hidden' && G.duel && G.duel.v === 3 && G.duel.kind === 'shared' && typeof duelClaim === 'function');
+  const keyOf = o => 'o' + o.i;
+  const plOf = pid => { try{ return duelPlayers().find(p => p.pid === pid) || null; }catch(_){ return null; } };
+  /* 자리 모양 테두리(장면 단위, 중심 0,0). 모양은 엔진 자리 표식과 같은 다섯 가지 */
+  function shapeD(shape, R){
+    const f = n => r1(n);
+    if(shape === 'square'){ const a = R * .9; return `M${f(-a)} ${f(-a)}H${f(a)}V${f(a)}H${f(-a)}z`; }
+    if(shape === 'tri'){ const t = R * 1.3; return `M0 ${f(-t * 1.12)}L${f(t * 1.1)} ${f(t * .74)}H${f(-t * 1.1)}z`; }
+    if(shape === 'diamond'){ const d = R * 1.3; return `M0 ${f(-d)}L${f(d)} 0L0 ${f(d)}L${f(-d)} 0z`; }
+    if(shape === 'star') return starPath(0, R * .08, R * 1.5, R * .98);
+    return `M${f(-R)} 0a${f(R)} ${f(R)} 0 1 0 ${f(2 * R)} 0a${f(R)} ${f(R)} 0 1 0 ${f(-2 * R)} 0`;
+  }
+  const shapeIco = (shape, col) => `<svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="${shapeD(shape, 6.4)}" fill="${col}" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+  const markOf = i => document.querySelector(`.ng-hidden .hd-mark[data-i="${i}"]`);
+  function ownMark(o, P, tent){
+    const old = markOf(o.i); if(old) old.remove();
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'hd-mark hd-own' + (tent ? ' tent' : '')); g.dataset.i = o.i;
+    const [px, py] = posOf(o, elapsed()); g.setAttribute('transform', `translate(${r1(px)} ${r1(py)})`);
+    const d = shapeD(P.shape, o.r + 8);
+    g.innerHTML = `<g class="p"><path d="${d}" class="k"/><path d="${d}" class="o"/><path d="${d}" class="c" style="stroke:${P.col}"/></g>`;
+    const ml = $('#hdMarks'); if(ml) ml.appendChild(g);
+  }
+  /* 얼굴 꼬리표 대신 이름표(자리 모양 + 이름) 1.2초 — 보이기만 */
+  function claimTag(o, P){
+    try{
+      const m = S(), ml = $('#hdMarks'); if(!ml) return;
+      const nm = P.me ? '나' : String(P.nick).slice(0, 6), w = 34 + nm.length * 13, sc = 1 / m.view.z;
+      const [px, py] = posOf(o, elapsed()), x = Math.max(w / 2 * sc + 2, Math.min(W - w / 2 * sc - 2, px)), y = Math.max(16 * sc, py - (o.r + 22) * Math.min(1, sc * 1.4));
+      const g = document.createElementNS(SVGNS, 'g'); g.setAttribute('class', 'hd-tag'); g.setAttribute('transform', `translate(${r1(x)} ${r1(y)}) scale(${r1(sc * 100) / 100})`);
+      g.innerHTML = `<rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${P.col}" stroke-width="3"/><path d="${shapeD(P.shape, 5.5)}" transform="translate(${-w / 2 + 14} 0)" fill="${P.col}" stroke="#1A0F45" stroke-width="1.6"/><text x="${-w / 2 + 25}" y="5" font-size="14" fill="#1A0F45">${esc(nm)}</text>`;
+      ml.appendChild(g); setTimeout(() => { try{ g.remove(); }catch(_){} }, 1200);
+    }catch(_){}
+  }
+  function takenMsg(own){
+    const m = S(), P = plOf(own);
+    msg(`<b>이미 차지</b><span>${P ? esc(P.nick) + '님이 먼저 찾았어요' : '먼저 찾은 사람이 있어요'}</span>`, 'hd-pop');
+    T_(() => { if(m.phase === 'play') msg(playMsg()); }, 900);
+  }
+  /* 누르기: 아직 주인 없는 물건이면 차지 시도(내 화면에는 바로 점선 → 0.4초 확인 뒤 진하게). 남의 것은 아무 일 없음(벌칙 없음) */
+  function claimTap(o){
+    const me = G.duel.myPid, own = duelOwner(keyOf(o)) || S().own[o.i];
+    if(own && own !== me){ takenMsg(own); return; }
+    if(own) return;
+    const r = duelClaim(keyOf(o));
+    if(!r.ok && r.owner && r.owner !== me) takenMsg(r.owner);
+  }
+  /* 엔진이 주인을 정하거나 바꿀 때(내 것·남의 것·컴퓨터 모두) */
+  function claimSeen(key, owner, info){
+    const m = G && G.id === 'hidden' && G.h; if(!m || !SHR() || String(key)[0] !== 'o') return;
+    const o = m.items[+String(key).slice(1)]; if(!o) return;
+    const me = G.duel.myPid, prev = m.own[o.i], L = m.list[o.li];
+    if(info.sure){ if(owner === me){ const mk = markOf(o.i); if(mk) mk.classList.remove('tent'); } return; }
+    if(prev === owner) return;
+    if(prev === me) m.found = Math.max(0, m.found - 1);   /* 뺏김: 내 수 되돌림("간발의 차" 알림은 엔진이) */
+    if(!prev){ L.got = Math.min(L.need, L.got + 1); m.got.add(o.i); }
+    m.own[o.i] = owner;
+    const P = plOf(owner) || { pid:owner, col:'#8A8FA8', shape:'circle', nick:'상대', me:false };
+    ownMark(o, P, owner === me);
+    claimTag(o, P);
+    const left = m.items.length - Object.keys(m.own).length;
+    if(owner === me){
+      m.streak = 0; m.combo++; m.found++; clearHint();
+      try{ const [px, py] = posOf(o, elapsed()), q = screenOf(px, py); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', o.F], 12, { speed:220, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); fxRing(q.x, q.y, '#FFE27A', 56, .5, 7); }catch(_){}
+      sfx('hdFind', { n:Math.min(8, m.combo - 1) }); fxBuzz(12);
+      if(m.phase === 'play') msg(`<b>${ITEMS[L.k][0]}</b><span>차지! 남은 물건 ${left}개</span>`, 'hd-pop');
+    } else if(m.phase === 'play'){
+      msg(`<b>${esc(P.nick)}</b><span>${ITEMS[L.k][0]} 차지 · 남은 물건 ${left}개</span>`, 'hd-pop');
+      try{ sfx('toggle'); }catch(_){}
+    }
+    if(m.phase === 'play') T_(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
+    drawList(); hud();
+    sharedEndSoon();
+  }
+  /* 끝 판단은 0.45초 뒤(확인 중인 차지가 뒤집힐 수 있으니). 주인 표는 엔진 것을 그대로 읽음 → 모든 기기가 같은 답 */
+  function sharedEndSoon(){ const m = S(); if(m.endT){ clearTimeout(m.endT); m.timers.delete(m.endT); } m.endT = T_(sharedEndCheck, 450); }
+  function sharedEndCheck(){
+    const m = S(); if(!SHR() || G.over || m.phase !== 'play') return;
+    const ps = duelPlayers(), cnt = {}; let taken = 0;
+    m.items.forEach(o => { const w = duelOwner(keyOf(o)); if(w){ taken++; cnt[w] = (cnt[w] || 0) + 1; } });
+    const rem = m.items.length - taken, arr = ps.map(p => ({ p, c:cnt[p.pid] || 0 })).sort((a, b) => b.c - a.c);
+    if(!arr.length) return;
+    const top = arr[0], sec = arr[1] ? arr[1].c : 0;
+    if(rem > 0 && !(arr.length > 1 && top.c > sec + rem)) return;
+    m.phase = 'done';
+    const who = top.p.me ? '내가' : esc(top.p.nick) + '님이';
+    const why = rem <= 0 ? '물건을 모두 찾아서 끝났어요' : `${who} ${top.c}개를 먼저 차지해서 끝났어요`;
+    msg(rem <= 0 ? '<b>모두 찾았어요!</b>' : `<b>${top.p.me ? '내가 앞섰어요!' : '승부가 났어요'}</b>`, 'hd-win');
+    duelEndNow(why);
   }
 
   /* 시계·움직이는 물건 */
@@ -685,13 +771,13 @@ NG.hidden = (() => {
       /* 오늘의 문제·연습: 2026-10-06 전 날짜는 예전 장면(이미 푼 사람과 같은 문제). 솔로·대전은 늘 새 장면 */
       /* NEW_FROM 전 날짜는 오늘의 문제·연습·솔로·대전 모두 예전 장면(그날 이미 푼 사람과 같은 문제), 그 날부터는 새 장면 12개만 */
       let sc; const isNew = dayKey() >= NEW_FROM;
-      if(G.duel){ const b = duelBoard(rng, isNew); sc = isNew ? gen2(cfg, b.rng, b.scene) : gen(cfg, b.rng); if(isNew) seenAdd(sc.key); }
+      if(G.duel) sc = isNew ? gen2(cfg, rng, pickScene(rng, duelAvoid(cfg))) : gen(cfg, rng);
       else sc = isNew ? gen2(cfg, rng, cfg.scene || pickScene(rng, cfg.avoid)) : gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.h = { sc, items:sc.items, list:sc.list.map(L => Object.assign({}, L, { got:0 })), got:new Set(), found:0, misses:0, streak:0, combo:0, hints:0,
         hintLeft:cfg.hints == null ? 3 : cfg.hints, lives:G.duel ? 0 : cfg.lives || 0, coolUntil:0, shadow:!!cfg.shadow, night:!!cfg.night, order:!!cfg.order,
         movers:sc.items.filter(o => o.mv), itEl:{}, view:{ z:1, cx:W / 2, cy:H / 2 }, light:[W / 2, H * .55],
-        phase:'play', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, hr:mulberry(Math.floor(rng() * 1e9)), lastSec:-1, sec:0, fail:null, timers:new Set() };
+        phase:'play', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, hr:mulberry(Math.floor(rng() * 1e9)), lastSec:-1, sec:0, fail:null, timers:new Set(), own:{}, endT:0 };
       G.limit = cfg.limit;
       const m = G.h; if(m.lives) G.paws = m.lives;
       G.cleanup = () => {
@@ -710,13 +796,47 @@ NG.hidden = (() => {
           if(!left.length){ setTimeout(step, 80); return; }
           const o = left[0], [px, py] = posOf(o, elapsed());
           if(m.night) setLight(px, py);
-          const h = hitAt(px, py); if(h) found(h);
+          const h = hitAt(px, py); if(h){ if(SHR()) claimTap(h); else found(h); }
           setTimeout(step, 90);
         };
         step();
       });
     },
     _solveForTest(){ return G.h._solveForTest(); },
+    /* 점검용: 물건 i를 화면에서 누른 것처럼(진짜 누르기 길: tapAt) · 물건이 없는 곳을 누르기 */
+    _tapItemForTest(i){ const m = G.h, o = m.items[i]; if(!o) return false; m.coolUntil = 0; const [px, py] = posOf(o, elapsed()), q = screenOf(px, py); tapAt(q.x, q.y); return true; },
+    onDuelClaim(key, owner, info){ try{ claimSeen(key, owner, info || {}); }catch(_){} },
+    duelKeys(){ const m = G && G.id === 'hidden' && G.h; return m ? m.items.map(keyOf) : []; },
+    /* 도움말 그림(320×180, 오리지널 도형): 돋보기가 장면을 훑다가 열쇠를 찾아 분홍 동그라미, 다른 사람이 별을 파란 네모로 차지 */
+    howto:{
+      pic(){
+        const K = '#2D2440', dur = '4s', it = (k, x, y, rot, s, F, A) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">${itemSvg(k, F, A, K, 2.4 / s)}</g>`;
+        const show = kt => `<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+        return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="그림 속 물건을 찾아 누르면 동그라미가 그려지는 그림">
+          <rect width="320" height="180" rx="16" fill="#DCEFF2"/><path d="M0 104Q70 80 150 98T320 92V180H0z" fill="#B9D9A8"/><path d="M0 132Q90 118 180 134T320 128V180H0z" fill="#A3C98F"/>
+          <circle cx="268" cy="34" r="16" fill="#F6E3A8" stroke="${K}" stroke-width="2.2"/>
+          <rect x="54" y="58" width="12" height="54" rx="3" fill="#B98E62" stroke="${K}" stroke-width="2.2"/><circle cx="60" cy="50" r="30" fill="#8FBF78" stroke="${K}" stroke-width="2.2"/><circle cx="40" cy="62" r="17" fill="#8FBF78" stroke="${K}" stroke-width="2.2"/>
+          <rect x="150" y="104" width="78" height="10" rx="3" fill="#C9A06E" stroke="${K}" stroke-width="2.2"/><path d="M158 114v16M220 114v16" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/><rect x="150" y="88" width="78" height="9" rx="3" fill="#C9A06E" stroke="${K}" stroke-width="2.2"/>
+          ${it('key', 64, 44, -22, .62, '#A7CF8F', '#C3DFAE')}${it('star', 262, 120, 12, .5, '#B4D29E', '#C9E0B4')}
+          <g>${show('0;.34;.4;.92;1')}<circle cx="64" cy="44" r="17" fill="none" stroke="#fff" stroke-width="8"/><circle cx="64" cy="44" r="17" fill="none" stroke="#F0368A" stroke-width="4.4"/></g>
+          <g>${show('0;.62;.68;.92;1')}<rect x="246" y="104" width="32" height="32" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round"/><rect x="246" y="104" width="32" height="32" fill="none" stroke="#2F7BFF" stroke-width="4.4" stroke-linejoin="round"/></g>
+          <g><animateTransform attributeName="transform" type="translate" values="150 120;90 70;64 44;64 44;150 120" keyTimes="0;.22;.34;.5;1" dur="${dur}" repeatCount="indefinite"/>
+            <circle r="15" fill="#E6F6FF" fill-opacity=".35" stroke="#1A0F45" stroke-width="4"/><path d="M11 11l13 13" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M11 11l13 13" stroke="#F08A24" stroke-width="3.4" stroke-linecap="round"/></g>
+        </svg>`;
+      },
+      lines:['아래 물건을 그림에서 찾아 눌러요', '두 손가락으로 크게 볼 수 있어요', '아무 데나 누르면 잠깐 못 눌러요'],
+      more:[['그림 속 물건 찾기', '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미가 그려져요.'],
+        ['크게 보기', '두 손가락으로 벌리거나 오른쪽 아래 돋보기 단추로 크게 볼 수 있어요. 크게 본 채로 끌면 옮겨 가요.'],
+        ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 15점 줄고 잠깐 못 눌러요(대전은 1.5초). 막히면 💡힌트(−40점)!'],
+        ['대전: 먼저 누르면 내 것', '여럿이 같은 그림을 봐요. 먼저 누른 사람이 그 물건을 차지하고, 그 사람 색 테두리가 그려져요. 많이 차지한 사람이 1등!']]
+    },
+    _tapMissForTest(){
+      const m = G.h; m.coolUntil = 0;
+      for(let y = 30; y < H - 30; y += 17) for(let x = 30; x < W - 90; x += 19){
+        if(m.items.every(o => Math.hypot(o.x - x, o.y - y) > o.r + 40)){ const q = screenOf(x, y); tapAt(q.x, q.y); return true; }
+      }
+      return false;
+    },
     _gen:gen, _gen2:gen2, _stage:stageCfg, _items:ITEMS, _themes:THEMES, _scenes:SCN,
     render(st){
       const m = S(), sc = m.sc;
@@ -800,6 +920,19 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-mark.miss .c{stroke:#2F7BFF; stroke-dasharray:6 5; stroke-dashoffset:0; animation:none}
 .ng-hidden .hd-mark.miss .o{stroke-dasharray:none; stroke-dashoffset:0; animation:none}
 @keyframes hidden-draw{to{stroke-dashoffset:0}}
+.ng-hidden .hd-own path{fill:none; stroke-linejoin:round; stroke-dasharray:none; stroke-dashoffset:0}
+.ng-hidden .hd-own .k{stroke:#1A0F45; stroke-width:11}
+.ng-hidden .hd-own .o{stroke:#fff; stroke-width:8.6}
+.ng-hidden .hd-own .c{stroke-width:4.6}
+.ng-hidden .hd-own.tent .c{stroke-dasharray:7 5}
+.ng-hidden .hd-own.tent .k, .ng-hidden .hd-own.tent .o{opacity:.55}
+.ng-hidden .hd-tag{pointer-events:none; animation:hidden-tag 1.2s ease-out forwards}
+.ng-hidden .hd-tag text{font-family:var(--disp); font-weight:700}
+@keyframes hidden-tag{0%{opacity:0} 12%,75%{opacity:1} 100%{opacity:0}}
+.ng-hidden .hd-chip.own{background:#fff; background:color-mix(in srgb, var(--oc) 24%, #fff); border-color:var(--oc); box-shadow:0 2px 0 #1A0F45}
+.ng-hidden .hd-chip.own .hd-cn{color:#1A0F45; text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:var(--oc)}
+.ng-hidden .hd-chip em.sh{padding:1px; background:#fff; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border-color:var(--oc)}
+.ng-hidden .hd-chip em.sh svg{width:13px; height:13px; display:block}
 .ng-hidden .hd-x path{fill:none; stroke-linecap:round}
 .ng-hidden .hd-x .o{stroke:#fff; stroke-width:7}
 .ng-hidden .hd-x .c{stroke:#E5484D; stroke-width:4}
@@ -867,6 +1000,22 @@ body[data-mode="hidden"]{background:
 })();
 
 /* 대전: 같은 장면(같은 씨앗)에서 누가 먼저 다 찾나. AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.hidden, { duelPace:[105, .75], duelHow:'같은 장면에서 누가 먼저 다 찾나', duelStat:{ unit:'개', get:() => ({ v:G.h.found, t:G.h.items.length }) } });
+/* 대전 v3 선점(docs/21 WP6 3번): 2~5명이 같은 장면에서 물건 6개를 먼저 누른 사람이 차지, 90초(느긋하게 180초), 많이 차지한 순
+   (같으면 실수 적은 순 → 마지막 차지가 이른 순, 엔진 기본). 컴퓨터 상대는 계단마다 남은 물건 하나를 차지(평균 약 13초 간격) */
+Object.assign(NG.hidden, {
+  duelKind:'shared', duelMax:5, duelPace:[75, 1],
+  duelHow:'같은 그림을 같이 봐요 · 먼저 누른 사람이 물건을 차지해요',
+  duelStat:{ unit:'개', get:() => ({ v:G.h.found, t:G.h.items.length, mis:G.h.misses }) },
+  duelCfg(o){
+    const d = o && ['easy', 'normal', 'hard'].includes(o.diff) ? o.diff : 'normal';
+    return Object.assign({}, NG.hidden.levels[d], { items:6, limit:90, hints:1, avoid:(o && o.avoid) || [] });
+  },
+  duelAi(rng, o){
+    const lim = (o && o.cfg && o.cfg.limit) || 90, slow = o && o.pace === 's' ? 1.5 : 1;
+    const T = Math.min(lim * .95, 4.5 + 5 * 13 * (0.8 + rng() * 0.45) * slow);
+    return { ok:true, T, sc:0, fail:1 };
+  },
+  duelAvoidKey:() => (G && G.id === 'hidden' && G.h && G.h.sc && G.h.sc.v2 ? G.h.sc.key : null)
+});
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.hidden.scene = { kind:'motes', colors:['#FFFFFF', '#FFE2B8', '#FFF3B0'], density:1 };

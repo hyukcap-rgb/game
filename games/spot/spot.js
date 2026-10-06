@@ -10,8 +10,6 @@ NG.spot = (() => {
   const THEMES = ['town', 'park', 'kitchen', 'beach', 'space', 'class', 'play', 'alley'];
   const NEW_THEMES_FROM = '2026-10-07';
   const themesFor = duel => duel || (typeof dayKey === 'function' ? dayKey() : NEW_THEMES_FROM) >= NEW_THEMES_FROM ? THEMES : THEMES.slice(0, 5);
-  /* 대전 재대결이 같은 그림이 되지 않게: 이 페이지에서 같은 대전 씨앗을 만난 차례와 그때 나온 테마(두 기기가 같은 연결·같은 씨앗이라 같은 값) */
-  const DUEL_SEEN = {};
   const TOL = 7;            /* 누른 곳이 차이 동그라미에서 이만큼(그림 단위)까지 벗어나도 찾은 것으로 */
   const MISS_PTS = 15, HINT_PTS = 40;
 
@@ -203,10 +201,24 @@ NG.spot = (() => {
   const ICO = {
     eye:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.6" fill="#E6FBF7" stroke="#1A0F45" stroke-width="2"/><path d="M15 15l5.6 5.6" stroke="#1A0F45" stroke-width="3.4" stroke-linecap="round"/><path d="M7 8.4a3.4 3.4 0 0 1 3-2.4" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
-    hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>'
+    hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+    zoom:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#fff" stroke="#1A0F45" stroke-width="2.2"/><path d="M15 15l5 5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/><path d="M7 10h6" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round"/><path class="pl" d="M10 7v6" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    swap:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M4.5 15.5L8 19l3.5-3.5M16 20V5M12.5 8.5L16 5l3.5 3.5" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
   const COVER = '<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M8 20c8-9 36-9 44 0" fill="none" stroke="#1A0F45" stroke-width="3.6" stroke-linecap="round"/><path d="M14 24l-3 5M23 27l-1 6M37 27l1 6M46 24l3 5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/></svg>';
   const ring = (cx, cy, r, cls, col) => `<g class="sp-ring ${cls || ''}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${OL}" stroke-width="9.6"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="#fff" stroke-width="7.4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${col || '#FF3D7F'}" stroke-width="4.4"${cls === 'reveal' ? ' stroke-dasharray="7 5"' : ''}/></g>`;
+  /* 선점 대전: 차지한 사람 자리 모양 테두리(원·네모·세모·마름모·별), 자리 색 4px + 흰 바깥선 + 진한 외곽(디자인팀 WP7) */
+  function shapeD(shape, R){
+    const f = n => n.toFixed(1);
+    if(shape === 'square'){ const a = R * .9; return `M${f(-a)} ${f(-a)}H${f(a)}V${f(a)}H${f(-a)}z`; }
+    if(shape === 'tri'){ const t = R * 1.3; return `M0 ${f(-t * 1.12)}L${f(t * 1.1)} ${f(t * .74)}H${f(-t * 1.1)}z`; }
+    if(shape === 'diamond'){ const d = R * 1.3; return `M0 ${f(-d)}L${f(d)} 0L0 ${f(d)}L${f(-d)} 0z`; }
+    if(shape === 'star'){ let d = ''; for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? R * .98 : R * 1.5; d += (i ? 'L' : 'M') + f(Math.cos(a) * rr) + ' ' + f(R * .08 + Math.sin(a) * rr); } return d + 'z'; }
+    return `M${f(-R)} 0a${f(R)} ${f(R)} 0 1 0 ${f(2 * R)} 0a${f(R)} ${f(R)} 0 1 0 ${f(-2 * R)} 0`;
+  }
+  const ownRing = (d, P, tent) => { const sd = shapeD(P.shape, d.r), tr = `translate(${d.cx.toFixed(1)} ${d.cy.toFixed(1)})`;
+    return `<g class="sp-ring sp-own" data-k="d${d.i}" transform="${tr}"><path d="${sd}" fill="none" stroke="${OL}" stroke-width="9.6" stroke-linejoin="round"${tent ? ' opacity=".5"' : ''}/><path d="${sd}" fill="none" stroke="#fff" stroke-width="7.4" stroke-linejoin="round"/><path class="c" d="${sd}" fill="none" stroke="${P.col}" stroke-width="4.4" stroke-linejoin="round"${tent ? ' stroke-dasharray="7 5"' : ''}/></g>`; };
+  const shapeIco = (shape, col) => `<svg viewBox="-10 -10 20 20" width="14" height="14" aria-hidden="true"><path d="${shapeD(shape, 6.4)}" fill="${col}" stroke="${OL}" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
 
   function hud(){
     const m = S(); if(!m) return;
@@ -233,7 +245,32 @@ NG.spot = (() => {
     if(2 * h + gap > avail){ h = (avail - gap) / 2; w = (h - bd) * W / H + bd; }
     w = Math.floor(Math.max(230, w)); h = Math.floor((w - bd) * H / W + bd);
     pics.style.setProperty('--pw', w + 'px'); pics.style.setProperty('--ph', h + 'px');
+    /* 크게 보기: 두 그림 자리(높이 2장 + 사이)를 한 그림이 다 쓰고, 넘치는 폭은 옆으로 밀어 봄(그림 약 2배) */
+    const bw = Math.floor(Math.max(w, Math.min(Wr, 520))), bh = Math.floor(Math.max(2 * h + gap, Math.min(avail, (bw - bd) * H / W * 2.2 + bd)));
+    const sw = Math.floor(Math.max(bw - bd, (bh - bd) * W / H));
+    pics.style.setProperty('--bw', bw + 'px'); pics.style.setProperty('--bh', bh + 'px'); pics.style.setProperty('--sw', sw + 'px');
   }
+  /* ===== 크게 보기(WP7 4번, S-SPOT-4): 돋보기 단추 또는 그림을 두 번 누르면 위·아래를 한 그림씩 크게, [⇅]로 번갈아 =====
+     판정·좌표는 그대로(tapAt이 그림의 화면 상자로 계산). 깜빡 커튼 판에서는 쓰지 않음 */
+  function bigSet(on, w, clientX){
+    const m = S(), root = document.querySelector('.ng-spot'); if(!m || !root || (on && m.blink)) return;
+    const prev = m.big ? $('#sp' + m.big) : null, keep = prev ? prev.scrollLeft : null;
+    m.big = on ? (w || m.big || 'A') : null;
+    root.classList.toggle('big', !!m.big);
+    ['A', 'B'].forEach(x => { const e = $('#sp' + x); if(e) e.classList.toggle('cur', m.big === x); });
+    const z = $('#spZoom'); if(z){ z.classList.toggle('on', !!m.big); z.setAttribute('aria-label', m.big ? '작게 보기' : '크게 보기'); }
+    const sw = $('#spSwap'); if(sw){ sw.hidden = !m.big; sw.querySelector('b').textContent = m.big === 'A' ? '아래 그림' : '위 그림'; }
+    const lab = $('#spBigLab'); if(lab) lab.textContent = m.big === 'B' ? '아래 그림' : '위 그림';
+    layout();
+    const cur = m.big ? $('#sp' + m.big) : null;
+    if(cur){
+      if(keep != null) cur.scrollLeft = keep;
+      else if(clientX != null){ const r = cur.getBoundingClientRect(), k = (clientX - r.left) / r.width; cur.scrollLeft = Math.max(0, k * cur.scrollWidth - cur.clientWidth / 2); }
+      else cur.scrollLeft = (cur.scrollWidth - cur.clientWidth) / 2;
+    }
+    try{ sfx('spotBlink'); }catch(_){}
+  }
+  const bigSwap = () => { const m = S(); if(m && m.big) bigSet(true, m.big === 'A' ? 'B' : 'A'); };
 
   function addRing(d, cls, col){
     const a = $('#' + S().u + 'MA'), b = $('#' + S().u + 'MB');
@@ -248,6 +285,7 @@ NG.spot = (() => {
     if(e && e.preventDefault) e.preventDefault();
     if(m.cover === w){ msg('<b class="bad">가려졌어요</b><span>다른 그림을 봐요</span>', 'sp-pop'); return; }
     if(performance.now() < m.coolUntil) return;
+    if(m.big && m.big !== w) return;
     const sv = picSvg(w); if(!sv) return;
     const r = sv.getBoundingClientRect();
     const dx = (e.clientX - r.left) / r.width * W, dy = (e.clientY - r.top) / r.height * H;
@@ -256,13 +294,23 @@ NG.spot = (() => {
     for(const d of m.diffs){
       const dist = Math.hypot(x - d.cx, y - d.cy);
       if(dist > d.r + TOL) continue;
-      if(d.found){ onFound = true; continue; }
+      if(d.found){ onFound = onFound || d; continue; }
       if(dist / d.r < bd){ bd = dist / d.r; best = d; }
     }
-    if(best){ found(best, w); return; }
-    if(onFound) return;   /* 이미 찾은 곳을 다시 누르면 아무 일 없음 */
-    miss(w, dx, dy);
+    if(best){ missFlush(); if(SHR()) claimTap(best); else found(best, w); return; }
+    if(onFound){ if(SHR() && onFound.own && onFound.own !== G.duel.myPid) takenMsg(onFound.own); return; }   /* 이미 찾은 곳(선점 대전에서는 남이 차지한 곳도)을 다시 누르면 아무 일 없음(벌칙 없음) */
+    /* 두 번 누르기 = 크게 보기(차이가 아닌 곳). 그래서 빗나감은 0.28초 기다렸다가 처리하고, 그 안에 같은 자리를 또 누르면 빗나감 대신 크게 보기 */
+    const pd = m.pend, now = performance.now();
+    if(pd && now - pd.t < 300 && Math.hypot(e.clientX - pd.x, e.clientY - pd.y) < 34 && !m.blink){
+      clearTimeout(pd.id); m.timers.delete(pd.id); m.pend = null;
+      bigSet(!m.big, w, e.clientX); return;
+    }
+    missFlush();
+    const id = T(() => { if(m.pend && m.pend.id === id){ m.pend = null; miss(w, dx, dy); } }, 280);
+    m.pend = { t:now, x:e.clientX, y:e.clientY, id, w, dx, dy };
   }
+  /* 기다리던 빗나감을 바로 처리(다른 곳을 누름) */
+  function missFlush(){ const m = S(), pd = m && m.pend; if(!pd) return; clearTimeout(pd.id); m.timers.delete(pd.id); m.pend = null; if(m.phase === 'play' && !G.over) miss(pd.w, pd.dx, pd.dy); }
 
   function found(d, w){
     const m = S();
@@ -286,7 +334,7 @@ NG.spot = (() => {
   function miss(w, dx, dy){
     const m = S();
     m.misses++; m.streak++;
-    const cd = Math.min(2400, 700 + 400 * (m.streak - 1));   /* 연달아 빗나갈수록 쉬는 시간이 길어진다(마구 누르기 막기) */
+    const cd = Math.min(2400, (G.duel ? 1000 : 700) + 400 * (m.streak - 1));   /* 대전은 1초부터(막 누르기로 차지하지 않게, WP7 2번) */   /* 연달아 빗나갈수록 쉬는 시간이 길어진다(마구 누르기 막기) */
     m.coolUntil = performance.now() + cd; m.coolLen = cd;
     const left = m.lives ? Math.max(0, m.lives - m.misses) : -1;
     sfx('spotMiss'); fxBuzz(30);
@@ -399,23 +447,86 @@ NG.spot = (() => {
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath>${clips}<g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}${seams}<g id="${u}FB"></g></svg>`;
   }
   let UID = 0;
-  /* 대전 테마 고르기(rng만): 판 번호만큼 rng를 넘기고, 최근 본 테마를 빼고 고른다.
-     - 공용 대전 v3가 판 번호(G.duel.round)·피할 목록(cfg.avoid, 방장이 모두에게 같은 값)을 주면 그것을 쓴다.
-     - 지금(v2) 빠른 대전은 같은 두 사람이 같은 연결로 다시 붙으면 씨앗이 같다 → 이 페이지에서 그 씨앗을 만난 차례를 판 번호로,
-       그 씨앗에서 나온 최근 테마 2개를 피함. 두 기기 모두 같은 씨앗을 같은 차례로 만나므로 같은 그림.
-     - 컴퓨터 대전(혼자)은 내 기기에서 최근 본 테마 2개를 더 피함. */
+  /* 대전 테마 고르기(rng만, 대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고, 최근 본 테마(duelAvoidKey → G.duel.avoid,
+     빠른 대전은 방장 목록을 모두가 같이 씀) 2개를 빼고 고른다. 예전에 게임 안에서 세던 판 번호(DUEL_SEEN)·이 기기 기록(hp:spot:duelSeen)은 엔진으로 옮김 */
   function duelTheme(cfg, rng){
-    const D = G.duel, key = String(D.seed || ''), seen = DUEL_SEEN[key] || (DUEL_SEEN[key] = []);
-    const round = D.round != null ? Math.max(0, +D.round || 0) : seen.length;
-    for(let i = 0; i < round * 13; i++) rng();
-    let mine = [];
-    if(D.mode === 'ai'){ try{ mine = (store.get('hp:spot:duelSeen', []) || []).slice(-2); }catch(_){} }
-    const avoid = [].concat(cfg.avoid || [], seen.slice(-2), mine);
+    const avoid = [].concat((G.duel && G.duel.avoid) || [], cfg.avoid || []).filter(t => THEMES.includes(t)).slice(-2);
     const pool = THEMES.filter(t => !avoid.includes(t)), L = pool.length ? pool : THEMES;
-    const theme = L[Math.floor(rng() * L.length)];
-    seen.push(theme);
-    if(D.mode === 'ai'){ try{ store.set('hp:spot:duelSeen', mine.concat(theme).slice(-3)); }catch(_){} }
-    return theme;
+    return L[Math.floor(rng() * L.length)];
+  }
+
+  /* ===== 선점 대전(대전 v3 'shared', docs/21 WP7 2번·11절) =====
+     2~5명이 같은 두 그림을 보고, 차이를 먼저 누른 사람이 그곳을 차지(위·아래 어느 그림이든). 열쇠 = 'd' + 차이 번호.
+     주인은 엔진이 정함(서버 시각이 가장 이른 사람). 게임은 보이기만: 자리 색·모양 테두리, 이름표 1.2초, 내 찾은 수.
+     끝: 다 차지되거나 승부가 정해지면(남은 곳을 다 가져가도 1위를 못 따라잡음 → 2명이면 7곳 중 4곳 먼저) duelEndNow */
+  const SHR = () => !!(G && G.id === 'spot' && G.duel && G.duel.v === 3 && G.duel.kind === 'shared' && typeof duelClaim === 'function');
+  const plOf = pid => { try{ return duelPlayers().find(p => p.pid === pid) || null; }catch(_){ return null; } };
+  function takenMsg(own){
+    const m = S(), P = plOf(own);
+    msg(`<b>이미 차지</b><span>${P ? esc(P.nick) + '님이 먼저 찾았어요' : '먼저 찾은 사람이 있어요'}</span>`, 'sp-pop');
+    T(() => { if(m.phase === 'play') msg(playMsg()); }, 900);
+  }
+  function claimTap(d){
+    const me = G.duel.myPid, own = duelOwner('d' + d.i) || d.own;
+    if(own && own !== me){ takenMsg(own); return; }
+    if(own) return;
+    const r = duelClaim('d' + d.i);
+    if(!r.ok && r.owner && r.owner !== me) takenMsg(r.owner);
+  }
+  function ringsOf(k){ return document.querySelectorAll(`.ng-spot .sp-own[data-k="${k}"]`); }
+  function ownRingSet(d, P, tent){
+    ringsOf('d' + d.i).forEach(e => e.remove());
+    const a = $('#' + S().u + 'MA'), b = $('#' + S().u + 'MB'), h = ownRing(d, P, tent);
+    if(a) a.insertAdjacentHTML('beforeend', h);
+    if(b) b.insertAdjacentHTML('beforeend', h);   /* 아래 그림은 <use> 복사본(속성으로만 그림) */
+  }
+  function claimTag(d, P){
+    try{
+      const L = fxLayer('A'); if(!L) return;
+      const nm = P.me ? '나' : String(P.nick).slice(0, 6), w = 34 + nm.length * 13;
+      const x = Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, d.cx)), y = Math.max(15, d.cy - d.r - 16);
+      L.insertAdjacentHTML('beforeend', `<g class="sp-tag" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${P.col}" stroke-width="3"/><path d="${shapeD(P.shape, 5.5)}" transform="translate(${-w / 2 + 14} 0)" fill="${P.col}" stroke="${OL}" stroke-width="1.6"/><text x="${-w / 2 + 25}" y="5" font-size="14" fill="${OL}">${esc(nm)}</text></g>`);
+      const g = L.lastElementChild; setTimeout(() => { try{ g.remove(); }catch(_){} }, 1200);
+    }catch(_){}
+  }
+  function claimSeen(key, owner, info){
+    const m = G && G.id === 'spot' && G.m; if(!m || !SHR() || String(key)[0] !== 'd') return;
+    const d = m.diffs[+String(key).slice(1)]; if(!d) return;
+    const me = G.duel.myPid, prev = d.own;
+    if(info.sure){ if(owner === me) ringsOf(key).forEach(g => { const c = g.querySelector('.c'); if(c) c.removeAttribute('stroke-dasharray'); const k = g.firstElementChild; if(k) k.removeAttribute('opacity'); }); return; }
+    if(prev === owner) return;
+    if(prev === me) m.found = Math.max(0, m.found - 1);   /* 뺏김: 내 수 되돌림("간발의 차" 알림은 엔진이) */
+    d.found = true; d.own = owner;
+    const P = plOf(owner) || { pid:owner, col:'#8A8FA8', shape:'circle', nick:'상대', me:false };
+    ownRingSet(d, P, owner === me);
+    claimTag(d, P);
+    const left = m.diffs.filter(x => !x.own).length;
+    if(owner === me){
+      m.found++; m.streak = 0; clearHint();
+      sfx('spotFind', { n:m.found }); fxBuzz(14);
+      try{ const q = scr('A', d.cx, d.cy); fxRing(q.x, q.y, '#FF3D7F', d.r * q.k * 1.5, .5, 6); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', '#5EEAD4'], 12, { speed:200, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); const f = $('#spFoundP'); if(f) fxPunch(f, 1.12); }catch(_){}
+      if(m.phase === 'play') msg(`<b>차지!</b><span>${left}곳 남았어요</span>`, 'sp-pop');
+    } else if(m.phase === 'play'){
+      msg(`<b>${esc(P.nick)}</b><span>차지 · ${left}곳 남았어요</span>`, 'sp-pop');
+      try{ sfx('toggle'); }catch(_){}
+    }
+    if(m.phase === 'play') T(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
+    hud(); sharedEndSoon();
+  }
+  function sharedEndSoon(){ const m = S(); if(m.endT){ clearTimeout(m.endT); m.timers.delete(m.endT); } m.endT = T(sharedEndCheck, 450); }
+  function sharedEndCheck(){
+    const m = S(); if(!SHR() || G.over || m.phase !== 'play') return;
+    const ps = duelPlayers(), cnt = {}; let taken = 0;
+    m.diffs.forEach(d => { const w = duelOwner('d' + d.i); if(w){ taken++; cnt[w] = (cnt[w] || 0) + 1; } });
+    const rem = m.diffs.length - taken, arr = ps.map(p => ({ p, c:cnt[p.pid] || 0 })).sort((a, b) => b.c - a.c);
+    if(!arr.length) return;
+    const top = arr[0], sec = arr[1] ? arr[1].c : 0;
+    if(rem > 0 && !(arr.length > 1 && top.c > sec + rem)) return;
+    m.phase = 'done'; missFlush(); clearHint();
+    const who = top.p.me ? '내가' : esc(top.p.nick) + '님이';
+    const why = rem <= 0 ? '다른 곳을 모두 찾아서 끝났어요' : `${who} ${top.c}곳을 먼저 차지해서 끝났어요`;
+    msg(rem <= 0 ? '<b>모두 찾았어요!</b>' : `<b>${top.p.me ? '내가 앞섰어요!' : '승부가 났어요'}</b>`, 'sp-win');
+    duelEndNow(why);
   }
 
   return {
@@ -443,6 +554,25 @@ NG.spot = (() => {
       ['마구 누르면 손해', '빗나간 곳을 누르면 점수가 ' + MISS_PTS + '점 깎이고 잠깐 누를 수 없어요. 연달아 빗나갈수록 더 오래 쉬어요. 💡힌트는 차이 근처를 알려 주지만 ' + HINT_PTS + '점이 깎여요.'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 거울 그림·깜빡 커튼·조각 그림·몇 곳일까 같은 새 규칙과 번개·살금살금·차이 잔치 같은 변주가 5판마다 하나씩 나와요.']
     ],
+    /* 도움말 v2(쉬운 화면): 그림 1장 + 3줄(감점 규칙을 글 속에 묻지 않게, S-SPOT-6) */
+    howto:{
+      pic(){
+        const K = OL, dur = '4.2s';
+        const show = kt => `<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+        const pic = (x, alt) => `<g transform="translate(${x} 22)"><rect width="140" height="104" rx="12" fill="#CDEBFA" stroke="${K}" stroke-width="3"/><path d="M1.5 70h137v22a10.5 10.5 0 0 1-10.5 10.5h-116A10.5 10.5 0 0 1 1.5 92z" fill="#A6DD86"/>
+          <path d="M22 70V46l20-16 20 16v24z" fill="#FFE3B3" stroke="${K}" stroke-width="2.6" stroke-linejoin="round"/><path d="M16 50l26-22 26 22" fill="none" stroke="${alt ? '#4B6CD9' : '#E8503A'}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><rect x="36" y="54" width="12" height="16" rx="2" fill="#B98E62" stroke="${K}" stroke-width="2.2"/>
+          ${alt ? '' : `<circle cx="114" cy="24" r="11" fill="#FFC93C" stroke="${K}" stroke-width="2.4"/>`}
+          <path d="M98 70V58" stroke="${K}" stroke-width="2.4"/><circle cx="98" cy="54" r="7" fill="${alt ? '#B266FF' : '#FF5A5F'}" stroke="${K}" stroke-width="2.4"/></g>`;
+        return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="두 그림에서 다른 곳을 누르면 동그라미가 그려지는 그림">
+          <rect width="320" height="180" rx="16" fill="#E2FBF6"/>${pic(14, false)}${pic(166, true)}
+          <g>${show('0;.18;.24;.94;1')}<circle cx="208" cy="62" r="24" fill="none" stroke="#fff" stroke-width="8"/><circle cx="208" cy="62" r="24" fill="none" stroke="#F0368A" stroke-width="4.4"/></g>
+          <g>${show('0;.42;.48;.94;1')}<rect x="246" y="58" width="36" height="36" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round"/><rect x="246" y="58" width="36" height="36" fill="none" stroke="#2F7BFF" stroke-width="4.4" stroke-linejoin="round"/></g>
+          <g>${show('0;.66;.7;.94;1')}<path d="M226 120l12 12M238 120l-12 12" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M226 120l12 12M238 120l-12 12" stroke="#E5484D" stroke-width="4.4" stroke-linecap="round"/>
+            <rect x="96" y="144" width="128" height="26" rx="13" fill="#E5484D" stroke="${K}" stroke-width="2.4"/><rect x="108" y="154" width="104" height="6" rx="3" fill="#fff" opacity=".5"/><rect x="108" y="154" width="104" height="6" rx="3" fill="#FFE27A"><animate attributeName="width" values="104;104;104;0;0" keyTimes="0;.66;.7;.92;1" dur="${dur}" repeatCount="indefinite"/></rect></g>
+        </svg>`;
+      },
+      lines:['위·아래 그림에서 다른 곳을 눌러요', '빗나가면 15점 깎이고 잠깐 쉬어요', '힌트는 40점 · 두 번 누르면 크게']
+    },
     helpExtra(){ const m = G && G.id === 'spot' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['눈 크게 뜨기', '반짝 관찰단', '숨바꼭질 골목', '매의 눈', '명탐정의 방'],
     starRule:'★ 클리어 · ★★ 힌트·빗나감 합쳐 2번 이하 · ★★★ 힌트·빗나감 없이',
@@ -461,7 +591,8 @@ NG.spot = (() => {
       let perm = null;
       if(cfg.tiles){ do{ perm = shuffle([0, 1, 2, 3], rng); }while(perm.some((q, i) => q === i)); }   /* 조각 그림: 제자리에 남는 조각 없이 */
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
-      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok,
+      g.diffs.forEach((d, i) => { d.i = i; d.own = null; });   /* 선점 대전 열쇠 'd' + i */
+      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
         mirror:!!cfg.mirror, perm, blink:!!cfg.blink, secret:!!cfg.secret && !G.duel, cover:null,
         found:0, misses:0, hints:0, streak:0, coolUntil:0, hintLeft:cfg.hints == null ? 3 : cfg.hints,
         lives:G.duel ? 0 : cfg.lives || 0,   /* 기본은 기회 제한 없음(빗나가면 점수·쉬는 시간만). 외줄 타기만 기회 2번 */
@@ -486,6 +617,17 @@ NG.spot = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
+    /* 점검용: 차이 i를 그림에서 누른 것처럼(진짜 누르기 길) · 차이가 없는 곳을 누르기(빗나감은 0.28초 뒤 처리) */
+    _tapDiffForTest(i, w){ const m = G.m, d = m.diffs[i]; if(!d) return false; m.coolUntil = 0; w = w || 'A'; const q = scr(w, d.cx, d.cy); tapAt(w, { clientX:q.x, clientY:q.y }); return true; },
+    _tapMissForTest(){
+      const m = G.m; m.coolUntil = 0;
+      for(let y = 20; y < H - 20; y += 13) for(let x = 20; x < W - 20; x += 13){
+        if(m.diffs.every(d => Math.hypot(d.cx - x, d.cy - y) > d.r + TOL + 18)){ const q = scr('A', x, y); tapAt('A', { clientX:q.x, clientY:q.y }); return true; }
+      }
+      return false;
+    },
+    onDuelClaim(key, owner, info){ try{ claimSeen(key, owner, info || {}); }catch(_){} },
+    duelKeys(){ const m = G && G.id === 'spot' && G.m; return m ? m.diffs.map(d => 'd' + d.i) : []; },
     _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES, _themesFor:themesFor,
     render(st){
       const m = S();
@@ -497,13 +639,22 @@ NG.spot = (() => {
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="sp-rules" aria-label="켜진 규칙">${m.boss ? '<span class="sp-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="sp-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="sp-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar sp-tbar" id="spBarWrap"><i id="spBar"></i></div>
-        <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div><div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div></div>
-        <div class="sp-pics in" id="spPics">
+        <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div><div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div>
+          <button class="sp-tool" id="spSwap" hidden aria-label="다른 그림 보기">${ICO.swap}<b>아래 그림</b></button><button class="sp-tool sp-zoom" id="spZoom" aria-label="크게 보기"${m.blink ? ' hidden' : ''}>${ICO.zoom}</button></div>
+        <div class="sp-pics in" id="spPics"><span class="sp-blab" id="spBigLab" aria-hidden="true">위 그림</span>
           <div class="sp-pic" id="spA">${picA(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
           <div class="sp-pic" id="spB">${picB(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
         </div>
       </div>`;
-      ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(e) e.onpointerdown = ev => tapAt(w, ev); });
+      /* 누르기: 보통은 누르는 순간(빠르게). 크게 보기에서는 옆으로 밀기와 구분하려고 손을 뗄 때(움직임 10px 안) */
+      ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(!e) return;
+        let dn = null;
+        e.onpointerdown = ev => { if(S().big){ dn = { x:ev.clientX, y:ev.clientY, t:performance.now() }; return; } tapAt(w, ev); };
+        e.onpointerup = ev => { const d0 = dn; dn = null; if(!S().big || !d0) return; if(Math.hypot(ev.clientX - d0.x, ev.clientY - d0.y) < 10 && performance.now() - d0.t < 600) tapAt(w, ev); };
+        e.onpointercancel = () => { dn = null; };
+      });
+      const zb = $('#spZoom'); if(zb) zb.onclick = () => bigSet(!S().big);
+      const sb = $('#spSwap'); if(sb) sb.onclick = bigSwap;
       const h = $('#spHint'); if(h) h.onclick = useHint;
       hud(); layout();
       T(() => { const p = $('#spPics'); if(p) p.classList.remove('in'); }, 900);
@@ -562,6 +713,23 @@ body[data-mode="spot"]{background:
 .ng-spot .sp-pics.in .sp-pic + .sp-pic{animation-delay:.1s}
 @keyframes spot-deal{from{transform:translateY(-14px) scale(.9); opacity:0}}
 .ng-spot.cool .sp-pic{cursor:wait}
+.ng-spot .sp-tool{flex:none; height:44px; min-width:44px; padding:0 8px; display:flex; align-items:center; justify-content:center; gap:4px; border-radius:14px; border:2.5px solid #1A0F45; background:#fff; box-shadow:0 3px 0 #1A0F45; cursor:pointer; font-family:var(--disp); font-size:14px; color:#1A0F45; -webkit-tap-highlight-color:transparent}
+.ng-spot .sp-tool[hidden]{display:none}
+.ng-spot .sp-tool b{font-weight:400}
+.ng-spot .sp-tool svg{width:24px; height:24px; display:block; flex:none}
+.ng-spot .sp-tool:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+.ng-spot .sp-zoom.on{background:#FFE27A}
+.ng-spot .sp-zoom.on .pl{display:none}
+.ng-spot .sp-blab{display:none}
+.ng-spot.big .sp-pics{height:var(--bh)}
+.ng-spot.big .sp-pic{display:none}
+.ng-spot.big .sp-pic.cur{display:block; width:var(--bw); height:var(--bh); overflow-x:auto; overflow-y:hidden; touch-action:pan-x; scrollbar-width:thin; overscroll-behavior:contain}
+.ng-spot.big .sp-pic.cur > svg{width:var(--sw); height:100%}
+.ng-spot.big .sp-blab{display:block; position:absolute; left:50%; transform:translateX(-50%); top:8px; z-index:2; pointer-events:none; font-family:var(--disp); font-size:14px; color:#fff; background:rgba(26,15,69,.78); border-radius:99px; padding:4px 12px}
+.ng-spot .sp-own{pointer-events:none}
+.ng-spot .sp-tag{pointer-events:none; animation:spot-tag 1.2s ease-out forwards}
+.ng-spot .sp-tag text{font-family:var(--disp); font-weight:700}
+@keyframes spot-tag{0%{opacity:0} 12%,75%{opacity:1} 100%{opacity:0}}
 .ng-spot .sp-ring.pop circle{animation:spot-ring .4s cubic-bezier(.2,1.6,.4,1) both; transform-box:fill-box; transform-origin:center}
 @keyframes spot-ring{from{transform:scale(1.7); opacity:0}}
 .ng-spot .sp-x{animation:spot-in .25s ease-out; transform-box:fill-box; transform-origin:center}
@@ -599,9 +767,17 @@ body[data-mode="spot"]{background:
 
 
 /* 대전: 같은 그림, 누가 먼저 다 찾나. AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.spot, { duelPace:[85, .8], duelStat:{ unit:'곳', get:() => ({ v:G.m.found, t:G.m.N, mis:G.m.misses }) }, duelHow:'같은 그림 · 누가 먼저 차이를 다 찾나',
+/* 대전 v3 선점(docs/21 WP7 2번): 2~5명이 같은 그림에서 차이 7곳을 먼저 누른 사람이 차지, 90초(느긋하게 180초).
+   2명이면 4곳 먼저 = 승, 여럿이면 다 차지되거나 승부가 정해지면 끝. 순위 = 차지한 수 → 실수 적은 순 → 마지막 차지가 이른 순(엔진 기본) */
+Object.assign(NG.spot, { duelKind:'shared', duelMax:5, duelPace:[70, 1], duelStat:{ unit:'곳', get:() => ({ v:G.m.found, t:G.m.N, mis:G.m.misses }) },
+  duelHow:'같은 그림을 같이 봐요 · 다른 곳을 먼저 누른 사람이 차지해요',
   /* 대전 v3 계약(3-7): 최근 본 테마를 피하는 열쇠, 대전 판 설정(피할 목록은 init의 duelTheme이 rng로 반영. 여기서는 rng 안 씀) */
-  duelAvoidKey:() => (G && G.m && G.m.theme) || null,
-  duelCfg:o => Object.assign({}, NG.spot.levels.normal, { avoid:(o && o.avoid) || [] }) });
+  duelAvoidKey:() => (G && G.id === 'spot' && G.m && G.m.theme) || null,
+  duelCfg:o => Object.assign({}, NG.spot.levels.normal, { diffs:7, limit:90, hints:1, avoid:(o && o.avoid) || [] }),
+  /* 컴퓨터 상대: 계단마다 남은 차이 하나를 차지(평균 약 11초 간격, 엔진이 duelKeys로) */
+  duelAi(rng, o){
+    const lim = (o && o.cfg && o.cfg.limit) || 90, slow = o && o.pace === 's' ? 1.5 : 1;
+    return { ok:true, T:Math.min(lim * .95, 4.5 + 6 * 11 * (0.8 + rng() * 0.45) * slow), sc:0, fail:1 };
+  } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.spot.scene = { kind:'bubbles', colors:['#FFFFFF', '#C8F5EC', '#FFF3B0'], density:.8 };

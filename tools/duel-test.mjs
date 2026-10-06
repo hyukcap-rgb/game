@@ -9,6 +9,7 @@
 //   npm run test:duel -- sudoku,link                         (몇 게임만, 쉼표나 띄어쓰기로)
 //   npm run test:duel -- fox memory --stress                 (느린 폰 흉내: CPU 4배 느리게 + 효과 폭주)
 //   npm run test:duel -- --no-multi | --only-multi           (여러 명 점검 빼기 / 그것만)
+//   npm run test:duel -- hidden spot --only-shared           (선점 게임 3명 점검만)
 //
 // 공용 엔진(core)·효과·배경을 고친 뒤에는 꼭 돌린다. 실제 서버에는 연결하지 않는다.
 import { chromium } from 'playwright';
@@ -17,7 +18,7 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ARGS=process.argv.slice(2).filter(a=>!a.startsWith('--')).join(',').split(',').filter(Boolean);
 const HAS=g=>fs.existsSync(path.join(ROOT,'games',g,'game.json'));
 const GAMES=(ARGS.length?ARGS:'sudoku,link,match,merge,memory,block,nono,fox,ball'.split(',')).filter(HAS);
-const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYM=process.argv.includes('--only-multi');
+const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYS=process.argv.includes('--only-shared'), ONLYM=ONLYS||process.argv.includes('--only-multi');
 const SHOT=process.env.SHOT_DIR||'/tmp';
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
 const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(new URL(q.url,'http://x').pathname));if(!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'content-type':T[path.extname(p)]||'application/octet-stream'});fs.createReadStream(p).pipe(r);}).listen(0);
@@ -107,7 +108,7 @@ const ranksOf=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const R=G.duel.res;retu
 const bodyClean=L=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const t=(document.querySelector('#modal')||{}).textContent||'';return !/실패|진행 0%/.test(t);})));
 const start=async(L,gap=250)=>{for(const x of L){ await x.pg.evaluate(()=>duelStart('sudoku')); await w(gap);} };
 
-if(MULTI){
+if(MULTI&&!ONLYS){
   console.log('— 여러 명 대전(v3) —');
   /* (1) 3명 경주: 같은 방·같은 판·동시 시작 → 한 명이 다 풀면 0.7초 뒤 모두 끝, 순위 같음 */
   { const L=[await mk('A'),await mk('B'),await mk('C')];
@@ -244,4 +245,71 @@ if(MULTI){
     await L[1].pg.screenshot({path:SHOT+'/duel2-bar.png'});
     ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L); }
 }
+/* ================= 3) 선점 게임 3명(숨은그림·틀린그림, docs/21 WP6·WP7 완료 기준) =================
+   진짜 게임 정의로: 같은 판 · A가 50ms 먼저 눌렀지만 A 소식이 늦게 도착해도 주인은 A 하나(B는 뺏김 → 내 수 되돌림) ·
+   남이 차지한 것을 누르면 벌칙 없음 · 빗나감은 실수 · 승부가 나면 모두 끝 · 모든 기기 같은 순위. 컴퓨터 상대도 열쇠를 차지하는지 */
+async function sharedTest3(g){
+  const C={hidden:{tap:'_tapItemForTest',st:'h',pre:'o'},spot:{tap:'_tapDiffForTest',st:'m',pre:'d'}}[g]; if(!C) return;
+  console.log(`— 선점 3명: ${g} —`);
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  if(g==='hidden') await Promise.all(L.map(x=>x.pg.evaluate(()=>{ window.dayKey=()=>'2026-10-07'; })));   /* 새 장면(10-07부터 모든 모드)으로 점검 */
+  await Promise.all(L.map(x=>x.pg.evaluate(g=>duelStart(g),g)));   /* 함께 찾기(5명 점검과 같은 방식) */
+  const go=await goAll(L,32000), I=await info(L);
+  const board=await Promise.all(L.map(x=>x.pg.evaluate(([c,g])=>{const m=G[c.st];return JSON.stringify(g==='hidden'?[m.sc.key,!!m.sc.v2,m.items.map(o=>[o.k,Math.round(o.x),Math.round(o.y)])]:[m.theme,m.diffs.map(d=>[Math.round(d.cx),Math.round(d.cy)])]);},[C,g])));
+  const n=await L[0].pg.evaluate(c=>(c.st==='h'?G.h.items:G.m.diffs).length,C);
+  ok(go&&I.every(i=>i.seed===I[0].seed&&i.pl===I[0].pl)&&I[0].pl.split(',').length===3&&board.every(b=>b===board[0]),
+    `${g} 3명 모임·같은 판(${board[0].slice(0,40)}…) 열쇠 ${n}개 · 제한 ${await L[0].pg.evaluate(()=>G.limit)}초`+(board.every(b=>b===board[0])?'':' 판 다름 '+board.map(b=>b.slice(0,30)).join(' / '))+' 인원 '+I.map(i=>i.pl.split(',').length+':'+i.seed.slice(0,30)).join(' '));
+  await Promise.all(L.map(x=>until(x,c=>elapsed()>.8&&G[c.st].phase==='play',C,8000)));
+  const pid=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.myPid)));
+  const k0=C.pre+'0', k1=C.pre+'1';
+  /* (1) 동시 누르기 50ms 차: A가 먼저, 그런데 A 소식이 늦게 도착(0.3초) → 잠깐 B 것으로 보였다가 모두 A로 */
+  DELAY.A=STRESS?2000:700;
+  /* 두 기기가 같은 순간(서버 시각 기준)을 기다렸다가 A는 바로, B는 50ms 뒤에 누름(evaluate 지연과 상관없이 50ms 차) */
+  const at=await L[0].pg.evaluate(()=>netNow()+400);
+  await Promise.all([[0,0],[1,50]].map(([j,d])=>L[j].pg.evaluate(([c,at,d])=>new Promise(r=>{const go=()=>{NG[G.id][c.tap](0);r();};const t=at+d-netNow();setTimeout(go,Math.max(0,t));}),[C,at,d])));
+  const mid=await L[1].pg.evaluate(k=>duelOwner(k)===G.duel.myPid,k0);
+  if(process.env.DBG){ console.log('   dbg B', await L[1].pg.evaluate(k=>JSON.stringify({own:duelOwner(k),me:G.duel.myPid,cl:G.duel.P[G.duel.myPid].cl,owners:G.duel.owners,el:elapsed()}),k0)); console.log('   dbg A', await L[0].pg.evaluate(()=>JSON.stringify({cl:G.duel.P[G.duel.myPid].cl,owners:G.duel.owners}))); }
+  await w(STRESS?3200:1000); DELAY.A=0;
+  const own0=await Promise.all(L.map(x=>x.pg.evaluate(k=>duelOwner(k),k0)));
+  const st0=await Promise.all(L.map(x=>x.pg.evaluate(c=>{const m=G[c.st];return {found:m.found,mine:c.st==='h'?m.own[0]:m.diffs[0].own,marks:document.querySelectorAll(c.st==='h'?'.ng-hidden .hd-own':'.ng-spot [id$="MA"] .sp-own').length};},C)));
+  ok(mid&&own0.every(o=>o===pid[0])&&st0[0].found===1&&st0[1].found===0&&st0.every(s=>s.mine===pid[0]&&s.marks===1),
+    `동시 누르기 50ms 차: B 화면에 잠깐 B=${mid} → 모두 주인 A · 찾은 수 A ${st0[0].found} B ${st0[1].found} · 표시 ${st0.map(s=>s.marks)}`);
+  /* (2) C가 다른 것 차지 → A가 그것을 눌러도 벌칙 없음 */
+  await L[2].pg.evaluate(c=>NG[G.id][c.tap](1),C); await w(700);
+  const mis0=await L[0].pg.evaluate(c=>G[c.st].misses,C);
+  await L[0].pg.evaluate(c=>NG[G.id][c.tap](1),C); await w(120);
+  const a1=await L[0].pg.evaluate(c=>({mis:G[c.st].misses,cool:G[c.st].coolUntil>(c.st==='h'?Date.now():performance.now()),msg:(document.querySelector('#hdMsg,#spMsg')||{}).textContent||''}),C);
+  const own1=await Promise.all(L.map(x=>x.pg.evaluate(k=>duelOwner(k),k1)));
+  ok(own1.every(o=>o===pid[2])&&a1.mis===mis0&&!a1.cool&&/이미 차지/.test(a1.msg),`남이 차지한 것 누르기: 벌칙 없음(실수 ${a1.mis}) · "${a1.msg}"`);
+  /* (3) B 빗나감 → 실수 1, 잠깐 못 누름 */
+  await L[1].pg.evaluate(()=>NG[G.id]._tapMissForTest()); await w(450);
+  const bm=await L[1].pg.evaluate(c=>({mis:G[c.st].misses,st:duelStatNow().mis}),C);
+  ok(bm.mis===1&&bm.st===1,`빗나감 = 실수 1번(대전 막대에도 ${bm.st})`);
+  await w(1200);
+  await L[1].pg.screenshot({path:`${SHOT}/shared-${g}-play.png`});
+  /* (4) 나머지: A 2·3, B 4 (숨은그림 6개면 A3·B1·C1·남은 1 → 승부 남 → 끝) / 틀린그림은 C 5·6까지 → 다 차지 → 끝 */
+  for(const [who,i] of [[0,2],[0,3],[1,4],[2,5],[2,6]]){
+    const over=await L[0].pg.evaluate(()=>G.over); if(over) break;
+    await L[who].pg.evaluate(([c,i])=>{ if(!G.over) NG[G.id][c.tap](i); },[C,i]); await w(700);
+  }
+  const res=(await Promise.all(L.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,15000)))).every(Boolean); await w(1300);
+  const rk=await ranksOf(L), why=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.res.why))), cl=await bodyClean(L);
+  const myRank=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.res.rank)));
+  const want=g==='hidden'?[1,3,2]:[1,3,2];
+  ok(res&&rk.every(x=>x===rk[0])&&myRank.join()===want.join()&&cl.every(Boolean)&&why.every(t=>g==='hidden'?/먼저 차지해서/.test(t):/모두 찾아서/.test(t)),
+    `${g} 끝: 순위 모두 같음=${rk.every(x=>x===rk[0])} · A·B·C = ${myRank} (기대 ${want}) · 이유 "${why[1]}" · '실패'·'진행 0%' 없음=${cl}`+(rk.every(x=>x===rk[0])?'':' '+rk.join(' / ')));
+  await L[1].pg.screenshot({path:`${SHOT}/shared-${g}-result.png`});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+  /* (5) 컴퓨터 상대: 계단마다 남은 열쇠 하나를 차지하고 게임 화면에도 그 색으로 보임 */
+  const X=await mk('AI');
+  if(g==='hidden') await X.pg.evaluate(()=>{ window.dayKey=()=>'2026-10-07'; });
+  await X.pg.evaluate(g=>startGame(g,'normal',{duel:duelMakeAI(g,'나','n')}),g);
+  await until(X,()=>G.duel&&G.duel.go,null,10000);
+  const got=await until(X,()=>Object.values(G.duel.owners||{}).includes('ai'),null,STRESS?30000:20000);
+  const aiv=await X.pg.evaluate(c=>{const m=G[c.st],keys=NG[G.id].duelKeys();const k=keys.find(k=>duelOwner(k)==='ai');const i=+k.slice(1);return {k,mine:c.st==='h'?m.own[i]:m.diffs[i].own,t:Math.round(elapsed()),bar:duelStatNow().v,ai:G.duel.P.ai.st.v};},C).catch(e=>({err:String(e)}));
+  ok(got&&aiv.mine==='ai'&&aiv.ai===1,`컴퓨터가 ${aiv.t}초에 ${aiv.k} 차지 → 게임 표시 ${aiv.mine} · 컴퓨터 수 ${aiv.ai}`);
+  await X.pg.screenshot({path:`${SHOT}/shared-${g}-ai.png`});
+  ok(!X.errs.length,'오류 없음 '+X.errs.join(' | ')); await closeAll([X]);
+}
+if(MULTI) for(const g of GAMES) await sharedTest3(g);
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);
