@@ -22,49 +22,76 @@ NG.twin = (() => {
   /* 카드 안 자리 틀: c = 가운데 자리 여부, R = 둘레 반지름, s = 그림 반지름(카드 반지름 = 1) */
   const TPL = { 3:{ c:0, R:.44, s:.36 }, 4:{ c:0, R:.5, s:.33 }, 5:{ c:1, R:.6, s:.285 }, 6:{ c:1, R:.6, s:.27 }, 7:{ c:1, R:.61, s:.26 }, 8:{ c:1, R:.62, s:.245 } };
   const LIM = .9, SEP = .03;   /* 그림이 들어갈 카드 안쪽 한계, 그림끼리 최소 틈 */
+  /* 크기(v1.1): 그림마다 그리는 반지름 r과 누르는 자리 반지름 b(= r과 HB 중 큰 값)가 따로 있다.
+     배치는 b로 겹침을 막으므로 작은 그림도 자기만의 누르는 자리(가장 작은 카드에서 지름 40px 이상)를 가진다.
+     RMIN = 그리는 반지름 바닥(가장 작은 카드에서 지름 약 28px), FILL = 누르는 자리 넓이 합 한계(카드 안쪽 대비) */
+  const HB = { 2:.19, 3:.225 }, RMIN = { 2:.135, 3:.16 }, FILL = .56;
+  const SZ_RMAX = .42;   /* 가장 큰 그림 반지름 */
   function fits(L){
     for(let i = 0; i < L.length; i++){
-      if(Math.hypot(L[i].x, L[i].y) + L[i].r > LIM + 1e-3) return false;
-      for(let j = i + 1; j < L.length; j++) if(Math.hypot(L[i].x - L[j].x, L[i].y - L[j].y) < L[i].r + L[j].r + SEP - 1e-3) return false;
+      const a = L[i], ba = a.b || a.r;
+      if(Math.hypot(a.x, a.y) + ba > LIM + 1e-3) return false;
+      for(let j = i + 1; j < L.length; j++) if(Math.hypot(a.x - L[j].x, a.y - L[j].y) < ba + (L[j].b || L[j].r) + SEP - 1e-3) return false;
     }
     return true;
   }
-  /* 겹치면 밀어내기(rng 안 씀). 그래도 안 되면 모두 조금씩 줄여 다시 */
-  function relax(L){
-    for(let round = 0; round < 14; round++){
-      for(let it = 0; it < 100; it++){
+  /* 겹치면 밀어내기(rng 안 씀). 그래도 안 되면 큰 그림부터 조금씩 줄여 다시(누르는 자리는 HB 아래로 안 줄어듦) */
+  function relax(L, hb, rmin, keep){
+    const setB = l => { l.b = Math.max(l.r, hb); };
+    L.forEach(setB);
+    for(let round = 0; round < 16; round++){
+      for(let it = 0; it < 120; it++){
         let moved = false;
         for(let i = 0; i < L.length; i++) for(let j = i + 1; j < L.length; j++){
-          const a = L[i], b = L[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), need = a.r + b.r + SEP;
+          const a = L[i], b = L[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), need = a.b + b.b + SEP;
           if(d >= need) continue;
           const ux = d > 1e-6 ? dx / d : Math.cos(i + j * 2.3), uy = d > 1e-6 ? dy / d : Math.sin(i + j * 2.3), p = (need - d) / 2 + 1e-4;
           a.x -= ux * p; a.y -= uy * p; b.x += ux * p; b.y += uy * p; moved = true;
         }
-        for(const l of L){ const d = Math.hypot(l.x, l.y); if(d + l.r > LIM){ const k = Math.max(0, LIM - l.r) / (d || 1); l.x *= k; l.y *= k; moved = true; } }
+        for(const l of L){ const d = Math.hypot(l.x, l.y); if(d + l.b > LIM){ const k = Math.max(0, LIM - l.b) / (d || 1); l.x *= k; l.y *= k; moved = true; } }
         if(!moved) break;
       }
       if(fits(L)) return L;
-      L.forEach(l => { l.r *= .94; });
+      L.forEach((l, j) => { if(!keep || !(j in keep) || round >= 10){ l.r = Math.max(rmin, l.r * .94); setB(l); } });
     }
     return L;
   }
-  function layout(k, rng, o){
+  /* o = { spin, size, sz:[lo, hi], tilt, n:카드 수 }, want = { 자리: 반지름 } 정해 둔 크기(정답·닮은꼴 가짜) */
+  function layout(k, rng, o, want){
     const T = TPL[k] || TPL[8], ring = T.c ? k - 1 : k, a0 = rng() * Math.PI * 2, pts = T.c ? [[0, 0]] : [];
     for(let i = 0; i < ring; i++){ const a = a0 + i * Math.PI * 2 / ring; pts.push([Math.cos(a) * T.R, Math.sin(a) * T.R]); }
     shuffle(pts, rng);
+    const [lo, hi] = o.sz || [.93, 1.07], nc = o.n || 2, hb = HB[nc] || HB[2], rmin = RMIN[nc] || RMIN[2];
     const L = pts.map(([x, y]) => {
-      const sc = o.size ? .62 + rng() * .76 : .93 + rng() * .14;           /* 크고 작게: 0.6~1.4배 */
-      const rot = o.spin ? rng() * 360 - 180 : (rng() - .5) * 22;           /* 빙글: 제각각 돌아감 */
+      const sc = lo + rng() * (hi - lo);
+      const rot = o.spin ? rng() * 360 - 180 : (rng() - .5) * (o.tilt || 22);   /* 빙글: 제각각 돌아감 */
       return { x:x + (rng() - .5) * .07, y:y + (rng() - .5) * .07, r:T.s * sc, rot };
     });
-    return relax(L);
+    if(o.sq) L.forEach((l, j) => { if(!want || !(j in want)) l.r *= o.sq; });   /* 다시 만들 때: 다른 그림을 줄여 정해 둔 크기가 들어갈 자리를 만듦 */
+    if(want) for(const j in want) L[j].r = want[j];
+    L.forEach(l => { l.r = Math.min(SZ_RMAX, Math.max(rmin, l.r)); l.b = Math.max(l.r, hb); });
+    /* 누르는 자리 넓이가 너무 크면 정해 두지 않은 그림부터 줄임(크기 차이는 유지) */
+    const area = () => L.reduce((s, l) => s + l.b * l.b, 0), cap = FILL * LIM * LIM;
+    for(let g = 0; g < 30 && area() > cap; g++) L.forEach((l, j) => { if(!want || !(j in want) || g > 12){ l.r = Math.max(rmin, l.r * .97); l.b = Math.max(l.r, hb); } });
+    return relax(L, hb, rmin, want);
   }
-  /* 같은 그림 = 같은 번호(id = 그림 번호×2 + 색 변형). id ^ 1 = 색만 다른 가짜 */
+  /* 같은 그림 = 같은 번호(id = 그림 번호×2 + 색 변형). id ^ 1 = 색만 다른 가짜
+     크기 차이(v1.1): cfg.sz = [작게, 크게](그림 크기 배율 범위), cfg.gap = 공통 그림이 카드끼리 적어도 이만큼 다른 크기(큰 것/작은 것 ≥ 1 + gap),
+     cfg.lure = 닮은꼴 가짜를 원래 그림과 거의 같은 크기로(크기로 짝을 맞추는 눈을 속임) */
   function gen(cfg, rng){
-    const N = cfg.N, k = cfg.k, three = !!cfg.three, NS = A.N, lo = { spin:!!cfg.spin, size:!!cfg.size };
+    const N = cfg.N, k = cfg.k, three = !!cfg.three, NS = A.N, nc = three ? 3 : 2;
+    const lo = { spin:!!cfg.spin, sz:cfg.sz || (cfg.size ? [.62, 1.38] : null), tilt:cfg.tilt, n:nc };
+    const gap = cfg.gap || 0, rmin = RMIN[nc], T = TPL[k] || TPL[8];
     const bases = () => shuffle([...Array(NS).keys()], rng);
     const vr = () => rng() < .5 ? 1 : 0;
-    const card = ids => ({ ids, L:layout(ids.length, rng, lo) });
+    const card = (ids, want, sq) => ({ ids, L:layout(ids.length, rng, sq ? Object.assign({}, lo, { sq }) : lo, want) });
+    const rOf = (cd, id) => cd.L[cd.ids.indexOf(id)].r;
+    /* 크기 차이 고르기: 기준 반지름 r0에서 1+gap배 이상 크거나 작게(둘 다 되면 rng로) */
+    const away = r0 => {
+      const m = (1 + gap) * (1.03 + rng() * .17), up = r0 * m, dn = r0 / m, canUp = up <= SZ_RMAX * .97, canDn = dn >= rmin * 1.02;
+      const pickUp = canUp && canDn ? rng() < .5 : canUp ? true : canDn ? false : up / SZ_RMAX < rmin / dn;
+      return Math.min(SZ_RMAX * .97, Math.max(rmin * 1.02, pickUp ? up : dn));
+    };
     const P = [];
     let prev = three ? null : card(bases().slice(0, k).map(b => b * 2 + vr())), prevAns = -1;
     for(let i = 0; i < N; i++){
@@ -77,15 +104,24 @@ NG.twin = (() => {
         /* 새 위 카드: 아래 카드(prev)의 그림 하나(바로 전 정답 제외)만 같고, 나머지는 아래 카드에 없는 그림 */
         const pb = new Set(prev.ids.map(id => id >> 1));
         ans = prev.ids.filter(id => id !== prevAns)[Math.floor(rng() * (prev.ids.length - (prevAns >= 0 ? 1 : 0)))];
-        const ids = [ans];
+        const ids = [ans], fakes = [];
         if(trap){   /* 닮은꼴 함정: 아래 카드 그림의 색만 다른 가짜(전 정답의 가짜도 될 수 있음) */
           const nT = k >= 7 && rng() < .35 ? 2 : 1;
-          shuffle(prev.ids.filter(id => id !== ans), rng).slice(0, nT).forEach(id => ids.push(id ^ 1));
+          shuffle(prev.ids.filter(id => id !== ans), rng).slice(0, nT).forEach(id => { ids.push(id ^ 1); fakes.push(id); });
         }
         const pool = bases().filter(b => !pb.has(b));
         while(ids.length < k) ids.push(pool.shift() * 2 + vr());
         shuffle(ids, rng);
-        const top = card(ids);
+        const want = {}, ja = ids.indexOf(ans), r0 = rOf(prev, ans);
+        if(gap > 0) want[ja] = away(r0);
+        if(cfg.lure) fakes.forEach(o => { want[ids.indexOf(o ^ 1)] = rOf(prev, o) * (.94 + rng() * .12); });
+        let top = card(ids, Object.keys(want).length ? want : null);
+        /* 자리가 모자라 줄어들어 크기 차이가 모자라면: 정답 그림을 작게 하는 쪽으로 다시(작게는 늘 됨) */
+        for(let t = 0; t < 6 && gap > 0 && Math.max(r0 / rOf(top, ans), rOf(top, ans) / r0) < 1 + gap; t++){
+          const dn = r0 / ((1 + gap) * (1.04 + .04 * t)), up = dn < rmin;   /* 작게가 안 되면 크게 + 다른 그림 줄이기 */
+          want[ja] = up ? Math.min(SZ_RMAX * .97, r0 * (1 + gap) * (1.06 + .04 * t)) : dn;
+          top = card(ids, up && t ? { [ja]:want[ja] } : want, up && t ? Math.pow(.9, t) : 0);   /* 크게 할 땐 닮은꼴 가짜 크기 맞춤은 포기 */
+        }
         cards = [top, prev]; prev = top; prevAns = ans;
       } else {
         /* 세 장: 세 장 모두에 있는 그림 1개 + 두 장에만 있는 가짜 1~3개 + (함정) 색만 다른 가짜 */
@@ -102,19 +138,42 @@ NG.twin = (() => {
           }
         }
         sets.forEach(s => { while(s.length < k) s.push(bs[q++] * 2 + vr()); shuffle(s, rng); });
-        cards = sets.map(card);
+        /* 공통 그림 크기: 작게·중간·크게를 세 장에 나눠(가장 큰 것/가장 작은 것 ≥ 1 + gap) */
+        let rs = null;
+        if(gap > 0){
+          const sz = lo.sz || [.93, 1.07], m = (1 + gap) * (1.03 + rng() * .17);
+          let a = T.s * (sz[0] + rng() * (sz[1] - sz[0])) / Math.sqrt(m), b = a * m;
+          if(a < rmin * 1.02){ a = rmin * 1.02; b = a * m; }
+          if(b > SZ_RMAX * .97){ b = SZ_RMAX * .97; a = Math.max(rmin * 1.02, b / m); }
+          rs = shuffle([a, b, a + (b - a) * (.3 + rng() * .4)], rng);
+        }
+        cards = sets.map((s, ci) => card(s, rs ? { [s.indexOf(ans)]:rs[ci] } : null));
+        for(let t = 0; t < 6 && gap > 0; t++){   /* 줄어들어 크기 차이가 모자라면 가장 작은 쪽을 더 작게(안 되면 가장 큰 쪽을 더 크게) */
+          const ar = cards.map(c => rOf(c, ans)), mx = Math.max(...ar), mn = Math.min(...ar);
+          if(mx / mn >= 1 + gap) break;
+          let ci = ar.indexOf(mn), r = mx / ((1 + gap) * (1.04 + .04 * t)), up = r < rmin;
+          if(up){ ci = ar.indexOf(mx); r = Math.min(SZ_RMAX * .97, mn * (1 + gap) * (1.06 + .04 * t)); }
+          cards[ci] = card(sets[ci], { [sets[ci].indexOf(ans)]:r }, up && t ? Math.pow(.9, t) : 0);
+        }
       }
       P.push({ cards, ans, W, trap });
     }
     return P;
   }
-  /* 점검: 문제마다 모든 카드에 공통인 그림이 정확히 하나(= ans), 그림끼리 안 겹침 */
-  function check(P){
+  /* 점검: 문제마다 모든 카드에 공통인 그림이 정확히 하나(= ans), 그림끼리(누르는 자리까지) 안 겹침,
+     그리는 크기·누르는 자리 바닥, 크기 차이(cfg.gap)까지 지킴 → ''이면 통과 */
+  function ansRatio(p){ const rs = p.cards.map(c => c.L[c.ids.indexOf(p.ans)].r); return Math.max(...rs) / Math.min(...rs); }
+  function check(P, cfg){
     for(const p of P){
-      const sets = p.cards.map(c => new Set(c.ids)), com = [...sets[0]].filter(id => sets.every(s => s.has(id)));
+      const nc = p.cards.length, sets = p.cards.map(c => new Set(c.ids)), com = [...sets[0]].filter(id => sets.every(s => s.has(id)));
       if(com.length !== 1 || com[0] !== p.ans) return 'common';
-      for(const c of p.cards){ if(new Set(c.ids.map(id => id >> 1)).size !== c.ids.length) return 'dup'; if(!fits(c.L)) return 'overlap'; }
-      if(p.cards.length === 2){ const b0 = new Set(p.cards[1].ids.map(id => id >> 1)); const sh = p.cards[0].ids.filter(id => b0.has(id >> 1)); if(!p.trap && sh.length !== 1) return 'look'; }
+      for(const c of p.cards){
+        if(new Set(c.ids.map(id => id >> 1)).size !== c.ids.length) return 'dup';
+        if(!fits(c.L)) return 'overlap';
+        if(c.L.some(l => l.r < RMIN[nc] - 1e-6 || l.b < HB[nc] - 1e-6 || l.b < l.r - 1e-9)) return 'min';
+      }
+      if(nc === 2){ const b0 = new Set(p.cards[1].ids.map(id => id >> 1)); const sh = p.cards[0].ids.filter(id => b0.has(id >> 1)); if(!p.trap && sh.length !== 1) return 'look'; }
+      if(cfg && cfg.gap && ansRatio(p) < 1 + cfg.gap - 1e-3) return 'gap';
     }
     return '';
   }
@@ -130,7 +189,7 @@ NG.twin = (() => {
     },
     twists:['flash', 'blink', 'tight'],
     twInfo:{
-      flash:{ name:'번개', desc:'판단 시간이 짧아요. 침착하게, 그래도 빠르게!' },
+      flash:{ name:'빠른 판', desc:'판단 시간이 짧아요. 침착하게, 그래도 빠르게!' },
       blink:{ name:'깜빡', desc:'카드가 0.6초 보였다가 0.3초 덮여요. 보이는 동안 눈에 담아 두세요.' },
       tight:{ name:'외줄 타기', desc:'실수는 딱 한 번까지! 두 번 틀리면 끝나요.' }
     }
@@ -142,19 +201,27 @@ NG.twin = (() => {
      판단 창 = 6.2초 × 0.94^(챕터−1) × 그림 수 배율 × 자리·규칙·변주 배수, 시작 최소 2.6초·끝 최소 2.2초(그림 찾기라 다른 순발력 게임보다 바닥이 높다)
      함정(닮은꼴) = 닮은꼴 규칙이 켜진 판만: 0.1 + 0.075×(챕터−1), 보스 +0.1, 최대 0.5 */
   const KOFF = [0, 0, 1, 2, 3, 4, 1, 4, 5, 2, 6];
-  const r1 = x => Math.round(x * 10) / 10;
+  const r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
+  /* 크기 차이 곡선(솔로): 퍼짐 sp = 0.08 + 0.07×(챕터−1) + 0.008×(k−1), 쉬운 자리 −0.03, 최대 0.42 → 크기 범위 1±sp
+     공통 그림 크기 차이 gap = (sp − 0.1)×1.1 (sp 0.15 미만이면 0). 크고 작게 규칙 판은 0.45~1.6배 · gap 0.6 · 기울기 ±40°(빙글과 섞임) */
+  function sizeOf(c, k, easy, has){
+    if(has('size')) return { sz:[.45, 1.6], gap:.6, tilt:has('spin') ? 0 : 80 };
+    const sp = Math.min(.42, .08 + .07 * (c - 1) + .008 * (k - 1) - (easy ? .03 : 0));
+    return { sz:[r2(1 - sp), r2(1 + sp)], gap:sp >= .15 ? r2((sp - .1) * 1.1) : 0, tilt:0 };
+  }
   function stageCfg(n){
     const p = planOf('twin', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x), three = has('three');
     const N = Math.min(32, 12 + 2 * (Math.min(c, 11) - 1) + KOFF[k]);
     let sym = Math.max(4, Math.min(8, 3 + Math.min(c, 5) + (k >= 4 ? 1 : 0) - (p.easy ? 1 : 0)));
     if(three) sym = Math.min(sym, 6);
-    let w = 6.2 * Math.pow(.94, c - 1) * (.55 + .075 * sym);
+    const S = sizeOf(c, k, p.easy, has);
+    let w = 6.2 * Math.pow(.94, c - 1) * (.55 + .075 * sym) * (1 + .35 * S.gap);   /* 크기 차이가 클수록 찾는 시간을 더 줌 */
     if(k === 5) w *= .9; if(p.boss) w *= .85; if(k === 9) w *= 1.15; if(k === 1 || k === 6) w *= 1.08;
-    if(has('spin')) w *= 1.08; if(has('size')) w *= 1.05; if(has('look')) w *= 1.1; if(three) w *= 1.35;
+    if(has('spin')) w *= 1.08; if(has('look')) w *= 1.1; if(three) w *= 1.35;
     if(tw === 'flash') w *= .75;
     const trap = has('look') ? Math.min(.5, .1 + .075 * (c - 1) + (p.boss ? .1 : 0)) : 0;
     return { N, k:sym, w0:r1(Math.max(2.6, w)), w1:r1(Math.max(2.2, w * .75)), trap, lives:tw === 'tight' ? 2 : 3,
-      spin:has('spin'), size:has('size'), look:has('look'), three, blink:tw === 'blink',
+      spin:has('spin'), size:has('size'), look:has('look'), three, blink:tw === 'blink', sz:S.sz, gap:S.gap, tilt:S.tilt || undefined, lure:has('look'),
       boss:p.boss, hard:p.hard, mj:mj.slice(), tw, host:HOSTS[(c - 1) % HOSTS.length], limit:0, n };
   }
 
@@ -196,7 +263,12 @@ NG.twin = (() => {
   const reduce = () => { try{ return FXR.reduce || matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(_){ return false; } };
 
   function say(html, cls){ const e = $('#twSay'); if(!e) return; e.className = 'tw-say ' + (cls || ''); e.innerHTML = html; }
-  function sayIdle(){ const m = S(); if(m && m.phase !== 'done') say(m.boss ? '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>' : '<span>' + (m.tips.length ? m.tips.slice(0, 2).join(' · ') : m.H.hi) + '</span>'); }
+  /* 말풍선 기본 문구: 규칙 알림이 짧으면 둘을 같이, 길면 카드마다 번갈아(말풍선이 잘리지 않게) */
+  function sayIdle(){
+    const m = S(); if(!m || m.phase === 'done') return;
+    const n = Math.max(0, m.i), tip = !m.tips.length ? '' : m.tips.slice(0, 2).join(' · ').length <= 16 ? m.tips.slice(0, 2).join(' · ') : m.tips[n % m.tips.length];
+    say(m.boss ? '<b class="boss">대장 판</b><span>' + (tip || '끝까지 침착하게!') + '</span>' : '<span>' + (tip || m.H.hi) + '</span>');
+  }
   function hostMood(mood, ms){
     const m = S(), im = $('#twHostImg'); if(!m || !im) return;
     im.src = toySrc(m.host, mood); im.classList.remove('bop'); void im.offsetWidth; if(mood) im.classList.add('bop');
@@ -212,16 +284,22 @@ NG.twin = (() => {
   }
 
   /* 카드 크기: 화면 높이에 맞춰(스크롤 없이) */
-  function layoutCards(){
+  function layoutCards(trim){
     const m = S(), tb = $('#twTable'), root = document.querySelector('.ng-twin'); if(!m || !tb || !root) return;
     const gap = m.three ? 8 : 14, W = Math.min(tb.clientWidth || root.clientWidth || 360, 460);
     const top = tb.getBoundingClientRect().top + (window.scrollY || 0);
-    const avail = Math.max(260, (innerHeight || 740) - top - 16);
+    const avail = Math.max(260, (innerHeight || 740) - top - 10 - (trim || 0));
     let d, pos;
     if(!m.three){
+      /* 두 장: 위아래로 쌓기. 폭이 남고 높이가 모자란 화면(360×740 등)은 비스듬히 놓아 카드를 더 크게 */
       d = Math.floor(Math.max(150, Math.min(W - 6, (avail - gap - 6) / 2, 400)));
-      pos = [0, 1].map(ci => ({ x:W / 2, y:d / 2 + ci * (d + gap) }));
-      m.H2 = 2 * d + gap + 6;
+      let zx = 0, zy = d + gap;
+      for(let t = Math.min(W - 6, 400); t >= d * 1.06; t -= 2){
+        const x = Math.min(W - 6 - t, t + gap), y = Math.sqrt(Math.max(0, (t + gap) * (t + gap) - x * x));
+        if(t + y + 6 <= avail){ d = Math.floor(t); zx = x; zy = y; break; }
+      }
+      pos = [0, 1].map(ci => ({ x:W / 2 + (ci ? zx / 2 : -zx / 2), y:d / 2 + ci * zy }));
+      m.H2 = d + zy + 6;
     } else {
       /* 세 장: 지그재그(왼·오·왼)로 놓아 세로로 쌓을 때보다 카드를 크게 */
       d = 150; let dx = 0, dy = d + gap;
@@ -235,22 +313,24 @@ NG.twin = (() => {
     tb.style.setProperty('--d', d + 'px'); tb.style.setProperty('--gap', gap + 'px'); tb.style.height = m.H2 + 'px';
     m.D = d; m.pos = pos; m.gap = gap;
     tb.querySelectorAll('.tw-card').forEach(c => { const p = pos[+c.dataset.ci] || pos[1]; c.style.left = (p.x - d / 2) + 'px'; c.style.top = (p.y - d / 2) + 'px'; });
+    /* 판 아래 여백(화면 틀의 아래 padding 등)까지 한 화면에: 넘치면 그만큼 줄여 한 번 더 */
+    if((trim || 0) < 120){ try{ const over = document.documentElement.scrollHeight - innerHeight; if(over > 0){ layoutCards((trim || 0) + over + 2); return; } }catch(_){} }
     try{ bake(m.need, Math.max(96, Math.min(256, Math.round(d * .4 * Math.min(2.5, devicePixelRatio || 1))))); }catch(_){}
   }
 
-  function cardHtml(cd, ci, cls, delay){
+  function cardHtml(cd, ci, cls, delay, sty){
     const syms = cd.ids.map((id, j) => { const l = cd.L[j];
       return `<span class="tw-s" data-j="${j}" style="left:${pct((1 + l.x) / 2)};top:${pct((1 + l.y) / 2)};width:${(l.r * 122).toFixed(2)}%;--rot:${l.rot.toFixed(1)}deg"><img src="${img(id)}" alt="${A.S[id >> 1].name}" draggable="false"></span>`; }).join('');
     const m = S(), p = (m.pos && (m.pos[ci] || m.pos[1])) || { x:0, y:0 }, d = m.D || 0;
-    return `<div class="tw-card ${cls || ''}" data-ci="${ci}" role="group" aria-label="${ci + 1}번째 카드" style="left:${(p.x - d / 2).toFixed(1)}px;top:${(p.y - d / 2).toFixed(1)}px${delay ? `;animation-delay:${delay}ms` : ''}"><div class="tw-face">${syms}</div><div class="tw-cover" aria-hidden="true">${COVER}</div></div>`;
+    return `<div class="tw-card ${cls || ''}" data-ci="${ci}" role="group" aria-label="${ci + 1}번째 카드" style="left:${(p.x - d / 2).toFixed(1)}px;top:${(p.y - d / 2).toFixed(1)}px${delay ? `;animation-delay:${delay}ms` : ''}${sty ? ';' + sty : ''}"><div class="tw-face">${syms}</div><div class="tw-cover" aria-hidden="true">${COVER}</div></div>`;
   }
   function drawCards(i){
     const m = S(), tb = $('#twTable'); if(!tb) return;
     const cur = m.P[i], cs = cur.cards;
     if(!m.three && i > 0){
       /* 위 카드가 아래로 내려오고(같은 카드), 새 카드가 위로 날아 들어옴. 예전 아래 카드는 빠져나감 */
-      const old = m.P[i - 1].cards[1];
-      tb.innerHTML = cardHtml(old, 9, 'ghost') + cardHtml(cs[1], 1, 'drop') + cardHtml(cs[0], 0, 'in', 70);
+      const old = m.P[i - 1].cards[1], p0 = m.pos[0], p1 = m.pos[1];
+      tb.innerHTML = cardHtml(old, 9, 'ghost') + cardHtml(cs[1], 1, 'drop', 0, `--fx:${(p0.x - p1.x).toFixed(1)}px;--fy:${(p0.y - p1.y).toFixed(1)}px`) + cardHtml(cs[0], 0, 'in', 70);
     } else tb.innerHTML = cs.map((c, ci) => cardHtml(c, ci, 'in', ci * 60)).join('');
     tb.classList.remove('solved', 'covered', 'slow');
     T(() => { const g = tb.querySelector('.ghost'); if(g) g.remove(); }, 340);
@@ -271,6 +351,21 @@ NG.twin = (() => {
     const card = document.querySelector(`.ng-twin .tw-card[data-ci="${ci}"] .tw-face`), l = S().cur.cards[ci].L[j]; if(!card) return;
     card.insertAdjacentHTML('beforeend', `<span class="tw-mk ${cls}" style="left:${pct((1 + l.x) / 2)};top:${pct((1 + l.y) / 2)};width:${(l.r * 2.3 * 50).toFixed(2)}%">${html || ''}</span>`);
   }
+  /* 쌍둥이 실: 짝지은 그림들을 카드 너머로 잇는 부드러운 곡선(보이기만). cls = 'ok'(정답) | 'ans'(가르쳐 주기) */
+  function thread(cls){
+    const m = S(), tb = $('#twTable'); if(!tb || !m.pos) return;
+    const R = m.D / 2, pts = ansSpots().map(([ci, j]) => { const l = m.cur.cards[ci].L[j], p = m.pos[ci]; return [p.x + l.x * R, p.y + l.y * R, l.r * R * .92]; }).sort((a, b) => a[1] - b[1]);
+    const f = v => v.toFixed(1), toward = (a, c) => { const dx = c[0] - a[0], dy = c[1] - a[1], n = Math.hypot(dx, dy) || 1; return [a[0] + dx / n * a[2], a[1] + dy / n * a[2]]; };
+    let d = '', dots = '';
+    for(let k = 1; k < pts.length; k++){
+      /* 그림 가장자리에서 가장자리까지 살짝 휜 실(가운데를 가리지 않게) */
+      const a = pts[k - 1], b = pts[k], dx = b[0] - a[0], dy = b[1] - a[1], bend = (k % 2 ? 1 : -1) * .2;
+      const c = [(a[0] + b[0]) / 2 - dy * bend, (a[1] + b[1]) / 2 + dx * bend], a2 = toward(a, c), b2 = toward(b, c);
+      d += `M${f(a2[0])} ${f(a2[1])} Q${f(c[0])} ${f(c[1])} ${f(b2[0])} ${f(b2[1])} `;
+      dots += `<circle cx="${f(a2[0])}" cy="${f(a2[1])}" r="4.2"/><circle cx="${f(b2[0])}" cy="${f(b2[1])}" r="4.2"/>`;
+    }
+    tb.insertAdjacentHTML('beforeend', `<svg class="tw-thread ${cls}" aria-hidden="true" width="100%" height="100%"><path class="u" d="${d}"/><path class="t" d="${d}"/><g>${dots}</g></svg>`);
+  }
   /* 정답 그림 자리(모든 카드) */
   const ansSpots = () => { const m = S(), a = m.cur.ans; return m.cur.cards.map((c, ci) => [ci, c.ids.indexOf(a)]); };
 
@@ -287,7 +382,8 @@ NG.twin = (() => {
     m.cur.cards.forEach((cd, ci) => {
       const s = slot(ci); if(!s || Math.hypot(e.clientX - s.x, e.clientY - s.y) > s.R + 6) return;
       cd.L.forEach((l, j) => {
-        const d = Math.hypot(e.clientX - (s.x + l.x * s.R), e.clientY - (s.y + l.y * s.R)), lim = Math.max(l.r * s.R * 1.08, 22);   /* 누르는 자리 최소 지름 44px */
+        /* 누르는 자리 = 배치 때 겹치지 않게 잡아 둔 반지름 b(작은 그림도 가장 작은 카드에서 지름 40px 이상), 바닥 20px */
+        const d = Math.hypot(e.clientX - (s.x + l.x * s.R), e.clientY - (s.y + l.y * s.R)), lim = Math.max((l.b || l.r) * s.R * 1.05, 20);
         if(d <= lim && d / lim < bd){ bd = d / lim; hit = [ci, j]; }
       });
     });
@@ -347,6 +443,7 @@ NG.twin = (() => {
           fxRing(q.x, q.y, '#7BE3AE', q.r * 1.7, .4, 5);
         }
       });
+      thread('ok');
       mark(ci, j, 'chk', CHECK);
       const q = symCenter(ci, j); if(q) fxFloat(q.x, q.y - q.r - 6, '+' + pts);
     }catch(_){}
@@ -377,6 +474,7 @@ NG.twin = (() => {
     try{
       if(ci >= 0){ const e = symEl(ci, j); if(e) e.classList.add('bad'); mark(ci, j, 'x', X_MARK); }
       ansSpots().forEach(([c, k]) => { mark(c, k, 'ans'); const e = symEl(c, k); if(e) e.classList.add('show'); });
+      thread('ans');
       const tb = $('#twTable'); if(tb) tb.classList.add('solved');
       if(!reduce()){ fxFlash('#FF4D6D', .1, 240); fxShake(tb, 4); }
       const ed = $('#twEdge'); if(ed){ ed.classList.remove('on'); void ed.offsetWidth; ed.classList.add('on'); }
@@ -385,6 +483,7 @@ NG.twin = (() => {
   function show(i){
     const m = S();
     m.i = i; m.cur = m.P[i]; m.t0 = now(); m.W = m.cur.W * 1000; m.phase = 'show'; m.cover = false; m.ticked = false; m.barCls = '';
+    if(i === 0) layoutCards();   /* 판 위 한 줄(별 목표 등)이 render 뒤에 붙어도 한 화면에 맞게 다시 잼 */
     drawCards(i);
     const b = $('#twBar'); if(b){ b.className = 'tw-wbar'; }
     const bi = $('#twBarI'); if(bi) bi.style.transform = 'scaleX(1)';
@@ -401,7 +500,7 @@ NG.twin = (() => {
     sfx('twinClear'); fxBuzz([30, 50, 30]);
     const tb = $('#twTable');
     try{
-      if(tb) tb.insertAdjacentHTML('beforeend', `<div class="tw-end"><b>평균 ${avg.toFixed(2)}초</b><span>${nb ? '<i>새 최고 기록!</i>' : '내 최고 ' + Number(best).toFixed(2) + '초'}</span></div>`);
+      if(tb) tb.insertAdjacentHTML('beforeend', `<div class="tw-end"><small>평균 판단 속도</small><b>${avg.toFixed(2)}초</b><span>${nb ? '<i>새 최고 기록!</i>' : '내 최고 ' + Number(best).toFixed(2) + '초'}</span></div>`);
       if(tb && !reduce()){ const q = fxCenter(tb); fxEmit(q.x, q.y, { quantity:26, speed:{ min:120, max:340 }, lifespan:{ min:600, max:1000 }, kind:'star', tint:['#FFE27A', '#FF9BCB', '#9FE7FF', '#B7F5C9', '#FFFFFF'], scale:{ start:6, end:0 }, gravityY:300, drag:1 }); }
     }catch(_){}
     T(() => finish(true), 1300);
@@ -465,19 +564,37 @@ NG.twin = (() => {
         <path d="M74 50q6-6 12 0" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 3"/></svg>`;
     },
     help:[
-      ['같은 그림 딱 하나', HP1 + '위·아래 두 카드에 똑같은 그림이 딱 하나 있어요. 찾으면 어느 카드에서든 눌러요. 맞히면 새 카드가 날아와요.'],
+      ['같은 그림 딱 하나', HP1 + '두 카드에 똑같은 그림이 딱 하나 있어요. 크기나 방향이 달라도 같은 그림이에요. 찾으면 어느 카드에서든 눌러요.'],
       ['판단은 빠르게', HP2 + '카드마다 판단 시간이 있어요. 위의 막대가 다 줄기 전에 눌러요. 빨리 찾을수록 점수가 높아요.'],
       ['막 누르면 손해', HP3 + '틀리거나 시간이 지나면 기회 별이 하나 줄어요. 모양이 같아도 색이 다르면 가짜! 마구 누르면 잠깐 멈춰요.']
     ],
+    /* 도움말 v2(쉬운 화면): 그림 + 3줄. 자세한 설명은 "더 알아보기"(help) */
+    howto:{
+      pic(){
+        const u = 'twH' + (++ARTN), im = (i, v, x, y, s, r) => `<image href="${A.src(i, v)}" x="${x - s / 2}" y="${y - s / 2}" width="${s}" height="${s}"${r ? ` transform="rotate(${r} ${x} ${y})"` : ''}/>`;
+        const cd = (x, y, rim) => `<circle cx="${x}" cy="${y + 5}" r="66" fill="#1A0F45"/><circle cx="${x}" cy="${y}" r="66" fill="url(#${u}c)" stroke="#1A0F45" stroke-width="3"/><circle cx="${x}" cy="${y}" r="60" fill="none" stroke="${rim}" stroke-width="6"/>`;
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><defs>
+          <linearGradient id="${u}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6EA"/><stop offset="1" stop-color="#EFD3AE"/></linearGradient>
+          <radialGradient id="${u}c" cx=".5" cy=".36" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F5E9D6"/></radialGradient></defs>
+          <rect width="320" height="180" fill="url(#${u}b)"/>
+          ${cd(86, 86, '#E9DDFF')}${cd(234, 94, '#FFE0EC')}
+          ${im(12, 0, 60, 52, 40)}${im(2, 0, 112, 66, 34, -12)}${im(29, 0, 64, 122, 34, 10)}${im(13, 0, 112, 116, 56, 8)}
+          ${im(13, 0, 206, 68, 30, -14)}${im(18, 0, 258, 72, 42)}${im(36, 0, 212, 124, 40, 6)}${im(13, 1, 264, 128, 38)}
+          <path d="M136 108Q170 64 196 70" fill="none" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M136 108Q170 64 196 70" fill="none" stroke="#FFD45C" stroke-width="3.6" stroke-linecap="round"/>
+          <circle cx="136" cy="108" r="5" fill="#FFD45C" stroke="#1A0F45" stroke-width="2"/><circle cx="196" cy="70" r="5" fill="#FFD45C" stroke="#1A0F45" stroke-width="2"/>
+          <path d="M283 112l-14 14M269 112l14 14" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M283 112l-14 14M269 112l14 14" stroke="#FF4D6D" stroke-width="3.6" stroke-linecap="round"/></svg>`;
+      },
+      lines:['두 카드에 같은 그림이 딱 하나', '크기·방향이 달라도 같은 그림', '색이 다르면 가짜! 막 누르면 손해']
+    },
     helpExtra(){ const m = G && G.id === 'twin' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['장난감 상자', '소풍 바구니', '별빛 서랍', '거울 방', '쌍둥이 성'],
     starRule:'★ 클리어 · ★★ 한 번만 틀림 · ★★★ 하나도 안 틀림',
     levels:{
-      easy:{ N:20, k:5, w0:6, w1:4.5, trap:.15, limit:0 },
-      normal:{ N:25, k:6, w0:5, w1:3.5, trap:.25, limit:0 },
-      hard:{ N:30, k:7, w0:4.2, w1:3, trap:.35, limit:0 }
+      easy:{ N:20, k:5, w0:6, w1:4.5, trap:.15, sz:[.85, 1.15], gap:0, limit:0 },
+      normal:{ N:25, k:6, w0:5.5, w1:3.9, trap:.25, sz:[.7, 1.3], gap:.25, lure:true, limit:0 },
+      hard:{ N:30, k:7, w0:5.2, w1:3.8, trap:.35, sz:[.55, 1.45], gap:.4, lure:true, limit:0 }
     },
-    levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `카드 ${c.N}장 · 그림 ${c.k}개 · 판단 ${c.w0}초부터`; },
+    levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `카드 ${c.N}장 · 그림 ${c.k}개${c.gap >= .4 ? ' · 크기 차이 큼' : c.gap ? ' · 크기 차이' : ''} · 판단 ${c.w0}초부터`; },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
     stageDesc(n){ const c = stageCfg(n); return `카드 ${c.N}장 · 그림 ${c.k}개 · 판단 ${c.w0}초부터${c.three ? ' · 카드 세 장' : ''}${c.lives < 3 ? ' · 기회 ' + c.lives + '번' : ''}`; },
@@ -485,6 +602,7 @@ NG.twin = (() => {
       for(let i = 0; i < (cfg.N || 0) * 3; i++) rng();   /* 같은 날 난이도마다 다른 카드가 나오게 */
       const P = gen(cfg, rng), host = cfg.host || 'owl';
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
+      if(!G.adv && cfg.gap) tips.push(RULE_TIP.size);
       if(!G.adv && cfg.trap) tips.push(RULE_TIP.look);
       const need = []; P.forEach(p => p.cards.forEach(c => c.ids.forEach(id => { if(!need.includes(id)) need.push(id); })));
       const lives = G.duel ? 3 : cfg.lives || 3;
@@ -512,7 +630,7 @@ NG.twin = (() => {
           <span class="tw-hostbox"><img class="toy tw-hostimg" id="twHostImg" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></span>
           <div class="tw-say" id="twSay" role="status" aria-live="polite"><span>카드를 섞는 중…</span></div>
           <div class="hlives" id="twLives" role="img"></div>
-          ${m.boss ? '<b class="tw-bossband" aria-hidden="true">보스!</b>' : ''}
+          ${m.boss ? '<b class="tw-bossband" aria-hidden="true">대장!</b>' : ''}
         </div>
         <div class="tw-wbar" id="twBar" aria-hidden="true"><i id="twBarI"></i></div>
         <div class="tw-table" id="twTable"></div>
@@ -535,13 +653,13 @@ NG.twin = (() => {
         rows:[`정답 ${m.correct}/${N}`, `판단 속도 보너스 (평균 ${avg ? avg.toFixed(2) : '-'}초)`, `남은 기회 ${Math.max(0, m.lives)}개`] };
     },
     stars(){ const w = G.m.wrong; return w === 0 ? 3 : w === 1 ? 2 : 1; },
-    _gen:gen, _check:check, _stage:stageCfg, _art:A, _baked:id => !!BAKED[id],
+    _gen:gen, _check:check, _ratio:ansRatio, _hb:HB, _rmin:RMIN, _stage:stageCfg, _art:A, _baked:id => !!BAKED[id],
     css:`
 body[data-mode="twin"]{background:
   radial-gradient(90% 55% at 50% 0%, rgba(255,255,255,.7), rgba(255,255,255,0) 70%),
   repeating-linear-gradient(90deg, rgba(150,95,40,.035) 0 2px, transparent 2px 120px),
   linear-gradient(180deg,#FCF3E6 0%,#F5E2C8 58%,#EBCFA9 100%) fixed}
-.ng-twin{position:relative; display:flex; flex-direction:column; align-items:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
+.ng-twin{position:relative; display:flex; flex-direction:column; align-items:center; margin-bottom:-30px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
 .ng-twin .hud-row{margin:0 0 8px}
 .ng-twin .tw-host{position:relative; display:flex; align-items:center; gap:8px; width:100%; height:46px; margin:0 0 8px}
 .ng-twin .tw-hostbox{flex:none; width:46px; height:46px; display:grid; place-items:center}
@@ -570,20 +688,33 @@ body[data-mode="twin"]{background:
 @keyframes twin-hurry{from{transform:translateX(-1.5px)} to{transform:translateX(1.5px)}}
 .ng-twin .tw-table{position:relative; display:block; width:100%; height:calc(2 * var(--d) + 20px); touch-action:manipulation; --d:280px}
 .ng-twin .tw-card{position:absolute; width:var(--d); height:var(--d); border-radius:50%; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  background:radial-gradient(circle at 38% 30%, #FFFFFF 0%, #FFFCF6 42%, #F7ECDB 100%);
-  border:3px solid #1A0F45; box-shadow:inset 0 0 0 6px var(--rim), inset 0 0 0 7.5px rgba(26,15,69,.1), 0 5px 0 #1A0F45, 0 14px 22px rgba(110,70,25,.2)}
+  background:radial-gradient(circle at 50% 36%, #FFFFFF 0%, #FFFDF8 50%, #F4E7D2 100%);
+  border:3px solid #1A0F45; box-shadow:inset 0 0 0 7px var(--rim), inset 0 0 0 8.5px rgba(26,15,69,.12), inset 0 16px 22px -10px rgba(120,80,30,.16), 0 6px 0 #1A0F45, 0 18px 26px -8px rgba(110,70,25,.28)}
+.ng-twin .tw-card::after{content:""; position:absolute; inset:2px; border-radius:50%; pointer-events:none; border:2.5px solid transparent; border-top-color:rgba(255,255,255,.95); border-left-color:rgba(255,255,255,.5); transform:rotate(-18deg)}
 .ng-twin .tw-face{position:absolute; inset:0; border-radius:50%; transition:opacity .2s, filter .2s}
 .ng-twin .tw-s{position:absolute; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; transition:opacity .18s}
 .ng-twin .tw-s::before{content:""; position:absolute; left:22%; right:22%; top:83%; height:11%; border-radius:50%; background:radial-gradient(closest-side, rgba(16,24,69,.3), rgba(16,24,69,0))}
 .ng-twin .tw-s img{position:relative; display:block; width:100%; height:100%; transform:rotate(var(--rot)); transition:transform .18s}
-.ng-twin .tw-table.solved .tw-s:not(.hit):not(.show):not(.bad){opacity:.38}
+.ng-twin .tw-table.solved .tw-s:not(.hit):not(.show):not(.bad){opacity:.34; filter:saturate(.6)}
+.ng-twin .tw-s{transition:opacity .16s, filter .16s}
 .ng-twin .tw-s.hit img{animation:twin-hit .42s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes twin-hit{40%{transform:rotate(var(--rot)) scale(1.32)} 100%{transform:rotate(var(--rot)) scale(1.16)}}
 .ng-twin .tw-s.show img{transform:rotate(var(--rot)) scale(1.12)}
 .ng-twin .tw-s.bad img{animation:twin-no .32s ease-out}
 @keyframes twin-no{20%{transform:translateX(-5px) rotate(calc(var(--rot) - 6deg))} 50%{transform:translateX(5px) rotate(calc(var(--rot) + 5deg))} 80%{transform:translateX(-2px) rotate(var(--rot))}}
 .ng-twin .tw-mk{position:absolute; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; border-radius:50%}
-.ng-twin .tw-mk.ok{box-shadow:0 0 0 3.5px #1A0F45, inset 0 0 0 3px #5EE0A0, 0 0 16px 4px rgba(94,224,160,.55); background:rgba(94,224,160,.14); animation:twin-ring .35s cubic-bezier(.2,1.6,.4,1) both}
+.ng-twin .tw-mk.ok{box-shadow:0 0 0 3px #1A0F45, inset 0 0 0 3.5px #5EE0A0, inset 0 0 0 5.5px #fff, 0 0 18px 5px rgba(94,224,160,.5); background:radial-gradient(closest-side, rgba(190,245,215,0) 72%, rgba(190,245,215,.45)); animation:twin-ring .3s cubic-bezier(.2,1.6,.4,1) both}
+.ng-twin .tw-thread{position:absolute; left:0; top:0; z-index:4; pointer-events:none; overflow:visible}
+.ng-twin .tw-thread path{fill:none; stroke-linecap:round}
+.ng-twin .tw-thread .u{stroke:#1A0F45; stroke-width:7.5}
+.ng-twin .tw-thread .t{stroke:#FFD45C; stroke-width:3.8}
+.ng-twin .tw-thread g circle{fill:#FFD45C; stroke:#1A0F45; stroke-width:2.2}
+.ng-twin .tw-thread.ok{animation:twin-thr .28s ease-out both}
+.ng-twin .tw-thread.ans .u{stroke-width:6; opacity:.55}
+.ng-twin .tw-thread.ans .t{stroke:#F5A700; stroke-width:3.2; stroke-dasharray:7 7}
+.ng-twin .tw-thread.ans g circle{fill:#FFE27A}
+.ng-twin .tw-thread.ans{animation:twin-thr .3s ease-out .12s both}
+@keyframes twin-thr{from{opacity:0; transform:scale(.97); transform-origin:50% 50%}}
 .ng-twin .tw-mk.ans{border:3.5px dashed #F5A700; background:rgba(255,226,122,.2); animation:twin-ring .35s cubic-bezier(.2,1.6,.4,1) .12s both}
 @keyframes twin-ring{from{transform:translate(-50%,-50%) scale(1.6); opacity:0}}
 .ng-twin .tw-mk.x, .ng-twin .tw-mk.chk{width:30px !important; border-radius:0; animation:twin-stamp .26s cubic-bezier(.2,1.6,.4,1) both}
@@ -598,13 +729,14 @@ body[data-mode="twin"]{background:
 .ng-twin .tw-card.in{animation:twin-in .32s cubic-bezier(.2,1.25,.4,1) both}
 @keyframes twin-in{from{transform:translateY(-28px) scale(.76) rotate(-10deg); opacity:0} 45%{opacity:1}}
 .ng-twin .tw-card.drop{animation:twin-drop .3s cubic-bezier(.3,.9,.35,1) both}
-@keyframes twin-drop{from{transform:translateY(calc(-1 * (var(--d) + var(--gap,14px))))}}
+@keyframes twin-drop{from{transform:translate(var(--fx,0px), var(--fy,-200px))}}
 .ng-twin .tw-card.ghost{pointer-events:none; animation:twin-out .3s ease-in both}
 @keyframes twin-out{to{transform:translateY(70px) scale(.82) rotate(8deg); opacity:0}}
-.ng-twin .tw-end{position:absolute; left:50%; top:50%; z-index:5; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 22px; border-radius:20px; background:#fff; border:3px solid #1A0F45; box-shadow:0 4px 0 #1A0F45, 0 16px 30px rgba(26,15,69,.25); white-space:nowrap; animation:twin-pop .4s cubic-bezier(.2,1.6,.4,1) both}
-.ng-twin .tw-end b{font-family:var(--heavy); font-weight:400; font-size:24px; color:#3A2261}
-.ng-twin .tw-end span{font-family:var(--disp); font-size:15px; color:#6A5884}
-.ng-twin .tw-end i{font-style:normal; color:#E0559A}
+.ng-twin .tw-end{position:absolute; left:50%; top:50%; z-index:6; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; padding:14px 26px 12px; border-radius:22px; background:#FFFDF8; border:3px solid #1A0F45; box-shadow:inset 0 0 0 5px var(--rim), 0 5px 0 #1A0F45, 0 18px 30px rgba(26,15,69,.22); white-space:nowrap; animation:twin-pop .4s cubic-bezier(.2,1.6,.4,1) both}
+.ng-twin .tw-end small{font-family:var(--disp); font-size:14px; color:#6A5884}
+.ng-twin .tw-end b{font-family:var(--heavy); font-weight:400; font-size:30px; line-height:1.15; color:#3A2261}
+.ng-twin .tw-end span{font-family:var(--disp); font-size:15px; color:#4A3A6E}
+.ng-twin .tw-end i{font-style:normal; color:#D6407F}
 .ng-twin .tw-edge{position:fixed; inset:0; pointer-events:none; z-index:16; opacity:0; box-shadow:inset 0 0 60px 14px rgba(229,72,77,.32)}
 .ng-twin .tw-edge.on{animation:twin-edge .55s ease-out}
 @keyframes twin-edge{20%{opacity:1} 100%{opacity:0}}
@@ -619,7 +751,7 @@ body[data-mode="twin"]{background:
 .dg-rules .tw-hp{display:none}
 @media (max-width:370px), (max-height:760px){ .tw-hpc{width:58px; height:58px} .tw-hp{margin:0 0 4px} }
 @media (max-width:370px){ .ng-twin .tw-say{font-size:14px; padding:0 9px} .ng-twin .tw-say b{font-size:16px} .ng-twin .tw-host{gap:6px} .ng-twin .tw-hostbox, .ng-twin .tw-hostimg{width:40px; height:40px} }
-@media (prefers-reduced-motion: reduce){ .ng-twin .tw-card.in, .ng-twin .tw-card.drop, .ng-twin .tw-s.hit img, .ng-twin .tw-s.bad img, .ng-twin .tw-mk, .ng-twin .tw-wbar.hurry, .ng-twin .tw-say.pop, .ng-twin .tw-hostimg.bop{animation:none} .ng-twin .tw-card.ghost{display:none} }
+@media (prefers-reduced-motion: reduce){ .ng-twin .tw-thread, .ng-twin .tw-card.in, .ng-twin .tw-card.drop, .ng-twin .tw-s.hit img, .ng-twin .tw-s.bad img, .ng-twin .tw-mk, .ng-twin .tw-wbar.hurry, .ng-twin .tw-say.pop, .ng-twin .tw-hostimg.bop{animation:none} .ng-twin .tw-card.ghost{display:none} }
 `,
     sounds:{
       twinDeal(){ aWhoosh({ f:700, f2:2600, q:1.2, a:.01, d:.14, v:.03 }); aTone({ f:1180, type:'triangle', t:.05, d:.05, v:.025, bus:'ui' }); },
@@ -638,6 +770,6 @@ body[data-mode="twin"]{background:
 })();
 
 /* 대전: 같은 카드 25장, 끝났을 때 점수가 높은 쪽 승(엔진 기본 대전). 상대 막대 = 정답 수 · 기회 점 */
-Object.assign(NG.twin, { duelPace:[60, .78], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:Math.max(0, G.m.lives) }) }, duelHow:'같은 카드 · 정확하고 빠르게 찾으면 승리' });
+Object.assign(NG.twin, { duelPace:[60, .78], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:Math.max(0, G.m.lives), mis:G.m.wrong }) }, duelHow:'같은 카드 · 정확하고 빠르게 찾으면 승리' });
 /* 움직이는 배경(core/scene.js): 장난감 방 책상 위 햇빛 먼지. 보이기만 함 */
 NG.twin.scene = { kind:'motes', colors:['#FFFFFF', '#FFE9C7', '#F6D9FF'], density:.55, alpha:.8 };
