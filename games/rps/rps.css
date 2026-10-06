@@ -10,7 +10,8 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 .ng-rps .hlives i.lost{animation:rpLost .5s ease-out}
 @keyframes rpLost{0%{transform:scale(1.6); color:#E5484D}100%{transform:scale(1)}}
 .ng-rps .rp-tags{margin-left:auto; display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; min-width:0}
-.ng-rps .rp-tag{font-family:var(--disp); font-size:12px; line-height:1; padding:6px 9px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#3A2261; white-space:nowrap}
+.ng-rps .rp-row .hlives{flex:none; white-space:nowrap}
+.ng-rps .rp-tag{font-family:var(--disp); font-size:13px; line-height:1; padding:6px 9px; border-radius:99px; border:2px solid #1A0F45; background:#fff; color:#3A2261; white-space:nowrap}
 .ng-rps .rp-tag.tw{background:#FFE07A; color:#5A3300}
 .ng-rps .rp-tag.boss{background:#E5484D; color:#fff}
 
@@ -33,8 +34,29 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 .ng-rps .rp-opp .rp-hand{position:absolute; inset:0; width:100%; height:100%; filter:drop-shadow(0 8px 10px rgba(40,20,80,.28)); will-change:transform}
 .ng-rps .rp-opp.pump .rp-hand{opacity:.82; animation:rpPump .15s ease-in-out 2}
 @keyframes rpPump{0%{transform:translateY(0) scale(.86) rotate(-6deg)}50%{transform:translateY(16%) scale(.82,.78) rotate(-6deg)}100%{transform:translateY(0) scale(.86) rotate(-6deg)}}
-.ng-rps .rp-opp.rv .rp-hand{animation:rpRv .26s cubic-bezier(.25,1.7,.45,1) both}
-@keyframes rpRv{0%{transform:scale(.62) rotate(-10deg)}60%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
+.ng-rps .rp-opp.rv .rp-hand{animation:rpRv .28s cubic-bezier(.3,1.5,.45,1) both}
+/* 공개: 위에서 쾅 내려찍고(눌림) 탄성으로 바로 섬 — 0.1초 안에 손 모양이 다 보이게(판단 시간 공정) */
+@keyframes rpRv{0%{transform:translateY(-16%) scale(.82) rotate(-8deg)}38%{transform:translateY(3%) scale(1.1,.9) rotate(2deg)}70%{transform:translateY(-1%) scale(.97,1.03)}100%{transform:translateY(0) scale(1) rotate(0)}}
+/* 바닥 그림자: 흔들기 때 숨 쉬듯, 공개 때 쿵 하고 퍼짐 */
+.ng-rps .rp-shd{position:absolute; left:20%; right:20%; bottom:-3%; height:10%; border-radius:50%; background:radial-gradient(closest-side, rgba(58,26,72,.34), rgba(58,26,72,0)); pointer-events:none}
+.ng-rps .rp-opp.pump .rp-shd{animation:rpShd .15s ease-in-out 2}
+@keyframes rpShd{50%{transform:scaleX(.8); opacity:.7}}
+.ng-rps .rp-opp.rv .rp-shd{animation:rpShdIn .28s ease-out both}
+@keyframes rpShdIn{0%{transform:scaleX(.5); opacity:.3}40%{transform:scaleX(1.18); opacity:1}100%{transform:scaleX(1)}}
+.ng-rps .rp-ring{position:absolute; left:50%; top:56%; width:70%; height:70%; margin:-35% 0 0 -35%; border-radius:50%; border:5px solid rgba(255,250,236,.9); pointer-events:none; opacity:0; animation:rpRing .38s ease-out both}
+@keyframes rpRing{0%{transform:scale(.55); opacity:.95}100%{transform:scale(1.35); opacity:0; border-width:1px}}
+/* 맞부딪힘: 정답 = 상대 손이 뒤로 밀려남 · 오답 = 상대 손이 으쓱 */
+.ng-rps .rp-opp.hit .rp-hand:not(.fl){animation:rpHit .3s cubic-bezier(.3,1.4,.5,1)}
+.ng-rps .rp-opp.won .rp-hand:not(.fl){animation:rpWon .3s ease-out}
+@keyframes rpHit{0%{transform:none}35%{transform:translate(-5%,-7%) rotate(-11deg) scale(.95)}100%{transform:none}}
+@keyframes rpWon{0%{transform:none}40%{transform:scale(1.07) rotate(4deg)}100%{transform:none}}
+.ng-rps .rp-clash{position:absolute; left:50%; top:50%; z-index:5; width:76px; height:76px; margin:-38px 0 0 -38px; pointer-events:none; opacity:0;
+  background:radial-gradient(closest-side, #FFFDF2 0 22%, rgba(255,226,140,.85) 36%, rgba(255,226,140,0) 70%);
+  -webkit-mask:conic-gradient(from 0deg, #000 0 8%, transparent 0 12.5%, #000 0 20.5%, transparent 0 25%, #000 0 33%, transparent 0 37.5%, #000 0 45.5%, transparent 0 50%, #000 0 58%, transparent 0 62.5%, #000 0 70.5%, transparent 0 75%, #000 0 83%, transparent 0 87.5%, #000 0 95.5%, transparent 0), radial-gradient(closest-side, #000 40%, transparent 41%);
+  mask:conic-gradient(from 0deg, #000 0 8%, transparent 0 12.5%, #000 0 20.5%, transparent 0 25%, #000 0 33%, transparent 0 37.5%, #000 0 45.5%, transparent 0 50%, #000 0 58%, transparent 0 62.5%, #000 0 70.5%, transparent 0 75%, #000 0 83%, transparent 0 87.5%, #000 0 95.5%, transparent 0), radial-gradient(closest-side, #000 40%, transparent 41%)}
+.ng-rps .rp-clash.no{background:radial-gradient(closest-side, rgba(210,200,225,.9) 0 22%, rgba(170,160,190,.6) 38%, rgba(170,160,190,0) 70%)}
+.ng-rps .rp-clash.on{animation:rpClash .34s ease-out both}
+@keyframes rpClash{0%{transform:scale(.3) rotate(0); opacity:1}50%{opacity:1}100%{transform:scale(1.25) rotate(20deg); opacity:0}}
 .ng-rps .rp-burst{position:absolute; inset:-14%; z-index:-1; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,.75) 0 34%, rgba(255,243,200,.35) 52%, rgba(255,255,255,0) 70%); animation:rpBurst .34s ease-out both}
 @keyframes rpBurst{0%{transform:scale(.4); opacity:0}40%{opacity:1}100%{transform:scale(1); opacity:.8}}
 /* 두 손: 진행자 양옆 */
@@ -49,10 +71,14 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 @keyframes rpPumpF{0%{transform:scaleX(-1) translateY(0) scale(.86) rotate(-6deg)}50%{transform:scaleX(-1) translateY(16%) scale(.82,.78) rotate(-6deg)}100%{transform:scaleX(-1) translateY(0) scale(.86) rotate(-6deg)}}
 .ng-rps .rp-opp.two .rp-burst{display:none}
 /* 내가 낸 손(버튼에서 날아옴) */
-.ng-rps .rp-my{position:absolute; right:2%; bottom:1%; width:var(--mz); height:var(--mz); z-index:4; pointer-events:none; opacity:0}
-.ng-rps .rp-my img{width:100%; height:100%; display:block; filter:drop-shadow(0 6px 8px rgba(40,20,80,.3))}
-.ng-rps .rp-my.on{opacity:1}
-.ng-rps .rp-opp.two ~ .rp-my{right:auto; left:50%; margin-left:calc(var(--mz) / -2)}
+.ng-rps .rp-my{position:absolute; left:calc(50% - var(--mz) * .5 + var(--hz) * .3); bottom:calc(var(--cover, 20px) + 2px); width:var(--mz); height:var(--mz); z-index:4; pointer-events:none; opacity:0; transition:opacity .12s}
+.ng-rps .rp-my img{width:100%; height:100%; display:block; transform:rotate(-14deg); transform-origin:50% 90%; filter:drop-shadow(0 6px 8px rgba(40,20,80,.3))}
+.ng-rps .rp-my.on{opacity:1; transition:none}
+.ng-rps .rp-my.out{opacity:0}
+.ng-rps .rp-my.miss img{animation:rpMiss .34s ease-out .12s both}
+@keyframes rpMiss{0%{transform:rotate(-14deg)}30%{transform:rotate(-26deg) translateY(2%)}60%{transform:rotate(-6deg) translateY(6%)}100%{transform:rotate(-16deg) translateY(8%); filter:drop-shadow(0 6px 8px rgba(40,20,80,.3)) saturate(.5) brightness(.9)}}
+.ng-rps .rp-opp.two ~ .rp-my{left:calc(50% - var(--mz) * .5)}
+.ng-rps .rp-opp.two ~ .rp-my img{transform:none}
 /* 콤보·천천히·끝 알림 */
 .ng-rps .rp-ctxt{position:absolute; left:50%; top:46%; z-index:6; pointer-events:none; display:flex; align-items:baseline; gap:6px; white-space:nowrap; opacity:0; transform:translate(-50%,-50%) scale(.3)}
 .ng-rps .rp-ctxt b{font-family:var(--heavy); font-weight:400; font-size:50px; line-height:1; color:#FFE45C; -webkit-text-stroke:7px #1A0F45; paint-order:stroke fill; text-shadow:0 4px 0 #1A0F45}
@@ -72,31 +98,36 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 @keyframes rpEnd{0%{opacity:0; transform:translate(-50%,-50%) scale(.5)}60%{opacity:1; transform:translate(-50%,-50%) scale(1.06)}100%{transform:translate(-50%,-50%) scale(1)}}
 
 /* ---------- 지령 판: 메달(모양+그림) + 글자, 테두리 색 ---------- */
-.ng-rps .rp-sign{flex:none; position:relative; display:flex; align-items:center; gap:12px; height:76px; margin:10px 0 0; padding:0 14px 0 10px; border-radius:20px; z-index:2;
-  background:linear-gradient(180deg,#FFFFFF,var(--ol,#F3EEFF)); border:3px solid #1A0F45; box-shadow:0 4px 0 #1A0F45, inset 0 0 0 3px var(--oc,#D6CCE6)}
-.ng-rps .rp-med{flex:none; width:60px; height:60px; filter:drop-shadow(0 3px 0 rgba(26,15,69,.55))}
+.ng-rps .rp-sign{flex:none; position:relative; display:flex; align-items:center; gap:12px; height:92px; margin:calc(var(--cover, 20px) * -1) 6px 0; padding:0 16px 16px 10px; border-radius:22px; z-index:5;
+  background:linear-gradient(180deg,#FFFCF6 0%,var(--ol,#F3EEFF) 100%); border:3px solid #1A0F45; box-shadow:0 5px 0 #1A0F45, 0 10px 18px rgba(40,16,70,.22), inset 0 0 0 3px var(--oc,#D6CCE6)}
+.ng-rps .rp-med{flex:none; width:68px; height:68px; margin-top:-2px; filter:drop-shadow(0 3px 0 rgba(26,15,69,.55))}
 .ng-rps .rp-med svg{width:100%; height:100%; display:block}
 .ng-rps .rp-tx{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px}
-.ng-rps .rp-tx b{font-family:var(--disp); font-weight:400; font-size:32px; line-height:1.05; color:var(--oi,#6A5884); white-space:nowrap; letter-spacing:-.5px}
+.ng-rps .rp-tx b{font-family:var(--disp); font-weight:400; font-size:36px; line-height:1.05; color:var(--oi,#6A5884); white-space:nowrap; letter-spacing:-.5px}
 .ng-rps .rp-sign.wait .rp-tx b{font-size:26px; color:#8C7AA8}
-.ng-rps .rp-sign.not .rp-tx b{font-size:30px}
-.ng-rps .rp-sub{display:none; position:absolute; top:-25px; z-index:3; font-family:var(--disp); font-size:16px; line-height:1; padding:5px 12px 6px; border-radius:99px; background:#1A0F45; color:#fff; border:2.5px solid #fff; box-shadow:0 3px 0 rgba(26,15,69,.5); white-space:nowrap}
+.ng-rps .rp-sign.not .rp-tx b{font-size:32px}
+.ng-rps .rp-sign.done{justify-content:center}
+.ng-rps .rp-sign.done .rp-med{display:none}
+.ng-rps .rp-sign.done .rp-tx{flex:0 0 auto}
+.ng-rps .rp-sign.done .rp-tx b{color:#5A4880}
+.ng-rps .rp-sub{display:none; position:absolute; top:-40px; z-index:3; font-family:var(--disp); font-size:16px; line-height:1; padding:5px 12px 6px; border-radius:99px; background:#1A0F45; color:#fff; border:2.5px solid #fff; box-shadow:0 3px 0 rgba(26,15,69,.5); white-space:nowrap}
 .ng-rps .rp-sub b{color:#FFE45C; font-weight:400; font-size:18px}
 .ng-rps .rp-sub.arw{display:block; left:14px}
 .ng-rps .rp-sub.arw.r{left:auto; right:14px}
 .ng-rps .rp-sign.pop .rp-sub.arw{animation:rpTab .3s cubic-bezier(.2,1.6,.4,1)}
 @keyframes rpTab{0%{transform:translateY(8px) scale(.7)}100%{transform:translateY(0) scale(1)}}
 .ng-rps .rp-sign.hide{justify-content:center}
-.ng-rps .rp-sign.hide .rp-med{width:66px; height:66px}
+.ng-rps .rp-sign.hide .rp-med{width:66px; height:66px; margin-top:-6px}
 .ng-rps .rp-sign.hide .rp-tx{flex:0 0 0; overflow:visible}
 .ng-rps .rp-sign.hide .rp-tx b{display:none}
 .ng-rps .rp-sign.pop{animation:rpSign .26s cubic-bezier(.2,1.6,.4,1)}
 @keyframes rpSign{0%{transform:scale(.88)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
 .ng-rps .rp-sign.pop .rp-med{animation:rpMed .32s cubic-bezier(.2,1.7,.4,1)}
 @keyframes rpMed{0%{transform:scale(.4) rotate(-25deg)}100%{transform:scale(1) rotate(0)}}
-.ng-rps .rp-sign.late::after{content:'시간 초과'; position:absolute; right:10px; top:50%; padding:4px 10px; border-radius:10px; border:3px solid #C42A35; color:#C42A35; background:#fff; font-family:var(--disp); font-size:18px; transform:translateY(-50%) rotate(-8deg); animation:rpStamp .25s cubic-bezier(.2,1.6,.4,1)}
+.ng-rps .rp-sign.late::after{content:'시간 초과'; position:absolute; right:12px; top:40%; padding:4px 10px; border-radius:10px; border:3px solid #C42A35; color:#C42A35; background:#fff; font-family:var(--disp); font-size:18px; transform:translateY(-50%) rotate(-8deg); animation:rpStamp .25s cubic-bezier(.2,1.6,.4,1)}
 /* 판단 창 막대(초록 → 노랑 → 빨강, 남은 0.4초부터 떨림) */
-.ng-rps .rp-win{flex:none; position:relative; height:12px; margin:8px 6px 0; border-radius:99px; background:rgba(26,15,69,.28); border:2px solid #1A0F45; overflow:hidden}
+.ng-rps .rp-win{position:absolute; left:14px; right:14px; bottom:9px; height:10px; border-radius:99px; background:rgba(26,15,69,.16); box-shadow:inset 0 0 0 1.5px rgba(26,15,69,.55); overflow:hidden}
+.ng-rps .rp-sign.wait .rp-win i{opacity:.35}
 .ng-rps .rp-win i{position:absolute; inset:0; transform-origin:0 50%; background:linear-gradient(180deg,#9BEFA8,#2FB463); will-change:transform}
 .ng-rps .rp-win.y i{background:linear-gradient(180deg,#FFE88A,#F5B400)}
 .ng-rps .rp-win.r i{background:linear-gradient(180deg,#FF9A9A,#E5484D)}
@@ -105,7 +136,7 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 @keyframes rpHurry{from{transform:translateX(-1.5px)}to{transform:translateX(1.5px)}}
 
 /* ---------- 내 손 버튼(엄지 자리, 큰 그림 + 글자) ---------- */
-.ng-rps .rp-btns{flex:none; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:12px 0 2px; perspective:600px}
+.ng-rps .rp-btns{flex:none; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:14px 0 2px; perspective:600px}
 .ng-rps .rp-b{position:relative; height:clamp(100px, 16.5vh, 142px); min-height:92px; padding:4px 2px 8px; border-radius:22px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; cursor:pointer;
   background:linear-gradient(180deg,var(--b1),var(--b2)); border:3px solid #1A0F45; box-shadow:inset 0 3px 0 rgba(255,255,255,.6), inset 0 -5px 0 rgba(26,15,69,.12), 0 5px 0 #1A0F45; color:#1A0F45; font:inherit;
   transition:transform .08s, box-shadow .08s, filter .15s, opacity .15s; -webkit-tap-highlight-color:transparent}
@@ -128,10 +159,10 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 body[data-mode="rps"] .fxfloat.rpf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#FFE45C; -webkit-text-stroke:5px #1A0F45}
 
 @media (max-width:370px){
-  .ng-rps .rp-sign{height:70px; gap:10px}
-  .ng-rps .rp-med{width:54px; height:54px}
-  .ng-rps .rp-tx b{font-size:29px}
-  .ng-rps .rp-sign.not .rp-tx b{font-size:27px}
+  .ng-rps .rp-sign{height:84px; gap:10px}
+  .ng-rps .rp-med{width:60px; height:60px}
+  .ng-rps .rp-tx b{font-size:32px}
+  .ng-rps .rp-sign.not .rp-tx b{font-size:28px}
   .ng-rps .rp-btns{gap:10px}
 }
 @media (max-height:700px){
@@ -139,6 +170,8 @@ body[data-mode="rps"] .fxfloat.rpf{font-family:var(--heavy); font-weight:400; fo
   .ng-rps .rp-b img{max-height:66px}
 }
 @media (prefers-reduced-motion: reduce){
-  .ng-rps .rp-opp.pump .rp-hand, .ng-rps .rp-opp.rv .rp-hand, .ng-rps .rp-burst, .ng-rps .rp-win.hurry, .ng-rps .rp-host.hop, .ng-rps .rp-sign.pop, .ng-rps .rp-sign.pop .rp-med{animation:none}
+  .ng-rps .rp-opp.pump .rp-hand, .ng-rps .rp-opp.rv .rp-hand, .ng-rps .rp-burst, .ng-rps .rp-ring, .ng-rps .rp-shd, .ng-rps .rp-opp .rp-hand, .ng-rps .rp-my img, .ng-rps .rp-clash, .ng-rps .rp-win.hurry, .ng-rps .rp-host.hop, .ng-rps .rp-sign.pop, .ng-rps .rp-sign.pop .rp-med{animation:none}
   .ng-rps .rp-opp.two .rp-hand.fl{transform:scaleX(-1)}
 }
+/* 두 손: 밀려남·으쓱은 생략(뒤집힌 손 모양 유지), 맞부딪힘 별만 기준 손 쪽에 */
+.ng-rps .rp-opp.two.hit .rp-hand, .ng-rps .rp-opp.two.won .rp-hand{animation:none}
