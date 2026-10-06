@@ -16,7 +16,7 @@ import http from 'node:http'; import fs from 'node:fs'; import path from 'node:p
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ARGS=process.argv.slice(2).filter(a=>!a.startsWith('--')).join(',').split(',').filter(Boolean);
 const HAS=g=>fs.existsSync(path.join(ROOT,'games',g,'game.json'));
-const GAMES=(ARGS.length?ARGS:'sudoku,link,match,merge,memory,block,nono,fox,ball,tower'.split(',')).filter(HAS);
+const GAMES=(ARGS.length?ARGS:'sudoku,link,match,merge,memory,block,nono,fox,ball'.split(',')).filter(HAS);
 const STRESS=process.argv.includes('--stress'), MULTI=!process.argv.includes('--no-multi'), ONLYM=process.argv.includes('--only-multi');
 const SHOT=process.env.SHOT_DIR||'/tmp';
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
@@ -41,7 +41,7 @@ function attach(ws,tag){const c={id:'p'+(++N)+'x'+Math.random().toString(36).sli
       if(DELAY[tag]) setTimeout(ap,DELAY[tag]); else ap();}});
   ws.onClose(()=>{for(const r of [...c.rooms.keys()])leave(c,r)});}
 const br=await chromium.launch(process.env.PW_CHROMIUM?{executablePath:process.env.PW_CHROMIUM}:{});
-const HELPED=['fox','sudoku','ball','tower','fleet','match','nono','block','memory','merge','link','mines','parking','hidden','spot','crossword','chosung','wordchain','omok','gostop'];
+const HELPED=['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','mines','parking','hidden','spot','crossword','chosung','wordchain','omok','gostop'];
 async function mk(tag){const ctx=await br.newContext({viewport:{width:390,height:844}});
   await ctx.routeWebSocket(/battle-production/,ws=>attach(ws,tag));
   await ctx.route(/function-bun|railway\.app\/api|fonts\.(googleapis|gstatic)\.com/,r=>r.abort());   /* 바깥 서버·글꼴은 막음(불러오기 멈춤 방지) */

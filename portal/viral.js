@@ -156,7 +156,7 @@ function showChallenge(o){
     <div class="mbtns"><button class="b2" id="chLater">나중에</button><button class="b1" id="chGo">${tried ? '도전하기(연습) ' + costTag() : '도전하기 · 무료'}</button></div>`);
   $('#modal').classList.add('celebrate'); sfx('fanfare');
   $('#chLater').onclick = () => { closeModal(); renderHome(); };
-  $('#chGo').onclick = () => { closeModal(); startGame(g, examLv(), { chal:{ n:o.n, s: same ? o.s : 0, same } }); };
+  $('#chGo').onclick = () => { closeModal(); startGame(g, examLv(), examOpt(g, { chal:{ n:o.n, s: same ? o.s : 0, same } })); };
 }
 function onArrive(o){
   if(!o) return false;
