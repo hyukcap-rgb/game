@@ -32,7 +32,7 @@ NG.thread = (() => {
     },
     twists:['flash', 'limit', 'bare', 'big'],
     twInfo:{
-      flash:{ name:'번개', desc:'판은 조금 쉽지만 제한 시간이 아주 짧아요. 손이 빨라야 해요!' },
+      flash:{ name:'빠른 판', desc:'판은 조금 쉽지만 제한 시간이 아주 짧아요. 손이 빨라야 해요!' },
       limit:{ name:'한 번에 꿰기', desc:'실 색을 바꿔 잡을 수 있는 횟수가 정해져 있어요(실 수 + 2번). 머릿속으로 길을 다 그리고 꿰어요.' },
       bare:{ name:'맨손', desc:'힌트 없이 오직 머리로 풀어요. (되돌리기·처음부터는 쓸 수 있어요)' },
       big:{ name:'큰 천', desc:'한 칸 더 큰 천! 단추도 많고 실도 길어요. 대신 시간은 넉넉해요.' }
@@ -268,7 +268,7 @@ NG.thread = (() => {
   function msg(html, cls){ const e = $('#thMsg'); if(!e) return; e.className = 'th-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>같은 단추끼리 실로 꿰어요</span>';
   }
@@ -504,7 +504,7 @@ NG.thread = (() => {
       ['실은 겹치지 않아요', '실은 가로·세로로만 가고 서로 엇갈리지 못해요. 다른 실 위로 지나가면 그 실이 잘려요(손을 떼기 전엔 되돌아와요).'],
       ['빈칸 없이 꽉 채우기', '모든 단추를 잇고 천의 칸을 남김없이 채우면 성공! 실 색을 바꿔 잡는 횟수가 단추 쌍 수와 같으면 완벽이에요.'],
       ['막히면 힌트', '💡힌트는 실 하나를 정답대로 꿰어 줘요. 대신 점수가 ' + HINT_PEN + '점 줄어요. 되돌리기·처음부터는 벌칙이 없어요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 구멍 헝겊·박음질 벽·색 구슬·나무 다리 같은 새 규칙과 번개·한 번에 꿰기·큰 천 같은 변주가 차례로 나와요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 구멍 헝겊·박음질 벽·색 구슬·나무 다리 같은 새 규칙과 빠른 판·한 번에 꿰기·큰 천 같은 변주가 차례로 나와요.']
     ],
     helpExtra(){ const m = G && G.id === 'thread' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['단추 상자', '헝겊 인형', '퀼트 이불', '털실 가게', '무대 의상'],
@@ -557,7 +557,7 @@ NG.thread = (() => {
           ${m.capMax ? `<div class="hchip th-cap" aria-label="실 바꾸기"><span class="hv"><b id="thMoves">0/${m.capMax}</b></span><em>실 바꾸기</em></div>` : ''}
           <div class="hchip time" id="thTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="thTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="th-rules" aria-label="켜진 규칙">${m.boss ? '<span class="th-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="th-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="th-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="th-rules" aria-label="켜진 규칙">${m.boss ? '<span class="th-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="th-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="th-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="th-barw" id="thBarWrap"><i id="thBar"></i></div>
         <div class="th-msg" id="thMsg"><span>단추를 다는 중…</span></div>
         <div class="th-wrap"><div class="th-frame"><div class="th-board in" id="thBoard" role="group" aria-label="색실 잇기 ${N}×${N} 천, 단추 ${m.P.K}쌍">
@@ -631,7 +631,7 @@ body[data-mode="thread"]{background:
 .ng-thread .th-ctl{margin-top:0; padding-top:14px}
 .ng-thread .th-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-thread .th-ctl .tool .cnt{font-style:normal}
-@media (max-width:370px){ .ng-thread .th-ctl .tool{font-size:14px; gap:3px} .ng-thread .th-msg b{font-size:18px} .ng-thread .th-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-thread .th-ctl .tool{font-size:14px; gap:3px} .ng-thread .th-msg b{font-size:18px} .ng-thread .th-chip{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-thread .th-btn, .ng-thread .th-board.in .th-btn, .ng-thread .th-bead.bad, .ng-thread .th-board.cleared .th-hem{animation:none} }
 `,
     sounds:{
