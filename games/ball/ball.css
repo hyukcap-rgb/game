@@ -10,22 +10,30 @@
 .hud-row > .hpause svg{width:20px; height:20px; display:block}
 .hud-row > .hpause:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .hchip .hlives{height:auto; padding:0; gap:2px; border:0; background:none}
-.sb.danger .sb-sh:not(.off) i{animation:sbPulse .7s ease-in-out infinite alternate}
-@keyframes sbPulse{to{transform:scale(1.25); color:#FF8A3D}}
+.sb.danger .sb-sh:not(.off) i{color:#FF8A3D}   /* 위험: 색만(계속 움직이는 효과 없음) */
 .sb-board{display:flex; justify-content:center}
-.sb-cv{display:block; touch-action:none; border-radius:18px; border:3px solid var(--outline); background:#20145A; box-shadow:0 0 0 2px rgba(255,255,255,.12), 0 5px 0 var(--outline2), 0 12px 24px rgba(8,2,30,.45)}
+.sb-cv{display:block; touch-action:none; border-radius:14px; border:3px solid #1A0F45; background:#211A4A; box-shadow:0 4px 0 var(--outline2)}   /* 판 안 빛 번짐 없음 */
 /* 아래 조작: 엄지 자리로. 아이템은 공용 .tool.item(개수 배지), 빠르게 보기는 .tool.toggle, 주 행동 '발사'만 핑크 */
 .sb .bfoot{display:flex; flex-direction:column; gap:10px; margin-top:auto; padding-top:4px}
 .sb-items{gap:6px}
-.sb-it, .sb-ff{padding:5px 2px; font-size:13.5px; line-height:1.1}
+.sb-it, .sb-ff{padding:5px 2px; font-size:13.5px; line-height:1.1; min-height:52px}
+/* 아이템마다 색·그림 다르게(노랑 하나로 같던 것 정리): 뚫는 구슬 빨강 · 긴 조준선 하늘 · 한 줄 올리기 초록 · 빠르게 보기 흰 토글 */
+.sb .tool.item.it-pierce{background:linear-gradient(180deg,#FFD9D6,#F59A94); color:#6B1414}
+.sb .tool.item.it-scope{background:linear-gradient(180deg,#DDF1FF,#8CCBF2); color:#0E3F66}
+.sb .tool.item.it-lift{background:linear-gradient(180deg,#DDF6D5,#93D58A); color:#174A12}
+.sb .tool.sb-ff{background:#FFFFFF; color:#1A0F45}
+.sb .tool.sb-ff[aria-pressed="true"]{background:linear-gradient(180deg,#A98BFF,#6C3CE0); color:#fff}
+.sb .tool.item .cnt{font-size:13px; background:#1A0F45}
 .sb-it span, .sb-ff span{white-space:nowrap}
 .sb-ff b{font-family:var(--heavy); font-weight:400}
-.sb-it.on{box-shadow:0 0 0 3px #FFE27A, 0 0 14px 3px rgba(255,226,122,.75), 0 3px 0 #1A0F45; transform:translateY(1px)}
-.sb-aim{display:grid; grid-template-columns:72px 1fr 72px; gap:8px}
-.sb-arr{height:56px; border-radius:15px; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 var(--outline2); touch-action:none}
-.sb-arr svg{width:24px; height:24px}
+.sb-it.on{box-shadow:0 0 0 3px #FFFFFF, 0 0 0 6px #1A0F45; transform:translateY(1px)}
+.sb-aim{display:grid; grid-template-columns:64px 1fr 64px; gap:8px}
+.sb-arr{width:64px; height:56px; border-radius:15px; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 var(--outline2); touch-action:none}
+.sb-arr svg{width:28px; height:28px}
 .sb-arr.press, .sb-arr:active:not(:disabled){transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
 .sb-arr:disabled{opacity:.5}
 .sb-go{height:56px; border-radius:16px; font-size:20px}
 .sb-go:disabled{filter:grayscale(.55); opacity:.75}
-@media (prefers-reduced-motion: reduce){ .sb.danger .sb-sh:not(.off) i{animation:none} }
+.sb-go.recall{background:linear-gradient(180deg,#FFFFFF,#E7DDFF); color:#1A0F45}   /* 모두 거두기 */
+.fxfloat.sb-combo{font:28px/1 var(--heavy); color:#FFE27A; -webkit-text-stroke:2px #1A0F45; paint-order:stroke}
+
