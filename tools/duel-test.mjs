@@ -658,4 +658,85 @@ const TURN3=ARGS.length?GAMES:['memory','wordchain'];
 if(MULTI&&TURN3.includes('memory')&&HAS('memory')){ console.log('— 카드 짝 3명 차례 대전 —'); await memoryTurn3(); }
 if(MULTI&&TURN3.includes('wordchain')&&HAS('wordchain')){ console.log('— 끝말잇기 3명 차례 대전 —'); await wordchainTurn3(); }
 
+/* ================= 3) 게임별 3명 대전(2단계 다인원, 게임 정의 그대로 duelMax 5) =================
+   여우·지뢰 = 경주 + 틀림 알림 · 삼총사 = 점수전(모두 끝까지) + 4연쇄 알림 + 1위 왕관 · 합치기 = 미니 화면 + 128 알림 + 결과 창 판 나란히.
+   화면: SHOT_DIR/duel3-<게임>-play.png · duel3-<게임>-result.png (390×844) */
+async function three(g){
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  await Promise.all(L.map(x=>x.pg.evaluate(g=>duelStart(g),g)));   /* 함께 찾기(앞 점검의 방이 남아 있어도 셋이 한 방에) */
+  const go=await goAll(L,30000), I=await info(L), n=I[0].pl.split(',').length;
+  const same=I.every(i=>i.seed===I[0].seed&&i.pl===I[0].pl), max=await L[0].pg.evaluate(g=>duelMaxOf(g),g);
+  ok(go&&same&&n===3&&max===5, `${g} 3명 모임: 최대 ${max}명 · 인원 ${n} · 같은 판=${same}`);
+  await w(3400);
+  const ui=await L[0].pg.evaluate(()=>({ui:G.duel.ui,chips:document.querySelectorAll('#dChips .dpchip').length,minis:document.querySelectorAll('#dMinis .dmini').length,svg:document.querySelectorAll('#dMinis .dm-board svg').length}));
+  return {L,ui};
+}
+const noteOf=x=>x.pg.evaluate(()=>(document.querySelector('#dNote')||{}).textContent||'');
+const resolveAll=async L=>(await Promise.all(L.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,15000)))).every(Boolean);
+const G3={
+  /* 경주 + 틀림 알림: B가 한 번 틀림 → A·C 큰 알림, B가 다 풀면 모두 끝 */
+  async race(g, bump, re){
+    const {L,ui}=await three(g);
+    ok(ui.ui==='chips'&&ui.chips===3,`${g} 3명 칩 줄 ${ui.chips}개`);
+    await L[1].pg.evaluate(bump); await w(1600);
+    const nt=await Promise.all([L[0],L[2]].map(noteOf));
+    ok(nt.every(t=>re.test(t)),`${g} 틀림 큰 알림 "${nt[0]}"`);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-play.png`});
+    await L[1].pg.evaluate(()=>finish(true));
+    const res=await resolveAll(L); await w(1300);
+    const rk=await ranksOf(L), win=await L[1].pg.evaluate(()=>G.duel.res.rank), cl=await bodyClean(L);
+    ok(res&&rk.every(x=>x===rk[0])&&win===1&&cl.every(Boolean),`${g} 3명 결과 순위 같음 · 1위=B · 문구 깨끗=${cl}`);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-result.png`});
+    ok(!errsOf(L).length,`${g} 오류 없음 `+errsOf(L).join(' | ')); await closeAll(L);
+  },
+  /* 점수전: 4연쇄 알림 · 모두 끝까지(먼저 끝낸 사람이 있어도 남은 사람은 계속) · 1위만 왕관 */
+  async match(){
+    const g='match', {L,ui}=await three(g);
+    ok(ui.ui==='chips'&&ui.chips===3,`${g} 3명 칩 줄 ${ui.chips}개`);
+    const lim=await L[0].pg.evaluate(()=>G.limit);
+    await L[1].pg.evaluate(()=>duelSend('combo',{n:4})); await w(1500);
+    const nt=await Promise.all([L[0],L[2]].map(noteOf));
+    ok(nt.every(t=>/4연쇄/.test(t))&&lim===150,`${g} 4연쇄 큰 알림 "${nt[0]}" · 대전 시간 ${lim}초`);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-play.png`});
+    const pts=[3000,1500,500];
+    await Promise.all(L.map((x,i)=>x.pg.evaluate(p=>{G.mt.E.pts+=p;},pts[i])));
+    await L[2].pg.evaluate(()=>finish(true)); await w(1500);
+    const still=await Promise.all([L[0],L[1]].map(x=>x.pg.evaluate(()=>!G.over)));
+    ok(still.every(Boolean),`${g} 한 명이 먼저 끝나도 나머지는 계속(모두 끝까지)`);
+    await L[1].pg.evaluate(()=>finish(true)); await w(400); await L[0].pg.evaluate(()=>finish(true));
+    const res=await resolveAll(L); await w(1400);
+    const rk=await ranksOf(L), my=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.res.rank)));
+    const crown=await Promise.all(L.map(x=>x.pg.evaluate(()=>({n:document.querySelectorAll('#modal .mtcrown').length,win:!!document.querySelector('#modal li.win .mtcrown')}))));
+    ok(res&&rk.every(x=>x===rk[0])&&my.join()==='1,2,3'&&crown.every(c=>c.n===1&&c.win),`${g} 점수 순위 ${my} · 1위 왕관 ${crown.map(c=>c.n).join(',')}`);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-result.png`});
+    ok(!errsOf(L).length,`${g} 오류 없음 `+errsOf(L).join(' | ')); await closeAll(L);
+  },
+  /* 합치기: 미니 화면(상대 2명 판) · 상대가 128 → 큰 알림 · 결과 창에 셋의 판 나란히 */
+  async merge(){
+    const g='merge', {L,ui}=await three(g);
+    await w(800);
+    const ui2=await L[0].pg.evaluate(()=>({minis:document.querySelectorAll('#dMinis .dmini').length,svg:document.querySelectorAll('#dMinis .dm-board svg text').length}));
+    ok(ui.ui==='mini'&&ui2.minis===2&&ui2.svg>0,`${g} 미니 화면 ${ui2.minis}칸 · 숫자 ${ui2.svg}개`);
+    await L[1].pg.evaluate(()=>NG.merge._set([64,8,4,2, 0,0,0,0, 0,0,0,0, 0,0,0,2])); await w(1500);
+    const n64=await noteOf(L[0]);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-play.png`});
+    await w(1800);
+    await L[1].pg.evaluate(()=>NG.merge._set([128,8,4,2, 0,0,0,0, 0,0,0,0, 0,0,0,2])); await w(600);
+    const n128=await noteOf(L[2]);
+    ok(/64 만들었어요/.test(n64)&&/128 만들었어요/.test(n128),`${g} 큰 알림 "${n64}" · "${n128}"`);
+    await L[1].pg.evaluate(()=>finish(true));
+    const res=await resolveAll(L); await w(1400);
+    const figs=await Promise.all(L.map(x=>x.pg.evaluate(()=>document.querySelectorAll('#modal .mgres figure').length)));
+    const rk=await ranksOf(L);
+    ok(res&&rk.every(x=>x===rk[0])&&figs.every(f=>f===3),`${g} 결과 창 판 나란히 ${figs.join(',')}개 · 순위 같음`);
+    await L[0].pg.screenshot({path:SHOT+`/duel3-${g}-result.png`});
+    ok(!errsOf(L).length,`${g} 오류 없음 `+errsOf(L).join(' | ')); await closeAll(L);
+  }
+};
+if(MULTI&&!ONLYW&&!ONLYS&&!ONLYT){
+  if(GAMES.includes('fox')) await G3.race('fox',()=>{G.mis=(G.mis||0)+1;},/여우를 잘못 놓았어요/);
+  if(GAMES.includes('mines')) await G3.race('mines',()=>{G.m.hits++;},/밤송이를 밟았어요/);
+  if(GAMES.includes('match')) await G3.match();
+  if(GAMES.includes('merge')) await G3.merge();
+}
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);

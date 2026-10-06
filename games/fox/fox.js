@@ -545,7 +545,7 @@ NG.fox = {
   /* 대전 전용 작은 판(WP10): 7×7, 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다. 대전 v3 엔진이 duelCfg를 직접 불러도 같은 값(duel:1 표시로 두 번 바꾸지 않음) */
   duelCfg(){ return { N:7, limit:120, duel:1 }; },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 4분 */
-  duelKind:'race',
+  duelKind:'race', duelMax:5,   /* 2~5명 경주(2단계) */
   init(cfg, rng){
     if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.fox.duelCfg(); G.cfg = cfg; G.limit = cfg.limit; }
     Object.assign(G, { N:cfg.N, rng, reg:null, cells:[], placed:0, earned:0, hints:FOX_ITEM_PER_GAME, autos:FOX_ITEM_PER_GAME, hist:[], hintUsed:0, combo:0, mis:0, fxLock:0 });
@@ -565,7 +565,17 @@ NG.fox = {
   helpExtra:() => foxHelpExtra(),
   bodyClass:'fxmode', noConfetti:true,
   duelPace:[80,.85],   /* 7×7 판: 컴퓨터 평균 80초 */
-  duelStat:{ unit:'마리', get:() => ({ v:G.placed || 0, t:G.N, mis:G.mis || 0 }) }   /* 대전은 기회 별이 없어 lf 대신 틀린 횟수(mis) */
+  duelStat:{ unit:'마리', get:() => { try{ foxDuelWatch(); }catch(_){} return { v:G.placed || 0, t:G.N, mis:G.mis || 0 }; } }   /* 대전은 기회 별이 없어 lf 대신 틀린 횟수(mis) */
 };
+/* 대전 v3(2~5명): 다른 사람의 틀린 횟수(mis)가 늘면 큰 알림 "토끼가 여우를 잘못 놓았어요"(사람·컴퓨터 모두, 보이기만). duelStat.get이 부를 때마다 확인 */
+function foxDuelWatch(){
+  const D = G && G.duel; if(!D || D.v !== 3 || !D.go || G.over || typeof duelNotify !== 'function') return;
+  const seen = D.fxMisSeen = D.fxMisSeen || {};
+  D.pl.forEach(pid => { const P = D.P[pid]; if(!P || P.me || P.left) return;
+    const m = +P.st.mis || 0, was = seen[pid]; seen[pid] = m;
+    if(was != null && m > was){ const w = (typeof duelShortNick === 'function' ? duelShortNick(P.nick) : String(P.nick || '').split(/\s+/).pop()) || '상대', c = w.charCodeAt(w.length - 1);
+      duelNotify(esc(w) + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? '이' : '가') + ' 여우를 잘못 놓았어요', { from:P, kind:'info' }); } });
+}
+
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.fox.scene = { kind:'stars', colors:['#FFFFFF','#FFE3B0','#CFC5FF'], density:.8 };

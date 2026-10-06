@@ -785,7 +785,7 @@ NG.nono = (() => {
     /* 대전 전용 작은 판(WP10): 7×7, 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
     duelCfg(){ return cfgFor(7, 120, { fill:.5, duel:1 }); },
     duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 4분 */
-    duelKind:'race',
+    duelKind:'race', duelMax:5,   /* 2~5명 경주(2단계) */
     init(cfg, rng){
       if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = cfgFor(7, 120, { fill:.5, duel:1 }); G.cfg = cfg; G.limit = cfg.limit; }
       const N = cfg.N || 10, t0 = performance.now();
@@ -1049,8 +1049,12 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-seg .tool.nope{animation:nnnope .3s}
 .ng-nono .nn-check svg{width:24px; height:24px}
 .ng-nono .nn-check.ready{background:linear-gradient(180deg,#D8F8E8,#3EC9A5); color:#0D4A38; animation:nnready 1.1s ease-in-out infinite}
-@media (max-width:370px){ .ng-nono .nn-seg .tool{font-size:15px; gap:4px} .ng-nono .nn-rule{font-size:12.5px; padding:5px 9px} }
+@media (max-width:370px){ .ng-nono .nn-seg .tool{font-size:15px; gap:4px} .ng-nono .nn-rule{font-size:13px; padding:5px 8px} }
 @keyframes nnready{50%{transform:scale(1.08)}}
+#modal .nnres{display:flex; flex-direction:column; align-items:center; gap:4px; margin:10px auto 2px}
+#modal .nnres svg{display:block; animation:nnresIn .5s cubic-bezier(.2,1.5,.4,1)}
+#modal .nnres span{font-family:var(--disp); font-size:13px; color:#6A5884}
+@keyframes nnresIn{0%{transform:scale(.6) rotate(-6deg); opacity:0}100%{transform:none; opacity:1}}
 @media (prefers-reduced-motion: reduce){ .ng-nono .nn-c, .ng-nono .nn-c::before, .ng-nono .nn-cl{animation:none!important; transition:none!important} }
 `,
     sounds:{
@@ -1068,6 +1072,20 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.nono, { duelPace:[90,.85], duelStat:{ unit:'칸', get:() => ({ v:G.found, t:G.total, mis:G.miss || 0 }) } });   /* 7×7 판: 컴퓨터 평균 90초. 대전은 기회가 없어 lf 대신 틀린 횟수(mis) */
+/* 대전 결과 창(#modal)이 뜨면 순위 아래에 이번 판의 완성 그림을 작게 끼워 넣음(보이기만, 엔진은 그대로) */
+function nonoResWatch(){
+  const me = G, m = document.getElementById('modal'); if(!m || typeof MutationObserver === 'undefined' || me.nnRes) return;
+  const ob = me.nnRes = new MutationObserver(() => { try{
+    if(G !== me){ ob.disconnect(); return; }
+    const D = G.duel; if(!D || !D.resolved || m.querySelector('.nnres')) return;
+    const at = m.querySelector('.dres-list, .dres'); if(!at || !G.sol || !G.nnCol) return;
+    const N = G.N, c = Math.max(6, Math.floor(84 / N)), W = c * N; let g = '';
+    for(let i = 0; i < N * N; i++) if(G.sol[i]) g += `<rect x="${(i % N) * c}" y="${Math.floor(i / N) * c}" width="${c}" height="${c}" fill="${G.nnCol[i]}"/>`;
+    at.insertAdjacentHTML('afterend', `<div class="nnres"><svg viewBox="-2 -2 ${W + 4} ${W + 4}" width="${W + 4}" height="${W + 4}" role="img" aria-label="이번 판 완성 그림"><rect x="-2" y="-2" width="${W + 4}" height="${W + 4}" rx="6" fill="#FFFDF6" stroke="#1A0F45" stroke-width="2"/>${g}</svg><span>이번 판 그림</span></div>`);
+    ob.disconnect();
+  }catch(_){ ob.disconnect(); } });
+  ob.observe(m, { childList:true });
+}
+Object.assign(NG.nono, { duelPace:[90,.85], duelStat:{ unit:'칸', get:() => { if(G.duel && G.duel.v === 3) nonoResWatch(); return { v:G.found, t:G.total, mis:G.miss || 0 }; } } });   /* 7×7 판: 컴퓨터 평균 90초. 대전은 기회가 없어 lf 대신 틀린 횟수(mis) */
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.nono.scene = { kind:'shapes', colors:['#8E6BD1','#5B8DEF','#F0368A'], density:1, alpha:.9 };

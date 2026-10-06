@@ -634,6 +634,7 @@ NG.merge = (() => {
     const iv = setInterval(() => {
       if(!G || G.M !== M){ clearInterval(iv); return; }
       if(!G.duel || G.over || !M.limit) return;
+      try{ if(typeof mergeDuelTick === 'function') mergeDuelTick(); }catch(_){}   /* 다른 사람이 64·128을 만들면 큰 알림(보이기만) */
       const rem = M.limit - elapsed(), e = document.getElementById('mTime');
       if(e){ e.textContent = mmss(Math.max(0, Math.ceil(rem))); e.closest('.hchip').classList.toggle('warn', rem <= 20); }
       if(rem <= 0 && !M.lock){ M.lock = true; stuck('time'); }
@@ -662,6 +663,29 @@ NG.merge = (() => {
         ${t(8, 34, 28, 1024)}${t(126, 34, 26, 64)}<path d="M139 16l2.2 5.8 5.8 2.2-5.8 2.2-2.2 5.8-2.2-5.8-5.8-2.2 5.8-2.2z" fill="#FFF3A8" stroke="#1A0F45" stroke-width="1.5" stroke-linejoin="round"/><path d="M22 76l1.4 3.6 3.6 1.4-3.6 1.4-1.4 3.6-1.4-3.6-3.6-1.4 3.6-1.4z" fill="#fff"/></svg>`;
     },
     /* 도움말 3줄(세대별 테스트: 4번 카드 삭제) */
+    /* 도움말 v2(WP3 공용 도움말): 움직이는 그림 1장 + 3줄. 그림 = 오른쪽으로 밀면 2와 2가 미끄러져 4가 됨 */
+    howto:{
+      pic(){
+        const S = 52, G0 = 6, X = 160 - (S * 4 + G0 * 3) / 2, Y = 54, dur = '3s';
+        const cx = c => X + c * (S + G0);
+        const tile = (v, x) => { const c = tcol(v), fs = S * fsz(v) * 1.02;
+          return `<rect x="${x}" y="${Y}" width="${S}" height="${S}" rx="12" fill="${c[0]}" stroke="#1A0F45" stroke-width="2.5"/><text x="${x + S / 2}" y="${Y + S / 2 + fs * .36}" text-anchor="middle" font-size="${fs}" font-family="Black Han Sans, Jua, sans-serif" fill="#fff" stroke="${v <= 4 ? '#B8651E' : '#1A0F45'}" stroke-width="3" paint-order="stroke">${v}</text>`; };
+        const slide = (dx, kt) => `<animateTransform attributeName="transform" type="translate" values="0 0;0 0;${dx} 0;${dx} 0;0 0" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+        const show = (vals, kt) => `<animate attributeName="opacity" values="${vals}" keyTimes="${kt}" dur="${dur}" repeatCount="indefinite"/>`;
+        let slots = ''; for(let c = 0; c < 4; c++) slots += `<rect x="${cx(c)}" y="${Y}" width="${S}" height="${S}" rx="12" fill="#2A1B6E"/>`;
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#FFE9D2"/>
+          <rect x="${X - 8}" y="${Y - 8}" width="${S * 4 + G0 * 3 + 16}" height="${S + 16}" rx="16" fill="#1B1150" stroke="#1A0F45" stroke-width="3"/>${slots}
+          <g>${show('1;1;0;0;1', '0;.42;.44;.96;1')}<g>${slide(cx(3) - cx(0), '0;.2;.42;.96;1')}${tile(2, cx(0))}</g><g>${slide(cx(3) - cx(1), '0;.2;.42;.96;1')}${tile(2, cx(1))}</g></g>
+          <g opacity="0">${show('0;0;1;1;0', '0;.42;.44;.92;1')}<g transform-origin="${cx(3) + S / 2} ${Y + S / 2}"><animateTransform attributeName="transform" type="scale" values="1;1;1.25;1;1" keyTimes="0;.42;.5;.58;1" dur="${dur}" repeatCount="indefinite"/>${tile(4, cx(3))}</g></g>
+          <g>${show('0;1;1;0;0', '0;.06;.36;.44;1')}<path d="M${X + 20} 34h120" stroke="#F2711C" stroke-width="6" stroke-linecap="round"/><path d="M${X + 132} 24l14 10-14 10z" fill="#F2711C"/></g>
+          <text x="160" y="150" text-anchor="middle" font-family="Jua,sans-serif" font-size="17" fill="#3A2261">밀면 끝까지 미끄러지고</text>
+          <text x="160" y="171" text-anchor="middle" font-family="Jua,sans-serif" font-size="15" fill="#9A3A00">같은 숫자는 부딪혀 하나로 합쳐져요</text></svg>`;
+      },
+      lines:['밀면 타일이 끝까지 미끄러져요', '같은 숫자가 부딪히면 합쳐져요', '목표를 이동 안에 만들면 성공'],
+      more:[['밀기', '판을 손가락으로 밀거나 키보드 화살표를 눌러요. 밀 때마다 빈칸에 2나 4가 하나 새로 나와요.'],
+        ['점수', '남긴 이동이 많을수록 점수가 높아요. 되돌리기는 판에 한 번(대전·맨손 판은 없음).'],
+        ['대전', '같은 판·같은 새 타일로 128을 먼저 만들면 1등이에요. 2분이 지나면 가장 큰 타일로 순위를 매겨요.']]
+    },
     help:[['밀어서 모두 움직여요', '밀면 타일이 끝까지 미끄러져요. 키보드 화살표도 돼요.'],
       ['같은 숫자는 하나로', '같은 숫자가 부딪히면 합쳐져 두 배가 돼요.'],
       ['목표를 만들면 성공', '목표를 이동 안에 만들면 성공이에요. 남긴 이동이 많을수록 점수가 높아요.']],
@@ -932,6 +956,20 @@ body[data-mode="merge"] .fxfloat.mgf.unl{color:#FFD84A; font-size:20px}
 body[data-mode="merge"] .fxfloat.mgf.ice{color:#BFE6FF; font-size:20px}
 body[data-mode="merge"] .fxfloat.mgf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#fff; -webkit-text-stroke:5px #1A0F45}
 body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
+/* 대전 미니 화면(4×4 숫자, 칸 약 13px): 공용 상대 카드(72×64)를 이 게임에서만 조금 높게 */
+/* 공용 base.css의 아이콘용 .mini(19×19)가 대전 막대 class "mini"에도 걸려 막대가 19px로 줄어듦 → 이 게임에서 되돌림(공용 수정은 WP1에 보고) */
+body[data-mode="merge"] .duelbar.v3.mini{width:auto; height:auto; border-radius:0; background:none; color:inherit}
+body[data-mode="merge"] .duelbar.mini .dmini{height:82px}
+body[data-mode="merge"] .duelbar.mini .dmini .dm-board{left:10px; right:4px; top:3px; bottom:auto; height:55px; display:grid; place-items:center}
+body[data-mode="merge"] .duelbar.mini .dmini .dm-board svg{display:block; width:55px; height:55px}
+body[data-mode="merge"] .duelbar.mini .dmini .dm-val{bottom:2px}
+/* 대전 결과 창: 모두의 끝 판 나란히 */
+#modal .mgres{display:flex; flex-wrap:wrap; justify-content:center; gap:8px 10px; margin:10px 0 4px}
+#modal .mgres figure{margin:0; display:grid; justify-items:center; gap:3px; padding:6px 6px 4px; border-radius:14px; background:#fff; border:2.5px solid var(--paper-line, #E6DCF5); border-top:5px solid var(--sc, #F0368A)}
+#modal .mgres figure.me{border-color:#F0368A; border-top-color:#F0368A}
+#modal .mgres figure.win{background:linear-gradient(180deg,#FFF6C8,#FFE08A); border-color:#E0A21C}
+#modal .mgres svg{display:block; width:60px; height:60px}
+#modal .mgres figcaption{font-family:var(--disp); font-size:13px; line-height:1.2; color:var(--ink, #1A0F45); max-width:76px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 @media (max-width:370px){ .ng-merge{--gap:7px} .ng-merge .mhud .hchip b{font-size:18px} .ng-merge .mhud .hchip{padding:4px 3px} .ng-merge .mtip{font-size:13px} }
 @media (prefers-reduced-motion: reduce){ .ng-merge .mt{transition-duration:60ms} .ng-merge .v512::after, .ng-merge .v1024::after, .ng-merge .v2048::after, .ng-merge .msb.ok svg{animation:none} }
 `,
@@ -957,7 +995,7 @@ body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
       const g = simGame(cfg, rng, bot); return { win:g.win, score:g.win ? g.score : 0, moves:g.moves };
     },
     /* ---- 테스트용 ---- */
-    _core:{ slideV, stepV, hitIce, goalV, canMoveV, aiMove, evalV, valsOf, PAR, parOf, LINES, geo, initV, simGame, rankMoves, slideT, scoreOf, isIce, mkIce },
+    _core:{ slideV, stepV, hitIce, goalV, canMoveV, aiMove, evalV, valsOf, PAR, parOf, LINES, geo, initV, simGame, rankMoves, slideT, scoreOf, isIce, mkIce, tcol, fsz },
     _tune:{ soloCfg, goalsOf, GOALS, wantRate, estPar, starCut, tuneOf, DAILY, DUEL, OLD_LEVELS, dailyCfg, goalText, NEW_FROM },
     _move(d){ return doMove(d); },
     _undo(){ undo(); },
@@ -972,22 +1010,74 @@ body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
 /* @@NG_MODULES_END@@ */
 
 
-/* 대전(1:1 경주, 세대별 테스트 2026-10-06): 같은 판·같은 새 타일 수열로 128 먼저, 2분(느긋하게 4분), 되돌리기 없음.
-   duelKind·duelMax·duelCfg·duelSlow·duelRank·duelMini는 대전 v3(WP1) 선택 항목 — 지금 엔진은 duelPace·duelStat·duelHow만 읽고, 판 설정은 init이 바꾼다 */
+/* 대전(대전 v3 경주, 2~5명, 세대별 테스트 2026-10-06): 같은 판·같은 새 타일 수열로 128 먼저, 2분(느긋하게 4분), 되돌리기 없음.
+   2단계(다인원): duelMax 5 · 미니 화면 4×4 숫자 · 다른 사람이 64·128을 만들면 큰 알림 · 결과 창에 모두의 끝 판을 나란히 */
+/* 미니 판 그림(SVG): s = duelMini.get()의 글자열(칸마다 log2 값 36진수, '.' 빈칸, '#' 막힌 칸) */
+function mergeBoardSvg(s, px){
+  s = String(s || ''); const n = s.length === 9 ? 3 : 4, gp = Math.max(1, Math.round(px / 40)), c = (px - gp * (n + 1)) / n, C = NG.merge._core;
+  let g = `<rect width="${px}" height="${px}" rx="${Math.round(px / 9)}" fill="#1B1150"/>`;
+  [...s.padEnd(n * n, '.')].slice(0, n * n).forEach((ch, i) => {
+    const x = gp + (i % n) * (c + gp), y = gp + Math.floor(i / n) * (c + gp);
+    if(ch === '.'){ g += `<rect x="${x}" y="${y}" width="${c}" height="${c}" rx="${c * .2}" fill="#2E2178"/>`; return; }
+    if(ch === '#'){ g += `<rect x="${x}" y="${y}" width="${c}" height="${c}" rx="${c * .2}" fill="#9890B6"/>`; return; }
+    const v = Math.pow(2, parseInt(ch, 36) || 1), col = C.tcol(v), fs = c * C.fsz(v) * 1.15;
+    g += `<rect x="${x}" y="${y}" width="${c}" height="${c}" rx="${c * .2}" fill="${col[0]}"/><text x="${x + c / 2}" y="${y + c / 2 + fs * .36}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-family="Black Han Sans, Jua, sans-serif" fill="#fff" stroke="${v <= 4 ? '#B8651E' : '#1A0F45'}" stroke-width="${(c * .09).toFixed(1)}" paint-order="stroke">${v}</text>`;
+  });
+  return `<svg viewBox="0 0 ${px} ${px}" width="${px}" height="${px}" aria-hidden="true">${g}</svg>`;
+}
+/* 컴퓨터 상대는 판이 없어서, 지금 가장 큰 타일(v)로 그럴듯한 판을 그려 보여 줌(보이기만, 씨앗 난수) */
+function mergeFakeBoard(v, seed){
+  const r = mulberry(seedFrom(String(seed || '') + ':mg:' + v)), a = Array(16).fill('.'), snake = [0, 1, 2, 3, 7, 6, 5, 4, 8, 9, 10, 11, 15, 14, 13, 12];
+  let k = Math.max(1, Math.round(Math.log2(Math.max(2, v || 2)))), i = 0;
+  a[snake[i++]] = k.toString(36);
+  for(let x = k - 1; x >= 1 && i < 16; x--) if(r() < .7) a[snake[i++]] = x.toString(36);
+  for(; i < 16; i++) if(r() < .45) a[snake[i]] = (r() < .8 ? 1 : 2).toString(36);
+  return a.join('');
+}
+const mergeNick = n => (typeof duelShortNick === 'function' ? duelShortNick(n) : String(n || '상대').split(/\s+/).pop()) || '상대';
+/* 대전 시계(merge.js duelClock)가 0.25초마다 부름: 다른 사람의 가장 큰 타일이 64·128을 넘으면 큰 알림(사람·컴퓨터 모두) */
+function mergeDuelTick(){
+  const D = G && G.duel; if(!D || D.v !== 3 || !D.go || G.over || typeof duelNotify !== 'function') return;
+  const seen = D.mgSeen = D.mgSeen || {};
+  D.pl.forEach(pid => {
+    const P = D.P[pid]; if(!P || P.me || P.left) return;
+    if(P.ai && P.st.v) P.mv = mergeFakeBoard(P.st.v, D.seed + pid);   /* 컴퓨터 미니 판(보이기만) */
+    const v = +P.st.v || 0, was = seen[pid]; if(was == null){ seen[pid] = v; return; }
+    if(v <= was) return; seen[pid] = v;
+    if(v >= 128 && was < 128) duelNotify(`${esc(mergeNick(P.nick))} 128 만들었어요!`, { from:P, kind:'bad', force:true, ms:1800 });
+    else if(v >= 64 && was < 64) duelNotify(`${esc(mergeNick(P.nick))} 64 만들었어요`, { from:P, kind:'hot' });
+  });
+}
+/* 결과 창(사이트·모듈 공용 #modal)이 뜨면 순위 목록 아래에 모두의 끝 판을 끼워 넣음. 엔진(core)은 그대로 */
+function mergeResWatch(){
+  const me = G, m = document.getElementById('modal'); if(!m || typeof MutationObserver === 'undefined' || me.mgRes) return;
+  const ob = me.mgRes = new MutationObserver(() => { try{
+    if(G !== me){ ob.disconnect(); return; }
+    const D = G.duel; if(!D || !D.resolved || !D.res || m.querySelector('.mgres')) return;
+    const at = m.querySelector('.dres-list, .dres'); if(!at) return;
+    const mine = NG.merge.duelMini.get();
+    const figs = D.res.rows.slice(0, 5).map(x => { const P = D.P[x.pid] || {};
+      const s = x.me ? mine : (P.mv || mergeFakeBoard(x.v || (P.st && P.st.v) || 2, D.seed + x.pid));
+      return `<figure class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}" style="--sc:${x.col}">${mergeBoardSvg(s, 60)}<figcaption>${x.rank}위 ${x.me ? '나' : esc(mergeNick(x.nick))}</figcaption></figure>`; }).join('');
+    at.insertAdjacentHTML('afterend', `<div class="mgres" aria-label="모두의 끝 판">${figs}</div>`);
+    ob.disconnect();
+  }catch(_){ ob.disconnect(); } });
+  ob.observe(m, { childList:true });
+}
 Object.assign(NG.merge, {
   duelPace:[90, .6],
-  duelStat:{ unit:'', tile:true, get:() => ({ v:G.M.best, t:G.M.target, mis:G.M.mis || 0, p:G.M.pts }) },
+  duelStat:{ unit:'', tile:true, get:() => { if(G.duel && G.duel.v === 3) mergeResWatch(); return { v:G.M.best, t:G.M.target, mis:G.M.mis || 0, p:G.M.pts }; } },
   duelHow:'같은 판에서 128을 먼저 만들면 승리 · 2분',
-  duelKind:'race', duelMax:2,
-  duelCfg(o){ return Object.assign({}, NG.merge._tune.DUEL, o && o.pace === 's' ? { limit:240 } : {}); },
+  duelKind:'race', duelMax:5,
+  /* 대전 판: 128 먼저 · 2분. 느긋하게(4분)는 엔진이 duelSlow로 바꿈(여기서 pace를 보면 두 번 늘어남) */
+  duelCfg(){ return Object.assign({}, NG.merge._tune.DUEL); },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || 120) * 2 }); },
   /* 순위: 128 먼저(ok·ft) → 가장 큰 타일(v) → 합친 값 합(p) → 실수(mis) 적은 순 */
   duelRank(a, b){ return (b.ok ? 1 : 0) - (a.ok ? 1 : 0) || (a.ok && b.ok ? (a.ft || 0) - (b.ft || 0) : 0) || (b.v || 0) - (a.v || 0) || (b.p || 0) - (a.p || 0) || (a.mis || 0) - (b.mis || 0); },
-  /* 미니 화면(72×56): 상대 판 4×4 숫자 색 칸 */
-  duelMini:{ w:72, h:56,
+  /* 미니 화면: 상대 판 4×4 숫자(칸 약 13px). 컴퓨터는 가장 큰 타일로 그린 판 */
+  duelMini:{ w:55, h:55,
     get:() => NG.merge._core.valsOf(G.M.grid).map(x => x > 0 ? Math.round(Math.log2(x)).toString(36) : x === 0 ? '.' : '#').join(''),
-    draw(el, s){ if(!el) return; s = String(s || ''); const n = s.length === 9 ? 3 : 4, C = ['#1B1150', '#FFE9C2', '#FFDD5C', '#FFA53A', '#FF7A45', '#FF4F6A', '#F0368A', '#C040E8', '#7C4DFF', '#FFC93C', '#FFA820', '#26D1B8'];
-      el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${n},1fr);gap:2px;width:56px;height:56px;margin:auto">${[...s].map(ch => { const k = ch === '.' ? 0 : ch === '#' ? -1 : parseInt(ch, 36); return `<i style="border-radius:3px;background:${k < 0 ? '#9890B6' : C[Math.min(11, k)]}"></i>`; }).join('')}</div>`; } }
+    draw(el, s, p){ if(!el) return; if(!s && p && p.st && p.st.v) s = mergeFakeBoard(p.st.v, (G.duel && G.duel.seed) + p.pid); el.innerHTML = mergeBoardSvg(s, 55); } }
 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.merge.scene = { kind:'motes', colors:['#FFD27A','#FF9AC0','#FFFFFF'], density:1 };

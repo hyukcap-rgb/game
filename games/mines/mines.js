@@ -524,7 +524,7 @@ NG.mines = (() => {
     /* 대전 전용 작은 판(WP10): 8×8 · 밤송이 10개 · 2분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
     duelCfg(){ return { cols:8, rows:8, mines:10, limit:120, hints:2, duel:1 }; },
     duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 4분 */
-    duelKind:'race',
+    duelKind:'race', duelMax:5,   /* 2~5명 경주(2단계). 상대 판 미니 화면은 넣지 않음(열린 칸이 힌트가 됨) */
     init(cfg, rng){
       if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.mines.duelCfg(); G.cfg = cfg; }
       const b = deal(cfg, rng);
@@ -677,7 +677,7 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-chip.mj{background:#FFF0DC; color:#A04A10}
 .ng-mines .mn-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-mines .mn-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-@media (max-width:370px){ .ng-mines .mn-msg b{font-size:18px} .ng-mines .mn-chip{font-size:12px; padding:4px 7px} }
+@media (max-width:370px){ .ng-mines .mn-msg b{font-size:18px} .ng-mines .mn-chip{font-size:13px; padding:4px 6px} }
 @media (prefers-reduced-motion: reduce){ .ng-mines .mn-cell.pop, .ng-mines .mn-board.in .mn-cell, .ng-mines .mn-cell.hint, .ng-mines .mn-cell.plant > svg{animation:none} }
 `,
     sounds:{
@@ -698,6 +698,15 @@ body[data-mode="mines"]{background:
 })();
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat = 열린 안전 칸) */
-Object.assign(NG.mines, { duelPace:[75, .85], duelStat:{ unit:'칸', get:() => ({ v:G.m.opened, t:G.m.safeTotal, mis:G.m.hits }) }, duelHow:'같은 밤숲, 누가 먼저 다 열까?' });   /* 8×8 판: 컴퓨터 평균 75초. mis = 밟은 밤송이 수 */
+/* 대전 v3(2~5명): 다른 사람의 틀린 횟수(mis)가 늘면 큰 알림 "토끼가 밤송이를 밟았어요"(사람·컴퓨터 모두, 보이기만). duelStat.get이 부를 때마다 확인 */
+function minesDuelWatch(){
+  const D = G && G.duel; if(!D || D.v !== 3 || !D.go || G.over || typeof duelNotify !== 'function') return;
+  const seen = D.mnMisSeen = D.mnMisSeen || {};
+  D.pl.forEach(pid => { const P = D.P[pid]; if(!P || P.me || P.left) return;
+    const m = +P.st.mis || 0, was = seen[pid]; seen[pid] = m;
+    if(was != null && m > was){ const w = (typeof duelShortNick === 'function' ? duelShortNick(P.nick) : String(P.nick || '').split(/\s+/).pop()) || '상대', c = w.charCodeAt(w.length - 1);
+      duelNotify(esc(w) + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? '이' : '가') + ' 밤송이를 밟았어요', { from:P, kind:'info' }); } });
+}
+Object.assign(NG.mines, { duelPace:[75, .85], duelStat:{ unit:'칸', get:() => { try{ minesDuelWatch(); }catch(_){} return { v:G.m.opened, t:G.m.safeTotal, mis:G.m.hits }; } }, duelHow:'같은 밤숲, 누가 먼저 다 열까?' });   /* 8×8 판: 컴퓨터 평균 75초. mis = 밟은 밤송이 수 */
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.mines.scene = { kind:'petals', colors:['#FFB45A', '#E8742A', '#FFD27A', '#C9541C'], density:.8 };
