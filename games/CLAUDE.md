@@ -85,7 +85,8 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelMini` | | 미니 화면 `{ get:() => 글자열(400B 이하), draw:(el, s, p) => void }`. 있으면 칩 줄 대신 상대 카드(72×64, 그림 칸 약 60×42) |
 | `duelAi(rng, o)` | 엔진 사람 흉내 | 게임 전용 컴퓨터 결과 `{ ok, T(초), sc, fail(못 끝낼 때 멈추는 진행 0~1), pts? }`. `o = { pace, cfg }`. `T`를 getter로 주면 예전처럼 연속으로 움직임(오목) |
 | `duelAvoidKey()` | | 이번 판을 나타내는 열쇠(예: 숨은그림 장면 이름). 엔진이 최근 3개를 저장해 다음 대전 `avoid`로 넘김(빠른 대전은 방장 목록을 모두가 씀) |
-| `duelLaunch(o)` | | 자기 방식 대전(함대·고스톱·끝말잇기). 지금은 `o = { pace }`를 받음(무시해도 됨) |
+| `duelLaunch(o)` | | 자기 방식 대전(함대·고스톱·끝말잇기). 빠른 대전은 `o = { pace }`. 사이트 대전 방에서는 `o = { room:중계 방 이름('fl-d3-r-<코드>-<판>'), pl:[참가자 기기 표식], me, host:내가 이번 판 방장인지, seed, again, pace, n, lv:난이도, nick, info:방 정보(G.duel.room에 그대로 넣으면 결과 창이 방 버튼·보상 난이도를 씀), onFail(why) }` — 받으면 짝 찾기 없이 그 방에서 pl 사람끼리 시작 |
+| `duelRoom` | `false` | `duelLaunch` 게임이 위 방 정보(o.room)를 받아 시작할 수 있으면 `true` → 대전 방 목록·방 만들기에 나옴(없으면 빠른 대전만, 예: 스노우볼) |
 | `duelPlace` | `'bar'` | `'top'`이면 막대·칩 줄을 늘 맨 위에(상단 바 안에 넣지 않음) |
 
 **엔진이 주는 함수(전역)**: `duelPlayers()`(자리 순서 `[{ pid, seat, nick, me, ai, col, shape, st, left, gone, rank }]`, 색·모양은 내 화면 기준: 나는 늘 분홍 원) · `duelMe()` · `duelIsHost()` ·

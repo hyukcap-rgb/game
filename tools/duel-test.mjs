@@ -68,7 +68,7 @@ if(!ONLYM) for(const g of GAMES){
   await A.pg.evaluate(()=>finish(true)); await w(1500); await Bp.pg.evaluate(()=>finish(true));
   const res=await Promise.all([A,Bp].map(x=>until(x,()=>G&&G.duel&&G.duel.resolved,null,15000)));
   await w(1200);   /* 결과 창이 뜨는 시간 */
-  const sc=await Promise.all([A,Bp].map(x=>x.pg.evaluate(()=>({me:G.duel.me&&G.duel.me.sc,opp:G.duel.opp&&G.duel.opp.sc,txt:(document.querySelector('#modal h3')||{}).textContent||'',body:(document.querySelector('#modal')||{}).textContent||'',rank:G.duel.res&&G.duel.res.rank}))));
+  const sc=await Promise.all([A,Bp].map(x=>x.pg.evaluate(()=>({me:G.duel.me&&G.duel.me.sc,opp:G.duel.opp&&G.duel.opp.sc,txt:(h=>!h?'':h.dataset.r?({w:'승리!',l:'패배',d:'무승부'})[h.dataset.r]:h.textContent)(document.querySelector('#modal h3')),body:(document.querySelector('#modal')||{}).textContent||'',rank:G.duel.res&&G.duel.res.rank}))));
   const r=sc.map(s=>s.txt.trim()||'?');
   const clean=sc.every(s=>!/실패|진행 0%/.test(s.body));
   const good=okGo.every(Boolean)&&res.every(Boolean)&&st[0].mode==='pvp'&&st[1].mode==='pvp'&&st[0].seed===st[1].seed&&/^fl-d3-/.test(st[0].seed)&&Math.abs(st[0].start-st[1].start)<400&&sc[0].me===sc[1].opp&&sc[1].me===sc[0].opp&&!A.errs.length&&!Bp.errs.length

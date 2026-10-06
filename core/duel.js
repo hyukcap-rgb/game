@@ -236,7 +236,7 @@ function duelMakeAI(id, myNick, pace){
     startAt:Date.now() + (store.get('hp:help:' + id, false) ? 2000 : 3500) });
 }
 /* 상대가 이미 정해진 대전(대전 방·친구와 같이 하기): 상대 찾기 없이 같은 이름의 대전 방에 들어가 같은 순간에 시작.
-   o = { nick, room(결과 창이 쓰는 방 정보), onFail(why), n:모일 인원(기본 2, 2~5), seed, round, pace }. 돌려주는 값의 cancel()로 그만둠.
+   o = { nick, room(결과 창이 쓰는 방 정보), onFail(why), n:모일 인원(기본 2, 2~5), seed, round, pace, avoid(방장이 보낸 최근 본 판, 모두 같게) }. 돌려주는 값의 cancel()로 그만둠.
    씨앗 = o.seed 또는 '방이름:날짜'(대전 방은 판마다 방 이름이 바뀜). 방장 = 들어온 사람 중 peer가 가장 작은 사람. */
 function duelPrivate(id, lv, name, o = {}){
   const H = { dead:false, cancel(){ H.dead = true; clearInterval(H.iv); if(H.nr) try{ H.nr.leave(); }catch(_){} } };
@@ -257,7 +257,7 @@ function duelPrivate(id, lv, name, o = {}){
       clearInterval(H.iv);
       mem.sort((a, b) => a.peer < b.peer ? -1 : a.peer > b.peer ? 1 : 0);
       const host = mem[0], pl = mem.slice(0, 5).map(m => ({ pid:m.pid, nick:m.me ? nick : m.nick, peer:m.peer }));
-      const duel = duelMake({ id, mode:'pvp', seed:o.seed || (name + ':' + dayKey()), R:name, r:+o.round || 1, nr, pl, myPid:pid, myNick:nick, pace, lv, room:o.room || null, avoid:[] });
+      const duel = duelMake({ id, mode:'pvp', seed:o.seed || (name + ':' + dayKey()), R:name, r:+o.round || 1, nr, pl, myPid:pid, myNick:nick, pace, lv, room:o.room || null, avoid:Array.isArray(o.avoid) ? o.avoid.slice(0, 3).map(x => String(x).slice(0, 40)) : [] });
       if(host.me){
         const srv = netNow() + (mem.some(m => m.nw) || !store.get('hp:help:' + id, false) ? 4000 : 2500);
         duel.startAt = duelLocalStart(srv); nr.presence({ go:srv, pl:pl.map(x => x.pid) }).catch(() => {});

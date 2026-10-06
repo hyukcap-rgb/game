@@ -204,7 +204,7 @@ function board(d){
 }
 const meScore = b => b.find(x => x.me).score;
 /* 모드 v6: 오늘 = 10게임 중 날짜별 5개, 솔로 = 새 스테이지 첫 클리어 점수, 대전 = 승패 점수 */
-const DAILY_N = 5, SOLO_CAP = 1000, DUEL_PTS = { w:400, d:250, l:150 };
+const DAILY_N = 5, SOLO_CAP = 1000;   /* 대전 보상(DUEL_PTS 등)은 portal/duel-ui.js */
 /* ===================== 오늘의 시험지 v9 (기획팀 × 마케팅팀 "같은 문제, 다른 점수.", 2026-09-30) =====================
    · 매일 5과목(논리·집중·공간·전략·추리) — 과목마다 게임 2개 중 1개, 같은 게임 3일 넘게 연속 금지
    · 전 국민 같은 문제: 문제 씨앗 = 날짜 + 게임(판 번호·난이도 없음). 난이도는 요일로 고정(월·화 쉬움 · 수·목·금 보통 · 토·일 어려움), 배율 없음
@@ -380,7 +380,7 @@ function renderToday(d, tl, P, lv){
   }
   if(typeof rpPastBtn === 'function') rpPastBtn();   /* 지난 7일 문제 다시 풀기(portal/replay.js) */
   $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>${GAME_IDS.length}가지 게임 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
-  $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 오늘 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><small>같은 문제를 같은 시간에, 1:1</small></span>${ic('chev')}`;
+  $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 2~5명 · 오늘 ${d.dw + d.dd + d.dl}판</b><small>같은 문제를 같은 순간에 · 이번 주 ${DUEL_TIERS[duelTierOf(duelWeek().pts)].n} 등급</small></span>${ic('chev')}`;
 }
 
 function renderAdv(lv){
@@ -390,7 +390,7 @@ function renderAdv(lv){
   renderFilter('adv');
   const list = $('#advList'); list.innerHTML = '';
   for(const id of filteredIds('adv')){
-    if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml()); continue; }
+    if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml('adv')); adultSepBind('adv'); continue; }
     const p = advProg(id), cur = p.max, c = chOf(cur), cs = (c - 1) * 10;
     let dots = ''; for(let k = 1; k <= 10; k++){ const n = cs + k, s = p.stars[n] || 0; dots += `<i class="${s ? 's' + s : n === cur ? 'cur' : ''}"></i>`; }
     const el = document.createElement('div'); el.className = 'acard tile panel'; el.style.setProperty('--gc', GCOL[id][1]);
@@ -410,12 +410,15 @@ const SUBJ_OF_ABIL = { '논리력':'논리', '집중력':'집중', '공간지각
 const FILT_SUBJ = ['전체', '논리', '집중', '공간', '전략', '추리', '순발'];
 const FILT = { adv:'전체', duel:'전체' }, ADULT_SEP = '__adult__';
 const subjOfGame = id => SUBJ_OF_ABIL[ABIL[id]] || '';
+/* 성인(19) 묶음은 접어 두고, 눌러야 펼침(결정 224, 세대별 테스트) */
+const ADULT_OPEN = { adv:false, duel:false };
 function filteredIds(kind){
   const f = FILT[kind], main = GAME_IDS.filter(id => !isAdult(id) && (f === '전체' || subjOfGame(id) === f));
   const adult = f === '전체' ? GAME_IDS.filter(isAdult) : [];
-  return adult.length ? main.concat([ADULT_SEP], adult) : main;
+  return adult.length ? main.concat([ADULT_SEP], ADULT_OPEN[kind] ? adult : []) : main;
 }
-const adultSepHtml = () => `<div class="adultsec"><span class="a19">19</span>성인 게임 · 만 19세 이상</div>`;
+const adultSepHtml = (kind = 'adv') => `<button class="adultsec" data-adult="${kind}" aria-expanded="${!!ADULT_OPEN[kind]}"><span class="a19">19</span>성인 게임 · 만 19세 이상<em>${ADULT_OPEN[kind] ? '접기 ▴' : '펼치기 ▾'}</em></button>`;
+function adultSepBind(kind){ const b = document.querySelector(`[data-adult="${kind}"]`); if(b) b.onclick = () => { ADULT_OPEN[kind] = !ADULT_OPEN[kind]; if(kind === 'adv') renderAdv(lvInfo()); else renderDuel(dayState()); }; }
 function renderFilter(kind){
   const box = $('#' + kind + 'Filter'); if(!box) return;
   box.innerHTML = FILT_SUBJ.map(s => `<button aria-pressed="${FILT[kind] === s}" data-f="${s}">${s}</button>`).join('');
@@ -839,65 +842,7 @@ function renderSoloPts(){
   const pct = Math.min(100, d.solo / SOLO_CAP * 100);
   el.innerHTML = `<span class="sp-i">${ic('coin')}</span><span class="sp-t"><small>오늘 솔로 포인트 · 솔로 기록(오늘 점수와 따로)</small><b class="num">${fmt(d.solo)} <em>/ ${fmt(SOLO_CAP)}</em></b><span class="sp-bar"><i style="width:${pct}%"></i></span><span class="sp-r">새 스테이지 첫 클리어 +100 · 별 하나당 +50</span></span>`;
 }
-function renderDuel(d){
-  const live = duelLive(), n = duelWaiting(), R = duelRec();
-  $('#duelHead').innerHTML = `<div class="dh-top"><span class="dh-ico">${ic('duel')}</span><div><b>1:1 대전</b><small>상대와 같은 문제를 동시에 풀고 점수로 겨뤄요</small></div></div>
-    <div class="dh-rec"><div><b class="num">${d.dw}</b><span>승</span></div><div><b class="num">${d.dd}</b><span>무</span></div><div><b class="num">${d.dl}</b><span>패</span></div><div class="pts"><b class="num">+${fmt(d.duel)}</b><span>오늘 대전 포인트</span></div></div>
-    <div class="dh-rw"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무승부 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span><span class="c">한 판 ${ic('heart')}1</span></div>
-    <div class="dh-live${live ? '' : ' off'}"><i></i>${live ? (n ? `지금 대전을 기다리는 사람 <b>${n}명</b>` : '실시간 서버 연결됨 · 상대가 없으면 AI와 겨뤄요') : '지금은 실시간 연결이 안 돼요 · AI와 겨뤄요'}</div>`;
-  /* 빠른 대전: 오늘 시험지 게임 중 하나(문제 씨앗과 무관한 게임 고르기라 시계로 골라도 됨) */
-  const qd = $('#quickDuel');
-  if(qd){ qd.innerHTML = `${ic('duel')} 빠른 대전 <small>오늘 시험지 게임 중 하나</small> ${costTag()}`;
-    qd.onclick = () => { if(RM.cur){ toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'); rmOpen(); return; } const s = dayState().set.filter(g => !isAdult(g)); duelStart(s[Math.floor(Date.now() / 1000) % s.length]); }; }
-  const dfr = $('#duelFriends'); if(dfr){ dfr.innerHTML = duelFriendsHtml(); duelFriendsBind(); }
-  renderFilter('duel');
-  const list = $('#duelList'); list.innerHTML = '';
-  for(const id of filteredIds('duel')){
-    if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml()); continue; }
-    const r = R[id] || { w:0, d:0, l:0 }, tot = r.w + r.d + r.l, wait = duelWaiting(id);
-    /* 게임마다 다른 한 줄: 게임 정의의 duelHow, 없으면 게임 방법 첫 줄 */
-    const how = NG[id].duelHow || (HELP[id] && HELP[id][0] && HELP[id][0][0]) || '점수가 높으면 승리';
-    const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}${tot || NG[id].cardNote ? `<small class="drec">${NG[id].cardNote ? '<b class="cnote">' + escH(NG[id].cardNote()) + '</b> ' : ''}${tot ? `${r.w}승 ${r.d}무 ${r.l}패` : ''}</small>` : ''}</b><button class="gr-go duel${rmOk(id) ? ' rooms' : ''}" aria-label="${GAMES[id].name} ${rmOk(id) ? '대전 방 목록' : '대전 시작, 하트 1개'}">${rmRowBtn(id)}</button><span class="dhow">${escH(how)}</span>`;
-    const open = () => rmOk(id) ? rmList(id) : (RM.cur ? (toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'), rmOpen()) : duelStart(id));   /* 게임을 누르면 그 게임의 방 목록(22번 문서) */
-    row.querySelector('.gr-go').onclick = open;
-    row.querySelector('.g-art').onclick = open;
-    list.appendChild(row);
-  }
-}
-/* 대전 결과(사이트): 대전 포인트·전적 기록, 다시 대전·목록 버튼 */
-function portalDuelResult(r, a, b){
-  const D = G.duel;
-  const id = G.id, PT = rmPts(G.lv, r, D), pts = PT.pts, d = dayState(), firstToday = !d.att, inRoom = !!(D.room && RM.cur && RM.cur.id === D.room.id);
-  if(D.room) rmAfterDuel();
-  d.duel += pts; d['d' + r] = (d['d' + r] || 0) + 1; d.att = true; saveDay(d);
-  const R = duelRec(), x = R[id] || { w:0, d:0, l:0 }; x[r]++; R[id] = x; store.set('hp:duelRec', R);
-  const tl = myTL(), win = r === 'w', why = duelWhy(r, a, b);
-  let html = `${win ? '<div class="burst" aria-hidden="true"></div>' : ''}<h3 class="${r === 'l' ? 'bad' : 'ok'}">${win ? '승리!' : r === 'd' ? '무승부' : '패배'}</h3>
-    ${duelSidesHtml(r, a, b)}
-    ${why ? `<p class="note">${why}</p>` : ''}
-    <p class="dr-lb">대전 포인트${D.room ? ' · ' + (RM_DNAME[G.lv] || '보통') : ''}</p><div class="big" id="bigScore">+0</div>${PT.bonus ? `<p class="dr-bonus">강자 보너스 +${PT.bonus} 포함</p>` : ''}
-    <div class="rsum"><b>오늘 대전 ${d.dw}승 ${d.dd}무 ${d.dl}패</b><span>${['오늘 대전 포인트 ' + fmt(d.duel), firstToday ? attPillHtml().replace(/<[^>]+>/g, '').trim() : ''].filter(Boolean).join(' · ')}</span></div>
-    <p class="note">${r === 'l' ? '져도 대전 포인트를 받아요. ' : ''}대전 포인트는 대전 기록에 쌓이고, 오늘 점수(시험지)와는 따로예요.</p>
-    ${duelContinueHtml()}`;
-  const RB = inRoom ? { pri:{ id:'mPri', label:'방으로 돌아가기', sub:'같은 상대와 다시 · ' + GAMES[id].name, fn:() => { goHome(); setTab('duel'); rmOpen(); } },
-      links:[{ id:'mSec', label:'방 나가기', fn:() => { rmLeave('방에서 나왔어요'); goHome(); setTab('duel'); } }, { id:'mGh', label:'홈으로', fn:() => { goHome(); setTab('today'); } }] }
-    : { pri:{ id:'mPri', label:'다시 대전 ' + costTag(), sub:GAMES[id].name, fn:() => { goHome(); duelStart(id); } },
-    links:[{ id:'mSec', label:'대전 목록', fn:() => { goHome(); setTab('duel'); } }, { id:'mGh', label:'홈으로', fn:() => { goHome(); setTab('today'); } }] };
-  html += resBtns(RB);
-  setTimeout(() => {
-    openModal(html);
-    if(win){ fxConfetti(); sfx('fanfare'); } else if(r === 'd') sfx('result'); else sfx('lose');
-    resBind(RB);
-    duelContinueBind();
-    const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800;
-    const stepN = t => { const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
-      if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else if(el.isConnected){ el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };
-    requestAnimationFrame(stepN);
-    try{ const mm = r === 'w' ? ['joy', 'sad'] : r === 'l' ? ['sad', 'joy'] : ['wow', 'wow']; document.querySelectorAll('#modal .dr-side').forEach((e, i) => toyMood(e, mm[i])); }catch(_){}   /* 이긴 쪽 기쁨 · 진 쪽 아쉬움 */
-    const w = $('#modal .dr-side.win'); if(w) setTimeout(() => fxPop(w, 'gold'), 300);
-  }, $('#veil').classList.contains('on') ? 0 : (win ? 500 : 250));
-}
+/* 대전 탭(renderDuel)·대전 결과 창(portalDuelResult)은 portal/duel-ui.js */
 
 /* ===== 사이트(하루퍼즐 리그)가 엔진에 알려 주는 것: 하트·오늘 기록·결과 창·나가기 ===== */
 Object.assign(HOST, {
@@ -908,8 +853,10 @@ Object.assign(HOST, {
     const adv = o.adv || 0, duel = o.duel || null;
     if(o.replay) return { attempt:0 };   /* 지난 문제·받은 판·대전 판 다시 풀기: 하트 없음·기록 안 됨(portal/replay.js) */
     const freeRun = !adv && !duel && !(dayState().tries[id] > 0);   /* v9: 시험지 첫 판(공식 답안)은 무료 */
-    if(!adv && !freeRun && !spendHeart()){ openHeartSheet('empty'); return false; }
-    if(!adv && !freeRun) sfx('heartUse');
+    const dFree = duel ? duelHeartFree(duel) : false;   /* 같은 방 2~4판째 무료(portal/duel-ui.js, 결정 212) */
+    if(!adv && !freeRun && !dFree && !spendHeart()){ openHeartSheet('empty'); return false; }
+    if(!adv && !freeRun && !dFree) sfx('heartUse');
+    if(duel) duelRoundCount(duel);
     let attempt = 0;
     if(!adv && !duel){ const d = dayState(); d.tries[id]++; saveDay(d); attempt = d.tries[id]; }
     if(attempt === 1) runMark(id);   /* 공식 답안 시작: 진행 중 판 표시(새로고침·앱 종료 때 부분 점수로 제출) */
@@ -924,9 +871,7 @@ Object.assign(HOST, {
   }),
   finish(win){ if(G.adv) advFinish(win); else examFinish(win); },
   exit(){ goHome(); },
-  canDuel(){ if(heartState().n < 1){ openHeartSheet('empty'); return false; } return true; },
-  duelRewardHtml:() => `<div class="dh-rw sm"><span class="w">승리 +${DUEL_PTS.w}</span><span class="d">무 +${DUEL_PTS.d}</span><span class="l">패배 +${DUEL_PTS.l}</span></div>`,
-  duelResult:(r, a, b) => portalDuelResult(r, a, b),
+  /* canDuel · duelFreeLeft · duelRewardHtml · duelResult는 portal/duel-ui.js */
   historyGuard:true,   /* 뒤로가기: 창 닫기 → 그만하기 확인 → 오늘 탭 → 두 번 눌러 나가기 */
   back(){ if(TAB !== 'today'){ setTab('today'); return true; } return false; }
 });

@@ -88,6 +88,8 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 | `close=1` | 첫 화면에 나가기 버튼 |
 | `back=1` | 뒤로가기(안드로이드 버튼·iOS 밀기)를 모듈이 받아요: 창 닫기 → 그만하기 확인 → 결과 뒤 처음으로. 방문 기록을 쓰므로 화면 전체 WebView에서만 권장(기본은 꺼짐) |
 | `origin` | 이벤트를 보낼 부모 주소(haru-embed.js가 자동으로 넣음) |
+| `room` | (더함, 2026-10-06) 방 코드(영문·숫자 6글자 권장). `mode=duel&room=K7MQ4P`처럼 같은 코드로 연 모듈끼리 2명~그 게임 최대 인원(5명까지)이 모여 같은 문제로 대전해요. 12초 안에 2명 이상이면 시작, 혼자면 계속 기다림. 결과 창 '한 판 더'는 같은 코드의 다음 판. 사이트(하루퍼즐 리그)의 대전 방과는 따로예요 |
+| `pace` | (더함) `slow`면 대전 '느긋하게'(시간 2배, 느긋하게끼리만 짝), `normal`이면 보통 |
 
 ## 4. 이벤트(모듈 → 붙인 곳)
 모든 메시지: `{ source:'haru-puzzle', type, game, ver, … }`
@@ -97,7 +99,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 | `ready` | 모듈 준비 | `name`, `modes` · 종료된 게임 주소면 `retired:true`(그리고 `until` 안내 기간, `games` 다른 게임 목록, `modes`는 빈 목록) |
 | `menu` | 첫 화면이 보일 때 | |
 | `start` | 한 판 시작 | `mode`, `level`, `stage`, `attempt` |
-| `finish` | 한 판 끝 | 오늘의 문제·연습: `win`, `score`, `level`, `attempt`, `official`(오늘 첫 판), `partial`(실패 부분 점수), `time`(초), `date`, `detail` · 솔로: `win`, `stage`, `stars`, `first`, `best`, `time` · 대전: `result`(w/d/l), `win`, `vs`(ai/live), `me`, `opp`, `record` |
+| `finish` | 한 판 끝 | 오늘의 문제·연습: `win`, `score`, `level`, `attempt`, `official`(오늘 첫 판), `partial`(실패 부분 점수), `time`(초), `date`, `detail` · 솔로: `win`, `stage`, `stars`, `first`, `best`, `time` · 대전: `result`(w/d/l), `win`, `vs`(ai/live), `me`, `opp`, `record` + (더함, 2026-10-06) `rank`(내 순위, 1부터), `players`(순위표: `nick`(나는 null), `me`, `ai`, `rank`, `ok`, `v`, `t`, `mis`, `score`, `text`, `left`), `kind`(race·score·shared·turn), `round`(`r` 같은 묶음 몇 판째, `series`), `room`(방 코드 `code`, 방 판 `r` 또는 null) |
 | `progress` | 솔로 기록이 바뀜 | `solo:{ max, stars, total }` → 저장해 두었다가 `restore`로 넣을 수 있음 |
 | `quit` | 게임 중 그만하기 | `mode` |
 | `close` | 첫 화면 '나가기'(`close=1`일 때) | |
