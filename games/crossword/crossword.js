@@ -8,23 +8,36 @@ NG.crossword = (() => {
   const GOLD_SEC = 15, TICK_SEC = 5;
 
   /* ----- 사전 읽기(처음 한 번): 주제 순서·줄 순서대로. 같은 낱말은 먼저 나온 것만 ----- */
-  let DICT = null;
-  function dict(){
-    if(DICT) return DICT;
+  /* v = 0: 예전 사전(적용일 전 날짜) · v = 1: 요즘 말(CW_NEW)을 각 주제 뒤에 붙이고 옛날 말(CW_OLD)에 old 표시 */
+  const DICTS = [null, null];
+  function dict(v){
+    v = v ? 1 : 0;
+    if(DICTS[v]) return DICTS[v];
     const words = [], seen = new Set(), cats = [];
-    for(const key of Object.keys(CW_DICT)){
-      const [name, text] = CW_DICT[key]; cats.push(key);
+    const OLD = v && typeof CW_OLD === 'string' ? new Set(CW_OLD.split(' ')) : null;
+    const addText = (key, text) => {
       for(const line of text.split('\n')){
         const k = line.indexOf('='); if(k < 0) continue;
         const w = line.slice(0, k).trim(), c = line.slice(k + 1).trim();
         if(!/^[가-힣]{2,5}$/.test(w) || !c || seen.has(w)) continue;
-        seen.add(w); words.push({ w, c, cat:key, prov:CW_PROVERB[w] || null });
+        seen.add(w); words.push({ w, c, cat:key, prov:CW_PROVERB[w] || null, old:!!(OLD && OLD.has(w)) });
       }
-    }
+    };
+    for(const key of Object.keys(CW_DICT)){ cats.push(key); addText(key, CW_DICT[key][1]); }
+    /* 요즘 말은 예전 낱말 뒤에(예전 낱말 번호가 그대로라 같은 rng 흐름에서 덜 흔들림) */
+    if(v && typeof CW_NEW === 'object') for(const key of Object.keys(CW_NEW)) if(CW_DICT[key]) addText(key, CW_NEW[key]);
     const idx = new Map();   /* 글자 → [[낱말 번호, 자리], …] */
     words.forEach((o, wi) => { for(let p = 0; p < o.w.length; p++){ const s = o.w[p]; if(!idx.has(s)) idx.set(s, []); idx.get(s).push([wi, p]); } });
     const catName = {}; for(const key of cats) catName[key] = CW_DICT[key][0];
-    return DICT = { words, idx, cats, catName };
+    return DICTS[v] = { words, idx, cats, catName };
+  }
+  /* 요즘 말 사전을 쓰는 날인가: 판 날짜(대전은 씨앗 안 날짜, 그 밖은 오늘) ≥ CW_AGE_FROM → 그 전 날짜의 판은 예전 그대로 */
+  function modernOn(){
+    try{
+      if(typeof CW_AGE_FROM !== 'string') return false;
+      const sd = G && G.duel && /(\d{4}-\d{2}-\d{2})/.exec(String(G.duel.seed || ''));
+      return (sd ? sd[1] : dayKey()) >= CW_AGE_FROM;
+    }catch(_){ return false; }
   }
   const THEMES = ['food', 'animal', 'nature', 'life', 'town', 'play'];   /* 주제 판에 쓰는 큰 주제 */
 
@@ -34,8 +47,9 @@ NG.crossword = (() => {
      - 이미 같은 방향으로 쓰인 칸은 다시 쓰지 않는다
      - 교차가 많은 자리 · 긴 낱말 · (주제·속담 판이면 그 낱말) 을 먼저 고른다. 여러 번 만들어 보고 가장 좋은 판을 쓴다. */
   function makeBoard(cfg, rng){
-    const D = dict(), N = cfg.size, target = cfg.words;
-    const okLen = wi => D.words[wi].w.length <= N;
+    const D = dict(cfg.modern), N = cfg.size, target = cfg.words;
+    const noOld = cfg.modern && !cfg.proverb;   /* 옛날 말은 판에 내지 않음(속담 열쇠 판은 예외) */
+    const okLen = wi => D.words[wi].w.length <= N && !(noOld && D.words[wi].old);
     const bonus = wi => { const o = D.words[wi]; return (cfg.theme && o.cat === cfg.theme ? 5 : 0) + (cfg.proverb && o.prov ? 6 : 0); };
     function once(){
       const g = new Array(N * N).fill(null), use = new Array(N * N).fill(0), used = new Set(), list = [];
@@ -64,7 +78,7 @@ NG.crossword = (() => {
       };
       /* 첫 낱말: 판 가운데쯤 가로(또는 세로)로, 4~5글자(작은 판은 3~4글자) */
       const lo = N <= 6 ? 3 : 4, hi = Math.min(5, N - 1);
-      let first = D.words.map((o, wi) => wi).filter(wi => { const L = D.words[wi].w.length; return L >= lo && L <= hi; });
+      let first = D.words.map((o, wi) => wi).filter(wi => { const L = D.words[wi].w.length; return L >= lo && L <= hi && !(noOld && D.words[wi].old); });
       const pref = first.filter(wi => bonus(wi) > 0);
       if(pref.length && rng() < .85) first = pref;
       const f = first[Math.floor(rng() * first.length)], fl = D.words[f].w.length, fd = rng() < .5 ? 0 : 1;
@@ -100,7 +114,7 @@ NG.crossword = (() => {
 
   /* 만든 판 → 칸·낱말·번호. 번호는 낱말이 시작하는 칸에 위에서 아래, 왼쪽에서 오른쪽 순서로 */
   function layoutWords(cfg, rng){
-    const D = dict(), N = cfg.size, b = makeBoard(cfg, rng);
+    const D = dict(cfg.modern), N = cfg.size, b = makeBoard(cfg, rng);
     const starts = new Map(); b.list.forEach(o => starts.set(o.cells[0], 0));
     let n = 0; [...starts.keys()].sort((a, c) => a - c).forEach(i => starts.set(i, ++n));
     const words = b.list.map(o => { const e = D.words[o.wi]; return { w:e.w, len:e.w.length, clue:e.c, cat:e.cat, prov:e.prov, d:o.d, num:starts.get(o.cells[0]), cells:o.cells, done:false, blind:false, gold:false }; });
@@ -134,7 +148,7 @@ NG.crossword = (() => {
     },
     twists:['flash', 'bare', 'tight', 'big', 'tick'],
     twInfo:{
-      flash:{ name:'번개', desc:'낱말은 조금 적지만 제한 시간이 아주 짧아요.' },
+      flash:{ name:'빠른 판', desc:'낱말은 조금 적지만 제한 시간이 아주 짧아요.' },
       bare:{ name:'맨손', desc:'글자 열기와 틀린 칸 확인 없이 오직 머리로 풀어요.' },
       tight:{ name:'외줄 타기', desc:'틀린 낱말을 넣을 수 있는 기회가 딱 한 번! 확실할 때만 넣어요.' },
       big:{ name:'큰 판', desc:'판이 한 칸 더 크고 낱말이 많아요. 대신 시간도 넉넉해요.' },
@@ -207,7 +221,7 @@ NG.crossword = (() => {
   }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.theme) return '<b class="theme">주제 · ' + dict().catName[m.theme] + '</b>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>칸을 눌러 낱말을 고르고 답을 넣어요</span>';
@@ -221,9 +235,22 @@ NG.crossword = (() => {
   }
   function clueLine(){
     const m = S(), wd = m.words[m.cur], e = $('#cwClue'); if(!e || !wd) return;
-    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b><small>${wd.len}글자${wd.gold ? ' ★' : ''}</small></span><span class="cw-ct">${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
+    const other = crossOf(m.cur);
+    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b><small>${wd.len}글자${wd.gold ? ' ★' : ''}</small>${other >= 0 ? `<button class="cw-dir" data-k="${other}" aria-label="${dirName(1 - wd.d)} 낱말로 바꾸기">⇄ ${dirName(1 - wd.d)}</button>` : ''}</span><span class="cw-ct">${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
     const inp = $('#cwIn'); if(inp){ inp.placeholder = wd.done ? '맞힌 낱말이에요' : wd.len + '글자 낱말'; inp.disabled = wd.done || G.over; }
     const go = $('#cwGo'); if(go) go.disabled = wd.done || G.over;
+  }
+  /* 지금 낱말과 엇갈린 다른 방향 낱말(못 맞힌 것 먼저). 없으면 -1 → [가로/세로] 바꾸기 단추 */
+  function crossOf(k){
+    const m = S(), wd = m.words[k]; if(!wd) return -1;
+    let any = -1;
+    for(const i of wd.cells){ const o = m.at[i][1 - wd.d]; if(o < 0) continue; if(!m.words[o].done) return o; if(any < 0) any = o; }
+    return any;
+  }
+  /* 키보드가 올라온 동안 판 대신 보여 주는 '지금 낱말 줄'(보이기만) */
+  function stripHtml(){
+    const m = S(), wd = m.words[m.cur]; if(!wd) return '';
+    return wd.cells.map(i => { const c = m.cell[i]; return `<span class="cw-sc${c.lock ? ' lock' : ''}${c.given === 'hint' || c.given === 'blind' ? ' given' : ''}">${c.v || ''}</span>`; }).join('');
   }
   function paintCells(){
     const m = S(), wd = m.words[m.cur], on = new Set(wd ? wd.cells : []);
@@ -240,7 +267,7 @@ NG.crossword = (() => {
     const m = S();
     return [0, 1].map(d => `<div class="cw-lsec"><h4>${dirName(d)} 열쇠</h4>${m.words.map((wd, k) => wd.d !== d ? '' : `<button class="cw-li${wd.done ? ' done' : ''}${k === m.cur ? ' cur' : ''}${wd.gold ? ' gold' : ''}" data-k="${k}"><b>${wd.num}</b><span>${wd.done ? '<em>' + wd.w + '</em> · ' : ''}${clueText(wd)}</span><small>${wd.len}</small></button>`).join('')}</div>`).join('');
   }
-  function refresh(){ paintCells(); clueLine(); const l = $('#cwList'); if(l) l.innerHTML = listHtml(); hud(); }
+  function refresh(){ paintCells(); clueLine(); const l = $('#cwList'); if(l) l.innerHTML = listHtml(); const sp = $('#cwStrip'); if(sp) sp.innerHTML = stripHtml(); hud(); }
 
   function select(k, focus){
     const m = S(); if(!m || !m.words[k]) return;
@@ -278,7 +305,7 @@ NG.crossword = (() => {
       try{
         got.forEach((k, j) => m.words[k].cells.forEach((i, n) => {
           const el = cellEl(i); if(!el) return;
-          el.style.setProperty('--d', (n * 45 + j * 120) + 'ms'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+          el.style.setProperty('--d', (n * 50 + j * 120) + 'ms'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
           const q = fxCenter(el); fxBurst(q.x, q.y, [m.words[k].gold ? '#FFD23F' : '#5BD08A', '#FFE27A', '#FFFFFF'], 6, { speed:180, size:4, kinds:['star','dot','spark'], up:90, g:460, dur:.55 });
         }));
         if(m.combo >= 3) fxCombo(m.combo);
@@ -369,10 +396,11 @@ NG.crossword = (() => {
     try{
       const root = document.querySelector('.ng-crossword'), ctl = $('#cwCtl'), bd = $('#cwBoard'), vv = window.visualViewport; if(!root || !ctl || !bd) return;
       if(kbdOn()){
+        /* 입력 중: 판은 접고(지금 낱말 줄만 보임) 열쇠·입력창을 키보드 바로 위에 크게 */
         root.classList.add('cw-kbd');
         const top = vv.offsetTop || 0;
-        ctl.style.top = Math.round(top + vv.height - ctl.offsetHeight - 6) + 'px';
-        bd.style.top = Math.round(top + 6) + 'px';
+        ctl.style.top = Math.max(top + 6, Math.round(top + vv.height - ctl.offsetHeight - 6)) + 'px';
+        bd.style.top = '';
       } else { root.classList.remove('cw-kbd'); ctl.style.top = ''; bd.style.top = ''; }
     }catch(_){}
   }
@@ -384,8 +412,7 @@ NG.crossword = (() => {
     const vv = window.visualViewport;
     if(!m.fullH || !kbdOn()) m.fullH = Math.max(m.fullH || 0, innerHeight || 0, vv ? vv.height : 0);
     if(kbdOn()){
-      const ctl = ($('#cwCtl') ? $('#cwCtl').offsetHeight : 110) + 18;
-      cw = Math.min(cw, Math.floor((vv.height - ctl - pad * 2 - gap * (N - 1)) / N));
+      /* 판은 접혀 있음(지금 낱말 줄만) → 칸 크기는 그대로 */
     } else {
       /* 판은 화면 높이에 맞춰(열쇠·입력창·목록 접기 줄이 한 화면에 들어오게) */
       const top = bd.getBoundingClientRect().top + (window.scrollY || 0);
@@ -462,7 +489,10 @@ NG.crossword = (() => {
     $('#cwNext').onclick = () => step(1);
     $('#cwHint').onclick = useHint;
     $('#cwCheck').onclick = useCheck;
-    $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); const mo = $('#cwMore'); if(mo) mo.open = false; select(+b.dataset.k, true); };
+    $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, true); };   /* 목록은 펼친 채로 둔다(세대별 테스트: 접혀 있으면 못 찾음) */
+    const cl = $('#cwClue');
+    cl.onpointerdown = e => { if(e.target.closest && e.target.closest('.cw-dir')) e.preventDefault(); };   /* 키보드가 내려가지 않게 */
+    cl.onclick = e => { const b = e.target.closest && e.target.closest('.cw-dir'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, document.activeElement === $('#cwIn')); };
     m.onResize = () => layout();
     addEventListener('resize', m.onResize);
     if(window.visualViewport){ m.onVV = () => { layout(); placeCtl(); }; visualViewport.addEventListener('resize', m.onVV); visualViewport.addEventListener('scroll', m.onVV); }
@@ -488,10 +518,10 @@ NG.crossword = (() => {
         <circle cx="16" cy="70" r="7" fill="#FFE27A" stroke="${OL}" stroke-width="2"/><text x="16" y="74.5" font-size="11" font-weight="900" text-anchor="middle" fill="${OL}">?</text></svg>`;
     },
     help:[
-      ['칸을 눌러 낱말을 골라요', '흰 칸을 누르면 그 칸을 지나는 낱말이 노랗게 빛나고 아래에 뜻풀이(열쇠)가 나와요. 가로·세로가 겹친 칸을 한 번 더 누르면 방향이 바뀌어요.'],
-      ['답을 넣어요', '아래 입력창에 낱말을 쓰고 [넣기]를 누르면 한 글자씩 칸에 들어가요. 맞으면 초록으로 잠기고, 겹친 글자가 다른 낱말의 힌트가 돼요.'],
-      ['틀리면 실수', '틀린 낱말을 넣으면 실수(점수 −20)예요. 글자는 칸에 남으니 🔍 틀린 칸으로 어느 글자가 틀렸는지 볼 수 있어요. 💡 글자 열기는 한 글자를 알려 줘요(점수 −40).'],
-      ['시간 안에 판을 채워요', '제한 시간 안에 모든 낱말을 맞히면 성공! 열쇠 목록은 판 아래에 있어요. 솔로에서는 주제 판·빈 열쇠·황금 낱말·속담 열쇠 같은 새 규칙이 나와요.']
+      ['칸을 눌러 낱말을 골라요', '칸을 누르면 그 낱말이 노랗게 빛나고 아래에 뜻풀이(열쇠)가 나와요. 열쇠 옆 [⇄ 세로]·[⇄ 가로] 단추로 방향을 바꿔요.'],
+      ['답을 넣어요', '입력창에 낱말을 쓰고 [넣기]. 맞으면 초록으로 잠기고, 겹친 글자가 다른 낱말의 힌트가 돼요.'],
+      ['시간 안에 판을 채워요', '모든 낱말을 맞히면 성공! 막히면 💡 글자 열기, 🔍 틀린 칸 확인을 써요.'],
+      ['더 알아보기 · 점수', '틀린 낱말을 넣으면 실수 −20점(글자는 칸에 남아요), 글자 열기 −40점, 틀린 칸 확인 −25점. 솔로에서는 주제 판·빈 열쇠·황금 낱말·속담 열쇠 같은 새 규칙이 나와요.']
     ],
     helpExtra(){ const m = G && G.id === 'crossword' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['골목 사전', '시장 골목', '바닷가 책방', '산마루 서당', '별빛 도서관'],
@@ -506,6 +536,7 @@ NG.crossword = (() => {
     stageDesc(n){ const c = stageCfg(n); return `${c.size}×${c.size} · 낱말 ${c.words}개 · ${mmss(c.limit)}${c.lives === 1 ? ' · 기회 1번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.size}×${c.size} · 낱말 ${c.words}개`; },
     init(cfg, rng){
+      if(modernOn()) cfg = Object.assign({}, cfg, { modern:true });
       const L = layoutWords(cfg, rng), N = L.N;
       const cell = L.g.map(ch => ch == null ? null : { ch, v:null, lock:false, given:null });
       L.words.forEach(wd => { if(wd.blind){ const c = cell[wd.cells[0]]; c.v = c.ch; c.lock = true; c.given = 'blind'; } });
@@ -538,7 +569,7 @@ NG.crossword = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
-    _layout:layoutWords, _stage:stageCfg, _dict:dict,
+    _layout:layoutWords, _stage:stageCfg, _dict:dict, _modernOn:modernOn,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-crossword">
@@ -548,15 +579,16 @@ NG.crossword = (() => {
           <button class="hchip item" id="cwHint" aria-label="글자 열기"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>글자 열기</em></button>
           <button class="hchip item" id="cwCheck" aria-label="틀린 칸 확인"><span class="hv">${ICO.check}<b>${m.checkLeft}</b></span><em>틀린 칸</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cw-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cw-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="cw-chip mj">${k === 'theme' && m.theme ? '주제 · ' + dict().catName[m.theme] : CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cw-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cw-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cw-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cw-chip mj">${k === 'theme' && m.theme ? '주제 · ' + dict().catName[m.theme] : CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cw-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar cw-tbar" id="cwBarWrap"><i id="cwBar"></i></div>
         <div class="cw-row"><div class="hlives" id="cwLives" role="img"></div><div class="cw-msg" id="cwMsg"><span>낱말판을 펼치는 중…</span></div></div>
         <div class="cw-board in" id="cwBoard" role="grid" aria-label="낱말판">${boardHtml()}</div>
         <div class="cw-ctl" id="cwCtl">
+          <div class="cw-strip" id="cwStrip" aria-hidden="true"></div>
           <div class="cw-clue"><button class="cw-arr" id="cwPrev" aria-label="이전 열쇠">${ICO.prev}</button><div class="cw-cl" id="cwClue" aria-live="polite"></div><button class="cw-arr" id="cwNext" aria-label="다음 열쇠">${ICO.next}</button></div>
           <div class="cw-in"><input id="cwIn" type="text" lang="ko" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" maxlength="12" aria-label="답 넣기"><button id="cwGo" class="cw-go">넣기</button></div>
         </div>
-        <details class="cw-more" id="cwMore"><summary>열쇠 목록 전체 보기<small>가로 ${m.words.filter(w => !w.d).length} · 세로 ${m.words.filter(w => w.d).length}</small></summary><div class="cw-list" id="cwList"></div></details>
+        <details class="cw-more" id="cwMore" open><summary>열쇠 목록 전체 보기<small>가로 ${m.words.filter(w => !w.d).length} · 세로 ${m.words.filter(w => w.d).length}</small></summary><div class="cw-list" id="cwList"></div></details>
       </div>`;
       layout(); wire(); refresh();
       T(() => { const b = $('#cwBoard'); if(b) b.classList.remove('in'); }, 900);
@@ -634,19 +666,26 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-arr{flex:none; width:44px; border-radius:14px; border:2.5px solid #1A0F45; background:#fff; color:#1A0F45; box-shadow:0 3px 0 #1A0F45; padding:0; display:grid; place-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-crossword .cw-arr svg{width:20px; height:20px}
 .ng-crossword .cw-arr:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
-.ng-crossword .cw-cl{flex:1; min-width:0; min-height:62px; display:flex; align-items:center; gap:9px; padding:6px 10px 6px 7px; border-radius:14px; background:#FFFDF6; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; font-size:15px; line-height:1.35; color:#2A1A10; user-select:text}
+.ng-crossword .cw-cl{flex:1; min-width:0; min-height:66px; display:flex; align-items:center; gap:9px; padding:6px 10px 6px 7px; border-radius:14px; background:#FFFDF6; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; font-size:16px; line-height:1.35; color:#2A1A10; user-select:text}
+.ng-crossword .cw-dir{margin-top:2px; height:28px; padding:0 7px; border-radius:99px; border:2px solid #1A0F45; background:#FFF1B8; color:#5A2E0A; font-family:var(--disp); font-size:13px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 0 #1A0F45}
+.ng-crossword .cw-dir:active{transform:translateY(1px); box-shadow:none}
+.ng-crossword .cw-strip{display:none; justify-content:center; gap:5px}
+.ng-crossword.cw-kbd .cw-strip{display:flex}
+.ng-crossword .cw-sc{width:44px; height:44px; display:grid; place-items:center; border-radius:9px; background:linear-gradient(180deg,#FFF6C0,#FFE07A); border:2.5px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; font-family:var(--heavy); font-size:24px; color:#1A0F45}
+.ng-crossword .cw-sc.lock{background:linear-gradient(180deg,#E9FBEF,#C9F0D6); color:#13703F}
+.ng-crossword .cw-sc.given{color:#6A4BD8}
 .ng-crossword .cw-tag{flex:none; font-family:var(--heavy); font-weight:400; font-size:14px; padding:2px 8px; border-radius:99px; color:#fff; background:#F07F2E; border:2px solid #1A0F45}
 .ng-crossword .cw-tag.d1{background:#6A4BD8}
 .ng-crossword .cw-tg{flex:none; display:flex; flex-direction:column; align-items:center; gap:3px}
 .ng-crossword .cw-ct{flex:1; min-width:0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
 .ng-crossword .cw-ct em{font-style:normal; font-weight:800; color:#13703F}
-.ng-crossword .cw-cl small{font-family:var(--disp); font-size:12.5px; line-height:1; color:#9A6A3E; white-space:nowrap}
+.ng-crossword .cw-cl small{font-family:var(--disp); font-size:13px; line-height:1; color:#8A5A2E; white-space:nowrap}
 .ng-crossword .cw-blind{font-style:normal; color:#6A4BD8}
 .ng-crossword .cw-prov{display:inline-block; font-family:var(--disp); font-size:12px; padding:1px 6px; border-radius:99px; background:#EFE7FF; color:#5B3FB5; border:1.5px solid #5B3FB5; vertical-align:1px}
 .ng-crossword .cw-in{display:flex; gap:8px; width:100%}
 .ng-crossword .cw-in input{flex:1; min-width:0; height:50px; padding:0 14px; border-radius:16px; border:2.5px solid #1A0F45; background:#fff; box-shadow:inset 0 3px 0 rgba(26,15,69,.08); font:inherit; font-size:20px; font-weight:800; color:#1A0F45; letter-spacing:2px; outline:none; user-select:text; -webkit-user-select:text}
 .ng-crossword .cw-in input:focus{border-color:#F07F2E; box-shadow:0 0 0 3px rgba(240,127,46,.3)}
-.ng-crossword .cw-in input::placeholder{color:#B8A48E; font-weight:600; letter-spacing:0; font-size:16px}
+.ng-crossword .cw-in input::placeholder{color:#8A7058; font-weight:600; letter-spacing:0; font-size:16px}
 .ng-crossword .cw-in input:disabled{background:#F2EEE8}
 .ng-crossword .cw-go{flex:none; width:92px; height:50px; border-radius:16px; border:2.5px solid #1A0F45; font-family:var(--heavy); font-size:20px; color:#fff; cursor:pointer; -webkit-tap-highlight-color:transparent;
   background:linear-gradient(180deg,#FFB067,#F07F2E); box-shadow:inset 0 -4px 0 rgba(120,50,0,.25), 0 4px 0 #1A0F45; text-shadow:0 2px 0 #9A4610}
@@ -667,7 +706,8 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-list{width:100%; margin-top:10px; display:flex; flex-direction:column; gap:10px}
 /* 키보드가 올라온 동안: 열쇠+입력창을 키보드 바로 위에 붙임(top은 visualViewport로 계산) */
 .ng-crossword.cw-kbd .cw-ctl{position:fixed; left:12px; right:12px; width:auto; margin:0; z-index:30; padding:8px; border-radius:18px; background:rgba(255,245,228,.97); box-shadow:0 -4px 16px rgba(26,15,69,.18)}
-.ng-crossword.cw-kbd .cw-board{position:fixed; left:0; right:0; margin:0 auto; z-index:29}
+.ng-crossword.cw-kbd .cw-board{display:none}
+.ng-crossword.cw-kbd .cw-cl{font-size:17px}
 .ng-crossword.cw-kbd .cw-more{display:none}
 .ng-crossword .cw-lsec{background:rgba(255,255,255,.72); border:2px solid #1A0F45; border-radius:16px; padding:8px 8px 6px; box-shadow:0 3px 0 rgba(26,15,69,.6)}
 .ng-crossword .cw-lsec h4{margin:0 0 4px 4px; font-family:var(--heavy); font-weight:400; font-size:16px; color:#7A3F10}
