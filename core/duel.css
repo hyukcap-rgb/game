@@ -1,0 +1,140 @@
+/* ===== 대전 v3 화면(docs/21 3-12 · 11-2, UI 기획팀·디자인팀 규격) — core/duel.js가 쓰는 공용 스타일 =====
+   play.css 다음에 불러와 v2 대전 막대 위에 덮어쓴다. 효과·알림은 눌림을 막지 않음(pointer-events:none). */
+
+/* ---------- 2명: 한 줄 막대(높이 34) · 왼쪽 나 / 가운데 앞선 쪽 화살 / 오른쪽 상대 ---------- */
+.duelbar.v3.two{display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:center; gap:4px; min-height:34px; padding:3px 6px}
+.duelbar.v3.two .d2{position:relative; display:flex; align-items:center; gap:5px; min-width:0; height:34px; padding-bottom:4px}
+.duelbar.v3.two .d2.op{justify-content:flex-end; text-align:right}
+.duelbar.v3.two .d2-av .av{width:28px; height:28px; border-width:2px}
+.duelbar.v3.two .d2-t{display:flex; flex-direction:column; min-width:0; line-height:1}
+.duelbar.v3.two .d2-t em{font-style:normal; font-family:var(--disp); font-size:13px; line-height:1.05; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+.duelbar.v3.two .d2.op .d2-t em{color:#FFC2DB}
+.duelbar.v3.two .d2-t b{font-family:var(--heavy); font-weight:400; font-size:18px; line-height:1.05; color:#fff; white-space:nowrap; font-variant-numeric:tabular-nums}
+.duelbar.v3.two .d2-t b small{font-family:var(--font); font-size:13px; font-weight:800; color:#B9AEE8; margin-left:1px}
+.duelbar.v3.two .d2-t b .tile{display:inline-block; min-width:30px; padding:1px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:14px}
+.duelbar.v3.two .d2-t b .ck{color:#FFD35C; margin-right:2px; font-size:14px}
+.duelbar.v3.two .d2-s{display:flex; gap:2px; align-items:center; font-size:13px; font-weight:800; color:#FFD9E6; flex:none}
+.duelbar.v3.two .d2-s:empty{display:none}
+.duelbar.v3.two .d2-s .ico{width:12px; height:12px; color:#FF7A9A}
+.duelbar.v3.two .d2-s .pip{width:7px; height:7px; border-radius:50%; background:#FFD35C; box-shadow:0 0 0 1.5px var(--outline2)}
+.duelbar.v3.two .d2-s .pip.off{background:rgba(255,255,255,.2)}
+.duelbar.v3.two .d2-s .pip.lost{animation:pipLost .6s ease}
+.duelbar.v3.two .d2-trk{position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:99px; background:rgba(255,255,255,.14); overflow:hidden}
+.duelbar.v3.two .d2-trk > i{position:absolute; top:0; bottom:0; left:0; width:0; border-radius:99px; background:linear-gradient(90deg,#8BF06A,#23A548); transition:width .45s ease}
+.duelbar.v3.two .d2.op .d2-trk > i{left:auto; right:0; background:linear-gradient(270deg,#FF9CC4,#F0368A)}
+.duelbar.v3.two .d2.lead .d2-t b{color:#B6FF8F}
+.duelbar.v3.two .d2.op.lead .d2-t b{color:#FFB3D1}
+.duelbar.v3.two .d2.left{opacity:.5}
+.duelbar.v3.two .d2-mid{display:grid; place-items:center; width:26px; height:26px; border-radius:50%; font-family:var(--heavy); font-size:13px; line-height:1; color:#fff;
+  background:rgba(255,255,255,.12); border:2px solid var(--outline2); transition:background .3s}
+.duelbar.v3.two .d2-mid.me{background:linear-gradient(#5FD36B,#23A548)}
+.duelbar.v3.two .d2-mid.op{background:linear-gradient(#FF8AC0,#F0368A)}
+.duelbar.v3.two .d2-mid.tie{background:linear-gradient(#FFE27A,#FF9F1C); color:#5A3300}
+.duelbar.v3.two .aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 4px; border-radius:5px; background:#8F86C2; color:#fff; vertical-align:1px}
+/* 상단 바 제목 자리에 들어갈 때 */
+.pbar.has-duel > .duelbar.v3.two{position:static; margin:0; padding:0 2px; background:none; border:0; box-shadow:none; min-width:0}
+
+/* ---------- 3~5명: 순위 칩 줄(높이 60) ---------- */
+.duelbar.v3.chips, .duelbar.v3.mini{display:block; margin:0 0 8px; padding:2px 0 0; background:none; border:0; box-shadow:none}
+.dchips{position:relative; height:60px; margin:0 auto; max-width:100%}
+.dpchip{position:absolute; left:0; top:2px; width:66px; height:56px; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px;
+  border-radius:12px; background:#FFFFFF; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; color:#1A0F45; font:inherit; cursor:pointer;
+  transition:transform .25s ease, opacity .25s, background .25s; -webkit-tap-highlight-color:transparent}
+.dpchip.me{border:3px solid #F0368A}
+.dpchip.first::before{content:""; position:absolute; left:6px; right:6px; top:-1px; height:4px; border-radius:0 0 4px 4px; background:#FFC93C}
+.dpchip .dc-rank{position:absolute; left:-6px; top:-6px; width:18px; height:18px; display:grid; place-items:center; border-radius:50%; background:#fff; border:2px solid #1A0F45;
+  font-family:var(--heavy); font-size:13px; line-height:1; color:#1A0F45}
+.dpchip.first .dc-rank{background:#FFC93C}
+.dpchip .dseat{position:absolute; right:3px; top:3px}
+.dpchip .dc-av .av{width:24px; height:24px; border-width:1.5px; box-shadow:0 0 0 1.5px var(--outline)}
+.dpchip .dc-val{height:22px; display:flex; align-items:baseline; justify-content:center; gap:1px; font-family:var(--heavy); font-weight:400; font-size:18px; line-height:1.1; white-space:nowrap; font-variant-numeric:tabular-nums}
+.dpchip .dc-val small{font-family:var(--font); font-size:13px; font-weight:800; color:#6A5884}
+.dpchip .dc-val em{font-style:normal; font-family:var(--disp); font-size:13px; line-height:1.4; max-width:60px; overflow:hidden; text-overflow:ellipsis}
+.dpchip .dc-val .tile{display:inline-block; padding:0 3px; border-radius:5px; background:#FFE39A; color:#5A3300; font-size:15px}
+.dpchip .dc-val .ck{font-style:normal; font-family:var(--font); font-size:13px; color:#23A548; margin-left:2px}
+.dpchip .dc-tag{position:absolute; top:-15px; left:50%; transform:translateX(-50%); display:none; padding:0 6px; height:16px; line-height:16px; border-radius:99px;
+  background:var(--sc); color:#fff; font-family:var(--disp); font-size:13px; white-space:nowrap; border:1.5px solid #1A0F45}
+.dpchip.turn{border:4px solid var(--sc)}
+.dpchip.turn .dc-tag{display:block}
+.dpchip.done{background:#F3EEFF}
+.dpchip.gone{opacity:.5}
+.dpchip.left{filter:grayscale(1); opacity:.55}
+.dpchip .dc-name{position:absolute; bottom:calc(100% + 6px); left:50%; transform:translate(-50%,4px); opacity:0; pointer-events:none; padding:3px 8px; border-radius:8px;
+  background:#1A0F45; color:#fff; font-family:var(--disp); font-size:13px; white-space:nowrap; transition:opacity .15s, transform .15s; z-index:5}
+.dpchip.say .dc-name{opacity:1; transform:translate(-50%,0)}
+@media (max-width:369px){ .dpchip{width:60px; height:52px} .dpchip .dc-val{font-size:16px} }
+
+/* ---------- 미니 화면(상대 판 축소): 카드 72×64, 상대 4명까지 + 내 순위 배지 ---------- */
+.dminis{display:flex; align-items:center; justify-content:center; gap:8px; min-height:66px}
+.dmini{position:relative; width:72px; height:64px; flex:none; border-radius:12px; background:#fff; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; overflow:hidden}
+.dmini::after{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--sc)}
+.dmini.first{box-shadow:0 3px 0 #1A0F45, inset 0 4px 0 #FFC93C}
+.dmini.left{filter:grayscale(1); opacity:.55}
+.dmini .dm-board{position:absolute; left:8px; right:4px; top:4px; bottom:18px}
+.dmini .dm-board > *{max-width:100%; max-height:100%}
+.dmini .dm-av{position:absolute; left:4px; bottom:2px; z-index:2}
+.dmini .dm-av .av{width:20px; height:20px; border-width:1.5px; box-shadow:0 0 0 1.5px var(--outline)}
+.dmini .dseat{position:absolute; right:3px; top:3px; z-index:2}
+.dmini .dm-val{position:absolute; right:4px; bottom:1px; z-index:2; font-family:var(--heavy); font-size:13px; line-height:1.2; color:#1A0F45}
+.dmini .dm-val small{font-family:var(--font); font-size:12px; font-weight:800; color:#6A5884}
+.dmini .dm-val .tile{padding:0 2px; border-radius:4px; background:#FFE39A}
+.dm-rank{flex:none; width:40px; height:28px; display:grid; place-items:center; border-radius:99px; background:#fff; border:2.5px solid #F0368A; box-shadow:0 2px 0 #1A0F45;
+  font-family:var(--heavy); font-size:14px; color:#1A0F45}
+.dm-rank.first{background:#FFC93C}
+
+/* ---------- 큰 알림(duelNotify): 화면 위 30%, 폭 300, 글자 20, 얼굴 32, 반투명 ---------- */
+.dnote{position:fixed; left:50%; top:30%; z-index:34; width:min(300px, calc(100vw - 32px)); min-height:52px; padding:8px 12px 8px 16px; display:flex; align-items:center; gap:8px;
+  transform:translate(-50%,-6px) scale(.96); opacity:0; pointer-events:none; border-radius:16px; overflow:hidden;
+  background:rgba(255,255,255,.85); border:2.5px solid #1A0F45; box-shadow:0 4px 0 rgba(26,15,69,.6); color:#1A0F45; transition:opacity .18s, transform .18s}
+.dnote::before{content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:var(--sc,#F0368A)}
+.dnote.on{opacity:1; transform:translate(-50%,0) scale(1)}
+.dnote .av{width:32px; height:32px; flex:none; border-width:2px}
+.dnote .dseat{flex:none; margin-left:-4px}
+.dnote span{font-family:var(--disp); font-size:20px; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+.dnote.good{background:rgba(230,255,233,.88)}
+.dnote.bad{background:rgba(255,232,242,.88)}
+.dnote.hot{background:rgba(255,241,220,.9)}
+.dnote.end{background:rgba(255,246,200,.92)}
+.dnote.gray{background:rgba(236,233,247,.9)}
+
+/* ---------- 찾기 창 ---------- */
+.dsearch.v3 .ds-game{margin:0; font-family:var(--disp); font-size:15px; color:var(--gc,var(--sub))}
+.ds-ppl{display:flex; justify-content:center; gap:8px; margin:12px 0 4px; min-height:40px}
+.ds-slot{width:40px; height:40px; border-radius:50%; border:2.5px dashed #B9AEE8; display:grid; place-items:center}
+.ds-slot.me, .ds-slot.on{border:0}
+.ds-slot .av{width:40px; height:40px; animation:dsIn .35s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes dsIn{from{transform:scale(.4); opacity:0}}
+.ds-cnt{margin:2px 0 0; font-family:var(--disp); font-size:15px; color:var(--ink)}
+.ds-pace{display:inline-flex; align-items:center; gap:8px; min-height:44px; margin:2px auto 0; padding:0 16px; border-radius:99px; background:#fff; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45;
+  font-family:var(--disp); font-size:15px; color:#3A2261; cursor:pointer}
+.ds-pace i{width:34px; height:20px; border-radius:99px; background:#D9D2EE; position:relative; transition:background .2s}
+.ds-pace i::after{content:""; position:absolute; left:2px; top:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:left .2s}
+.ds-pace.on i{background:#23A548}
+.ds-pace.on i::after{left:16px}
+.ds-pace:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
+
+/* ---------- 준비 화면: 3~5명 얼굴 한 줄 ---------- */
+.dg-many{display:flex; justify-content:center; gap:6px; margin:8px 0 10px}
+.dg-one{position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; width:62px; min-width:0}
+.dg-one .av{width:48px; height:48px}
+.dg-one b{font-family:var(--disp); font-weight:400; font-size:13px; color:var(--ink); max-width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dg-one .dseat{position:absolute; right:4px; top:0}
+
+/* ---------- 결과: 3명 이상 순위 목록 · 2명 순위 ---------- */
+.dres-list{list-style:none; margin:8px 0 2px; padding:0; display:grid; gap:6px; text-align:left}
+.dres-list li{position:relative; display:grid; grid-template-columns:40px 36px auto minmax(0,1fr); align-items:center; gap:6px; padding:6px 10px 6px 12px; border-radius:14px; background:#fff; border:2.5px solid var(--paper-line); overflow:hidden}
+.dres-list li::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--sc)}
+.dres-list li.me{border-color:#F0368A}
+.dres-list li.win{background:linear-gradient(180deg,#FFF6C8,#FFE08A); border-color:#E0A21C}
+.dres-list li.left{opacity:.6}
+.dres-list .dl-rank{font-family:var(--heavy); font-size:17px; color:var(--ink)}
+.dres-list .av{width:36px; height:36px; border-width:2px}
+.dres-list b{font-family:var(--disp); font-weight:400; font-size:15px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:4}
+.dres-list .dseat{grid-column:3; grid-row:1}
+.dres-list .dl-txt{grid-column:2 / 5; font-size:13px; font-weight:700; color:var(--sub); padding-left:42px; margin-top:-4px}
+.dr-side .drank{font-family:var(--heavy); font-size:26px; line-height:1.1; color:var(--ink)}
+.dr-side small{font-size:13px}
+.aitag{font-style:normal; font-family:var(--font); font-size:12px; font-weight:800; padding:0 5px; border-radius:6px; background:#8F86C2; color:#fff; vertical-align:1px}
+.dwait .dw-list{display:grid; gap:6px}
+
+@media (prefers-reduced-motion: reduce){ .dpchip, .dnote, .ds-slot .av, .duelbar.v3.two .d2-trk > i{transition:none!important; animation:none!important} }

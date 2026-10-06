@@ -453,13 +453,14 @@ function startGame(id, lv = 'normal', o = {}){
   const attempt = (pre && pre.attempt) || 0;
   let L = levelOf(id, lv, adv);
   if(!adv && !duel && HOST.flatMult) L = Object.assign({}, L, { mult:1 });   /* 시험지는 배율 없음 */
+  if(duel && duel.cfg) L = Object.assign({}, L, { [id]:duel.cfg });   /* 대전 판 설정(duelCfg·느긋하게, core/duel.js) */
   if(adv) lv = m.stageLevel ? L.ai : 'adv';
   const rng = adv ? mulberry(seedFrom('adv:' + id + ':' + adv)) : duel ? mulberry(seedFrom(duel.seed || ('duel:' + id + ':' + Date.now()))) : mulberry(seedFrom(o.seed || ('exam:' + dayKey() + ':' + id)));   /* 날짜 씨앗 = 전 국민(모든 사이트) 같은 문제 */
   G = { id, lv, adv, duel, L, attempt, chal:o.chal || null, paws:3, start:Date.now(), over:false, limit:L[id].limit, paused:false, pauseAt:0, pausedMs:0 };
   G.cfg = L[id]; m.init(L[id], rng, lv);
   HOST.showPlay();
   const ex = m.titleExtra ? m.titleExtra() : '';
-  $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || 'AI')) : 'VS ' + esc(duel.opp.nick) + (duel.mode === 'ai' ? ' (AI)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
+  $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || '컴퓨터')) : 'VS ' + esc(duel.vs || duel.opp.nick) + (duel.mode === 'ai' ? ' (컴퓨터)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();
   duelBarInit();
