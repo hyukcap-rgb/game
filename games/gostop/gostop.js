@@ -424,7 +424,7 @@ NG.gostop = (() => {
     const st = [off ? '<b class="off">연결 끊김·자동</b>' : '', bye ? '<b class="bye">나가기 예약</b>' : '', P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
     return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
       <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt != null ? fmtP(g.oppPt) : '') : '판돈 무제한'}</div>
-      <div class="gs-pl gs-sub" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 ' + G.adv + '판' : g.mode === 'pvp' ? '실시간 대전' : 'AI 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
+      <div class="gs-pl gs-sub" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 ' + G.adv + '판' : g.mode === 'pvp' ? '실시간 대전' : '컴퓨터 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
       <div class="gs-ps">${st}</div><span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>`;
   }
   /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
@@ -594,7 +594,7 @@ NG.gostop = (() => {
     $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     $('#gsBody').hidden = false; fit();
-    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${(g.room || ROOMS[0]).stake ? '점당 ' + fmtP(g.room.stake) : '연습 판'}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
+    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${(g.room || ROOMS[0]).name}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
     const gate = $('#gsGate'); if(gate) gate.remove();
     byeUI();
     draw(liveView());
@@ -861,7 +861,7 @@ NG.gostop = (() => {
     if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d; if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt - pay.d); }
     g.lastW = r.w;
     draw(liveView());
-    const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>점당 ${fmtP(g.room.stake)}</span><b>${pay.d > 0 ? '+' : ''}${fmtP(pay.d)}</b></div>` : '<div class="gs-pay"><span>연습 판</span><b>포인트 변화 없음</b></div>')
+    const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${g.room.name}</span><b>${pay.d > 0 ? '+' : ''}${fmtP(pay.d)}</b></div>` : '<div class="gs-pay"><span>연습 판</span><b>포인트 변화 없음</b></div>')
       + (pay.bonus ? `<div class="gs-pay up sm"><span>솔로 새 판 첫 클리어</span><b>+${fmtP(pay.bonus)}</b></div>` : '')
       + pay.got.map(a => `<div class="gs-pay up sm"><span>업적 · ${a.name}</span><b>+${fmtP(a.pt)}</b></div>`).join('')
       + `<p class="gs-after">보유 포인트 <b>${fmtP(pay.after)}</b>${pay.after < ROOMS[1].min ? ' · 다음 판 전에 파산 구제를 받을 수 있어요' : ''}</p>`;
@@ -965,11 +965,11 @@ NG.gostop = (() => {
   /* ----- 고스톱 포인트(이 게임 전용, 무료로만 얻음 · 구매·환전·선물 없음) ----- */
   const PT_KEY = 'hp:gs:pt', START_PT = 10000, RESCUE_TO = 10000, FREE_PT = 3000, FREE_MS = 3 * 3600 * 1000;
   const ROOMS = [
-    { k:0, stake:0, min:0, name:'연습 판', sub:'포인트 안 걸림' },
-    { k:1, stake:100, min:2000, name:'점당 100P', sub:'입장 2천P' },
-    { k:2, stake:500, min:10000, name:'점당 500P', sub:'입장 1만P' },
-    { k:3, stake:1000, min:30000, name:'점당 1,000P', sub:'입장 3만P' },
-    { k:4, stake:5000, min:150000, name:'점당 5,000P', sub:'입장 15만P' }
+    { k:0, stake:0, min:0, name:'연습 판', sub:'포인트가 오가지 않아요' },
+    { k:1, stake:100, min:2000, name:'작은 판', sub:'입장 2천 포인트 이상 · 판 크기 ×100' },
+    { k:2, stake:500, min:10000, name:'보통 판', sub:'입장 1만 포인트 이상 · 판 크기 ×500' },
+    { k:3, stake:1000, min:30000, name:'큰 판', sub:'입장 3만 포인트 이상 · 판 크기 ×1,000' },
+    { k:4, stake:5000, min:150000, name:'왕 판', sub:'입장 15만 포인트 이상 · 판 크기 ×5,000' }
   ];
   const ACH = [
     { k:'win1', name:'첫 승리', pt:3000 },
@@ -1019,9 +1019,9 @@ NG.gostop = (() => {
       const nAch = ACH.filter(a => w.ach[a.k]).length;
       box.innerHTML = `<div class="gs-lb">
         <div class="gs-wal"><span class="gs-coin">P</span><div><small>내 고스톱 포인트</small><b>${fmtP(w.pt)}</b><em>${titleOf(w.peak)} · 최고 ${fmtP(w.peak)}</em></div></div>
-        <h3>${g.mode === 'pvp' ? '대전할 방을 골라요' : G.adv ? '솔로 ' + G.adv + '판 · 방을 골라요' : 'AI와 겨룰 방을 골라요'}</h3>
+        <h3>${g.mode === 'pvp' ? '대전할 판을 골라요' : G.adv ? '솔로 ' + G.adv + '판 · 판을 골라요' : '컴퓨터와 겨룰 판을 골라요'}</h3>
         <div class="gs-rooms">${ROOMS.map(r => { const ok = w.pt >= r.min; return `<button class="gs-room r${r.k}" data-r="${r.k}" ${ok ? '' : 'disabled'}><b>${r.name}</b><small>${ok ? r.sub : fmtP(r.min) + ' 필요'}</small></button>`; }).join('')}</div>
-        <p class="gs-rnote">이기면 <b>최종 점수 × 점당</b>만큼 따고, 지면 그만큼 잃어요(가진 포인트까지만). 포인트는 게임 안에서만 쓰고 돈으로 사고팔 수 없어요.</p>
+        <p class="gs-rnote">이기면 <b>최종 점수 × 판 크기</b>만큼 포인트를 받고, 지면 그만큼 잃어요(가진 포인트까지만). 포인트는 게임 안에서만 쓰고 돈으로 사고팔 수 없어요.</p>
         <div class="gs-earn"><b>포인트 얻는 법</b>
           <div class="${w.att === dayKey() ? 'done' : ''}"><span>매일 출석 <small>${w.streak || 1}일 연속 · 내일 +${fmt(1000 + Math.min(6, w.streak || 0) * 400)}P</small></span><i>${att ? '+' + fmt(att) + 'P 받음' : '오늘 받음'}</i></div>
           <div><span>파산 구제 <small>2천P보다 적으면 하루 한 번 1만P까지</small></span>${canRescue ? '<button id="gsRescue">받기</button>' : `<i>${w.rescue === dayKey() ? '오늘 받음' : '포인트 충분'}</i>`}</div>
@@ -1030,7 +1030,7 @@ NG.gostop = (() => {
           <div><span>솔로 새 판 첫 클리어 <small>챕터마다 +500P씩 커짐</small></span><i>솔로</i></div>
         </div></div>`;
       if(msg) try{ toast(msg); }catch(_){}
-      box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; sfx('gsPick', {}); g.room = r; box.hidden = true; box.innerHTML = '';
+      box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; sfx('gsPick', {}); g.room = r; box.hidden = true; box.innerHTML = ''; turnHint();
         if(g.mode === 'pvp') search();
         else if(g.sess){ g.seed0 = 'gs:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판 */
         else { g.seed0 = 'gs:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 */
@@ -1081,9 +1081,9 @@ NG.gostop = (() => {
       turnShown = true;
       host.insertAdjacentHTML('beforeend', `<div class="gs-turn" id="gsTurn" role="status"><div class="gs-tcard">
         <svg class="gs-tph" viewBox="0 0 64 64" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="4" fill="#fff" stroke="#1A0F45" stroke-width="3"/><path d="M48 40a18 18 0 0 1-18 16" fill="none" stroke="#FFE27A" stroke-width="4" stroke-linecap="round"/><path d="M26 52l4 4 4-4" fill="none" stroke="#FFE27A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <b>휴대폰을 가로로 돌려 주세요</b><small>그대로 해도 돼요. 판이 옆으로 누워 보여요.</small></div></div>`);
+        <b>휴대폰을 옆으로 눕혀 주세요</b><small>그대로 해도 돼요. 판이 옆으로 누워 보여요.</small></div></div>`);
       const el = $('#gsTurn'), off = () => { if(el && el.parentNode){ el.classList.add('out'); setTimeout(() => el.remove(), 250); } };
-      el.onclick = off; setTimeout(off, 2600);
+      el.onclick = off; setTimeout(off, 3200);
       g.turnOff = off;
     }catch(_){}
   }
@@ -1110,7 +1110,7 @@ NG.gostop = (() => {
     const box = $('#gsSearch'); box.hidden = false;
     box.innerHTML = `<div class="gs-sc0"><div class="gs-fan">${[3, 17, 30].map((id, i) => `<div class="gs-c" style="--r:${(i - 1) * 14}deg">${cardSvg(id)}</div>`).join('')}</div>
       <h3 id="gsSt">상대를 찾는 중</h3><p class="gs-sroom">${g.room ? g.room.name + ' 방' : ''}</p><p id="gsSn"></p>
-      <div class="gs-askb"><button class="pri" id="gsAiNow">AI와 바로 대전</button></div></div>`;
+      <div class="gs-askb"><button class="pri" id="gsAiNow">컴퓨터와 바로 대전</button></div></div>`;
     $('#gsAiNow').onclick = () => switchAI();
     searchText();
   }
@@ -1118,7 +1118,7 @@ NG.gostop = (() => {
     const g = GS(), st = $('#gsSt'), sn = $('#gsSn'); if(!st || !g) return;
     const left = Math.max(0, 20 - Math.floor((Date.now() - g.mmT0) / 1000));
     if(g.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${esc(g.oppNick)}</b>님과 연결하는 중…`; return; }
-    if(g.phase === 'nobody'){ st.textContent = '지금 대전할 상대가 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 지금 AI와 겨룰 수도 있어요.'; return; }
+    if(g.phase === 'nobody'){ st.textContent = '지금 대전할 상대가 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 지금 컴퓨터와 겨룰 수도 있어요.'; return; }
     st.textContent = '상대를 찾는 중';
     sn.textContent = `${left}초 · ${duelWaiting(ID) ? '기다리는 사람 ' + duelWaiting(ID) + '명' : '판을 깔고 기다리는 중'} · 내 이름 ${g.nick}`;
   }
@@ -1153,8 +1153,8 @@ NG.gostop = (() => {
   function switchAI(){
     const g = GS(); if(!g || g.began) return;
     stopSearch(); roomClose(); lobbyClear();
-    g.mode = 'ai'; G.mode = 'ai'; g.ai = 'normal'; g.oppNick = 'AI 고수'; g.seat = 0;
-    if(G.duel){ G.duel.mode = 'ai'; G.duel.opp = { nick:'AI 고수' }; }
+    g.mode = 'ai'; G.mode = 'ai'; g.ai = 'normal'; g.oppNick = '컴퓨터 고수'; g.seat = 0;
+    if(G.duel){ G.duel.mode = 'ai'; G.duel.opp = { nick:'컴퓨터 고수' }; }
     $('#gsSearch').hidden = true;
     g.seed0 = 'gs:ai:' + g.seedBase + ':' + Date.now();
     sunStart();
@@ -1251,12 +1251,14 @@ NG.gostop = (() => {
     const seedBase = Math.floor(rng() * 1e9) + ':' + n;
     /* 자리(seat): 대전은 peer 순서, AI와는 나 0 · AI 1. 판마다 선 자리(first)가 S의 0번 자리가 된다.
        솔로는 스테이지가 선을 정하고(aiFirst), 대전은 선 뽑기 → 다음 판부터 이긴 사람이 선 */
-    G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:G.adv && cfg.aiFirst ? 1 : 0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : 'AI 고수'),
+    G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:G.adv && cfg.aiFirst ? 1 : 0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : '컴퓨터 고수'),
       seedBase, ev:[], oev:[], tot:{ n:0, w:0, l:0, d:0, pt:0 }, bye:false, epoch:0, sel:null, busy:false, began:false, inGame:false, phase:'lobby' };
     G.mode = mode;
     G.cleanup = cleanup;
+    /* 아직 19세 확인 전이면 엔진의 첫 도움말을 막아 두고(이미 본 것으로 표시) 확인 뒤에 연다 → 확인 전에는 규칙 창이 뜨지 않음 */
+    if(!ageOk() && !store.get('hp:help:' + ID, false)){ store.set('hp:help:' + ID, 1); G.gs.helpAfterGate = true; }
   }
-  const AI_NAME = { easy:'AI 새내기', normal:'AI 고수', hard:'AI 타짜' };
+  const AI_NAME = { easy:'컴퓨터 새내기', normal:'컴퓨터 고수', hard:'컴퓨터 타짜' };
   function render(st){
     st.innerHTML = `<div class="gsg" id="gsg"><div class="gsb" id="gsb">
       <div id="gsBody" hidden>
@@ -1278,11 +1280,10 @@ NG.gostop = (() => {
         <button class="gs-auto" id="gsAuto" aria-label="자동 치기: 알맞은 패를 대신 골라 내요"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="10" width="17" height="26" rx="3" transform="rotate(-12 17 23)" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="9" width="17" height="26" rx="3" transform="rotate(10 30 22)" fill="currentColor"/><path d="M27 17l-3.5 7h5l-3.5 7" fill="none" stroke="#1D2B4F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="rotate(10 30 22)"/></svg><span>자동 치기</span></button>
       </div>
       <div class="gs-ban" id="gsBan" aria-live="polite"></div>
-      <div class="gs-lobby" id="gsLobby" hidden></div>
       <div class="gs-search" id="gsSearch" hidden></div>
       <div class="gs-sunb" id="gsSun" hidden></div>
       <div class="gs-ask" id="gsAsk" hidden></div>
-    </div>${ageOk() ? '' : gateHtml()}</div>`;
+    </div><div class="gs-lobby up" id="gsLobby" hidden></div>${ageOk() ? '' : gateHtml()}</div>`;
     document.body.classList.add('gs-full');
     const g0 = GS(); if(g0){ g0.onRs = () => { fit(); const g = GS(); if(g && !g.rot && g.turnOff) g.turnOff(); }; addEventListener('resize', g0.onRs); addEventListener('orientationchange', g0.onRs); }
     fit();
@@ -1293,8 +1294,8 @@ NG.gostop = (() => {
     const go = () => {
       const g = GS(); if(!g || G.over) return;
       const gate = $('#gsGate'); if(gate) gate.remove();
-      turnHint();
       lobby();
+      if(g.helpAfterGate){ g.helpAfterGate = false; setTimeout(() => { if(GS() === g && !G.over) openHelp(ID, true); }, 60); }
     };
     if(ageOk()) go();
     else {
@@ -1338,11 +1339,11 @@ NG.gostop = (() => {
     starRule:'★ 승리 · ★★ 10점 이상으로 승리 · ★★★ 20점 이상으로 승리',
     _pt:{ wallet, ROOMS, ACH, attendance, rescue, freeCharge },
     levels:LV,
-    levelDesc:lv => (AI_NAME[lv] || 'AI') + '와 한 판',
+    levelDesc:lv => (AI_NAME[lv] || '컴퓨터') + '와 한 판',
     levelCfg(lv){ const k = LV[lv] ? lv : 'normal'; return { name:lv === 'pvp' ? '사람과' : AI_NAME[k], mult:1, [ID]:LV[k] }; },
     stage:n => ({ limit:0, ai:stageLevel(n), aiFirst:aiFirst(n) }),
     stageLevel,
-    stageDesc:n => AI_NAME[stageLevel(n)] + '와 맞고 · ' + (aiFirst(n) ? 'AI가 선' : '내가 선') + ' · 이기면 클리어',
+    stageDesc:n => AI_NAME[stageLevel(n)] + '와 맞고 · ' + (aiFirst(n) ? '컴퓨터가 선' : '내가 선') + ' · 이기면 클리어',
     init(cfg, rng, lv){ init(cfg, rng, lv); },
     render:st => render(st),
     titleExtra:() => ' ' + BADGE19,
@@ -1356,9 +1357,16 @@ NG.gostop = (() => {
     stars(){ const f = myFinal(); return f >= 20 ? 3 : f >= 10 ? 2 : 1; },
     winTitle:'이겼어요!', loseTitle:'이번 판은 졌어요', noConfetti:true,
     bodyClass:'gsmode',
-    duelHow:'1:1 맞고 · 점당 방 · 19세 이상',
+    duelHow:'1:1 맞고 · 판 크기 고르기 · 19세 이상',
     /* 고스톱은 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 마주 앉아 한 판. fleet:true = 엔진에 "게임이 대전을 직접 진행"이라고 알림 */
-    duelLaunch(){ ageGate(() => { const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : 'AI 고수' } } }); }); },
+    duelLaunch(){ ageGate(() => { const live = duelLive(); startGame(ID, live ? 'pvp' : 'normal', { duel:{ fleet:true, mode:live ? 'pvp' : 'ai', opp:{ nick:live ? '상대' : '컴퓨터 고수' } } }); }); },
+    /* 시작 전 관문(공용 WP3 startGate): 19세 확인 → 확인된 뒤에만 도움말·판(솔로·대전·모듈 모두). 'gate'는 소리 간격 칸이라 이름이 다르다 */
+    startGate(go){ ageGate(go); },
+    /* 도움말 v2(공용 WP3): 첫 화면 3줄, 점수 계산 표는 '더 알아보기' */
+    howto:{
+      lines:[['같은 달 패를 맞춰 먹어요', '패를 내고 더미를 뒤집어 같은 달이면 가져와요'], ['점수가 나면 고 또는 스톱', '7점부터 더 할지(고) 끝낼지(스톱) 골라요'], ['많이 낸 쪽이 이겨요', '돈·상품은 걸 수 없어요 · 19세 이상']],
+      more:null
+    },
     sounds:Object.assign({
       gsSlap(){ aThump({ f:220, f2:90, d:.09, v:.22 }); aNoise({ ft:'highpass', f:2400, d:.05, v:.09 }); },
       gsFlip(){ aWhoosh({ f:1200, f2:3600, a:.01, d:.08, v:.05 }); aThump({ f:200, f2:90, t:.07, d:.08, v:.18 }); aNoise({ ft:'highpass', f:2600, t:.07, d:.04, v:.08 }); },
@@ -1381,3 +1389,5 @@ NG.gostop = (() => {
 })();
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.gostop.scene = { kind:'petals', colors:['#FFC2D3', '#FFE27A', '#FFFFFF'], density:.6 };
+/* 도움말 v2 '더 알아보기' = 예전 도움말 칸(점수 계산 표 등) 그대로 */
+NG.gostop.howto.more = NG.gostop.help.slice();

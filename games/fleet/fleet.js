@@ -1,17 +1,19 @@
 /* 함대 결전: 배치·AI·대전·솔로 */
 /* ---------- 함대 결전 (해전 전략): 10×10 바다, 함선 5척(5·4·3·3·2칸), 번갈아 한 발씩 ---------- */
 const FL_SHIPS = [{ k:'carrier', n:'항공모함', len:5 }, { k:'battle', n:'전함', len:4 }, { k:'cruiser', n:'순양함', len:3 }, { k:'sub', n:'잠수함', len:3 }, { k:'destroyer', n:'구축함', len:2 }];
-const FL_TOTAL = 17, FL_TURN = 25, FL_TURN_PVP = 5, FL_COLS = 'ABCDEFGHIJ';
+const FL_TOTAL = 17, FL_TURN = 25, FL_TURN_PVP = 10, FL_TURN_SLOW = 30, FL_COLS = 'ABCDEFGHIJ';   /* 실시간 한 차례: 보통 10초 · 느긋하게 30초(2026-10-06 세대별 테스트, 예전 5초) */
+const flTurnSec = () => G && G.slow ? FL_TURN_SLOW : FL_TURN_PVP;
+let flPaceNext = null;   /* duelLaunch(o.pace)가 다음 판 속도를 넘김 */
 /* 대전 시계: 서버 시각 기준(두 기기가 같은 남은 시간을 보도록) */
 const flNow = () => Date.now() + ((ROOM && ROOM.clockOffset) || 0);
 const flShotN = () => G.sh.filter(x => x >= 0).length;
 const FL_LV = {
   pvp:    { name:'실시간 대전', mult:1.6, fleet:{ limit:0 } },
-  easy:   { name:'AI 쉬움',   mult:0.6, fleet:{ limit:0 } },
-  normal: { name:'AI 보통',   mult:1.0, fleet:{ limit:0 } },
-  hard:   { name:'AI 어려움', mult:1.4, fleet:{ limit:0 } }
+  easy:   { name:'컴퓨터 쉬움',   mult:0.6, fleet:{ limit:0 } },
+  normal: { name:'컴퓨터 보통',   mult:1.0, fleet:{ limit:0 } },
+  hard:   { name:'컴퓨터 어려움', mult:1.4, fleet:{ limit:0 } }
 };
-const FL_AI_DESC = { easy:'아무 데나 쏘는 AI', normal:'맞히면 주변을 노리는 AI', hard:'확률을 계산하는 AI' };
+const FL_AI_DESC = { easy:'아무 데나 쏘는 컴퓨터', normal:'맞히면 주변을 노리는 컴퓨터', hard:'확률을 계산하는 컴퓨터' };
 const flName = i => FL_COLS[i % 10] + (Math.floor(i / 10) + 1);
 const flEsc = esc;   /* 글자 안전하게(공용 esc) */
 const FL_I = UI_ICON;   /* 버튼 아이콘(공용: core/effects-sound.js의 UI_ICON) */
@@ -95,7 +97,7 @@ CONCEPTS.fleet = {
   },
   twists:['flash', 'bare', 'first', 'fog', 'tight'],
   twInfo:{
-    flash:{ name:'번개', desc:'한 차례가 12초(연발은 18초)로 짧고, 별 기준 발수도 15% 빡빡해요. 빠르고 정확하게!' },
+    flash:{ name:'빠른 판', desc:'한 차례가 12초(연발은 18초)로 짧고, 별 기준 발수도 15% 빡빡해요. 빠르고 정확하게!' },
     bare:{ name:'맨손', desc:'레이더도, 격침한 배 둘레 자동 표시도 없어요. 오직 감으로 찾아요!' },
     first:{ name:'선공 AI', desc:'이번엔 AI가 먼저 쏴요. 한 발도 허투루 쏘면 안 돼요!' },
     fog:{ name:'안개', desc:'빗나간 표시가 내 차례 3번이 지나면 안개 속으로 사라져요. 같은 칸을 또 쏘면 한 발 손해! 쏜 곳을 잘 기억해요.' },
@@ -240,14 +242,14 @@ function openFleetSheet(){
   const canLive = ROOM_STATE !== 'none';
   let sel = lastLv('fleet');
   const n = flWaitingCount();
-  const liveDesc = !canLive ? '이 화면에선 실시간 대전을 쓸 수 없어요' : (n ? `지금 대기 중인 선장 ${n}명` : '20초 안에 상대가 없으면 AI와 붙어요') + ' · 최대 약 ' + fmt(maxPts('fleet', 'pvp')) + '점';
+  const liveDesc = !canLive ? '이 화면에선 실시간 대전을 쓸 수 없어요' : (n ? `지금 대기 중인 선장 ${n}명` : '20초 안에 상대가 없으면 컴퓨터와 붙어요') + ' · 최대 약 ' + fmt(maxPts('fleet', 'pvp')) + '점';
   const row = (k, title, desc, lead, rec) => `<button class="opt" role="radio" data-lv="${k}" aria-checked="${k === sel}" ${k === 'pvp' && !canLive ? 'disabled' : ''}>${lead}<span><b>${title}</b><small>${desc}</small></span>${rec ? '<span class="rec">' + rec + '</span>' : '<span></span>'}</button>`;
   const ai = ['easy','normal','hard'].map((k, i) => row(k, FL_LV[k].name, FL_AI_DESC[k] + ' · 최대 약 ' + fmt(maxPts('fleet', k)) + '점',
     `<span class="lvdots">${[0,1,2].map(j => `<i class="${j <= i ? 'on' : ''}"></i>`).join('')}</span>`, !canLive && k === 'normal' ? '추천' : '')).join('');
   openModal(`<h3>${GAMES.fleet.name}</h3><p class="note">함대를 숨기고 포격해요. 맞히면 한 번 더! 고른 방식은 기억해 두었다가 다음엔 바로 시작해요.</p>
     <div class="opts" role="radiogroup" aria-label="대전 방식">
       ${row('pvp', '실시간 1:1 대전', liveDesc, `<span class="livedot${canLive ? '' : ' off'}"></span>`, canLive ? '추천' : '')}
-      <div class="optsep">솔로 · AI와 대전</div>${ai}
+      <div class="optsep">솔로 · 컴퓨터와 대전</div>${ai}
     </div>
     <div class="mbtns"><button class="b2" id="mClose">닫기</button><button class="b1" id="mGo">시작하기 ${costTag()}</button></div>`);
   document.querySelectorAll('.opt').forEach(b => b.onclick = () => { if(b.disabled) return; sel = b.dataset.lv; document.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-checked', x === b)); });
@@ -259,10 +261,11 @@ function flInit(lv, rng){
   const nick = FL_NICK_A[Math.floor(Math.random() * FL_NICK_A.length)] + ' ' + FL_NICK_B[Math.floor(Math.random() * FL_NICK_B.length)];
   const fx = G.adv ? flStageFx(G.adv) : null, rocks = fx ? fx.rocks : undefined;   /* 솔로만: 스테이지 규칙·변주 */
   const en = flRandomFleet(rng, rocks);   /* AI 함대 배치는 오늘 친구들과 같음 */
-  Object.assign(G, { mode: lv === 'pvp' ? 'pvp' : 'ai', ai: lv === 'pvp' ? 'normal' : lv, phase:'place', nick, oppNick: lv === 'pvp' ? '상대 선장' : 'AI 함장',
+  Object.assign(G, { mode: lv === 'pvp' ? 'pvp' : 'ai', ai: lv === 'pvp' ? 'normal' : lv, phase:'place', nick, oppNick: lv === 'pvp' ? '상대 선장' : '컴퓨터 함장',
     my:flRandomFleet(Math.random, rocks), en, enMap:flMapOf(en), myMap:null, myShot:new Array(100).fill(0), enShot:new Array(100).fill(0),
     sh:[], an:[], shown:0, pending:-1, hitsN:0, myLeft:FL_TOTAL, enSunk:[], turn:null, lastTurn:null, aimI:-1, busy:false, busyIn:false,
-    aiKnow:new Array(100).fill(0), aiSunk:[], log:[], opp:{ sh:[], an:[] }, nr:null, oppPeer:null, myPeer:null, oppRv:null, forfeit:false, ending:false });
+    aiKnow:new Array(100).fill(0), aiSunk:[], log:[], opp:{ sh:[], an:[] }, nr:null, oppPeer:null, myPeer:null, oppRv:null, forfeit:false, ending:false,
+    slow:lv === 'pvp' && (flPaceNext != null ? !!flPaceNext : !!store.get('hp:fleet:slow', 0)), selShip:0 });   /* 실시간 '느긋하게'(한 차례 30초) */
   G.fx = fx;
   if(fx){
     Object.assign(G, { radarN:fx.radar, aiRadarN:fx.aiRadar, aiHot:null, radarMode:false, radarMarks:[], salvoSel:[], myTurnN:0, aiTurnN:0, missAt:{}, fogged:new Set() });
@@ -276,7 +279,7 @@ function flCleanup(){
   if(G.nrUn) try{ G.nrUn(); }catch(_){}
   const nr = G.nr; G.nr = null;
   if(nr) setTimeout(() => { try{ nr.leave(); }catch(_){} }, 1200);
-  if(ROOM) ROOM.presence({ fl:null, ft:null, pr:null, nk:null }).catch(() => {});
+  if(ROOM) ROOM.presence({ fl:null, ft:null, pr:null, nk:null, dk:null }).catch(() => {});
 }
 
 /* ----- 화면 ----- */
@@ -298,7 +301,7 @@ function flStage(st){
 function flLabels(){ return `<div class="fl-lx">${[...FL_COLS].map(c => `<span>${c}</span>`).join('')}</div><div class="fl-ly">${[...Array(10)].map((_, k) => `<span>${k + 1}</span>`).join('')}</div>`; }
 function flRender(){
   const b = $('#flBody'); if(!b) return;
-  $('#flVs').textContent = G.phase === 'battle' ? '나 vs ' + G.oppNick : G.mode === 'pvp' ? '실시간 1:1 대전' : G.L.name + ' 대전';
+  $('#flVs').textContent = G.phase === 'battle' ? '나 vs ' + G.oppNick : G.mode === 'pvp' ? '실시간 1:1 대전' + (G.slow ? ' · 느긋하게' : '') : G.adv ? G.L.name + ' 해전' : G.duel ? '컴퓨터와 해전' : '오늘의 바다';
   if(G.phase === 'place') flRenderPlace(b);
   else if(G.phase === 'battle') flRenderBattle(b);
   else flRenderSearch(b);
@@ -307,21 +310,50 @@ function flRender(){
 /* 배치 화면: 끌어서 이동, 탭하면 회전 */
 function flRenderPlace(b){
   $('#flTurn').className = 'fl-turn'; $('#flTurn').innerHTML = '<i></i>함대 배치';
+  if(G.selShip == null) G.selShip = 0;
   b.innerHTML = `<div class="fl-panel">
-      <div class="fl-head"><span><b>우리 함대 배치</b></span><span>끌면 이동 · 탭하면 회전</span></div>
+      <button class="btn primary fl-auto" id="flAuto">${FL_I.shuf}<span>자동으로 놓고 출격</span></button>
+      <div class="fl-head"><span><b>우리 함대 배치</b></span><span>끌면 이동 · 누르면 회전</span></div>
       <div class="fl-board">${flLabels()}<div class="fl-sea" id="flMy"><div class="fl-radar"></div>${flRockLayer()}<div class="fl-ships edit" id="flMyShips"></div></div></div>
-      <div class="fl-roster">${FL_SHIPS.map(s => `<span class="fl-chip">${flShipSvg(s.k, s.len, false, 'fl-mini', 10)}${s.n} ${s.len}칸</span>`).join('')}</div>
-      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn primary fl-go" id="flGo">${G.mode === 'pvp' ? '출격 · 상대 찾기' : '출격!'}</button></div>
+      <div class="fl-dpad" role="group" aria-label="고른 배 옮기기">
+        <button class="fl-dk" data-d="l" aria-label="왼쪽으로">◀</button><button class="fl-dk" data-d="u" aria-label="위로">▲</button><button class="fl-dk" data-d="d" aria-label="아래로">▼</button><button class="fl-dk" data-d="r" aria-label="오른쪽으로">▶</button><button class="fl-dk rot" data-d="o" aria-label="돌리기">⟳</button>
+      </div>
+      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo">${G.mode === 'pvp' ? '이대로 · 상대 찾기' : '이대로 출격'}</button></div>
+      ${G.mode === 'pvp' ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}"><b>${G.slow ? '느긋하게' : '보통'}</b> · 한 차례 ${flTurnSec()}초 <span>바꾸기 ⇄</span></button>` : ''}
     </div>
-    <p class="fl-tip">${G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 AI와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : 'AI 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
+    <p class="fl-tip">${G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br>컴퓨터 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
   $('#flMy').classList.add('live');
   flPlaceShips(true);
-  $('#flShuf').onclick = () => { G.my = flRandomFleet(Math.random, G.fx ? G.fx.rocks : undefined); flPlaceShips(true); flSound('splash'); G.my.forEach((sh, k) => setTimeout(() => flSound('aim'), k * 60)); };
-  $('#flGo').onclick = () => { flSound('fire'); if(G.mode === 'pvp') flSearch(); else flStartBattle(); };
+  const go = () => { flSound('fire'); if(G.mode === 'pvp') flSearch(); else flStartBattle(); };
+  const shuf = () => { G.my = flRandomFleet(Math.random, G.fx ? G.fx.rocks : undefined); flPlaceShips(true); flSound('splash'); G.my.forEach((sh, k) => setTimeout(() => flSound('aim'), k * 60)); };
+  $('#flShuf').onclick = shuf;
+  $('#flGo').onclick = go;
+  $('#flAuto').onclick = () => { shuf(); const me = G; setTimeout(() => { if(G === me && G.phase === 'place') go(); }, 450); };
+  document.querySelectorAll('.fl-dk').forEach(k => k.onclick = () => flNudge(k.dataset.d));
+  const pc = $('#flPace'); if(pc) pc.onclick = () => { G.slow = !G.slow; store.set('hp:fleet:slow', G.slow ? 1 : 0); sfx('toggle'); flRender(); };
+}
+/* 방향 버튼(세대별 테스트 S-FLT-4): 고른 배를 한 칸씩 옮기거나 돌린다. 막히면 그다음 들어갈 수 있는 칸까지 건너뛴다 */
+function flNudge(d){
+  const s = G.my[G.selShip | 0]; if(!s || G.phase !== 'place') return;
+  if(d === 'o'){
+    const v = !s.v, cands = [];
+    for(let dx=-4; dx<=4; dx++) for(let dy=-4; dy<=4; dy++) cands.push([dx, dy]);
+    cands.sort((a, b2) => Math.abs(a[0]) + Math.abs(a[1]) - Math.abs(b2[0]) - Math.abs(b2[1]));
+    const hit = cands.map(([dx, dy]) => ({ ...s, v, x:s.x + dx, y:s.y + dy })).find(t => flInBounds(t) && flFits(G.my, t, s, flRockList()));
+    if(hit){ s.v = v; s.x = hit.x; s.y = hit.y; flSound('lock'); flPlaceShips(false); } else { flSound('bad'); fxBuzz(40); }
+    return;
+  }
+  const [dx, dy] = { l:[-1, 0], r:[1, 0], u:[0, -1], d:[0, 1] }[d];
+  for(let k = 1; k < 10; k++){
+    const t = { ...s, x:s.x + dx * k, y:s.y + dy * k };
+    if(!flInBounds(t)) break;
+    if(flFits(G.my, t, s, flRockList())){ s.x = t.x; s.y = t.y; flSound('aim'); flPlaceShips(false); return; }
+  }
+  flSound('bad'); fxBuzz(30);
 }
 function flPlaceShips(anim){
   const layer = $('#flMyShips'); if(!layer) return;
-  layer.innerHTML = G.my.map((s, k) => flShipEl(s, k, anim ? 'pop' : '')).join('');
+  layer.innerHTML = G.my.map((s, k) => flShipEl(s, k, (anim ? 'pop' : '') + (k === (G.selShip | 0) ? ' sel' : ''))).join('');
   if(anim) layer.querySelectorAll('.fl-ship').forEach((e, k) => e.style.animationDelay = k * 60 + 'ms');
   const sea = $('#flMy'); let drag = null;
   layer.querySelectorAll('.fl-ship').forEach(el => {
@@ -330,6 +362,7 @@ function flPlaceShips(anim){
       e.preventDefault(); try{ el.setPointerCapture(e.pointerId); }catch(_){}
       const rc = sea.getBoundingClientRect(), cs = rc.width / 10;
       drag = { gx:Math.floor((e.clientX - rc.left) / cs) - s.x, gy:Math.floor((e.clientY - rc.top) / cs) - s.y, x0:e.clientX, y0:e.clientY, moved:false, nx:s.x, ny:s.y };
+      G.selShip = +el.dataset.s; layer.querySelectorAll('.fl-ship').forEach(x => x.classList.toggle('sel', x === el));
       el.classList.remove('pop'); el.classList.add('drag');
     };
     el.onpointermove = e => {
@@ -366,7 +399,7 @@ function flRenderSearch(b){
   b.innerHTML = `<div class="fl-panel fl-searchp">
       <div class="fl-rbig${G.phase === 'joining' ? ' found' : ''}"><i></i><span class="fl-blip" style="left:30%;top:36%"></span><span class="fl-blip" style="left:68%;top:58%;animation-delay:1.1s"></span><span class="fl-blip" style="left:44%;top:76%;animation-delay:.6s"></span></div>
       <h3 class="fl-st" id="flSt"></h3><p class="fl-sn" id="flSn"></p>
-      <div class="fl-sbtns" id="flSBtns"><button class="btn primary fl-go" id="flAiNow">AI와 바로 대전</button><button class="btn secondary fl-sbtn" id="flCancel">배치로 돌아가기</button></div>
+      <div class="fl-sbtns" id="flSBtns"><button class="btn primary fl-go" id="flAiNow">컴퓨터와 바로 대전</button><button class="btn secondary fl-sbtn" id="flCancel">배치로 돌아가기</button></div>
     </div>`;
   $('#flAiNow').onclick = flSwitchAI;
   $('#flCancel').onclick = () => { flStopSearch(); if(ROOM) ROOM.presence({ fl:null, ft:null, pr:null }).catch(() => {}); G.phase = 'place'; flRender(); };
@@ -375,9 +408,9 @@ function flRenderSearch(b){
 function flSearchText(){
   const st = $('#flSt'), sn = $('#flSn'); if(!st) return;
   const left = Math.max(0, 20 - Math.floor((Date.now() - (G.mmT0 || Date.now())) / 1000));
-  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 AI와 겨뤄 보세요.'; $('#flAiNow').textContent = 'AI와 대전 (보통)'; return; }
+  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 AI와 겨뤄 보세요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
   if(G.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${flEsc(G.oppNick)}</b> 선장과 연결하는 중…`; $('#flSBtns').style.display = 'none'; return; }
-  if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. AI 대전은 보통 난이도 점수로 계산돼요.'; $('#flAiNow').textContent = 'AI와 대전 (보통)'; return; }
+  if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 컴퓨터 대전은 보통 난이도 점수로 계산돼요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
   st.textContent = '상대 선장을 찾는 중'; const n = flWaitingCount();
   sn.textContent = `${left}초 · ${n ? '대기 중인 선장 ' + n + '명' : '레이더로 바다를 훑고 있어요'} · 내 이름 ${G.nick}`;
 }
@@ -386,7 +419,7 @@ function flSearch(){
   const room = ROOM;
   if(!room){ return; }
   G.ft = Date.now();
-  room.presence({ fl:'wait', ft:G.ft, nk:G.nick, pr:null }).catch(() => {});
+  room.presence({ fl:'wait', ft:G.ft, nk:G.nick, pr:null, dk:G.slow ? 's' : 'n' }).catch(() => {});
   const check = () => {
     if(G.over || (G.phase !== 'search' && G.phase !== 'nobody')) return;
     let ps; try{ ps = room.peers(); }catch(_){ return; }
@@ -394,7 +427,8 @@ function flSearch(){
     G.myPeer = me.peer;
     const claim = ps.find(p => !p.sameTab && p.presence && p.presence.fl === 'play' && p.presence.pr === me.peer);
     if(claim){ flMatch(claim); return; }
-    const list = ps.filter(p => p.presence && p.presence.fl === 'wait' && typeof p.presence.ft === 'number')
+    const dk = G.slow ? 's' : 'n';
+    const list = ps.filter(p => p.presence && p.presence.fl === 'wait' && typeof p.presence.ft === 'number' && (p.presence.dk || 'n') === dk)
       .sort((a, b) => a.presence.ft - b.presence.ft || (a.peer < b.peer ? -1 : 1));
     const i = list.findIndex(p => p.sameTab); if(i < 0) return;
     const opp = list[i % 2 ? i - 1 : i + 1]; if(opp) flMatch(opp);
@@ -410,7 +444,7 @@ function flSearch(){
 function flStopSearch(){ clearInterval(G.mmIv); if(G.mmUn) try{ G.mmUn(); }catch(_){} G.mmUn = null; }
 function flSwitchAI(){
   flStopSearch(); flCleanupRoom();
-  G.mode = 'ai'; G.lv = 'normal'; G.ai = 'normal'; G.L = FL_LV.normal; G.oppNick = 'AI 함장';
+  G.mode = 'ai'; G.lv = 'normal'; G.ai = 'normal'; G.L = FL_LV.normal; G.oppNick = '컴퓨터 함장';
   flStartBattle();
 }
 function flCleanupRoom(){
@@ -575,11 +609,11 @@ function flTurnUI(){
   const pill = $('#flTurn'); if(!pill || G.phase !== 'battle') return;
   const t = flTurn();
   if(t !== G.lastTurn){
-    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp'){ flSound('ping'); G.myDl = flNow() + FL_TURN_PVP * 1000 + Math.max(0, 1700 - (Date.now() - G.start));   /* 첫 차례는 '전투 개시' 알림이 지나간 뒤부터 */ if(G.nr) G.nr.presence({ td:G.myDl, tk:G.sh.length }).catch(() => {}); } }
+    if(t === 'me'){ G.turnAt = Date.now(); if(G.mode === 'pvp'){ flSound('ping'); G.myDl = flNow() + flTurnSec() * 1000 + Math.max(0, 1700 - (Date.now() - G.start));   /* 첫 차례는 '전투 개시' 알림이 지나간 뒤부터 */ if(G.nr) G.nr.presence({ td:G.myDl, tk:G.sh.length }).catch(() => {}); } }
     if(t === 'op') G.opSince = Date.now();
     G.lastTurn = t;
   }
-  let txt = t === 'me' ? (G.radarMode ? '레이더 칸 고르기' : G.fx && G.fx.salvo ? '내 차례 · 3발' : '내 차례') : t === 'wait' ? '포탄 비행 중' : t === 'end' ? '전투 종료' : G.mode === 'ai' ? 'AI 조준 중' : '상대 차례';
+  let txt = t === 'me' ? (G.radarMode ? '레이더 칸 고르기' : G.fx && G.fx.salvo ? '내 차례 · 3발' : '내 차례') : t === 'wait' ? '포탄 비행 중' : t === 'end' ? '전투 종료' : G.mode === 'ai' ? '컴퓨터 조준 중' : '상대 차례';
   let left = -1;
   if(G.fx && G.fx.flash && t === 'me' && G.turnAt) left = Math.max(0, Math.ceil(G.fx.turnSec - (Date.now() - G.turnAt) / 1000));   /* 번개: 차례 시계 */
   if(G.mode === 'pvp' && t === 'me' && G.myDl) left = Math.max(0, Math.ceil((G.myDl - flNow()) / 1000));
@@ -610,7 +644,7 @@ function flTimerTick(){
     const i = G.aimI >= 0 && !G.enShot[G.aimI] ? G.aimI : open[Math.floor(Math.random() * open.length)];
     toast('시간이 지나 자동으로 발사했어요'); flFire(i);
   }
-  if(t === 'op' && !G.busyIn && G.opSince && Date.now() - G.opSince > 30000){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
+  if(t === 'op' && !G.busyIn && G.opSince && Date.now() - G.opSince > Math.max(30000, (flTurnSec() + 20) * 1000)){ G.forfeit = true; toast('상대가 응답하지 않아 기권승 처리했어요'); flEnd(true); }
 }
 
 /* 시간 초과로 차례 넘기기: 쏜 칸 목록에 -1을 올리고, 상대는 '빗나감(0)'으로 답해 차례가 넘어간다 */
@@ -626,7 +660,7 @@ function flPass(){
 /* 조준·발사 */
 function flAim(i){
   if(G.over || G.ending || G.phase !== 'battle' || !flCanShoot(i)) return;
-  if(flTurn() !== 'me'){ toast(G.mode === 'ai' ? 'AI가 쏘는 중이에요' : '상대 차례예요'); return; }
+  if(flTurn() !== 'me'){ toast(G.mode === 'ai' ? '컴퓨터가 쏘는 중이에요' : '상대 차례예요'); return; }
   if(G.fx && G.fx.salvo){   /* 연발: 세 칸까지 골랐다 풀었다 */
     const k = G.salvoSel.indexOf(i);
     if(k >= 0) G.salvoSel.splice(k, 1);
@@ -677,7 +711,7 @@ function flSplash(el, small){
   flSound('splash', panX(p.x));
 }
 function flBoom(el, big, small){
-  if(!el) return; const p = fxCenter(el), k = small ? .7 : 1;
+  if(!el) return; const p = fxCenter(el), k = small ? .8 : 1.3;   /* 2026-10-06: 폭발을 더 크게 */
   fxRing(p.x, p.y, '#FFF3C4', p.w * (big ? 3 : 2) * k, .5, 10);
   fxRing(p.x, p.y, '#FF6A2B', p.w * (big ? 4.2 : 2.8) * k, .75, 6);
   fxBurst(p.x, p.y, ['#FFD84A', '#FF7A1A', '#FF3B30', '#FFFFFF', '#555A60'], (big ? 30 : 20) * k | 0, { speed:(big ? 360 : 260) * k, size:(big ? 6 : 4.6) * k, kinds:['star', 'dot', 'rect'], g:420, up:110 });
@@ -1033,7 +1067,14 @@ NG.fleet = {
       ${FL_FLAME.replace('<svg class="fl-flame" ', '<svg x="92" y="30" width="20" height="20" ')}
       <g transform="translate(110 42)"><circle r="11" fill="none" stroke="#FF4D4D" stroke-width="2" stroke-dasharray="10 4"/><path d="M0-15v6M0 9v6M-15 0h6M9 0h6" stroke="#FF4D4D" stroke-width="2" stroke-linecap="round"/></g></svg>`;
   },
-  help:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 턴 5초, 안 쏘면 차례가 넘어가요. 상대가 없으면 AI와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.'],['솔로는 5판마다 새 규칙','섬·레이더·연발 포격·침묵 함대, 그리고 번개·안개 같은 변주가 차례로 나와요. 이번 판 규칙은 위쪽 작은 표시에 보여요. 솔로에선 격침한 적 배 둘레가 자동으로 "배 없음"으로 칠해져요(적 배는 서로 붙어 있지 않아요).']],
+  help:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 차례 10초(느긋하게 30초), 조준해 둔 칸이 있으면 시간이 다 될 때 그 칸에 쏴요. 상대가 없으면 컴퓨터와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.'],['솔로는 5판마다 새 규칙','섬·레이더·연발 포격·침묵 함대, 그리고 빠른 판·안개 같은 변주가 차례로 나와요. 이번 판 규칙은 위쪽 작은 표시에 보여요. 솔로에선 격침한 적 배 둘레가 자동으로 "배 없음"으로 칠해져요(적 배는 서로 붙어 있지 않아요).']],
+  /* 도움말 v2(공용 WP3): 첫 화면 3줄(레이더·연발 포격·침묵 함대는 솔로 개념 카드로), 나머지는 '더 알아보기' */
+  howto:{
+    lines:[['배를 놓고 출격', '[자동으로 놓고 출격]을 누르면 바로 시작'], ['번갈아 적 바다를 쏴요', '칸을 눌러 조준 → [발사]'], ['맞히면 한 번 더', '적 배를 먼저 모두 가라앉히면 승리']],
+    more:[['배 옮기기', '배를 끌어 옮기고, 누르면 방향이 바뀌어요. 배를 누른 뒤 ◀▲▼▶·⟳ 버튼으로도 옮길 수 있어요.'],
+      ['실시간 대전', '한 차례 10초(느긋하게 30초, 같은 속도끼리 짝). 조준해 둔 칸이 있으면 시간이 다 될 때 그 칸에 쏴요. 상대가 없으면 컴퓨터와 붙어요.'],
+      ['점수', '적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.']]
+  },
   chapters:['잔잔한 만','안개 해협','폭풍 바다','빙하 항로','해적 섬'],
   starRule:'★ 승리 · ★★ 기준 발수 이하 · ★★★ 더 적은 발수(판마다 달라요)',
   levels:FL_LV,
@@ -1052,9 +1093,10 @@ NG.fleet = {
   stars(){ const n = flShotN(), th = G.fx ? G.fx.th : [60, 45]; return n <= th[1] ? 3 : n <= th[0] ? 2 : 1; },
   winTitle:'승리! 적 함대 전멸', loseTitle:'패배 · 우리 함대가 침몰했어요',
   bodyClass:'flmode', noConfetti:true, amb:'sea',
-  duelHow:'서로 포격하는 턴제 대전',
+  duelHow:'서로 포격하는 턴제 대전 · 한 차례 10초',
   /* 함대는 대전이 따로(턴제 실시간): 같은 문제 동시 풀기 대신 바로 포격전 */
-  duelLaunch(){ const lv = duelLive() ? 'pvp' : 'normal'; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : 'AI 함장' } } }); }
+  /* o.pace === 's'(공용 대전 v3 '느긋하게')면 한 차례 30초. 없으면 이 기기에 기억한 선택 */
+  duelLaunch(o){ const lv = duelLive() ? 'pvp' : 'normal', slow = o && o.pace ? o.pace === 's' : !!store.get('hp:fleet:slow', 0); flPaceNext = slow; startGame('fleet', lv, { duel:{ fleet:true, mode:lv === 'pvp' ? 'pvp' : 'ai', opp:{ nick:lv === 'pvp' ? '상대 선장' : '컴퓨터 함장' } } }); flPaceNext = null; }
 };
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.fleet.scene = { kind:'sea', colors:['#BFF4FF'], density:1 };

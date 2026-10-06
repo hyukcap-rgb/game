@@ -165,7 +165,7 @@ NG.memory = (() => {
     },
     twists:['flash', 'tight', 'shuffle', 'bare', 'tick'],
     twInfo:{
-      flash:{ name:'번개', desc:'카드는 조금 적지만 제한 시간이 아주 짧아요. 빠르고 정확하게!' },
+      flash:{ name:'빠른 판', desc:'카드는 조금 적지만 제한 시간이 아주 짧아요. 빠르고 정확하게!' },
       tight:{ name:'외줄 타기', desc:'틀릴 수 있는 횟수가 정해져 있어요. 위쪽 실수 칸을 다 쓰고 또 틀리면 끝나요.' },
       shuffle:{ name:'카드 섞기', desc:'짝을 3번 찾을 때마다 덮인 카드 몇 장이 자리를 바꿔요. 움직이는 카드를 눈으로 따라가요.' },
       bare:{ name:'맨손', desc:'미리 보기 없이 시작해요. 처음부터 한 장씩 뒤집으며 기억해요.' },
@@ -218,7 +218,10 @@ NG.memory = (() => {
     if(has('triple') && has('joker')) limit *= MT.tjTime;
     if(p.boss && tw) limit *= MT.bossTw[tw] || 1;   /* 보스에서 변주가 겹칠 때 보정 */   /* 조커가 세 장 짝 한 세트를 통째로 풀어 줘서 훨씬 쉬워진다 */
     limit = Math.max(10, Math.round(1.5 * cards), Math.round(limit));   /* 카드 한 장에 적어도 1.5초 */
-    let preview = tw === 'bare' ? 0 : Math.max(1.5, (cards <= 12 ? 3 : cards <= 20 ? 2.5 : 2) - (p.boss ? .5 : 0) + (bombs ? .5 : 0));
+    /* 외우는 시간(2026-10-06 세대별 테스트 S-MEM-3: 3초는 짧음 → 1초씩 늘림, 오늘의 문제 4/3.5/3초와 같은 계단) */
+    let preview = tw === 'bare' ? 0 : Math.max(2.5, (cards <= 12 ? 4 : cards <= 20 ? 3.5 : 3) - (p.boss ? .5 : 0) + (bombs ? .5 : 0));
+    /* 1판(몸풀기, 3쌍): 남은 시간을 보여 주지 않고 시간도 넉넉히(S-MEM-7 "10초 표시에 놀람") */
+    if(n === 1) limit = Math.max(limit, 40);
     const missCap = tw === 'tight' ? Math.max(2, Math.round(MT.cap0 * Math.pow(sets, MT.capE) * (MT.capK[k] || 1) * (g === 3 ? MT.capG3 : 1) * (twins ? MT.capTw : 1))) : 0;
     return { cols, rows, g, sets, bombs, jokers, twins, limit, preview, missCap, shuffle:tw === 'shuffle', tick:tw === 'tick' ? 3 : 0,
       boss:p.boss, hard:p.hard, fruit:c === 1 && !twins, mj:mj.slice(), tw, n };
@@ -239,7 +242,7 @@ NG.memory = (() => {
   function msg(html, cls){ const e = $('#mmMsg'); if(!e) return; e.className = 'mm-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
+    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
     return '<span>같은 그림 두 장을 찾아요</span>';
   }
@@ -259,6 +262,16 @@ NG.memory = (() => {
   /* ----- 루프: 카드 나눠주기 → 미리 보기 → 카운트다운 ----- */
   const DEAL = 0.55;
   const remTime = t => Math.max(0, G.limit - S().pen - t);
+  /* 느긋하게 외우기 켜고 끄기: 미리 보기 중이면 바로 늘어나고, 아니면 다음 판부터 */
+  function toggleSlow(){
+    const m = S(); if(!m || !m.slowOk) return;
+    m.slow = !m.slow; store.set('hp:memory:slow', m.slow ? 1 : 0); sfx('toggle');
+    const b = $('#mmSlow'); if(b){ b.classList.toggle('on', m.slow); b.setAttribute('aria-pressed', m.slow); }
+    if(m.phase === 'deal' || m.phase === 'preview'){
+      m.preview = m.pv0 * (m.slow ? 2 : 1);
+      if(m.phase === 'preview') msg('<b>기억하세요!</b><span>' + m.preview + '초 동안 보여 줘요</span>', 'mm-remember');
+    } else toast(m.slow ? '다음 판부터 외우는 시간 ×2' : '다음 판부터 외우는 시간 보통');
+  }
   function startPlay(){
     const m = S();
     m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0;
@@ -287,6 +300,7 @@ NG.memory = (() => {
     if(m.phase !== 'play') return;
     const rem = remTime(t), sec = Math.ceil(rem);
     if(bar) bar.style.transform = `scaleX(${rem / G.limit})`;
+    if(sec !== m.lastSec && m.warm) m.lastSec = sec;
     if(sec !== m.lastSec){
       m.lastSec = sec;
       const e = $('#mmTime'); if(e) e.textContent = mmss(sec);
@@ -316,8 +330,9 @@ NG.memory = (() => {
     list.forEach((i, k) => {
       const el = cardEl(i); if(!el) return; el.classList.add('ok'); setUp(i, true);
       const p = fxCenter(el);
-      fxRing(p.x, p.y, '#FFE27A', p.w * .9, .45, 7);
-      fxBurst(p.x, p.y, [col, '#FFE27A', '#FFFFFF'], 10, { speed:230, size:4.5, kinds:['star','dot','spark'], up:110, g:460, glow:k === list.length - 1, dur:.7 });
+      fxRing(p.x, p.y, '#FFE27A', p.w * 1.35, .5, 8);
+      fxBurst(p.x, p.y, [col, '#FFE27A', '#FFFFFF'], 18, { speed:320, size:5.5, kinds:['star','dot','spark'], up:130, g:460, glow:k === list.length - 1, dur:.8 });
+      try{ if(k === list.length - 1) fxPunch(el, 1.12); }catch(_){}
       /* 이펙트 v2: 짝을 맞힌 카드 위로 작은 하트·반짝이가 떠오름 */
       try{ fxEmit(p.x, p.y - p.h * .2, { quantity:3, x:{ min:-p.w * .3, max:p.w * .3 }, speed:{ min:30, max:70 }, angle:{ min:250, max:290 }, lifespan:{ min:700, max:1000 }, kind:k % 2 ? 'twinkle' : 'heart', tint:['#FFFFFF', '#FFB3D1'], scale:{ start:4.5, end:2 }, alpha:{ start:1, end:0 }, gravityY:-30, wob:30, delay:120 }); }catch(_){}
     });
@@ -489,14 +504,26 @@ NG.memory = (() => {
       ['그림을 기억해요', '처음 몇 초 동안 모든 카드가 앞면으로 보여요. 어디에 무슨 그림이 있는지 잘 기억해 두세요.'],
       ['두 장씩 뒤집어요', '카드를 눌러 두 장을 뒤집어요. 같은 그림이면 짝을 찾은 거예요. 다르면 다시 덮여요.'],
       ['시간 안에 모두 찾기', '제한 시간 안에 짝을 모두 찾으면 성공이에요. 덜 틀리고 빨리 찾을수록 점수가 높아요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 세 장 짝·폭탄·조커·닮은꼴 같은 새 규칙과 번개·외줄 타기 같은 변주가 5판마다 하나씩 나와요. 지금 켜진 규칙은 판 위쪽 이름표에 보여요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 세 장 짝·폭탄·조커·닮은꼴 같은 새 규칙과 빠른 판·외줄 타기 같은 변주가 5판마다 하나씩 나와요. 지금 켜진 규칙은 판 위쪽 이름표에 보여요.']
     ],
+    /* 도움말 v2(공용 WP3): 첫 화면 3줄, 나머지는 '더 알아보기' */
+    howto:{
+      lines:[
+        ['처음 몇 초 그림을 외워요', '모든 카드가 잠깐 앞면으로 보여요'],
+        ['두 장씩 뒤집어 짝을 찾아요', '같은 그림이면 짝, 다르면 다시 덮여요'],
+        ['시간 안에 짝을 모두 찾기', '덜 틀리고 빨리 찾을수록 점수가 높아요']
+      ],
+      more:[
+        ['외우는 시간', '오늘의 문제는 쉬움 4초 · 보통 3.5초 · 어려움 3초. 솔로에서는 [느긋하게 외우기 ×2]를 켜면 두 배로 보여 줘요.'],
+        ['솔로: 5판마다 새 규칙', '세 장 짝·폭탄·조커·닮은꼴 같은 새 규칙과 빠른 판·외줄 타기 같은 변주가 5판마다 하나씩 나와요. 1판은 시간 걱정 없는 몸풀기 판이에요.']
+      ]
+    },
     chapters:['과일 바구니','장난감 상자','별빛 하늘','바닷속 친구들','마법 서랍'],
     starRule:'★ 클리어 · ★★ 조금만 틀리기 · ★★★ 거의 안 틀리기',
     levels:{
-      easy:{ cols:4, rows:4, limit:90, preview:3 },
-      normal:{ cols:4, rows:5, limit:120, preview:2.5 },
-      hard:{ cols:5, rows:6, limit:180, preview:2 }
+      easy:{ cols:4, rows:4, limit:90, preview:4 },
+      normal:{ cols:4, rows:5, limit:120, preview:3.5 },
+      hard:{ cols:5, rows:6, limit:180, preview:3 }
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
@@ -530,6 +557,10 @@ NG.memory = (() => {
         mj:cfg.mj || [], tw:cfg.tw || null, tips, seen:new Set(), sinceSwap:0, swaps:0, rng, lastSec:-1, sec:0, timers:new Set() };
       G.limit = cfg.limit;
       const m = G.m;
+      /* 솔로: 1판은 몸풀기(남은 시간 숨김), '느긋하게 외우기'를 켜면 외우는 시간 ×2(이 기기에 기억) */
+      m.warm = G.adv === 1 && !G.duel;
+      m.pv0 = m.preview; m.slowOk = !!G.adv && !G.duel && m.pv0 > 0;
+      m.slow = m.slowOk && !!store.get('hp:memory:slow', 0); if(m.slow) m.preview = m.pv0 * 2;
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.onResize) removeEventListener('resize', m.onResize);
@@ -556,15 +587,16 @@ NG.memory = (() => {
       st.innerHTML = `<div class="ng-memory">
         <div class="hud-row mm-hud">
           <div class="hchip" aria-label="찾은 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></span><em>찾은 짝</em></div>
-          <div class="hchip time mm-time" id="mmTimeP" aria-label="남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
-          <div class="hchip" aria-label="뒤집은 횟수"><span class="hv"><span class="mm-ic">${ICO.flip}</span><b id="mmFlips">0</b><small>번</small></span><em>뒤집은 수</em></div>
+          ${m.warm ? `<div class="hchip time mm-time" aria-label="몸풀기 판 · 시간 넉넉"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b class="mm-easy">넉넉해요</b></span><em>몸풀기 판</em></div>`
+            : `<div class="hchip time mm-time" id="mmTimeP" aria-label="남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`}
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}</div>` : ''}
-        <div class="mm-barw" id="mmBarWrap"><i id="mmBar"></i></div>
+        ${G.adv && (m.mj.length || m.tw || m.boss || m.slowOk) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}${m.slowOk ? `<button type="button" class="mm-chip slow${m.slow ? ' on' : ''}" id="mmSlow" aria-pressed="${m.slow}">느긋하게 외우기 ×2</button>` : ''}</div>` : ''}
+        <div class="mm-barw${m.warm ? ' warm' : ''}" id="mmBarWrap"><i id="mmBar"></i></div>
         <div class="mm-msg" id="mmMsg"><span>카드를 나눠 주는 중…</span></div>
         <div class="mm-board" id="bd" role="grid" aria-label="카드 판"></div>
       </div>`;
       build(); hud();
+      const sb = $('#mmSlow'); if(sb) sb.onclick = toggleSlow;
       m.onResize = () => layout();
       addEventListener('resize', m.onResize);
       if(G.raf) cancelAnimationFrame(G.raf);
@@ -641,6 +673,17 @@ body[data-mode="memory"]{background:
 .ng-memory .mm-chip.miss{background:#E6FFF0; color:#15703F}
 .ng-memory .mm-chip.miss b{font-family:var(--heavy); font-weight:400; font-size:15px}
 .ng-memory .mm-chip.miss.low{background:#FFE3E3; color:#B3122E}
+/* 세대별 테스트(2026-10-06): 칩 글자 13px, 몸풀기 판, 느긋하게 외우기, 콤보 숫자 크게 */
+.ng-memory .hchip em{font-size:13px}
+.ng-memory .mm-easy{font-size:18px !important; color:#15703F}
+.ng-memory .mm-barw.warm{visibility:hidden}
+.ng-memory button.mm-chip{cursor:pointer; min-height:32px; font-size:13px; -webkit-tap-highlight-color:transparent}
+.ng-memory .mm-chip.slow{background:#F3F0FA; color:#4A3A6E}
+.ng-memory .mm-chip.slow.on{background:#E3FFEE; color:#137A43; box-shadow:0 2px 0 #1A0F45, inset 0 0 0 2px #2BB673}
+.ng-memory .mm-chip.slow.on::before{content:'✓ '}
+body[data-mode="memory"] .fxcombo{padding:10px 22px}
+body[data-mode="memory"] .fxcombo b{font-size:30px; font-family:var(--heavy); font-weight:400; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill}
+body[data-mode="memory"] .fxcombo span{font-size:18px}
 .ng-memory .mm-front.mm-fb{background:radial-gradient(circle at 50% 60%, #FFE1C7 0%, #FFB28A 100%)}
 .ng-memory .mm-front.mm-fj{background:linear-gradient(160deg,#FFF6D8 0%,#FFE3F4 50%,#E3ECFF 100%)}
 .ng-memory .mm-front .mm-alt{filter:hue-rotate(155deg) saturate(1.35)}
