@@ -5,7 +5,13 @@
    그림 조각·테마는 spot-art.js(SPOT_ART). 모두 직접 그린 오리지널 SVG(굵은 외곽선 #1A0F45). */
 NG.spot = (() => {
   const A = SPOT_ART, P = A.P, TH = A.TH, W = A.W, H = A.H, OL = A.OL;
-  const THEMES = ['town', 'park', 'kitchen', 'beach', 'space'];
+  /* 테마 8개. 뒤 3개(교실·놀이터·옛 골목)는 2026-10-07 0시부터 오늘의 문제·연습·솔로에 섞인다(오늘 문제가 바뀌지 않게).
+     대전은 날짜와 상관없이 늘 8개(두 기기의 날짜가 달라도 같은 그림이 나오게) */
+  const THEMES = ['town', 'park', 'kitchen', 'beach', 'space', 'class', 'play', 'alley'];
+  const NEW_THEMES_FROM = '2026-10-07';
+  const themesFor = duel => duel || (typeof dayKey === 'function' ? dayKey() : NEW_THEMES_FROM) >= NEW_THEMES_FROM ? THEMES : THEMES.slice(0, 5);
+  /* 대전 재대결이 같은 그림이 되지 않게: 이 페이지에서 같은 대전 씨앗을 만난 차례와 그때 나온 테마(두 기기가 같은 연결·같은 씨앗이라 같은 값) */
+  const DUEL_SEEN = {};
   const TOL = 7;            /* 누른 곳이 차이 동그라미에서 이만큼(그림 단위)까지 벗어나도 찾은 것으로 */
   const MISS_PTS = 15, HINT_PTS = 40;
 
@@ -69,7 +75,8 @@ NG.spot = (() => {
   const kindBase = k => k.startsWith('det') ? 'det' : k;
   function pickDiffs(sc, N, rng, opt){
     const objs = sc.objs, B = objs.map(clone), boxes = objs.map(o => boxOf(o)), diffs = [], cnt = {};
-    const cap = Math.max(2, Math.ceil(N * .4));
+    /* 한 종류는 N의 40%까지. 거울+살금살금(색·작은 부분 두 종류뿐)은 60%까지(안 그러면 10곳을 못 채움 — 리믹스 90판) */
+    const cap = Math.max(2, Math.ceil(N * (opt.subtle && opt.mirror ? .6 : .4)));
     const order = shuffle(objs.map((_, i) => i), rng);
     for(const i of order){
       if(diffs.length >= N) break;
@@ -100,8 +107,8 @@ NG.spot = (() => {
     return diffs.length >= N ? { B, diffs } : null;
   }
   /* 판 하나: 장면을 만들고 차이 N곳을 고른다. 못 고르면 장면을 새로 만든다(점검: 수천 씨앗에서 실패 0) */
-  function gen(cfg, rng){
-    const N = cfg.diffs, theme = cfg.theme || THEMES[Math.floor(rng() * THEMES.length)];
+  function gen(cfg, rng, list){
+    const TL = list || themesFor(false), N = cfg.diffs, theme = cfg.theme || TL[Math.floor(rng() * TL.length)];
     const opt = { mirror:!!cfg.mirror, tiles:!!cfg.tiles, subtle:!!cfg.subtle };
     let last = null;
     for(let t = 0; t < 40; t++){
@@ -163,7 +170,8 @@ NG.spot = (() => {
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(40, Math.round(limit / 5) * 5);
-    return { diffs, limit, hints:tw === 'bare' ? 0 : p.boss ? 2 : 3, lives:tw === 'tight' ? 2 : 0, theme:THEMES[(n - 1 + c) % THEMES.length],
+    const TL = themesFor(false);
+    return { diffs, limit, hints:tw === 'bare' ? 0 : p.boss ? 2 : 3, lives:tw === 'tight' ? 2 : 0, theme:TL[(n - 1 + c) % TL.length],
       mirror:has('mirror'), blink:has('blink'), tiles:has('tiles'), secret:has('secret'), subtle:tw === 'subtle',
       boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
   }
@@ -198,7 +206,7 @@ NG.spot = (() => {
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>'
   };
   const COVER = '<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M8 20c8-9 36-9 44 0" fill="none" stroke="#1A0F45" stroke-width="3.6" stroke-linecap="round"/><path d="M14 24l-3 5M23 27l-1 6M37 27l1 6M46 24l3 5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/></svg>';
-  const ring = (cx, cy, r, cls, col) => `<g class="sp-ring ${cls || ''}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${OL}" stroke-width="6.4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${col || '#FF3D7F'}" stroke-width="3.4"${cls === 'reveal' ? ' stroke-dasharray="7 5"' : ''}/></g>`;
+  const ring = (cx, cy, r, cls, col) => `<g class="sp-ring ${cls || ''}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${OL}" stroke-width="9.6"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="#fff" stroke-width="7.4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${col || '#FF3D7F'}" stroke-width="4.4"${cls === 'reveal' ? ' stroke-dasharray="7 5"' : ''}/></g>`;
 
   function hud(){
     const m = S(); if(!m) return;
@@ -288,10 +296,12 @@ NG.spot = (() => {
         L.insertAdjacentHTML('beforeend', `<g transform="translate(${dx.toFixed(1)} ${dy.toFixed(1)})"><g class="sp-x"><path d="M-8-8L8 8M8-8L-8 8" stroke="${OL}" stroke-width="7" stroke-linecap="round"/><path d="M-8-8L8 8M8-8L-8 8" stroke="#FF4D6D" stroke-width="3.6" stroke-linecap="round"/></g></g>`);
         const x = L.lastElementChild; T(() => { if(x) x.remove(); }, Math.max(650, cd));
       }
-      const pics = $('#spPics'); if(pics){ pics.classList.add('cool'); fxShake($('#sp' + w), 4); }
+      /* 빗나감 연출은 약하게(세대별 테스트): 판 전체를 어둡게 하지 않고, 누른 자리 × + 누른 그림만 0.3초 살짝 흔들림, 남은 쉬는 시간은 정보줄 칩에 */
+      const root = document.querySelector('.ng-spot'); if(root) root.classList.add('cool');
+      const pe = $('#sp' + w); if(pe && !FXR.reduce && pe.animate) pe.animate([{ transform:'none' }, { transform:'translateX(-3px)' }, { transform:'translateX(3px)' }, { transform:'translateX(-1.5px)' }, { transform:'none' }], { duration:300, easing:'ease-out' });
       coolShow();
     }catch(_){}
-    T(() => { const pics = $('#spPics'); if(pics && performance.now() >= m.coolUntil - 20) pics.classList.remove('cool'); }, cd);
+    T(() => { const root = document.querySelector('.ng-spot'); if(root && performance.now() >= m.coolUntil - 20) root.classList.remove('cool'); }, cd);
     msg('<b class="bad">빗나갔어요</b><span>' + (left < 0 ? '−' + MISS_PTS + '점 · 잠깐 쉬어요' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'sp-pop');
     T(() => { if(m.phase === 'play') msg(playMsg()); }, Math.max(1100, cd));
     hud();
@@ -302,7 +312,7 @@ NG.spot = (() => {
     }
   }
 
-  /* 쉬는 시간 남은 초 보여 주기(두 그림 사이 '잠깐! 0.8초' + 줄어드는 막대). 보이기만 함 */
+  /* 쉬는 시간 남은 초 보여 주기(정보줄 오른쪽 칩 '잠깐! 0.8초' + 줄어드는 막대). 보이기만 함 */
   function coolShow(){
     try{
       const m = S(), c = $('#spCool'); if(!c || !m) return;
@@ -389,6 +399,24 @@ NG.spot = (() => {
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath>${clips}<g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}${seams}<g id="${u}FB"></g></svg>`;
   }
   let UID = 0;
+  /* 대전 테마 고르기(rng만): 판 번호만큼 rng를 넘기고, 최근 본 테마를 빼고 고른다.
+     - 공용 대전 v3가 판 번호(G.duel.round)·피할 목록(cfg.avoid, 방장이 모두에게 같은 값)을 주면 그것을 쓴다.
+     - 지금(v2) 빠른 대전은 같은 두 사람이 같은 연결로 다시 붙으면 씨앗이 같다 → 이 페이지에서 그 씨앗을 만난 차례를 판 번호로,
+       그 씨앗에서 나온 최근 테마 2개를 피함. 두 기기 모두 같은 씨앗을 같은 차례로 만나므로 같은 그림.
+     - 컴퓨터 대전(혼자)은 내 기기에서 최근 본 테마 2개를 더 피함. */
+  function duelTheme(cfg, rng){
+    const D = G.duel, key = String(D.seed || ''), seen = DUEL_SEEN[key] || (DUEL_SEEN[key] = []);
+    const round = D.round != null ? Math.max(0, +D.round || 0) : seen.length;
+    for(let i = 0; i < round * 13; i++) rng();
+    let mine = [];
+    if(D.mode === 'ai'){ try{ mine = (store.get('hp:spot:duelSeen', []) || []).slice(-2); }catch(_){} }
+    const avoid = [].concat(cfg.avoid || [], seen.slice(-2), mine);
+    const pool = THEMES.filter(t => !avoid.includes(t)), L = pool.length ? pool : THEMES;
+    const theme = L[Math.floor(rng() * L.length)];
+    seen.push(theme);
+    if(D.mode === 'ai'){ try{ store.set('hp:spot:duelSeen', mine.concat(theme).slice(-3)); }catch(_){} }
+    return theme;
+  }
 
   return {
     name:'틀린그림 찾기', abil:'집중력', col:['#8EEBDF', '#14B8A6', '#0B6B61'], time:'약 2분',
@@ -429,7 +457,7 @@ NG.spot = (() => {
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `차이 ${c.diffs}곳 · ${mmss(c.limit)}`; },
     init(cfg, rng){
       for(let i = 0; i < (cfg.diffs || 0) * 7; i++) rng();   /* 같은 날 난이도마다 다른 장면이 나오게(차이 수로 rng를 조금 넘김) */
-      const g = gen(cfg, rng);
+      const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng, THEMES) : gen(cfg, rng);
       let perm = null;
       if(cfg.tiles){ do{ perm = shuffle([0, 1, 2, 3], rng); }while(perm.some((q, i) => q === i)); }   /* 조각 그림: 제자리에 남는 조각 없이 */
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
@@ -458,7 +486,7 @@ NG.spot = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
-    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES,
+    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES, _themesFor:themesFor,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-spot">
@@ -469,11 +497,10 @@ NG.spot = (() => {
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="sp-rules" aria-label="켜진 규칙">${m.boss ? '<span class="sp-chip boss">보스</span>' : ''}${m.mj.map(k => `<span class="sp-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="sp-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar sp-tbar" id="spBarWrap"><i id="spBar"></i></div>
-        <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div></div>
+        <div class="sp-row"><div class="hlives" id="spLives" role="img"></div><div class="sp-msg" id="spMsg"><span>그림을 그리는 중…</span></div><div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div></div>
         <div class="sp-pics in" id="spPics">
           <div class="sp-pic" id="spA">${picA(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
           <div class="sp-pic" id="spB">${picB(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
-          <div class="sp-cool" id="spCool" aria-hidden="true"><b>잠깐!</b><i><s id="spCoolBar"></s></i></div>
         </div>
       </div>`;
       ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(e) e.onpointerdown = ev => tapAt(w, ev); });
@@ -523,18 +550,18 @@ body[data-mode="spot"]{background:
 .ng-spot .sp-msg.sp-win b{font-size:24px; color:#FFE27A}
 @keyframes spot-in{from{transform:scale(.6); opacity:0}}
 .ng-spot .sp-pics{position:relative; display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; touch-action:manipulation}
-.ng-spot .sp-cool{position:absolute; left:50%; top:50%; z-index:5; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; transition:opacity .15s, transform .2s cubic-bezier(.2,1.5,.4,1)}
-.ng-spot .sp-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:17px; color:#fff; background:#E5484D; border:2.5px solid #1A0F45; border-radius:99px; padding:5px 13px; box-shadow:0 3px 0 #1A0F45; white-space:nowrap; font-variant-numeric:tabular-nums}
-.ng-spot .sp-cool i{display:block; height:6px; margin:5px 10px 0; border-radius:99px; background:rgba(26,15,69,.35); overflow:hidden}
-.ng-spot .sp-cool s{display:block; height:100%; background:#FFE27A; transform-origin:left center}
-.ng-spot .sp-pics.cool .sp-cool{opacity:1; transform:translate(-50%,-50%) scale(1)}
+.ng-spot .sp-cool{flex:none; display:none; flex-direction:column; align-items:stretch; gap:3px; pointer-events:none}
+.ng-spot .sp-cool b{display:block; font-family:var(--heavy); font-weight:400; font-size:14px; line-height:1; color:#fff; background:#E5484D; border:2px solid #1A0F45; border-radius:99px; padding:5px 10px; box-shadow:0 2px 0 #1A0F45; white-space:nowrap; font-variant-numeric:tabular-nums}
+.ng-spot .sp-cool i{display:block; height:4px; margin:0 8px; border-radius:99px; background:rgba(26,15,69,.25); overflow:hidden}
+.ng-spot .sp-cool s{display:block; height:100%; background:#E5484D; transform-origin:left center}
+.ng-spot.cool .sp-cool{display:flex; animation:spot-in .2s cubic-bezier(.2,1.5,.4,1)}
 .ng-spot .sp-pic{position:relative; width:var(--pw, 100%); height:var(--ph, auto); border:3px solid #1A0F45; border-radius:16px; overflow:hidden; background:#fff;
   box-shadow:0 4px 0 #1A0F45, 0 10px 18px rgba(10,80,70,.2); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:filter .15s}
 .ng-spot .sp-pic svg{display:block; width:100%; height:100%}
 .ng-spot .sp-pics.in .sp-pic{animation:spot-deal .5s cubic-bezier(.2,1.4,.4,1) both}
 .ng-spot .sp-pics.in .sp-pic + .sp-pic{animation-delay:.1s}
 @keyframes spot-deal{from{transform:translateY(-14px) scale(.9); opacity:0}}
-.ng-spot .sp-pics.cool .sp-pic{filter:grayscale(.55) brightness(.92); cursor:wait}
+.ng-spot.cool .sp-pic{cursor:wait}
 .ng-spot .sp-ring.pop circle{animation:spot-ring .4s cubic-bezier(.2,1.6,.4,1) both; transform-box:fill-box; transform-origin:center}
 @keyframes spot-ring{from{transform:scale(1.7); opacity:0}}
 .ng-spot .sp-x{animation:spot-in .25s ease-out; transform-box:fill-box; transform-origin:center}
@@ -572,6 +599,9 @@ body[data-mode="spot"]{background:
 
 
 /* 대전: 같은 그림, 누가 먼저 다 찾나. AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.spot, { duelPace:[85, .8], duelStat:{ unit:'곳', get:() => ({ v:G.m.found, t:G.m.N }) }, duelHow:'같은 그림 · 누가 먼저 차이를 다 찾나' });
+Object.assign(NG.spot, { duelPace:[85, .8], duelStat:{ unit:'곳', get:() => ({ v:G.m.found, t:G.m.N, mis:G.m.misses }) }, duelHow:'같은 그림 · 누가 먼저 차이를 다 찾나',
+  /* 대전 v3 계약(3-7): 최근 본 테마를 피하는 열쇠, 대전 판 설정(피할 목록은 init의 duelTheme이 rng로 반영. 여기서는 rng 안 씀) */
+  duelAvoidKey:() => (G && G.m && G.m.theme) || null,
+  duelCfg:o => Object.assign({}, NG.spot.levels.normal, { avoid:(o && o.avoid) || [] }) });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.spot.scene = { kind:'bubbles', colors:['#FFFFFF', '#C8F5EC', '#FFF3B0'], density:.8 };
