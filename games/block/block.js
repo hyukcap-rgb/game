@@ -250,6 +250,8 @@ NG.block = (function(){
     normal:{ limit:0, target:20, d:.45, need:1 },
     hard:{ limit:0, target:30, d:.65, need:1 }
   };
+  /* 대전 판(세대별 테스트 2026-10-06): 12줄 먼저 · 3분. 지금 엔진은 levels.normal로 시작하므로 init에서 바꿔 끼우고, 대전 v3 엔진은 duelCfg()를 읽는다 */
+  const DUEL = { limit:180, target:12, d:.45, need:1, duel:true };
 
   /* ---------- 그림: 광택 블록 스프라이트 ---------- */
   const SPR = new Map();
@@ -335,13 +337,14 @@ NG.block = (function(){
 
   /* ---------- 상태 ---------- */
   const S = () => G.bk;
-  const MULTI = ['', '', '더블!', '트리플!', '쿼드러플!', '대박!'];
 
   function init(cfg, rng){
+    if(G.duel && !G.adv && !cfg.duel) cfg = Object.assign({}, cfg, DUEL);
+    if(cfg.duel) G.limit = cfg.limit;
     const st = E.setup(cfg, rng);   /* 오늘의 문제는 특수 칸이 없어 예전과 같은 순서로 rng를 씀 */
     const par = cfg.par ? Math.max(3, Math.round(cfg.par * (cfg.flash ? .8 : 1))) : E.par(cfg);
     G.bk = Object.assign(st, { target:cfg.target, par, pts:0, combo:0, maxCombo:0, multi:0, lock:false, drag:null,
-      ghost:null, anims:[], dirty:true, timers:[], cell:40, dpr:1, stonesN:cfg.stones || 0 });
+      ghost:null, anims:[], dirty:true, timers:[], cell:40, dpr:1, stonesN:cfg.stones || 0, sel:null, lastSec:-1 });
     G.cleanup = cleanup;
   }
   function later(fn, ms){ const me = G; const t = setTimeout(() => { if(G === me) fn(); }, ms); S().timers.push(t); return t; }
@@ -364,13 +367,13 @@ NG.block = (function(){
     st.innerHTML = `<div class="ng-block">
       <div class="hud-row bk-hud">
         <div class="hchip bk-goal" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}</div>
-          <div class="hbar bk-bar"><i id="bkFill"></i></div><em>${multi ? '모을 목표' : '지운 줄'} · <span id="bkUsed">조각 0개</span></em></div>
-        <div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>
+          <div class="hbar bk-bar"><i id="bkFill"></i></div><em id="bkLbl">${multi ? '모을 목표' : '지운 줄 0/' + s.target}</em></div>
+        ${G.duel && G.limit ? `<div class="hchip time" id="bkRemP"><span class="hv"><b id="bkRem">${mmss(G.limit)}</b></span><em>남은 시간</em></div>` : '<div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>'}
         <div class="hchip bk-pts"><span class="hv"><b id="bkPts">0</b></span><em>점수</em></div>
       </div>
       ${chips ? `<div class="bk-rules" aria-label="이번 판 규칙">${chips}</div>` : ''}
       <div class="bk-board" id="bd"><canvas id="bkCv" aria-label="8×8 블록 판"></canvas><div class="bk-msg" id="bkMsg"></div></div>
-      <p class="bk-tip" id="bkTip">조각을 끌어서 판 위에 놓아요</p>
+      <p class="bk-tip" id="bkTip">조각을 끌거나, 누르고 판 칸을 눌러요</p>
       <div class="bk-tray" id="bkTray" aria-label="놓을 조각 3개">${[0,1,2].map(i => `<div class="bk-slot" data-i="${i}" role="button" aria-label="조각 ${i + 1}"><div class="bk-pc"><canvas></canvas></div></div>`).join('')}</div>
     </div>`;
     const root = st.querySelector('.ng-block');
@@ -384,6 +387,7 @@ NG.block = (function(){
       sl.addEventListener('pointerup', e => dragEnd(e, false));
       sl.addEventListener('pointercancel', e => dragEnd(e, true));
     });
+    s.cv.addEventListener('pointerdown', boardTap);
     s.onResize = () => { if(G && G.bk === s) { layout(); paintTray(false); } };
     addEventListener('resize', s.onResize);
     layout(); paintTray(true); hud();
@@ -403,20 +407,24 @@ NG.block = (function(){
     const S0 = Math.floor(Math.min(W - 20, avail, 460) / 8) * 8;
     s.dpr = Math.min(3, devicePixelRatio || 1); s.cell = S0 / 8; s.size = S0;
     s.cv.style.width = S0 + 'px'; s.cv.style.height = S0 + 'px'; s.cv.width = Math.round(S0 * s.dpr); s.cv.height = Math.round(S0 * s.dpr);
-    s.slotW = W / 3; s.tcell = s.cell * .62;
+    s.slotW = W / 3; s.tcell = s.cell * .7;
     s.trayEl.style.height = Math.round(Math.min(s.tcell * 5, s.slotW - 12) + 40) + 'px';
     s.bg = null; s.dirty = true;
   }
   function boardBg(){
     const s = S(); if(s.bg) return s.bg;
     const px = s.cell * s.dpr, c = document.createElement('canvas'); c.width = s.cv.width; c.height = s.cv.height; const x = c.getContext('2d');
-    for(let i = 0; i < 64; i++){ const cx = (i % N) * px, cy = ((i / N) | 0) * px, m = px * .06, r = px * .16;
-      rr(x, cx + m, cy + m, px - 2 * m, px - 2 * m, r); x.fillStyle = '#16113F'; x.fill();
-      rr(x, cx + m, cy + m + px * .05, px - 2 * m, px - 2 * m - px * .05, r); x.fillStyle = '#2A2270'; x.fill(); }
+    /* 빈칸 #2B2360 + 밝은 칸 테두리 #8274DA(빈칸 대비 3.6:1, 세대별 테스트 '남색에 남색' 고침) */
+    const lw = Math.max(1, 1.5 * s.dpr);
+    x.fillStyle = '#1B1550'; x.fillRect(0, 0, c.width, c.height);
+    for(let i = 0; i < 64; i++){ const cx = (i % N) * px, cy = ((i / N) | 0) * px, m = px * .05, r = px * .14;
+      rr(x, cx + m, cy + m, px - 2 * m, px - 2 * m, r); x.fillStyle = '#2B2360'; x.fill();
+      x.lineWidth = lw; x.strokeStyle = '#8274DA'; rr(x, cx + m + lw / 2, cy + m + lw / 2, px - 2 * m - lw, px - 2 * m - lw, r); x.stroke(); }
     s.bg = c; return c;
   }
   function frame(ts){
     const s = S(); if(!s || !s.ctx) return;
+    if(G.duel && G.limit && !G.over && !s.lock) duelClock();
     if(G.paused && s.drag) cancelDrag();
     if(s.drag && s.drag.need){ s.drag.need = false; dragUpdate(); }
     s.anims = s.anims.filter(a => ts - a.t0 < a.dur + (a.delay || 0) + 60 || a.t0 === 0);
@@ -442,7 +450,7 @@ NG.block = (function(){
     for(const a of s.anims) if(a.type === 'boom'){ if(!a.t0) a.t0 = ts; const k = Math.min(1, (ts - a.t0) / a.dur), i = a.i, cx = ((i % N) + .5) * px, cy = (((i / N) | 0) + .5) * px;
       x.globalAlpha = .75 * (1 - k); const gr = x.createRadialGradient(cx, cy, 0, cx, cy, px * (1 + 2.5 * k)); gr.addColorStop(0, '#FFF3B0'); gr.addColorStop(.4, '#FF7A2E'); gr.addColorStop(1, 'rgba(255,60,30,0)'); x.fillStyle = gr; x.fillRect(0, 0, s.cv.width, s.cv.height); x.globalAlpha = 1; }
     if(s.ghost){
-      const { p, gx, gy } = s.ghost, sp = sprite(p.col, px), pulse = .5 + .12 * Math.sin(ts / 110);
+      const { p, gx, gy } = s.ghost, sp = sprite(p.col, px), pulse = .6 + .08 * Math.sin(ts / 110);   /* 놓일 자리 60% 진하게 */
       x.globalAlpha = pulse; p.cells.forEach(([cx, cy]) => x.drawImage(sp, (gx + cx) * px, (gy + cy) * px)); x.globalAlpha = 1;
       x.strokeStyle = '#8CFFC1'; x.lineWidth = Math.max(2, px * .06); x.shadowColor = '#3DFF9A'; x.shadowBlur = px * .25;
       p.cells.forEach(([cx, cy]) => { const m = px * .07; rr(x, (gx + cx) * px + m, (gy + cy) * px + m, px - 2 * m, px - 2 * m, px * .16); x.stroke(); });
@@ -453,10 +461,18 @@ NG.block = (function(){
     /* 줄 지우기: 번쩍이는 빛줄기가 줄을 쓸고, 블록은 작아지며 사라짐 */
     for(const a of s.anims) if(a.type === 'clear'){
       if(!a.t0) a.t0 = ts; const t = ts - a.t0;
-      a.cells.forEach(([i, ci, dl]) => { const k = (t - dl) / 260; if(k >= 1) return; const cx = (i % N) * px, cy = ((i / N) | 0) * px;
-        const kk = Math.max(0, k), sc = 1 - kk * kk, sp = sprite(ci, px), d = px * (1 - sc) / 2;
-        if(sc > .02) x.drawImage(sp, cx + d, cy + d, px * sc, px * sc);
-        if(k > -0.15){ x.globalAlpha = Math.max(0, .85 * (1 - Math.abs(kk - .15) * 2.2)); x.fillStyle = '#FFFFFF'; rr(x, cx + d, cy + d, px * sc, px * sc, px * .16); x.fill(); x.globalAlpha = 1; } });
+      /* 지워지는 줄 전체가 먼저 환하게 빛남 */
+      if(t < 380) a.lines.forEach(([isRow, idx]) => { x.save(); x.globalAlpha = .7 * (1 - t / 380); x.shadowColor = '#FFE27A'; x.shadowBlur = px * .6; x.fillStyle = '#FFF3B0';
+        if(isRow) x.fillRect(0, idx * px + px * .04, N * px, px * .92); else x.fillRect(idx * px + px * .04, 0, px * .92, N * px); x.restore(); });
+      /* 블록이 빙글 돌며 위·바깥으로 날아감(움직임 줄이기 설정이면 제자리에서 작아짐) */
+      const fly = !FXR.reduce, fc = a.fc || [N / 2, N / 2];
+      a.cells.forEach(([i, ci, dl]) => { const k = (t - dl) / 320; if(k >= 1) return; const gx = i % N, gy = (i / N) | 0;
+        const kk = Math.max(0, k), sc = fly ? 1 - .5 * kk : 1 - kk * kk, sp = sprite(ci, px), side = gx + .5 - fc[0] >= 0 ? 1 : -1;
+        const ox = fly ? (gx + .5 - fc[0] + side * .6) * .45 * kk * px : 0, oy = fly ? -kk * kk * px * 1.3 : 0, rot = fly ? side * kk * .9 : 0;
+        x.save(); x.translate(gx * px + px / 2 + ox, gy * px + px / 2 + oy); x.rotate(rot); x.globalAlpha = Math.max(0, 1 - kk * kk);
+        if(sc > .02) x.drawImage(sp, -px * sc / 2, -px * sc / 2, px * sc, px * sc);
+        if(k > -0.15){ x.globalAlpha = Math.max(0, .85 * (1 - Math.abs(kk - .15) * 2.2)); x.fillStyle = '#FFFFFF'; rr(x, -px * sc / 2, -px * sc / 2, px * sc, px * sc, px * .16); x.fill(); }
+        x.restore(); });
       a.lines.forEach(([isRow, idx]) => { const k = t / 380; if(k >= 1) return; const pos = k * (N + 2) - 1;
         x.save(); const w = px * 1.6; let gr;
         if(isRow){ const cx = pos * px, cy = idx * px; gr = x.createLinearGradient(cx - w, 0, cx + w, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(cx - w, cy - px * .08, w * 2, px * 1.16); }
@@ -506,14 +522,15 @@ NG.block = (function(){
   function hud(){
     const s = S(), set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
     const gl = goals(s);
-    set('bkLines', Math.min(s.lines, s.target)); set('bkPts', fmt(s.pts)); set('bkUsed', '조각 ' + s.used + '개');
+    set('bkLines', Math.min(s.lines, s.target)); set('bkPts', fmt(s.pts));
+    if(gl.length === 1 && gl[0].k === 'lines') set('bkLbl', '지운 줄 ' + Math.min(s.lines, s.target) + '/' + s.target);
     gl.forEach(o => set('bkG_' + o.k, o.have));
     const f = document.getElementById('bkFill'); if(f) f.style.width = Math.min(100, progressOf(s) * 100) + '%';
   }
   function progressOf(s){ const gl = goals(s); return gl.reduce((a, o) => a + Math.min(1, o.have / o.need), 0) / gl.length; }
 
   /* ---------- 끌어 놓기 ---------- */
-  const LIFT = 46;   /* 손가락 위로 띄우는 거리(px): 조각 아래 끝이 손끝보다 이만큼 위 */
+  const LIFT = 60;   /* 손가락 위로 띄우는 거리(px): 조각 아래 끝이 손끝보다 이만큼 위(손가락에 가려지지 않게) */
   function dragStart(e, i){
     const s = S(); if(!s || G.over || G.paused || s.lock || s.drag || !s.tray[i]) return;
     e.preventDefault(); try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
@@ -524,7 +541,7 @@ NG.block = (function(){
     el.style.setProperty('--ox', ((src.left + src.width / 2) - e.clientX).toFixed(1) + 'px');
     el.style.setProperty('--oy', ((src.top + src.height / 2) - (e.clientY - LIFT - p.h * s.cell / 2)).toFixed(1) + 'px');
     document.body.appendChild(el);
-    s.dragEl = el; s.drag = { i, p, x:e.clientX, y:e.clientY, id:e.pointerId, need:true };
+    s.dragEl = el; s.drag = { i, p, x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, id:e.pointerId, need:true };
     s.slots[i].querySelector('.bk-pc').style.visibility = 'hidden';
     dragUpdate(); sfx('blockPick'); fxBuzz(8);
   }
@@ -557,12 +574,47 @@ NG.block = (function(){
     if(e){ s.drag.x = e.clientX; s.drag.y = e.clientY; }
     dragUpdate();
     const d = s.drag, gh = s.ghost;
+    /* 누르기만 함(거의 안 움직임) → 조각 고르기(tapPlace: 그다음 판 칸을 누르면 놓임). 다시 누르면 고르기 취소 */
+    if(!cancel && Math.hypot(d.x - d.x0, d.y - d.y0) < 10){
+      s.dragEl.remove(); s.dragEl = null; s.drag = null; s.ghost = null; s.dirty = true;
+      s.slots[d.i].querySelector('.bk-pc').style.visibility = '';
+      pickSel(s.sel === d.i ? null : d.i);
+      return;
+    }
+    if(s.sel != null) pickSel(null);
     if(!cancel && gh && !G.over && !G.paused && !s.lock){
       s.dragEl.remove(); s.dragEl = null; s.drag = null; s.ghost = null;
       doPlace(d.i, gh.gx, gh.gy);
     } else returnPiece();
   }
   function cancelDrag(){ const s = S(); if(s.drag) returnPiece(); }
+
+  /* ---------- 누르고 놓기(tapPlace): 조각을 누르고 → 판 칸을 누르면 그 칸을 덮는 자리에 놓기 ---------- */
+  function pickSel(i){
+    const s = S(); s.sel = i == null || !s.tray[i] ? null : i;
+    s.slots.forEach((sl, k) => sl.classList.toggle('sel', k === s.sel));
+    const tip = document.getElementById('bkTip');
+    if(tip){ tip.textContent = s.sel != null ? '판에서 놓을 칸을 눌러요' : '조각을 끌거나, 누르고 판 칸을 눌러요'; if(s.sel != null) tip.classList.remove('off'); }
+    if(s.sel != null){ sfx('blockPick'); fxBuzz(6); }
+  }
+  /* 누른 칸 (gx, gy)를 덮는 놓을 자리: 조각 칸 중 조각 가운데에 가까운 칸부터 그 칸이 (gx, gy)에 오게 맞춰 보고, 처음 들어가는 자리 */
+  function tapSpot(p, gx, gy){
+    const mx = (p.w - 1) / 2, my = (p.h - 1) / 2;
+    const order = p.cells.map((c, k) => [c, k]).sort((a, b) => (Math.hypot(a[0][0] - mx, a[0][1] - my) - Math.hypot(b[0][0] - mx, b[0][1] - my)) || a[1] - b[1]);
+    for(const [[cx, cy]] of order){ const ax = gx - cx, ay = gy - cy; if(E.canPlace(S().g, p, ax, ay)) return [ax, ay]; }
+    return null;
+  }
+  function boardTap(e){
+    const s = S(); if(!s || s.sel == null || s.drag || G.over || G.paused || s.lock) return;
+    e.preventDefault();
+    const r = s.cv.getBoundingClientRect(), gx = Math.floor((e.clientX - r.left) / s.cell), gy = Math.floor((e.clientY - r.top) / s.cell);
+    if(gx < 0 || gy < 0 || gx >= N || gy >= N) return;
+    const i = s.sel, p = s.tray[i]; if(!p){ pickSel(null); return; }
+    const at = tapSpot(p, gx, gy);
+    if(!at){ sfx('blockBack'); try{ fxShake(s.slots[i], 4); }catch(_){} const tip = document.getElementById('bkTip'); if(tip) tip.textContent = '거기엔 안 들어가요 · 다른 칸을 눌러요'; return; }
+    pickSel(null);
+    doPlace(i, at[0], at[1]);
+  }
   function returnPiece(){
     const s = S(), d = s.drag, el = s.dragEl; s.drag = null; s.dragEl = null; s.ghost = null; s.dirty = true;
     if(!d) return;
@@ -581,6 +633,7 @@ NG.block = (function(){
   function doPlace(i, gx, gy){
     const s = S(), p = s.tray[i]; if(!p || !E.canPlace(s.g, p, gx, gy)) return false;
     const ev = E.step(s, i, gx, gy), r = ev.r, placed = ev.placed;
+    if(s.sel != null && s.slots) pickSel(null);
     s.pts += p.n;
     const tip = document.getElementById('bkTip'); if(tip) tip.classList.add('off');
     const hasUI = !!s.cv && s.cv.isConnected;
@@ -610,7 +663,7 @@ NG.block = (function(){
     const lines = r.rows.map(v => [1, v]).concat(r.cols.map(v => [0, v]));
     const cells = r.cleared.map(([i, ci]) => { const x = i % N, y = (i / N) | 0, rowHit = r.rows.includes(y), colHit = r.cols.includes(x);
       const dist = rowHit && colHit ? Math.min(Math.abs(x - fcx), Math.abs(y - fcy)) : rowHit ? Math.abs(x + .5 - fcx) : Math.abs(y + .5 - fcy); return [i, ci, dist * 34]; });
-    s.anims.push({ type:'clear', cells, lines, t0:0, dur:700 }); s.dirty = true;
+    s.anims.push({ type:'clear', cells, lines, fc:[fcx, fcy], t0:0, dur:760 }); s.dirty = true;
     if(r.cracked.length){ s.anims.push({ type:'crack', cells:r.cracked, t0:0, dur:420 }); later(() => sfx('blockCrack'), 120); }
     if(r.gems) later(() => sfx('blockGem', { k:r.gems }), 160);
     if(r.bombs) later(() => sfx('blockDefuse'), 140);
@@ -622,12 +675,12 @@ NG.block = (function(){
     const allC = r.cleared.map(c => c[0]).concat(r.cracked);
     let cx = 0, cy = 0; allC.forEach(i => { cx += (i % N) + .5; cy += ((i / N) | 0) + .5; }); cx /= allC.length; cy /= allC.length;
     fxFloat(br.left + cx * c, br.top + cy * c, '+' + fmt(gain), 'bkf' + (k >= 2 ? ' big' : ''));
-    if(k >= 2){ const m = s.boardEl.querySelector('.bk-multi'); if(m) m.remove(); const d = document.createElement('div'); d.className = 'bk-multi m' + Math.min(k, 5); d.textContent = MULTI[Math.min(k, 5)]; s.boardEl.appendChild(d); later(() => d.remove(), 1100); }
+    if(k >= 2){ const m = s.boardEl.querySelector('.bk-multi'); if(m) m.remove(); const d = document.createElement('div'); d.className = 'bk-multi m' + Math.min(k, 5); d.textContent = k + '줄 콤보!'; s.boardEl.appendChild(d); later(() => d.remove(), 1100); }
     if(k >= 3) fxShake(s.boardEl, 7 + k); else if(k === 2) fxShake(s.boardEl, 3);
     /* 이펙트 v2: 지워진 줄을 따라 반짝이가 훑고 지나감, 3줄 이상이면 화면이 살짝 번쩍 */
     try{ if(typeof fxEmit === 'function'){ lines.forEach(([isRow, v], li) => { for(let j = 0; j < N; j++){ const x = isRow ? j : v, y = isRow ? v : j, d = Math.abs((isRow ? x + .5 - fcx : y + .5 - fcy)) * 34 + li * 40;
       later(() => fxEmit(br.left + (x + .5) * c, br.top + (y + .5) * c, { quantity:2, speed:{ min:20, max:90 }, lifespan:{ min:380, max:620 }, kind:'twinkle', tint:['#FFFFFF', '#FFF3B0'], scale:{ start:4.2, end:0, ease:'quad.in' }, glow:true }), d); } });
-      if(k >= 3) later(() => fxFlash('#FFF3B0', .22, 300), 60); } }catch(_){}
+      if(k >= 3) later(() => fxFlash('#FFF3B0', .32, 340), 60); } }catch(_){}
     if(k >= 2){ const pc = fxCenter(s.cv); fxRing(br.left + cx * c, br.top + cy * c, '#FFE27A', pc.w * .55, .55, 10); }
     if(cmb >= 2) later(() => fxCombo(cmb), 120);
     const bar = document.getElementById('bkFill'); if(bar && bar.animate) bar.animate([{ filter:'brightness(1.8)' }, { filter:'brightness(1)' }], { duration:500 });
@@ -655,6 +708,17 @@ NG.block = (function(){
     }
     later(() => { showMsg('더 놓을 곳이 없어요', 'bad'); sfx('blockFail'); fxShake(s.boardEl, 6); fxBuzz([40, 60, 40]); s.slots.forEach(sl => sl.classList.add('nofit')); }, 420);
     later(() => { if(!G.over) finish(false); }, 1900);
+  }
+  /* 대전 제한 시간(3분): 시간이 다 되면 그 자리까지 지운 줄로 기록 */
+  function duelClock(){
+    const s = S(), rem = Math.max(0, G.limit - elapsed()), sec = Math.ceil(rem);
+    if(sec !== s.lastSec){ s.lastSec = sec;
+      const e = document.getElementById('bkRem'); if(e) e.textContent = mmss(sec);
+      const p = document.getElementById('bkRemP'); if(p) p.classList.toggle('hurry', sec <= 10); }
+    if(rem > 0) return;
+    s.lock = true; if(s.drag) cancelDrag(); pickSel(null);
+    later(() => { showMsg('시간이 다 됐어요', 'bad'); sfx('blockFail'); fxBuzz([40, 60, 40]); }, 60);
+    later(() => { if(!G.over) finish(false); }, 1400);
   }
   function showMsg(t, cls){ const m = document.getElementById('bkMsg'); if(!m) return; m.textContent = t; m.className = 'bk-msg on ' + cls; }
 
@@ -728,10 +792,12 @@ NG.block = (function(){
     name:'블록 채우기', abil:'공간지각', col:['#FF9E8A','#EF4B3F','#8F1D1A'], time:'약 3분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2.5" y="2.5" width="5.8" height="5.8" rx="1.5"/><rect x="9.1" y="2.5" width="5.8" height="5.8" rx="1.5"/><rect x="2.5" y="9.1" width="5.8" height="5.8" rx="1.5"/><rect x="15.7" y="9.1" width="5.8" height="5.8" rx="1.5" opacity=".6"/><rect x="15.7" y="15.7" width="5.8" height="5.8" rx="1.5" opacity=".6"/><rect x="9.1" y="15.7" width="5.8" height="5.8" rx="1.5" opacity=".6"/></svg>',
     art,
-    help:[['조각을 끌어다 놓아요','아래 조각 3개 중 하나를 손가락으로 끌어 8×8 판의 빈 곳에 놓아요. 3개를 다 쓰면 새 조각 3개가 나와요.'],
+    help:[['조각을 끌어다 놓아요','아래 조각 3개 중 하나를 끌어 8×8 판의 빈 곳에 놓아요. 끌기가 어려우면 조각을 누르고 판 칸을 누르세요.'],
       ['줄을 꽉 채우면 사라져요','가로줄이나 세로줄을 빈틈없이 채우면 지워져요. 여러 줄을 한 번에, 또 연달아 지우면 점수가 커져요.'],
-      ['목표 줄 수를 채우면 성공','목표만큼 줄을 지우면 클리어! 남은 조각을 놓을 곳이 없으면 끝나요. 조각을 적게 쓸수록 점수와 별이 많아요.'],
-      ['솔로에는 특별한 칸이 나와요','5판마다 새 규칙이 하나씩 나와요. 보석은 줄을 지워 모으고, 얼음은 두 번 지워야 깨져요. 폭탄 숫자가 0이 되기 전에 그 줄을 지우고, 덩굴은 줄을 지워서 막아요.']],
+      ['목표 줄 수를 채우면 성공','목표만큼 줄을 지우면 클리어! 남은 조각을 놓을 곳이 없으면 끝나요. 조각을 적게 쓸수록 점수와 별이 많아요.']],
+    /* 도움말 v2(공용 WP3가 읽음): 3줄 + 더 알아보기. 솔로 특별한 칸(보석·얼음·폭탄·덩굴)은 개념 카드에서만 설명 */
+    howto:{ lines:['아래 조각을 판에 놓아요', '가로·세로 줄을 채우면 사라져요', '목표 줄을 지우면 성공'],
+      more:[['누르고 놓기', '조각을 누른 뒤 판 칸을 누르면 그 칸에 놓여요.'], ['점수·별', '여러 줄을 한 번에·연달아 지우면 점수가 커지고, 조각을 적게 쓸수록 별이 많아요.'], ['대전', '같은 조각 순서로 동시에! 12줄을 먼저 지우면 이겨요(3분).']] },
     chapters:['나무 상자','보석 광산','얼음 궁전','용암 동굴','덩굴 숲'],
     concepts:{
       order:['gem','ice','bomb','vine'],
@@ -753,6 +819,7 @@ NG.block = (function(){
     starRule:'★ 클리어 · ★★ 조각을 아껴서 · ★★★ 아주 적은 조각으로',
     levels:LV,
     stage(n){ return stageCfg(n); },
+    duelCfg(){ return Object.assign({}, DUEL); },
     stageDesc(n){ const c = this.stage(n); return goalText(c) + (c.stones ? ' · 돌 블록 ' + c.stones + '개' : '') + (c.bomb ? ' · 폭탄 ' + c.bomb.t + '수' : ''); },
     levelDesc(lv){ return '목표 ' + (LV[lv] || LV.normal).target + '줄'; },
     init, render,
@@ -787,9 +854,11 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-chip{font-family:var(--disp); font-size:12.5px; line-height:1; padding:4px 9px 4px; border-radius:999px; border:2px solid #1A0F45; color:#1A0F45; background:#FFE27A; box-shadow:0 2px 0 #0E0730; white-space:nowrap}
 .ng-block .bk-chip.tw{background:#CFC5FF}
 .ng-block .bk-bar{margin:0; height:8px}
+.ng-block .bk-goal em{font-size:13px; color:#4A3A6E}
+.ng-block .hchip.time.hurry{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)} .ng-block .hchip.time.hurry b{color:#E5484D}
 .ng-block .bk-bar i{transition:width .35s cubic-bezier(.3,1.3,.5,1)}
-.ng-block .bk-board{position:relative; width:max-content; margin:auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #1A0F45;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.2), inset 0 0 0 2px rgba(140,120,255,.14), 0 5px 0 #0B0628, 0 14px 26px rgba(4,0,20,.45); touch-action:none}
+.ng-block .bk-board{position:relative; width:max-content; margin:auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #B4A8FF;
+  box-shadow:0 0 0 2.5px #1A0F45, inset 0 2px 0 rgba(255,255,255,.25), 0 5px 0 2px #0B0628, 0 14px 26px rgba(4,0,20,.45), 0 0 18px rgba(160,140,255,.35); touch-action:none}
 .ng-block .bk-board canvas{display:block; touch-action:none}
 .ng-block .bk-msg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; white-space:nowrap; padding:12px 22px; border-radius:18px; font-family:var(--disp); font-size:22px;
   background:linear-gradient(180deg,#FFF8EA,#FBEBCB); border:3px solid #1A0F45; box-shadow:0 5px 0 #0B0628, 0 14px 30px rgba(0,0,0,.45); color:var(--ink); transition:transform .3s cubic-bezier(.2,1.5,.4,1), opacity .2s}
@@ -800,9 +869,13 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-multi.m3{color:#FF9BD0; font-size:50px}
 .ng-block .bk-multi.m4, .ng-block .bk-multi.m5{color:#8CFFC1; font-size:54px}
 @keyframes bkMulti{0%{transform:translate(-50%,-50%) scale(.3) rotate(-8deg); opacity:0}25%{transform:translate(-50%,-50%) scale(1.12) rotate(-4deg); opacity:1}70%{transform:translate(-50%,-58%) scale(1) rotate(-4deg); opacity:1}100%{transform:translate(-50%,-80%) scale(.95) rotate(-4deg); opacity:0}}
-.ng-block .bk-tray{display:grid; grid-template-columns:repeat(3,1fr); margin:0 0 4px; overflow:clip; border-radius:20px; background:rgba(8,4,30,.35); box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
+.ng-block .bk-tray{display:grid; grid-template-columns:repeat(3,1fr); margin:0 0 4px; overflow:clip; border-radius:20px; background:rgba(8,4,30,.35); border:2px solid #8274DA; box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
 .ng-block .bk-slot{position:relative; display:flex; align-items:center; justify-content:center; min-height:44px; padding-bottom:10px; cursor:grab; touch-action:none}
-.ng-block .bk-slot + .bk-slot::before{content:""; position:absolute; left:0; top:18%; bottom:18%; width:1.5px; background:rgba(255,255,255,.07)}
+.ng-block .bk-slot + .bk-slot::before{content:""; position:absolute; left:0; top:14%; bottom:14%; width:1.5px; background:rgba(180,168,255,.55)}
+/* 누르고 놓기: 고른 조각 */
+.ng-block .bk-slot.sel{background:radial-gradient(70% 70% at 50% 50%, rgba(255,226,122,.28), rgba(255,226,122,0) 75%); box-shadow:inset 0 0 0 3px #FFE27A; border-radius:18px}
+.ng-block .bk-slot.sel .bk-pc{animation:bkSel .9s ease-in-out infinite alternate}
+@keyframes bkSel{from{transform:translateY(0) scale(1.04)} to{transform:translateY(-5px) scale(1.08)}}
 .ng-block .bk-pc{display:flex; filter:drop-shadow(0 4px 0 rgba(8,3,30,.55)); transition:opacity .2s, filter .2s}
 .ng-block .bk-pc canvas{display:block}
 .ng-block .bk-pc.in{animation:bkIn .42s cubic-bezier(.2,1.3,.4,1) both}
@@ -810,14 +883,14 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-slot.nofit .bk-pc{opacity:.38; filter:grayscale(.85) drop-shadow(0 3px 0 rgba(8,3,30,.4))}
 .ng-block .bk-slot.nofit::after{content:"놓을 곳 없음"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:700; color:#FFC4C4; white-space:nowrap}
 .ng-block .bk-slot.empty{cursor:default}
-.ng-block .bk-tip{margin:0; padding:12px 0 10px; text-align:center; font-family:var(--disp); font-size:15px; color:#CFC5FF; opacity:.85; transition:opacity .4s}
+.ng-block .bk-tip{margin:0; padding:12px 0 10px; text-align:center; font-family:var(--disp); font-size:15px; color:#E4DDFF; transition:opacity .4s}
 .ng-block .bk-tip.off{opacity:0}
 .ng-block.bk-drag{position:fixed; left:0; top:0; z-index:30; pointer-events:none; will-change:transform}
 .ng-block.bk-drag canvas{display:block; filter:drop-shadow(0 10px 8px rgba(0,0,0,.45)); transform-origin:50% 50%; animation:bkPick .14s ease-out both}
 @keyframes bkPick{from{transform:translate(var(--ox),var(--oy)) scale(var(--s0))}to{transform:none}}
 body[data-mode="block"] .fxfloat.bkf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#fff; -webkit-text-stroke:5px #1A0F45}
 body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
-@media (prefers-reduced-motion: reduce){ .ng-block .bk-multi{animation-duration:.01s} .ng-block.bk-drag canvas{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-block .bk-multi{animation-duration:.01s} .ng-block.bk-drag canvas{animation:none} .ng-block .bk-slot.sel .bk-pc{animation:none} }
 `,
     sounds:{
       blockPick(){ aTone({ f:520, f2:820, d:.07, v:.08, bus:'ui' }); aNoise({ ft:'highpass', f:5200, d:.02, v:.025, bus:'ui' }); },
@@ -852,6 +925,18 @@ body[data-mode="block"] .fxfloat.bkf.big{font-size:30px; color:#FFE27A}
 
 
 /* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.block, { duelPace:[200,.66], duelStat:{ unit:'줄',             get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target }) } });
+/* 대전 판: 12줄 먼저 · 3분(DUEL). duelKind·duelMax·duelMini는 대전 v3 엔진이 읽는 값(지금 엔진은 1:1, 2단계에서 duelMax 5로 올림).
+   duelMini = 상대에게 보내는 내 판(칸마다 글자 하나: 0 빈칸, 1~e 블록 색) + 8×8 작은 그림(칸 6px) */
+Object.assign(NG.block, { duelPace:[130,.7], duelStat:{ unit:'줄', get:() => ({ v:Math.min(G.bk.lines, G.bk.target), t:G.bk.target, mis:0 }) },
+  duelHow:'같은 조각 순서 · 12줄을 먼저 지우면 1등!', duelKind:'race', duelMax:2,
+  duelMini:{ w:56, h:56,
+    get:() => { const g = G && G.bk && G.bk.g; return g ? Array.from(g, v => v.toString(16)).join('') : ''; },
+    draw(el, st){
+      const str = typeof st === 'string' ? st : (st && st.mv) || ''; if(!el) return;
+      let cv = el.querySelector('canvas.bk-mini'); if(!cv){ cv = document.createElement('canvas'); cv.className = 'bk-mini'; cv.width = cv.height = 50; cv.style.width = cv.style.height = '50px'; el.appendChild(cv); }
+      const x = cv.getContext('2d'), C = ['#2B2360','#F2434E','#FF8A1A','#FFCF1F','#3ACB50','#1CC6D6','#2F7DF2','#9A4BF0','#F54BA6','#8C86A6','#A9E6F7','#BFDDEA','#E6DEF7','#E0602E','#6FA033'];
+      x.fillStyle = '#1B1550'; x.fillRect(0, 0, 50, 50);
+      for(let i = 0; i < 64; i++){ const v = parseInt(str[i] || '0', 16) || 0; x.fillStyle = C[v] || C[1]; x.fillRect(1 + (i % 8) * 6, 1 + ((i / 8) | 0) * 6, 5, 5); }
+    } } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.block.scene = { kind:'shapes', colors:['#FFFFFF','#FFD24C','#62AEFF','#FF7A9E'], density:1.1, alpha:1.2 };

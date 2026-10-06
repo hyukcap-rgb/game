@@ -79,6 +79,8 @@ NG.parking = (() => {
     lock:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" fill="#FFD23F" stroke="#1A0F45" stroke-width="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" fill="none" stroke="#1A0F45" stroke-width="2.2"/><circle cx="12" cy="15.5" r="1.8" fill="#1A0F45"/></svg>'
   };
   const HINT_PEN = 50;
+  /* 대전 판(세대별 테스트 2026-10-06): 짧은 판 10~12수 · 2분. 지금 엔진은 levels.normal로 시작하므로 init에서 바꿔 끼우고, 대전 v3 엔진은 duelCfg()를 읽는다 */
+  const DUEL = { size:6, lo:10, hi:12, limit:120, hints:3, duel:true };
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
@@ -201,15 +203,26 @@ NG.parking = (() => {
     const m = S();
     if(m.boss) return '<b class="boss">보스 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
     if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return m.P.goals.length > 1 ? '<span>빨간 차·노란 차를 자리로!</span>' : '<span>차를 밀어 빨간 차를 자리로!</span>';
+    return m.P.goals.length > 1 ? '<span>빨간 차·노란 차를 자리로!</span>' : '<span>차를 끌거나, 누르고 화살표로 밀어요</span>';
+  }
+  /* 출구 표지판이 판 밖으로 나오는 길이(px). 출구가 있는 쪽에만 자리를 비우고, 반대쪽은 거의 붙여서 판을 최대한 크게 */
+  const SIGN = 26;
+  function exitSides(m){
+    const o = { l:0, r:0, t:0, b:0 };
+    m.P.goals.forEach(([i, g]) => { const k = m.P.cars[i], lim = k.h ? m.W : m.H; if(!(g + k.len === lim || g === 0)) return;
+      if(k.h) o[g === 0 ? 'l' : 'r'] = 1; else o[g === 0 ? 't' : 'b'] = 1; });
+    return o;
   }
   function layout(){
     const m = S(), lot = $('#pkLot'), root = document.querySelector('.ng-parking'); if(!lot || !root) return;
-    const W = Math.min((root.clientWidth || 360) + 16, 486) - 26 - 6;   /* 양옆 여백 8px씩 더 씀(.pk-lotw 음수 여백) − 출구 표시가 판 밖으로 나오는 자리 − 테두리 */
+    const sd = m.sides || (m.sides = exitSides(m)), wrap = lot.parentNode;
+    const pl = sd.l ? SIGN + 2 : 2, pr = sd.r ? SIGN + 2 : 2, pt = sd.t ? SIGN + 4 : 2, pb = sd.b ? SIGN + 4 : 6;
+    wrap.style.padding = `${pt}px ${pr}px ${pb}px ${pl}px`;
+    const W = Math.min((root.clientWidth || 360) + 24, 492) - pl - pr - 6;   /* 양옆 12px씩 더 씀(.pk-lotw 음수 여백) − 출구 표지판 자리 − 테두리 */
     const top = lot.getBoundingClientRect().top + (window.scrollY || 0);
-    const Hh = Math.max(260, (innerHeight || 740) - top - 100);   /* 아래 단추 줄 */
-    const pad = m.W >= 7 ? 10 : 12;
-    let cs = Math.floor(Math.min((W - pad * 2) / m.W, (Hh - pad * 2) / m.H, 68));
+    const Hh = Math.max(260, (innerHeight || 740) - top - 92 - pb);   /* 아래 단추 줄 */
+    const pad = m.W >= 7 ? 9 : 10;
+    let cs = Math.floor(Math.min((W - pad * 2) / m.W, (Hh - pad * 2) / m.H, 72));
     cs = Math.max(34, cs);
     m.geo = { cs, pad };
     lot.style.width = (cs * m.W + pad * 2) + 'px'; lot.style.height = (cs * m.H + pad * 2) + 'px';
@@ -217,6 +230,7 @@ NG.parking = (() => {
     /* 화면 높이 채우기(보이기만): 주차장은 가운데, 되돌리기·처음부터·힌트 줄은 엄지 자리(아래)로 */
     try{ const rt = root.getBoundingClientRect().top + (window.scrollY || 0); root.style.minHeight = Math.max(0, Math.floor((innerHeight || 740) - rt - 20)) + 'px'; }catch(_){}
     placeAll();
+    if(m.sel != null) drawArw();
   }
   const xy = (m, i, v) => { const k = m.P.cars[i], g = m.geo; return [g.pad + (k.h ? v : k.c) * g.cs, g.pad + (k.h ? k.r : v) * g.cs]; };
   function place(i, v, anim){
@@ -236,11 +250,20 @@ NG.parking = (() => {
     document.querySelectorAll('.ng-parking .pk-goal').forEach(e => {
       const gi = +e.dataset.g, [i, gv] = m.P.goals[gi], k = m.P.cars[i], ex = e.dataset.kind;
       let x = g.pad + (k.h ? gv : k.c) * g.cs, y = g.pad + (k.h ? k.r : gv) * g.cs, w = (k.h ? k.len : 1) * g.cs, h = (k.h ? 1 : k.len) * g.cs;
-      if(ex === 'exit'){   /* 벽에 뚫린 출구: 판 가장자리 여백(벽) + 판 밖 */
-        const dir = +e.dataset.dir, ext = g.pad + 14;
-        if(k.h){ w = ext; x = dir > 0 ? g.pad + m.W * g.cs : -14; }
-        else { h = ext; y = dir > 0 ? g.pad + m.H * g.cs : -14; }
+      if(ex === 'exit'){   /* 벽에 뚫린 출구: 판 가장자리 여백(벽)을 지나 표지판까지 */
+        const dir = +e.dataset.dir, ext = g.pad + 5;
+        if(k.h){ w = ext; x = dir > 0 ? g.pad + m.W * g.cs : -5; }
+        else { h = ext; y = dir > 0 ? g.pad + m.H * g.cs : -5; }
       }
+      e.style.transform = `translate(${x}px, ${y}px)`; e.style.width = w + 'px'; e.style.height = h + 'px';
+    });
+    /* 출구 표지판: 판 밖, 출구 줄을 가운데로 2칸 폭, 빨간(노란) 화살 + "출구" */
+    document.querySelectorAll('.ng-parking .pk-sign').forEach(e => {
+      const gi = +e.dataset.g, [i] = m.P.goals[gi], k = m.P.cars[i], dir = +e.dataset.dir;
+      const LW = m.W * g.cs + g.pad * 2, LH = m.H * g.cs + g.pad * 2, span = 2 * g.cs, out = SIGN + 3;
+      let x, y, w, h;
+      if(k.h){ w = out; h = span; x = dir > 0 ? LW - 1 : -out + 1; y = Math.max(0, Math.min(LH - span, g.pad + (k.r + .5) * g.cs - span / 2)); }
+      else { h = out; w = span; y = dir > 0 ? LH - 1 : -out + 1; x = Math.max(0, Math.min(LW - span, g.pad + (k.c + .5) * g.cs - span / 2)); }
       e.style.transform = `translate(${x}px, ${y}px)`; e.style.width = w + 'px'; e.style.height = h + 'px';
     });
   }
@@ -255,8 +278,9 @@ NG.parking = (() => {
       const k = m.P.cars[i], lim = k.h ? m.W : m.H, col = i === 0 ? 'red' : 'yel';
       const exit = g + k.len === lim || g === 0, dir = g === 0 ? -1 : 1;
       if(exit){
-        const arrow = k.h ? (dir > 0 ? '→' : '←') : (dir > 0 ? '↓' : '↑');
-        return `<div class="pk-goal exit ${col} ${k.h ? 'h' : 'v'}" data-g="${gi}" data-kind="exit" data-dir="${dir}" aria-hidden="true"><i>${arrow}</i><span>출구</span></div>`;
+        const rot = k.h ? (dir > 0 ? 0 : 180) : (dir > 0 ? 90 : -90);
+        return `<div class="pk-goal exit ${col} ${k.h ? 'h' : 'v'}" data-g="${gi}" data-kind="exit" data-dir="${dir}" aria-hidden="true"></div>`
+          + `<div class="pk-sign ${col} ${k.h ? 'h' : 'v'}" data-g="${gi}" data-dir="${dir}" aria-hidden="true"><svg viewBox="0 0 24 24"><path transform="rotate(${rot} 12 12)" d="M3 9h9V4l9 8-9 8v-5H3z" stroke="${OL}" stroke-width="2.2" stroke-linejoin="round"/></svg><span>출구</span></div>`;
       }
       return `<div class="pk-goal spot ${col} ${k.h ? 'h' : 'v'}" data-g="${gi}" data-kind="spot" aria-hidden="true"><b>P</b></div>`;
     }).join('');
@@ -344,22 +368,58 @@ NG.parking = (() => {
     m.pos = last.pos.slice(); m.used = last.used; m.moves = last.mv;
     moved.forEach(i => place(i, m.pos[i], true));
     m.P.cars.forEach((_, i) => { if((usedBefore ^ m.used) & (1 << i)) refreshCar(i); });
-    clearHint(); sfx('pkUndo'); hud(); afterMove();
+    clearHint(); clearSel(); sfx('pkUndo'); hud(); afterMove();
   }
   function restart(){
     const m = S(); if(!canPlay() || !m.hist.length) return;
     const usedBefore = m.used;
     m.pos = m.pos0.slice(); m.used = 0; m.moves = 0; m.hist = []; m.restarts++;
     m.P.cars.forEach((_, i) => { place(i, m.pos[i], true); if(usedBefore & (1 << i)) refreshCar(i); });
-    clearHint(); sfx('pkUndo', { all:1 }); hud(); afterMove();
+    clearHint(); clearSel(); sfx('pkUndo', { all:1 }); hud(); afterMove();
     try{ fxPunch($('#pkLot'), 1.02); }catch(_){}
   }
   function clearHint(){ const g = $('#pkGhost'); if(g) g.remove(); document.querySelectorAll('.ng-parking .pk-car.hint').forEach(e => e.classList.remove('hint')); }
+
+  /* ----- 누르고 화살표로 밀기(끌기가 어려운 사람용): 차를 누르면 갈 수 있는 쪽 빈칸에 큰 화살표(56px) ----- */
+  const ARW = rot => `<svg viewBox="0 0 24 24" aria-hidden="true"><path transform="rotate(${rot} 12 12)" d="M4 9.5h8V5l8.5 7-8.5 7v-4.5H4z" fill="#FFE27A" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  function clearSel(){
+    const m = S(); if(m) m.sel = null;
+    document.querySelectorAll('.ng-parking .pk-arw').forEach(e => e.remove());
+    document.querySelectorAll('.ng-parking .pk-car.sel').forEach(e => e.classList.remove('sel'));
+  }
+  function drawArw(){
+    const m = S(), lot = $('#pkLot'), i = m && m.sel;
+    document.querySelectorAll('.ng-parking .pk-arw').forEach(e => e.remove());
+    document.querySelectorAll('.ng-parking .pk-car.sel').forEach(e => e.classList.remove('sel'));
+    if(!lot || i == null || !canPlay() || usedUp(m, i)){ if(m) m.sel = null; return; }
+    const k = m.P.cars[i], [lo, hi] = bounds(i), p = m.pos[i], g = m.geo, dirs = [];
+    if(p > lo) dirs.push(-1); if(p < hi) dirs.push(1);
+    if(!dirs.length){ m.sel = null; return; }
+    const el = carEl(i); if(el) el.classList.add('sel');
+    lot.insertAdjacentHTML('beforeend', dirs.map(d => {
+      const cell = d < 0 ? p - 1 : p + k.len;   /* 차 끝 바로 옆 빈칸 */
+      const cx = g.pad + ((k.h ? cell : k.c) + .5) * g.cs, cy = g.pad + ((k.h ? k.r : cell) + .5) * g.cs;
+      const rot = k.h ? (d > 0 ? 0 : 180) : (d > 0 ? 90 : -90), nm = k.h ? (d > 0 ? '오른쪽' : '왼쪽') : (d > 0 ? '아래' : '위');
+      return `<button class="pk-arw" data-d="${d}" style="transform:translate(${cx}px, ${cy}px)" aria-label="${carName(m, i)}, ${nm}으로 밀기">${ARW(rot)}</button>`;
+    }).join(''));
+  }
+  function selCar(i){
+    const m = S(); m.sel = i; drawArw();
+    if(m.sel != null){ sfx('pkGrab'); if(!m.toldArw){ m.toldArw = true; msg('<span>화살표를 누르면 한 칸씩 밀려요</span>', 'pk-pop'); T(() => { if(m.phase === 'play') msg(playMsg()); }, 1600); } }
+  }
+  function stepSel(d){
+    const m = S(), i = m.sel; if(i == null || !canPlay()) return;
+    const [lo, hi] = bounds(i), p = m.pos[i];
+    const v = m.P.ice ? (d > 0 ? hi : lo) : Math.max(lo, Math.min(hi, p + d));   /* 빙판: 끝까지 미끄러짐 */
+    if(v === p){ bump(i); sfx('pkBump'); return; }
+    commit(i, v);
+    if(m.sel === i) drawArw();
+  }
   function useHint(){
     const m = S(); if(!canPlay() || m.hintLeft <= 0) return;
     const r = analyse(); if(!r || !r.path.length) return;
     const [i, v] = r.path[0], k = m.P.cars[i], g = m.geo;
-    m.hintLeft--; m.hints++; hud(); clearHint();
+    m.hintLeft--; m.hints++; hud(); clearHint(); clearSel();
     const el = carEl(i); if(el) el.classList.add('hint');
     const [x, y] = xy(m, i, v), dir = v > m.pos[i] ? 1 : -1;
     const lot = $('#pkLot');
@@ -372,8 +432,12 @@ NG.parking = (() => {
   function wire(){
     const m = S(), lot = $('#pkLot');
     let D = null;
+    lot.onclick = e => { const a = e.target.closest && e.target.closest('.pk-arw'); if(a && canPlay()) stepSel(+a.dataset.d); };
     lot.onpointerdown = e => {
-      const el = e.target.closest && e.target.closest('.pk-car'); if(!el || D) return;
+      if(e.target.closest && e.target.closest('.pk-arw')) return;   /* 화살표는 click으로 */
+      const el = e.target.closest && e.target.closest('.pk-car');
+      if(!el){ if(m.sel != null) clearSel(); return; }
+      if(D) return;
       e.preventDefault();
       if(!canPlay()) return;
       const i = +el.dataset.i;
@@ -402,11 +466,14 @@ NG.parking = (() => {
       if(!canPlay()){ place(d.i, m.pos[d.i], true); return; }
       let v = Math.max(d.lo, Math.min(d.hi, Math.round(d.v)));
       if(m.P.ice && v !== d.p0) v = v > d.p0 ? d.hi : d.lo;   /* 빙판: 끝까지 미끄러짐 */
-      if(!d.moved || v === d.p0){
+      if(!d.moved){   /* 누르기만 함 → 화살표 보이기(다시 누르면 숨김) */
         place(d.i, d.p0, true);
-        if(d.lo === d.hi){ bump(d.i); sfx('pkBump'); }
+        if(d.lo === d.hi){ clearSel(); bump(d.i); sfx('pkBump'); return; }
+        if(m.sel === d.i) clearSel(); else selCar(d.i);
         return;
       }
+      clearSel();
+      if(v === d.p0){ place(d.i, d.p0, true); return; }
       commit(d.i, v);
     };
     lot.onpointerup = up; lot.onpointercancel = up;
@@ -420,7 +487,7 @@ NG.parking = (() => {
       const [lo, hi] = bounds(i), p = m.pos[i];
       let v = m.P.ice ? (d > 0 ? hi : lo) : Math.max(lo, Math.min(hi, p + d));
       if(v === p){ bump(i); sfx('pkBump'); return; }
-      commit(i, v);
+      clearSel(); commit(i, v);
       const n = carEl(i); if(n) n.focus();
     };
     $('#pkUndo').onclick = undo; $('#pkReset').onclick = restart;
@@ -434,7 +501,8 @@ NG.parking = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#pkBar');
-    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('pkGo'); hud(); } return; }
+    /* 차 세우기(0.45초) 뒤 시작. 대전은 두 사람이 같은 시계(엔진의 시작 시각)를 써야 하므로 시계를 다시 맞추지 않는다 */
+    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; if(!G.duel){ G.start = Date.now(); G.pausedMs = 0; } msg(playMsg()); sfx('pkGo'); hud(); } return; }
     if(m.phase !== 'play' || !G.limit) return;
     const rem = remTime(t), sec = Math.ceil(rem);
     if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / G.limit)})`;
@@ -448,7 +516,7 @@ NG.parking = (() => {
     if(rem <= 0) timeUp();
   }
   function win(){
-    const m = S(); m.phase = 'done'; m.sec = elapsed(); m.dist = 0; clearHint(); hud();
+    const m = S(); m.phase = 'done'; m.sec = elapsed(); m.dist = 0; clearHint(); clearSel(); hud();
     msg('<b>주차 성공!</b><span>' + m.moves + '수' + (m.moves <= m.opt ? ' · 최단!' : '') + '</span>', 'pk-win');
     sfx('pkHonk'); fxBuzz([30, 50, 30]);
     T(() => {
@@ -457,18 +525,27 @@ NG.parking = (() => {
           const el = carEl(i), k = m.P.cars[i], lim = k.h ? m.W : m.H; if(!el) return;
           const exit = g + k.len === lim || g === 0;
           const q = fxCenter(el);
-          if(exit){ const dir = g === 0 ? -1 : 1, v = g + dir * (k.len + 1.4); el.classList.add('out'); place(i, v, true); }
+          if(exit){
+            /* '부릉': 제자리에서 부르르 떨다가 매연을 뿜으며 출구 밖으로 달려 나감(보이기만) */
+            const dir = g === 0 ? -1 : 1, v = g + dir * (k.len + 1.6);
+            el.classList.add('rev'); sfx('pkVroom');
+            try{ fxFloat(q.x, q.y - q.h * .6, '부릉!', 'pkf'); }catch(_){}
+            const puff = (n, dl) => T(() => { try{ if(FXR.reduce) return; const p = fxCenter(el);
+              fxEmit(p.x - (k.h ? dir * p.w * .5 : 0), p.y - (k.h ? 0 : dir * p.h * .5), { quantity:n, speed:{ min:20, max:70 }, angle:k.h ? (dir > 0 ? { min:160, max:200 } : { min:-20, max:20 }) : (dir > 0 ? { min:250, max:290 } : { min:70, max:110 }), lifespan:{ min:400, max:700 }, kind:'smoke', tint:['#FFFFFF', '#C9C2E6'], scale:{ start:3, end:6 }, alpha:{ start:.75, end:0 } }); }catch(_){} }, dl);
+            puff(5, 0); puff(4, 180);
+            T(() => { el.classList.remove('rev'); el.classList.add('out'); place(i, v, true); puff(6, 60); puff(4, 220); }, 300);
+          }
           else el.classList.add('parked');
           fxBurst(q.x, q.y, [i === 0 ? '#FF4D5E' : '#FFD23F', '#FFE27A', '#FFFFFF'], 16, { speed:260, size:5, kinds:['star', 'dot', 'spark'], up:120, g:420, glow:true, dur:.8 });
         });
         const lot = $('#pkLot'); if(lot){ lot.classList.add('cleared'); const p = fxCenter(lot); fxRing(p.x, p.y, '#FFE27A', p.w * .7, .7, 12); }
       }catch(_){}
     }, 120);
-    T(() => finish(true), 1250);
+    T(() => finish(true), 1500);
   }
   function lose(text){
     const m = S(); if(m.phase !== 'play') return;
-    m.phase = 'done'; clearHint(); hud();
+    m.phase = 'done'; clearHint(); clearSel(); hud();
     if(m.dirty) analyse();
     msg('<b class="bad">' + text + '</b>' + (m.dist > 0 ? '<span>남은 최단 ' + m.dist + '수</span>' : ''), 'pk-pop');
     sfx('pkTimeUp'); fxBuzz([40, 40, 60]); try{ fxShake($('#pkLot'), 6); }catch(_){}
@@ -495,12 +572,14 @@ NG.parking = (() => {
         <circle cx="${ox + cs * 1.5}" cy="${oy + cs * 4.5}" r="5.5" fill="#FFD23F" stroke="${OL}" stroke-width="1.8"/></svg>`;
     },
     help:[
-      ['차를 앞뒤로 밀어요', '차를 손가락으로 끌면 자기 방향(가로 차는 좌우, 세로 차는 위아래)으로만 미끄러져요. 다른 차나 벽에 막히면 멈춰요.'],
-      ['빨간 내 차를 자리로', '하트가 그려진 빨간 차를 출구(또는 P 표시 칸)까지 보내면 성공! 길을 막는 차들을 비켜 세워 길을 만들어요.'],
-      ['적은 수가 고수', '차 한 대를 한 번 미는 것이 한 수예요(같은 차를 이어서 밀면 한 수). 최단 수로 풀면 ★★★! 되돌리기·처음부터는 벌칙이 없어요.'],
-      ['막히면 힌트', '💡힌트는 다음에 밀 차와 갈 칸을 보여 줘요. 대신 점수가 ' + HINT_PEN + '점 줄어요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 기둥·한 번 차·일방통행 차·두 대 주차 같은 새 규칙과 번개·수 제한·빙판 같은 변주가 5판마다 하나씩 나와요.']
+      ['차를 앞뒤로 밀어요', '차를 끌거나, 차를 누르고 옆에 나온 화살표를 눌러 밀어요. 가로 차는 좌우, 세로 차는 위아래로만 가요.'],
+      ['빨간 내 차를 출구로', '하트가 그려진 빨간 차를 빨간 화살 "출구"(또는 P 칸)까지 보내면 성공! 길을 막는 차를 비켜 세워요.'],
+      ['적은 수가 고수', '차 한 대를 한 번 미는 것이 한 수(같은 차를 이어서 밀면 한 수). 최단 수로 풀면 ★★★! 되돌리기는 벌칙 없어요.'],
+      ['막히면 힌트', '💡힌트는 다음에 밀 차와 갈 칸을 보여 줘요. 대신 점수가 ' + HINT_PEN + '점 줄어요.']
     ],
+    /* 도움말 v2(공용 WP3가 읽음): 3줄 + 더 알아보기. 솔로 새 규칙은 개념 카드에서만 설명 */
+    howto:{ lines:['차를 끌거나, 누르고 화살표로 밀어요', '빨간 내 차를 출구까지 보내요', '적은 수로 풀수록 별이 많아요'],
+      more:[['한 수 세기', '같은 차를 이어서 밀면 한 수예요. 되돌리기·처음부터는 벌칙이 없어요.'], ['힌트', '다음에 밀 차와 갈 칸을 보여 줘요(점수 −' + HINT_PEN + ').'], ['대전', '같은 주차장을 동시에! 내 차를 먼저 빼면 이겨요(2분).']] },
     helpExtra(){ const m = G && G.id === 'parking' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['동네 골목', '마트 주차장', '항구 하역장', '공항 주차빌딩', '눈꽃 스키장'],
     starRule:'★ 주차 성공 · ★★ 힌트 1번 이하, 최단+여유 수 안 · ★★★ 힌트 없이 최단 수로',
@@ -514,12 +593,13 @@ NG.parking = (() => {
     stageDesc(n){ const c = stageCfg(n); return `${c.size}×${c.size} · 최단 ${c.lo}~${c.hi}수 · ${mmss(c.limit)}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.size}×${c.size} · 최단 ${c.lo}~${c.hi}수`; },
     init(cfg, rng){
+      if(G.duel && !G.adv && !cfg.duel) cfg = Object.assign({}, cfg, DUEL);
       const b = makeBoard(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       G.m = { P:b.P, W:b.P.W, H:b.P.H, pos0:b.pos0.slice(), pos:b.pos0.slice(), used:0, look:b.look, opt:b.opt, path0:b.path,
         moves:0, hist:[], hints:0, restarts:0, hintLeft:cfg.hints == null ? 3 : cfg.hints, capMax:cfg.cap ? b.opt + cfg.cap : 0,
         dist:b.opt, next:b.path[0] || null, memo:new Map(), phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips,
-        lastSec:-1, sec:0, timers:new Set(), geo:{ cs:52, pad:12 } };
+        lastSec:-1, sec:0, timers:new Set(), geo:{ cs:52, pad:10 }, sel:null };
       G.limit = cfg.limit;
       const m = G.m;
       G.cleanup = () => {
@@ -540,6 +620,7 @@ NG.parking = (() => {
     },
     _solveForTest(){ return G.m._solveForTest(); },
     _make:makeBoard, _stage:stageCfg,
+    duelCfg(){ return Object.assign({}, DUEL); },
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-parking">
@@ -596,7 +677,7 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-msg.pk-pop, .ng-parking .pk-msg.pk-win{animation:parking-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-parking .pk-msg.pk-win b{font-size:24px; color:#FFE27A}
 @keyframes parking-in{from{transform:scale(.6); opacity:0}}
-.ng-parking .pk-lotw{padding:2px 13px 10px; margin:auto -8px; display:flex; justify-content:center}
+.ng-parking .pk-lotw{padding:2px 2px 6px; margin:auto -12px; display:flex; justify-content:center}
 .ng-parking .pk-lot{position:relative; box-sizing:content-box; border-radius:18px; touch-action:none;
   background:repeating-linear-gradient(45deg,#D4CCF5 0 10px,#C6BDEE 10px 20px); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 5px 0 #1A0F45, 0 14px 22px rgba(40,20,110,.25)}
@@ -608,15 +689,19 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-goal.exit{background:#322A6A; border:2.5px solid #1A0F45; z-index:1}
 .ng-parking .pk-goal.exit.h{border-left:0; border-right:0}
 .ng-parking .pk-goal.exit.v{border-top:0; border-bottom:0; flex-direction:column}
-.ng-parking .pk-goal.exit i{font-style:normal; font-family:var(--heavy); font-size:calc(var(--cs) * .42); line-height:1; color:#FFD23F; -webkit-text-stroke:3px #1A0F45; paint-order:stroke fill; animation:parking-go 1s ease-in-out infinite alternate}
-.ng-parking .pk-goal.exit.yel i{color:#FFF3A8}
-.ng-parking .pk-goal.exit.red i{color:#FF7A86}
-.ng-parking .pk-goal.exit span{position:absolute; font-family:var(--disp); font-size:13px; line-height:1; padding:3px 5px; border-radius:7px; background:#FF4D5E; color:#fff; border:2px solid #1A0F45; white-space:nowrap}
-.ng-parking .pk-goal.exit.yel span{background:#FFD23F; color:#1A0F45}
-.ng-parking .pk-goal.exit.h span{top:-24px}
-.ng-parking .pk-goal.exit.v span{left:calc(100% + 3px)}
+.ng-parking .pk-goal.exit.red{background:linear-gradient(90deg,#322A6A,#5A2A55)} .ng-parking .pk-goal.exit.red.v{background:linear-gradient(180deg,#322A6A,#5A2A55)}
+/* 출구 표지판(판 밖, 2칸 폭): 흰 판 + 빨간(노란) 화살 + "출구" 15px */
+.ng-parking .pk-sign{position:absolute; left:0; top:0; z-index:2; pointer-events:none; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:3px;
+  background:#FFF4F5; border:2.5px solid #1A0F45; border-radius:10px; box-shadow:0 3px 0 #1A0F45}
+.ng-parking .pk-sign.h{flex-direction:column; padding:4px 0}
+.ng-parking .pk-sign svg{width:22px; height:22px; flex:none; fill:#FF4D5E; animation:parking-go 1s ease-in-out infinite alternate}
+.ng-parking .pk-sign.v svg{animation-name:parking-gov}
+.ng-parking .pk-sign span{font-family:var(--disp); font-size:15px; line-height:1.05; color:#C8213B; white-space:nowrap}
+.ng-parking .pk-sign.h span{writing-mode:vertical-rl; text-orientation:upright; letter-spacing:1px}
+.ng-parking .pk-sign.yel{background:#FFFBE6}
+.ng-parking .pk-sign.yel svg{fill:#FFD23F}
+.ng-parking .pk-sign.yel span{color:#8A5A00}
 @keyframes parking-go{from{transform:translate(0,0)} to{transform:translate(3px,0)}}
-.ng-parking .pk-goal.exit.v i{animation-name:parking-gov}
 @keyframes parking-gov{from{transform:translate(0,0)} to{transform:translate(0,3px)}}
 .ng-parking .pk-goal.spot{border:3px dashed #FF7A86; border-radius:12px; background:rgba(255,77,94,.16); z-index:1}
 .ng-parking .pk-goal.spot.yel{border-color:#FFD23F; background:rgba(255,210,63,.16)}
@@ -634,6 +719,17 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-car.used svg{filter:grayscale(.65) brightness(.85)}
 .ng-parking .pk-car.hint svg{animation:parking-hint .6s ease-in-out infinite alternate}
 @keyframes parking-hint{from{filter:drop-shadow(0 0 0 rgba(255,226,122,0))} to{filter:drop-shadow(0 0 7px #FFE27A) drop-shadow(0 0 3px #FFE27A)}}
+/* 누르고 화살표로 밀기 */
+.ng-parking .pk-car.sel svg{filter:drop-shadow(0 0 0 #FFE27A) drop-shadow(0 0 3px #FFE27A) drop-shadow(0 0 6px #FFE27A)}
+.ng-parking .pk-arw{position:absolute; left:-28px; top:-28px; width:56px; height:56px; z-index:6; border-radius:50%; border:3px solid #1A0F45; padding:6px; margin:0; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 35%, #5A4BB0, #2B2160); box-shadow:0 3px 0 #1A0F45, 0 0 0 3px rgba(255,226,122,.55); cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; animation:parking-arw .22s cubic-bezier(.2,1.5,.4,1)}
+.ng-parking .pk-arw svg{width:100%; height:100%; display:block}
+.ng-parking .pk-arw:active{scale:.92}
+.ng-parking .pk-arw:focus-visible{outline:3px solid #FFE27A; outline-offset:2px}
+@keyframes parking-arw{from{scale:.4; opacity:0}}
+.ng-parking .pk-car.rev svg{animation:parking-rev .1s linear infinite alternate}
+@keyframes parking-rev{from{translate:0 -1px} to{translate:0 1px}}
+body[data-mode="parking"] .fxfloat.pkf{font-family:var(--heavy); font-weight:400; font-size:26px; color:#FFE27A; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill}
 .ng-parking .pk-car.out{transition:transform .55s cubic-bezier(.5,0,.8,.4), opacity .55s ease-in .2s; opacity:0}
 .ng-parking .pk-car.parked svg{animation:parking-park .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes parking-park{40%{transform:scale(1.1)}}
@@ -662,7 +758,7 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-parking .pk-ctl .tool .cnt{font-style:normal}
 @media (max-width:370px){ .ng-parking .pk-ctl .tool{font-size:14px; gap:3px} .ng-parking .pk-msg b{font-size:18px} .ng-parking .pk-chip{font-size:12px; padding:4px 7px} }
-@media (prefers-reduced-motion: reduce){ .ng-parking .pk-car.glide{transition:none} .ng-parking .pk-lot.in .pk-car, .ng-parking .pk-goal.exit i, .ng-parking .pk-ghost, .ng-parking .pk-car.hint svg{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-parking .pk-car.glide{transition:none} .ng-parking .pk-lot.in .pk-car, .ng-parking .pk-sign svg, .ng-parking .pk-ghost, .ng-parking .pk-car.hint svg, .ng-parking .pk-car.rev svg, .ng-parking .pk-arw{animation:none} }
 `,
     sounds:{
       pkGrab(){ aNoise({ ft:'bandpass', f:2400, q:2, d:.035, v:.05 }); aTone({ f:700, f2:820, type:'triangle', d:.05, v:.035 }); },
@@ -671,6 +767,7 @@ body[data-mode="parking"]{background:
       pkLock(){ aTone({ f:1200, type:'square', lp:2600, d:.04, v:.04, t:.08 }); aTone({ f:900, type:'square', lp:2600, d:.05, v:.04, t:.13 }); },
       pkUndo(o){ aTone({ f:o.all ? 700 : 620, f2:o.all ? 300 : 440, type:'triangle', d:o.all ? .22 : .12, v:.06 }); aWhoosh({ f:2400, f2:600, a:.01, d:.15, v:.03 }); },
       pkHint(){ aSparkle({ root:79, n:5, v:.04 }); },
+      pkVroom(){ aTone({ f:70, f2:150, type:'sawtooth', lp:700, d:.35, v:.08 }); aTone({ f:95, f2:210, type:'sawtooth', lp:900, t:.22, d:.45, v:.07 }); aNoise({ ft:'lowpass', f:600, f2:1800, t:.2, d:.45, v:.05 }); },
       pkHonk(){ [0, .2].forEach(t => { aTone({ f:440, type:'square', lp:1800, t, d:.13, v:.06 }); aTone({ f:554, type:'square', lp:1800, t, d:.13, v:.05 }); }); aSparkle({ t:.4, n:6 }); },
       pkGo(){ aWhoosh({ f:2600, f2:600, a:.03, d:.25, v:.05 }); aBell({ f:m2f(84), t:.15, d:.5, v:.06, rev:.3 }); },
       pkTick(o){ aTone({ f:o.hi ? 1320 : 990, type:'square', lp:3000, d:.05, v:.05, bus:'ui' }); },
@@ -682,6 +779,8 @@ body[data-mode="parking"]{background:
 })();
 
 /* 대전: 같은 판을 누가 먼저·적은 수로(점수 = 시간 + 수 효율). AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.parking, { duelPace:[110, .72], duelStat:{ unit:'수', get:() => ({ v:G.m.moves, t:G.m.opt, lf:null }) }, duelHow:'같은 주차장 · 누가 먼저, 적은 수로?' });
+/* 대전 판: 10~12수 · 2분(DUEL). duelKind·duelMax·duelCfg는 대전 v3 엔진이 읽는 값(지금 엔진은 1:1, 2단계에서 duelMax 5로 올림) */
+Object.assign(NG.parking, { duelPace:[75, .75], duelStat:{ unit:'수', get:() => ({ v:G.m.moves, t:G.m.opt, lf:null, mis:0 }) }, duelHow:'같은 주차장 · 내 차를 먼저 빼면 1등!',
+  duelKind:'race', duelMax:2 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.parking.scene = { kind:'shapes', colors:['#FFFFFF', '#FFD23F', '#FF8FA0', '#9FD8FF'], density:.7, alpha:.55 };
