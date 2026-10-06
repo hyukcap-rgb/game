@@ -653,6 +653,18 @@ NG.omok = (() => {
     toast(m.slow ? `느긋하게: 한 수 ${m.turnLim}초` : `보통: 한 수 ${m.turnLim}초`);
   }
 
+  /* 연습 묘수풀이 느긋하게: 첫 수 전에만, 제한 시간 보통 ↔ 2배 */
+  function togglePzPace(){
+    const m = S(); if(!m.pzSlowable || m.over) return;
+    if(m.myMoves > 0 || m.retries > 0){ toast('시간은 첫 수를 두기 전에만 바꿀 수 있어요'); return; }
+    m.pzSlow = !m.pzSlow; store.set('hp:omok:pzslow', m.pzSlow ? 1 : 0);
+    G.limit = (G.cfg && G.cfg.limit || G.limit) * (m.pzSlow ? 2 : 1); m.lastSec = -1;
+    sfx('toggle');
+    const tp = $('#omTimeP'); if(tp) tp.classList.toggle('slow', m.pzSlow);
+    const em = $('#omPzT'); if(em) em.textContent = m.pzSlow ? '느긋하게 ⇄' : '보통 ⇄';
+    toast(m.pzSlow ? `느긋하게: ${mmss(G.limit)} 안에 풀어요` : `보통: ${mmss(G.limit)} 안에 풀어요`);
+  }
+
   /* ----- 실시간 대전: 엔진 방(D.nr) presence.om.mv에 내 수를 쌓고, 상대 것을 읽어 차례대로 둔다 ----- */
   function pubMoves(){ const D = G.duel, m = S(); try{ D.nr.presence({ om:{ v:1, c:m.me, mv:m.myMv.slice(), aw:m.away ? 1 : 0, ff:m.ff ? 1 : 0 } }).catch(() => {}); }catch(_){} }
   function readOpp(){
@@ -671,9 +683,25 @@ NG.omok = (() => {
   }
   /* 대전 '느긋하게'(공용 대전 v3의 dk:'s' 또는 cfg.slow) — 두 기기가 같은 값을 보므로 차례 시간이 같다 */
   function duelSlowNow(){ const D = G && G.duel; return !!(D && (D.pace === 's' || D.slow || (D.cf && D.cf.dk === 's'))); }
+  /* 대전 v3(2026-10-06 세대별 테스트 2단계, WP12 오목 4번): 같은 상대와 한 판 더 = 흑백 바꿔서.
+     1판의 흑 = 방 이름 동전(두 기기 같은 값), 판 번호가 짝수면 반대. '나'는 자리(pl 순서) 0번 또는 사이트 방의 방장.
+     - 빠른 대전 한 판 더: 방 이름(D.R)이 그대로, 판 번호(D.r)가 1씩 오르고 자리 순서도 그대로 → 판마다 바뀜
+     - 사이트 방: 판마다 방 이름이 'du-<방>-<판>'으로 바뀌므로 동전은 방 번호(D.room.id), 판 번호는 이름 끝 숫자 */
+  function duelColorV3(D){
+    if(D.v !== 3 || !D.P || !D.P[D.myPid]) return 0;
+    const room = D.room && D.room.id != null ? D.room : null;
+    let r = D.r || 1;
+    if(room && r === 1){ const mm = /-(\d+)$/.exec(String(D.R || '')); if(mm) r = +mm[1] || 1; }
+    const key = room ? 'room:' + room.id : String(D.R || D.seed || '');
+    const iAmA = room && typeof room.host === 'boolean' ? room.host : D.P[D.myPid].seat === 0;
+    const blackA = ((seedFrom('omok:' + key) & 1) === 1) !== (r % 2 === 0);
+    S().round = r;
+    return iAmA === blackA ? BLACK : WHITE;
+  }
   function myColorInDuel(D, rng){
     const coin = rng() < .5;
     if(D.mode !== 'pvp') return coin ? BLACK : WHITE;
+    const v3 = duelColorV3(D); if(v3) return v3;
     const clean = x => String(x).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
     const parts = String(D.seed || '').split(':')[0].replace(/^du-/, '').split('-');
     let myId = ''; try{ const me = D.nr.peers().find(p => p.sameTab); myId = me ? clean(me.peer) : ''; }catch(_){}
@@ -690,7 +718,10 @@ NG.omok = (() => {
     G.raf = requestAnimationFrame(loop);
     const m = S(), now = performance.now(), dt = m.lt ? Math.min(.25, (now - m.lt) / 1000) : 0; m.lt = now;
     if(isDuel() && !G.duel.go) return;
-    if(isDuel() && !m.began){ m.began = true; turnMsg(); hud(); nextTurn(); }
+    if(isDuel() && !m.began){
+      m.began = true; turnMsg(); hud(); nextTurn();
+      if((m.round || 1) > 1) try{ toast(`${m.round}판째 · 흑백을 바꿨어요 · 나는 ${CNAME(m.me)}`); }catch(_){}
+    }
     if(G.paused && !isDuel()) return;
     if(m.mode === 'duel' && duelLive() && now - (m.pollAt || 0) > 150){ m.pollAt = now; readOpp(); }
     if(m.over) return;
@@ -733,14 +764,15 @@ NG.omok = (() => {
       clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
       hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/></svg>',
       back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10H14a6 6 0 0 1 0 12h-3" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/></svg>',
-      retry:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/><path d="M18.5 2.5v4.5H14" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      retry:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/><path d="M18.5 2.5v4.5H14" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      zoom:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#E9F4FF" stroke="#1A0F45" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/><path d="M7 10h6M10 7v6" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round"/></svg>'
     };
     const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
     st.innerHTML = `<div class="ng-omok${pz ? ' is-pz' : ''}${duel ? ' is-duel' : ''}">
       <div class="hud-row">
         ${pz ? `<div class="hchip" aria-label="${m.N}수 안에 이기는 묘수"><span class="hv">${stoneIco(m.me)}<b>${m.N}수</b></span><em>${m.N}수 안에 이기기</em></div>
           <div class="hchip" aria-label="둔 수"><span class="hv"><b id="omMv">0</b><small>/${m.maxMoves}</small></span><em>둔 수 / 최대</em></div>
-          <div class="hchip time" id="omTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="omTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`
+          <${m.pzSlowable ? 'button type="button"' : 'div'} class="hchip time${m.pzSlow ? ' slow' : ''}" id="omTimeP" aria-label="남은 시간${m.pzSlowable ? ' · 눌러서 느긋하게(2배) 바꾸기' : ''}"><span class="hv">${ICO.clock}<b id="omTime">${mmss(G.limit)}</b></span><em id="omPzT">${m.pzSlowable ? (m.pzSlow ? '느긋하게 ⇄' : '보통 ⇄') : '남은 시간'}</em></${m.pzSlowable ? 'button' : 'div'}>`
         : `<div class="hchip om-side" id="omMe" aria-label="나 · ${CNAME(m.me)}"><span class="hv">${stoneIco(m.me)}<b class="om-opn">나</b></span><em>${CNAME(m.me)} · 0수</em></div>
           <${m.slowable ? 'button type="button"' : 'div'} class="hchip time${m.slow ? ' slow' : ''}" id="omTimeP" aria-label="차례 시간${m.slowable ? ' · 눌러서 30초·60초 바꾸기' : ''}"><span class="hv">${ICO.clock}<b id="omTime">${m.turnLim}초</b></span><em id="omNo">1번째 수</em><i class="om-tbar"><i id="omTurnBar"></i></i></${m.slowable ? 'button' : 'div'}>
           <div class="hchip om-side op" id="omOp" aria-label="상대 · ${CNAME(m.opp)}"><span class="hv">${stoneIco(m.opp)}<b class="om-opn">${duel && G.duel && G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : '컴퓨터'}</b></span><em>상대 · ${CNAME(m.opp)}</em></div>`}
@@ -752,20 +784,26 @@ NG.omok = (() => {
       <div class="tools-row om-act">
         ${duel ? '' : `<button class="tool item" id="omHint" aria-label="힌트">${ICO.hint}<span>힌트</span><b class="cnt">${m.hintLeft}</b></button>
         <button class="tool" id="omBack" aria-label="${pz ? '처음부터 다시' : '무르기'}">${pz ? ICO.retry : ICO.back}<span>${pz ? '처음부터' : '무르기'}</span><b class="cnt">0</b></button>`}
+        <button class="tool om-zoom" id="omZoom" aria-pressed="false" aria-label="판 확대">${ICO.zoom}<span>확대</span></button>
         <button class="btn primary om-put" id="omPut" disabled>두기<small></small></button>
       </div>
     </div>`;
     drawStones(-1); hud(); layout(); drawPreview(); turnMsg();
-    wire();
-    m.onResize = () => layout(); addEventListener('resize', m.onResize);
+    wire(); zoomApply();
+    m.onResize = () => { layout(); zoomApply(); }; addEventListener('resize', m.onResize);
     if(G.raf) cancelAnimationFrame(G.raf);
     m.lt = 0; G.raf = requestAnimationFrame(loop);
     if(m.mode !== 'duel' || !G.duel) T(nextTurn, 300);
   }
   function wire(){
     const m = S(), bd = $('#omBoard');
-    let downCell = -1, confirmOk = false;
+    let downCell = -1, confirmOk = false, pan = null;
     bd.onpointerdown = e => {
+      if(m.zoom){   /* 확대: 누른 자리만 기억(끌면 이동, 그냥 떼면 고르기) */
+        e.preventDefault(); try{ bd.setPointerCapture(e.pointerId); }catch(_){}
+        pan = { x0:e.clientX, y0:e.clientY, tx:m.zx || 0, ty:m.zy || 0, moved:false };
+        return;
+      }
       if(!myTurn(m) || G.over) return;
       const i = cellFromEvent(e); if(i < 0 || m.B.b[i] !== EMPTY) return;
       e.preventDefault(); try{ bd.setPointerCapture(e.pointerId); }catch(_){}
@@ -774,6 +812,11 @@ NG.omok = (() => {
       if(e.pointerType !== 'mouse') loupeShow(e);   /* 손가락이 가리는 자리를 크게 보여 줌 */
     };
     bd.onpointermove = e => {
+      if(pan){
+        const dx = e.clientX - pan.x0, dy = e.clientY - pan.y0;
+        if(!pan.moved && Math.hypot(dx, dy) < 8) return;
+        pan.moved = true; zoomMove(pan.tx + dx, pan.ty + dy); return;
+      }
       if(downCell < 0) return;
       const i = cellFromEvent(e);
       if(i >= 0 && i !== m.preview && m.B.b[i] === EMPTY){ m.preview = i; confirmOk = false; downCell = i; drawPreview(); }
@@ -781,11 +824,18 @@ NG.omok = (() => {
     };
     bd.onpointerup = e => {
       loupeHide();
+      if(pan){
+        const p0 = pan; pan = null;
+        if(p0.moved || !myTurn(m) || G.over) return;
+        const i = cellFromEvent(e); if(i < 0 || m.B.b[i] !== EMPTY) return;
+        if(m.preview === i){ playerPut(i); return; }
+        m.preview = i; sfx('omokPick'); drawPreview(); return;
+      }
       if(downCell < 0) return;
       const i = cellFromEvent(e), ok = confirmOk && i === m.preview; downCell = -1; confirmOk = false;
       if(ok) playerPut(i);
     };
-    bd.onpointercancel = () => { downCell = -1; confirmOk = false; loupeHide(); };
+    bd.onpointercancel = () => { downCell = -1; confirmOk = false; pan = null; loupeHide(); };
     bd.tabIndex = 0;
     bd.onkeydown = e => {
       if(!myTurn(m)) return;
@@ -796,8 +846,30 @@ NG.omok = (() => {
     };
     $('#omPut').onclick = () => { if(m.preview != null) playerPut(m.preview); };
     const h = $('#omHint'); if(h) h.onclick = useHint;
-    const tp = $('#omTimeP'); if(tp && m.slowable) tp.onclick = togglePace;
+    const tp = $('#omTimeP'); if(tp && m.slowable) tp.onclick = togglePace; else if(tp && m.pzSlowable) tp.onclick = togglePzPace;
     const b = $('#omBack'); if(b) b.onclick = useBack;
+    const z = $('#omZoom'); if(z) z.onclick = zoomToggle;
+  }
+  /* ----- 확대(세대별 테스트 2단계, WP12 오목 1번): 판을 2배로 키우고 끌어서 옮긴다. 보이기만 한다(판 상태·대전과 무관).
+     판 SVG에 transform만 주므로 누른 자리 계산(cellFromEvent: getBoundingClientRect)은 그대로 맞다 ----- */
+  function zoomToggle(){
+    const m = S(); m.zoom = !m.zoom; sfx('toggle');
+    if(m.zoom){
+      /* 고른 자리 → 마지막 수 → 가운데 순으로 그 자리가 화면 가운데 오게 */
+      const n = m.B.n, i = m.preview != null ? m.preview : m.hist.length ? m.hist[m.hist.length - 1] : (n >> 1) * n + (n >> 1);
+      const bd = $('#omBoard'), w = bd ? bd.clientWidth : 300, [x, y] = P(i), k = w / (n * 10);
+      m.zx = w / 2 - x * k * 2; m.zy = w / 2 - y * k * 2;
+    }
+    zoomApply();
+  }
+  function zoomMove(x, y){ const m = S(); m.zx = x; m.zy = y; zoomApply(); }
+  function zoomApply(){
+    const m = S(), bd = $('#omBoard'), svg = $('#omSvg'), z = $('#omZoom'); if(!bd || !svg) return;
+    const w = bd.clientWidth || 300;
+    if(m.zoom){ m.zx = Math.max(-w, Math.min(0, m.zx || 0)); m.zy = Math.max(-w, Math.min(0, m.zy || 0)); svg.style.transform = `translate(${Math.round(m.zx)}px, ${Math.round(m.zy)}px) scale(2)`; }
+    else svg.style.transform = '';
+    bd.classList.toggle('zoom', !!m.zoom);
+    if(z){ z.setAttribute('aria-pressed', m.zoom ? 'true' : 'false'); z.classList.toggle('on', !!m.zoom); const sp = z.querySelector('span'); if(sp) sp.textContent = m.zoom ? '작게' : '확대'; }
   }
 
   return {
@@ -830,12 +902,28 @@ NG.omok = (() => {
     ],
     /* 도움말 v2(공용 WP3): 첫 화면 3줄, 나머지는 '더 알아보기' */
     howto:{
-      lines:[
-        ['내 돌 5개를 먼저 이어요', '가로·세로·대각선으로 정확히 5개(6개 이상은 아님)'],
-        ['누르면 분홍 자리가 보여요', '맞으면 [두기], 같은 자리를 한 번 더 눌러도 돼요'],
-        ['흑은 × 자리에 못 둬요', '열린 3을 두 줄 만드는 3·3 금지 자리예요']
-      ],
+    /* 도움말 그림(320×180, 오리지널 도형, 글자 없음): 흑 4개 줄 → 분홍 자리 고르기 → 다섯째 돌 → 5목 줄 빛 */
+    pic(){
+      let g = ''; for(let k = 0; k < 14; k++) g += `M${30 + k * 20} 30V150`; for(let k = 0; k < 7; k++) g += `M30 ${30 + k * 20}H290`;
+      const st = (x, y, c) => `<circle cx="${x}" cy="${y + 1.2}" r="8.6" fill="rgba(40,20,0,.25)"/><circle cx="${x}" cy="${y}" r="8.6" fill="${c ? '#231B3E' : '#FFFFFF'}" stroke="${c ? '#0A0618' : '#8E84B0'}" stroke-width="1.2"/><ellipse cx="${x - 3}" cy="${y - 3.2}" rx="2.8" ry="1.8" fill="#fff" opacity="${c ? .35 : .9}"/>`;
+      const B = [[90, 90], [110, 90], [130, 90], [150, 90]], W = [[110, 70], [130, 110], [150, 70], [90, 110], [190, 90], [170, 130]];
+      const D = '3.6s', KT = 'keyTimes="0;.3;.42;.5;.9;1"';
+      return `<svg viewBox="0 0 320 180" aria-hidden="true">
+        <rect x="8" y="8" width="304" height="164" rx="16" fill="#F2CB86" stroke="#1A0F45" stroke-width="3"/>
+        <path d="${g}" stroke="#7A5428" stroke-width="1" opacity=".75"/>
+        ${W.map(([x, y]) => st(x, y, 0)).join('')}${B.map(([x, y]) => st(x, y, 1)).join('')}
+        <g><circle cx="170" cy="90" r="12" fill="none" stroke="#F0368A" stroke-width="3"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;1;1;0;0;0" ${KT}/><animate attributeName="r" dur="${D}" repeatCount="indefinite" values="16;12;12;12;12;16" ${KT}/></circle>
+          <path d="M170 34V146M34 90H286" stroke="#F0368A" stroke-width="1.2" stroke-dasharray="3 3"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;.8;.8;0;0;0" ${KT}/></path></g>
+        <g opacity="0"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;0;0;1;1;0" ${KT}/>${st(170, 90, 1)}</g>
+        <path d="M90 90H170" stroke="#FF5A6E" stroke-width="4" stroke-linecap="round" stroke-dasharray="80" stroke-dashoffset="80" opacity=".9"><animate attributeName="stroke-dashoffset" dur="${D}" repeatCount="indefinite" values="80;80;80;80;0;0" keyTimes="0;.3;.42;.55;.7;1"/></path>
+        <g fill="#FFE27A" stroke="#1A0F45" stroke-width="1.2" opacity="0"><animate attributeName="opacity" dur="${D}" repeatCount="indefinite" values="0;0;0;0;1;0" ${KT}/><path d="M200 58l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z"/><path d="M76 62l2.2 4.4 4.6.8-3.3 3 .8 4.6-4.3-2.3-4.3 2.3.8-4.6-3.3-3 4.6-.8z"/></g>
+      </svg>`;
+    },
+      /* 3줄은 글자열(줄마다 24자 이하, games/CLAUDE.md howto 계약) */
+      lines:['내 돌 5개를 먼저 이어요', '누르면 분홍 자리 → [두기]', '흑은 × 자리에 못 둬요(3·3)'],
       more:[
+        ['5개 잇기', '가로·세로·대각선으로 정확히 5개(6개 이상은 승리가 아니에요).'],
+        ['놓는 법 · 확대', '자리를 누르면 분홍 자리와 돋보기가 보여요. 맞으면 [두기]나 같은 자리를 한 번 더. [확대]를 누르면 판이 2배, 끌어서 옮겨요.'],
         ['오늘의 문제 = 묘수풀이', '정해진 수 안에 이기는 문제예요. 상대는 늘 같은 방식으로 막아요. 기회 3번, 힌트 1번.'],
         ['솔로 · 대전', '솔로는 컴퓨터 대국과 묘수가 섞여 나와요(시계를 누르면 한 수 30초 ↔ 60초). 대전은 실시간 1:1, 한 수 30초.'],
         ['시간을 넘기면', '처음 한 번은 대신 둬 줘요. 그다음부터는 "자리 비움"이 보이고, 세 번 연속이면 기권이에요.'],
@@ -871,9 +959,11 @@ NG.omok = (() => {
       /* 솔로 컴퓨터 대국은 차례 시간을 고를 수 있음(외줄 타기 제외) */
       m.turnBase = m.turnLim;
       if(mode === 'ai' && !m.tight){ m.slowable = true; m.slow = !!store.get('hp:omok:slow', 0); m.turnLim = m.turnBase * (m.slow ? 2 : 1); }
+      /* 연습(기록 안 되는 묘수풀이: 솔로·대전·공식 첫 판이 아님)은 시계를 눌러 제한 시간 2배(느긋하게, hp:omok:pzslow) */
+      if(mode === 'pz' && !G.adv && !G.duel && G.attempt !== 1 && cfg.limit){ m.pzSlowable = true; m.pzSlow = !!store.get('hp:omok:pzslow', 0); }
       m.genMs = performance.now() - t0;
       m.seedStr = 'om' + Math.floor(rng() * 1e9);
-      G.limit = mode === 'pz' ? cfg.limit : 0;
+      G.limit = mode === 'pz' ? cfg.limit * (m.pzSlow ? 2 : 1) : 0;
       if(mode === 'pz') G.paws = Math.min(3, m.triesLeft);
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
@@ -980,6 +1070,10 @@ body[data-mode="omok"]{background:
 .ng-omok .om-act{margin-top:8px; align-items:stretch}
 .ng-omok .om-act .tool{flex:1 1 0}
 .ng-omok .om-act .tool .cnt{font-style:normal}
+.ng-omok .om-zoom{flex:.9 1 0}
+.ng-omok .om-zoom.on{background:linear-gradient(180deg,#DFF1FF,#9ED2FF)}
+.ng-omok .om-board.zoom{overflow:hidden; touch-action:none}
+.ng-omok .om-board .om-svg{transform-origin:0 0}
 .ng-omok .om-put{flex:1.7 1 0; height:56px; min-width:0; flex-direction:column; gap:0; font-size:22px; line-height:1.05}
 .ng-omok .om-put small{font-family:var(--disp); font-size:13px; color:#fff; opacity:.95}
 .ng-omok .om-put small:empty{display:none}

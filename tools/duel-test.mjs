@@ -58,6 +58,7 @@ const errsOf=L=>L.flatMap(x=>x.errs);
 
 /* ================= 1) 게임마다 1:1 ================= */
 if(!ONLYM) for(const g of GAMES){
+  if(['fleet','gostop'].includes(g)){ console.log(`  (${g}: 자기 방식 대전(duelLaunch) → 아래 따로 점검)`); continue; }
   const A=await mk('A'),Bp=await mk('B');
   await A.pg.evaluate(g=>duelStart(g),g); await w(300); await Bp.pg.evaluate(g=>duelStart(g),g);
   const okGo=await Promise.all([A,Bp].map(x=>until(x,()=>G&&G.duel&&G.duel.go)));
@@ -439,4 +440,59 @@ if(MULTI){
   if(WANT('crossword')){ await crosswordShared3(); await wordAi('crossword',20000); }
 }
 
+/* ================= 3) 차례 게임 2단계(WP12: 오목·함대·고스톱) — 게임별 함수, 이름을 고르면(또는 아무것도 안 고르면 함대·오목) 돈다 ================= */
+const WANT12=g=>HAS(g)&&!ONLYM&&(ARGS.length?ARGS.includes(g):['omok','fleet'].includes(g));
+/* 오목: 흑백이 서로 다름 → 한 판 더(같은 상대) → 흑백이 바뀜 */
+async function wp12Omok(){
+  const L=[await mk('A'),await mk('B')];
+  await L[0].pg.evaluate(()=>duelStart('omok')); await w(300); await L[1].pg.evaluate(()=>duelStart('omok'));
+  const go=(await Promise.all(L.map(x=>until(x,()=>G&&G.duel&&G.duel.go&&G.m&&G.m.began)))).every(Boolean);
+  const c1=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.m.me)));
+  ok(go&&c1[0]!==c1[1],`오목 1판: 흑백 다름 ${c1.join('/')}`);
+  /* 흑 차례인 사람이 한 수 두면 상대 판에도 그 수 */
+  const bi=c1.indexOf(1); await L[bi].pg.evaluate(()=>{const n=G.m.B.n;document.querySelector('#omPut');G.m.preview=(n>>1)*n+(n>>1);document.querySelector('#omPut').disabled=false;document.querySelector('#omPut').click();});
+  const seen=await until(L[1-bi],()=>G.m.hist.length===1,null,6000);
+  ok(seen,'오목: 흑의 첫 수가 상대 판에 보임');
+  await L[0].pg.evaluate(()=>finish(true)); await w(800); await L[1].pg.evaluate(()=>finish(false));
+  await Promise.all(L.map(x=>until(x,()=>G.duel.resolved,null,10000))); await w(1200);
+  await Promise.all(L.map(x=>x.pg.evaluate(()=>duelAgain())));
+  const again=(await Promise.all(L.map(x=>until(x,()=>G&&G.duel&&G.duel.r===2&&G.duel.go&&G.m&&G.m.began,null,15000)))).every(Boolean);
+  const c2=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.m.me)));
+  ok(again&&c2[0]!==c2[1]&&c2[0]!==c1[0]&&c2[1]!==c1[1],`오목 한 판 더: 흑백 바꿈 ${c1.join('/')} → ${c2.join('/')}`);
+  await L[0].pg.screenshot({path:SHOT+'/omok-again.png'});
+  ok(!errsOf(L).length,'오목 오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+/* 함대: 사이트 방(WP2 계약 room·pl·host·info)에서 duelLaunch(o) → 상대 찾기 없이 같은 방 · 선공은 방장(2판째는 바뀜) · 포격이 상대에게 감 */
+async function wp12FleetRoom(){
+  for(const r of [1,2]){
+    const L=[await mk('A'),await mk('B')];
+    await Promise.all(L.map((x,i)=>x.pg.evaluate(([i,r])=>{store.set('hp:help:fleet',1);NG.fleet.duelLaunch({room:'fl-d3-r-test01-'+r,pl:['a','b'],host:i===0,again:r>1,pace:'n',n:2,lv:'normal',nick:i?'비':'가',info:{id:'TEST01',rd:r,n:2}});},[i,r])));
+    const placed=(await Promise.all(L.map(x=>until(x,()=>G&&G.id==='fleet'&&G.phase==='place'&&!!G.link,null,8000)))).every(Boolean);
+    await L[0].pg.evaluate(()=>document.querySelector('#flGo').click()); await w(1500);
+    const waitTxt=await L[0].pg.evaluate(()=>G.phase+' '+((document.querySelector('#flSt')||{}).textContent||''));
+    await L[1].pg.evaluate(()=>document.querySelector('#flGo').click());
+    const bat=(await Promise.all(L.map(x=>until(x,()=>G.phase==='battle',null,10000)))).every(Boolean);
+    const st=await Promise.all(L.map(x=>x.pg.evaluate(()=>({first:G.first,room:G.nr&&G.nr.name||'',lobby:!!(ROOM.peers().find(p=>p.sameTab)||{presence:{}}).presence.fl}))));
+    const hostFirst=r===1?st[0].first:st[1].first;
+    ok(placed&&bat&&st[0].first!==st[1].first&&hostFirst&&!st[0].lobby&&/방 친구/.test(waitTxt), `함대 방 ${r}판: 같은 방에서 바로 시작 · 선공 ${r===1?'방장':'도전자'}(${st.map(s=>s.first)}) · 먼저 출격한 쪽 "${waitTxt}"`);
+    const fi=st[0].first?0:1;
+    await L[fi].pg.evaluate(()=>{flAim(0);flFire(0);});
+    const got=await until(L[1-fi],()=>G.myShot[0]>0,null,8000);
+    ok(got,`함대 방 ${r}판: 포격이 상대 바다에 닿음`);
+    if(r===1) await L[0].pg.screenshot({path:SHOT+'/fleet-room.png'});
+    ok(!errsOf(L).length,'함대 방 오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+  }
+}
+/* 고스톱: 사이트 방(WP2 계약)에서 duelLaunch(o) → 판 고르기·상대 찾기 없이 같은 방 · 자리 다름 · 같은 씨앗 */
+async function wp12GostopRoom(){
+  const L=[await mk('A'),await mk('B')];
+  await Promise.all(L.map((x,i)=>x.pg.evaluate(i=>{store.set('hp:age19',1);store.set('hp:help:gostop',1);NG.gostop.duelLaunch({room:'fl-d3-r-test02-1',pl:['a','b'],host:i===0,again:false,pace:'n',n:2,lv:'normal',nick:i?'비':'가',info:{id:'TEST02',rd:1,n:2}});},i)));
+  const began=(await Promise.all(L.map(x=>until(x,()=>G&&G.gs&&G.gs.mode==='pvp'&&G.gs.seed0&&G.gs.oppSeen&&G.gs.phase!=='joining',null,15000)))).every(Boolean);
+  const st=await Promise.all(L.map(x=>x.pg.evaluate(()=>({seat:G.gs.seat,seed:G.gs.seed0,room:G.gs.room&&G.gs.room.name,link:!!G.gs.link}))));
+  ok(began&&st[0].seat===0&&st[1].seat===1&&st[0].seed===st[1].seed&&st[0].room==='연습 판',`고스톱 방: 바로 마주 앉음 · 자리 ${st.map(s=>s.seat)} · 같은 씨앗=${st[0].seed===st[1].seed} · 판 '${st[0].room}'`);
+  ok(!errsOf(L).length,'고스톱 방 오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+if(WANT12('omok')) await wp12Omok();
+if(WANT12('fleet')) await wp12FleetRoom();
+if(WANT12('gostop')) await wp12GostopRoom();
 await br.close(); srv.close(); console.log(fail?`실패 ${fail}`:'대전 모두 통과'); process.exit(fail?1:0);

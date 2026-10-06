@@ -1,7 +1,7 @@
 {
   "id": "fleet",
   "name": "함대 결전",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "summary": "함대를 숨기고 번갈아 포격하는 해전 추리(실시간 1:1·AI)",
   "js": [
     "fleet.js"
