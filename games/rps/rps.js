@@ -174,10 +174,11 @@ NG.rps = (() => {
     im.src = toySrc(m.host, mood);
     if(mood) fx(() => { im.classList.remove('hop'); void im.offsetWidth; im.classList.add('hop'); });
   }
+  let bubT = 0;   /* 말풍선 타이머(판 상태 G에 두지 않음: 대전 판 지문이 기기마다 같게) */
   function bubble(txt, ms){
     const b = el('rpBub'); if(!b) return;
     b.textContent = txt; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
-    const m = S(); clearTimeout(m.bubT); m.bubT = setTimeout(() => b.classList.remove('on'), ms || 1200);
+    clearTimeout(bubT); bubT = setTimeout(() => b.classList.remove('on'), ms || 1200);
   }
   /* 지령 판 그리기 */
   function signWait(txt){
@@ -278,7 +279,7 @@ NG.rps = (() => {
     if(m.taps.length > 3){ m.lockUntil = now + 500; m.taps = []; slow(); return; }   /* 마구 누르기: "천천히!" 0.5초 잠금(벌점 없음) */
     if(m.phase !== 'go' || m.tapped){ if(m.phase === 'pump' || m.phase === 'ready') early(pos); return; }   /* 손이 나오기 전·판정 뒤 누름은 무시 */
     /* 판단 시간: 마지막 화면 프레임 시각 + 그 뒤 흐른 시간(프레임 사이에 누른 것도 정확하게) */
-    const extra = m.lf ? Math.max(0, Math.min(.05, (now - m.lf) / 1000)) : 0;
+    const extra = m.tAt ? Math.max(0, Math.min(.05, (now - m.tAt) / 1000)) : 0;
     judge(pos, m.t - m.t0 + extra);
   }
   function slow(){
@@ -351,7 +352,7 @@ NG.rps = (() => {
     G.raf = requestAnimationFrame(loop);
     const dt = m.lt ? Math.min(.1, (now - m.lt) / 1000) : 0; m.lt = now;
     if(G.paused) return;
-    m.t += dt; m.lf = now;
+    m.t += dt; m.tAt = now;
     if(m.phase === 'ready'){ if(m.t >= m.until) startPump(); }
     else if(m.phase === 'pump'){ if(m.t >= m.until) reveal(); }
     else if(m.phase === 'go'){
@@ -439,14 +440,14 @@ NG.rps = (() => {
       const Q = gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       const lives = G.duel ? 3 : cfg.lives || 3;
-      G.m = { Q, N:Q.length, i:0, t:0, t0:0, lt:0, lf:0, ratio:0, until:.95, phase:'ready', pumpT:.3, ok:0, wrong:0, combo:0, best:0, res:[],
+      G.m = { Q, N:Q.length, i:0, t:0, t0:0, lt:0, tAt:0, ratio:0, until:.95, phase:'ready', pumpT:.3, ok:0, wrong:0, combo:0, best:0, res:[],
         lives, maxLives:lives, lostAt:0, taps:[], lockUntil:0, tapped:false, mood:'', done:false, win:false,
-        host:cfg.host || 'cat', pal:cfg.pal || 0, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, timers:new Set(), bubT:0 };
+        host:cfg.host || 'cat', pal:cfg.pal || 0, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, timers:new Set() };
       G.paws = lives;
       const m = G.m;
       G.cleanup = () => {
         m.dead = true;
-        m.timers.forEach(clearTimeout); m.timers.clear(); clearTimeout(m.bubT);
+        m.timers.forEach(clearTimeout); m.timers.clear(); clearTimeout(bubT);
         if(m.onResize) removeEventListener('resize', m.onResize);
         if(m.onKey) removeEventListener('keydown', m.onKey);
         if(G && G.raf) cancelAnimationFrame(G.raf);

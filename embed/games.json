@@ -248,8 +248,8 @@
       "summary": "상대 손과 지령(이겨라·져라·비겨라)에 맞는 손을 재빨리 내는 순발력 게임",
       "duel": true,
       "file": "rps.html",
-      "bytes": 318904,
-      "gzip": 102694
+      "bytes": 318878,
+      "gzip": 102674
     },
     {
       "id": "thread",
