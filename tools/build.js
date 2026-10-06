@@ -21,7 +21,7 @@ const CORE_CSS = ['core/base.css', 'core/effects.css'];
 const PLAY_CSS = ['core/play.css'];
 const CORE_JS = ['core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/scene.js', 'core/net.js', 'core/duel.js'];
 const PORTAL_CSS = ['portal/portal.css'];
-const PORTAL_JS = ['portal/portal.js', 'portal/viral.js', 'portal/friends.js', 'portal/events.js', 'portal/rooms.js', 'portal/start.js'];
+const PORTAL_JS = ['portal/portal.js', 'portal/viral.js', 'portal/friends.js', 'portal/events.js', 'portal/rooms.js', 'portal/replay.js', 'portal/start.js'];
 const EMBED_CSS = ['embed/shell.css'], EMBED_JS = ['embed/shell.js'];
 
 function games(){
