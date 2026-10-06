@@ -107,6 +107,8 @@ NG.arrow = (() => {
           let b = { col:rng() < pRed ? 'r' : 'b', dir:Math.floor(rng() * 4) };
           const la = ansOf(a.col, a.dir);
           for(let t = 0; t < 3 && ansOf(b.col, b.dir) === la; t++) b.dir = Math.floor(rng() * 4);   /* 다른 쪽(가짜)은 다른 답이 되게 */
+          /* 세 번 다시 뽑아도 같으면 한 칸 돌린다(rng 안 씀 → 다른 판은 그대로). 가짜를 따라 민 것이 정답이 되는 일 없게 */
+          for(let t = 0; t < 3 && ansOf(b.col, b.dir) === la; t++) b.dir = (b.dir + 1) % 4;
           const items = lit === 0 ? [a, b] : [b, a];
           q = { kind, lay, lit, items, ans:ansOf(items[lit].col, items[lit].dir) };
         }
@@ -163,18 +165,19 @@ NG.arrow = (() => {
   const slotPos = { c:[50, 50], 0:[50, 21], 1:[79, 50], 2:[50, 79], 3:[21, 50] };
 
   function itemHtml(q){
-    const at = (p, cls, inner, sz) => `<div class="ar-slot ${cls}" style="left:${p[0]}%;top:${p[1]}%;--s:${sz}">${inner}</div>`;
+    /* data-*: 보이는 그림 그대로의 정보(색·방향·글자). 판정 점검 도구가 정답 계산과 따로 화면만 보고 답을 맞혀 보는 데 쓴다 */
+    const at = (p, cls, inner, sz, da) => `<div class="ar-slot ${cls}" style="left:${p[0]}%;top:${p[1]}%;--s:${sz}" ${da}>${inner}</div>`;
     if(q.kind === 'arrow'){
       const sz = q.pos === 'c' ? .58 : .36;
-      return at(slotPos[q.pos], 'arw', `<img class="ar-img" src="${spr(q.col, q.dir)}" alt="" draggable="false">`, sz);
+      return at(slotPos[q.pos], 'arw', `<img class="ar-img" src="${spr(q.col, q.dir)}" alt="" draggable="false">`, sz, `data-c="${q.col}" data-d="${q.dir}"`);
     }
     if(q.kind === 'word'){
       const side = q.pos !== 'c';
       const inner = `${q.shape != null ? `<img class="ar-shape" src="${shapeSrc(q.shape)}" alt="" draggable="false">` : ''}<span class="ar-plate ${q.wc}">${q.wc === 'r' ? `<i class="ar-rev"><svg viewBox="-12 -14 24 26">${UTURN(0, 0, 1, '#E0334A')}</svg></i>` : ''}<b>${DIRS[q.w]}</b></span>`;
-      return at(slotPos[q.pos], 'wrd' + (side ? ' side' : '') + (q.shape != null ? ' shp' : ''), inner, side ? .5 : .78);
+      return at(slotPos[q.pos], 'wrd' + (side ? ' side' : '') + (q.shape != null ? ' shp' : ''), inner, side ? .5 : .78, `data-w="${q.w}" data-wc="${q.wc}"${q.shape != null ? ` data-shape="${q.shape}"` : ''}`);
     }
     const P = q.lay === 'h' ? [[27, 50], [73, 50]] : [[50, 27], [50, 73]];
-    return q.items.map((it, j) => at(P[j], 'arw pr' + (j === q.lit ? ' lit' : ' dim'), `${j === q.lit ? '<em class="ar-tag">이거</em>' : ''}<img class="ar-img" src="${spr(it.col, it.dir)}" alt="" draggable="false">`, .4)).join('');
+    return q.items.map((it, j) => at(P[j], 'arw pr' + (j === q.lit ? ' lit' : ' dim'), `${j === q.lit ? '<em class="ar-tag">이거</em>' : ''}<img class="ar-img" src="${spr(it.col, it.dir)}" alt="" draggable="false">`, .4, `data-c="${it.col}" data-d="${it.dir}"`)).join('');
   }
   function itemSay(q){   /* 화면 읽기 프로그램용 설명(보이지 않음) */
     const cn = { b:'파란', r:'빨간', g:'회색' };
@@ -192,6 +195,7 @@ NG.arrow = (() => {
   }
 
   /* ===== 진행 ===== */
+  const GAP_OK = .42, GAP_BAD = .4;   /* 판정 뒤 다음 화살표까지(판단 시간에 안 들어감). 실수는 0.4초 안에 바로 다음으로 */
   const S = () => G && G.m;
   const T = (fn, ms) => { const m = G.m, id = setTimeout(() => { m.timers.delete(id); if(G && G.m === m) fn(); }, ms); m.timers.add(id); return id; };
   const $a = id => document.getElementById(id);
@@ -201,7 +205,30 @@ NG.arrow = (() => {
   function hostMood(mood, ms){
     const m = S(), im = $a('arHost'); if(!m || !im) return;
     im.src = toySrc(m.host, mood || ''); clearTimeout(m.moodT);
+    /* 표정이 바뀌는 순간만 한 번 움직임(기쁨 = 깡충, 슬픔 = 움츠림). 계속 흔들리지 않음 */
+    safe(() => { const av = im.parentNode; av.classList.remove('hop', 'droop'); if(mood === 'joy' || mood === 'sad'){ void av.offsetWidth; av.classList.add(mood === 'joy' ? 'hop' : 'droop'); } });
     if(mood && ms) m.moodT = T(() => { const e = $a('arHost'); if(e) e.src = toySrc(m.host, ''); }, ms);
+  }
+  /* 손가락 자취(보이기만): 화면을 미는 동안 손끝을 따라오는 짧은 빛줄기. 판정에는 쓰지 않음 */
+  const TRAIL = { pts:[], raf:0, on:false };
+  function trailDraw(){
+    TRAIL.raf = 0;
+    safe(() => {
+      const p = $a('arTrailP'), c = $a('arTrailC'), h = $a('arTrailH'); if(!p) return;
+      const dOf = pts => pts.length ? 'M' + pts.map(q => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('L') : '';
+      p.setAttribute('d', dOf(TRAIL.pts.slice(-16))); if(c) c.setAttribute('d', dOf(TRAIL.pts.slice(-6)));   /* 꼬리는 가늘고 길게, 손끝 쪽은 굵게 */
+      const e = TRAIL.pts[TRAIL.pts.length - 1]; if(h && e){ h.setAttribute('cx', e[0].toFixed(1)); h.setAttribute('cy', e[1].toFixed(1)); }
+    });
+  }
+  function trail(kind, x, y){
+    safe(() => {
+      const sv = $a('arTrail'); if(!sv) return;
+      if(kind === 'down'){ const r = sv.getBoundingClientRect(); TRAIL.ox = r.left; TRAIL.oy = r.top; TRAIL.pts = [[x - r.left, y - r.top]]; TRAIL.on = true; sv.setAttribute('class', 'ar-trail on'); }
+      else if(kind === 'move'){ if(!TRAIL.on) return; TRAIL.pts.push([x - TRAIL.ox, y - TRAIL.oy]); if(TRAIL.pts.length > 24) TRAIL.pts.splice(0, TRAIL.pts.length - 24); }
+      else if(kind === 'up'){ TRAIL.on = false; sv.classList.remove('on'); }
+      else { sv.classList.remove('ok', 'bad'); sv.classList.add(kind); }   /* 'ok' | 'bad': 판정 색 */
+      if(!TRAIL.raf) TRAIL.raf = requestAnimationFrame(trailDraw);
+    });
   }
   function hud(){
     const m = S(); if(!m) return;
@@ -230,18 +257,28 @@ NG.arrow = (() => {
     bar(q.win, q.win);
     sfx('arrowShow');
   }
+  /* 입력 하나 = 판정 하나. 돌려주는 값: 이번 화살표를 판정했으면 true, 무시했으면 false
+     - 문제가 없는 순간(시작 전·화살표 사이 간격·끝난 뒤)과 이미 판정된 화살표에 들어온 입력은 버린다(다음 화살표로 넘어가지 않음)
+     - 판단 창이 이미 끝난 순간(다음 그림 그리기 전)에 들어온 입력은 시간 초과로 처리(늦은 입력이 정답이 되지 않게)
+     - 화살표가 떠 있을 때 처음 들어온 입력은 막 누르기 잠금 중이어도 반드시 판정한다(틀린 입력이 잠금에 묻혀 사라지지 않게).
+       막 누르기(0.25초 안에 4번 이상)는 판정한 뒤 "천천히!" + 다음 화살표가 0.5초 늦게 나오는 것으로만 막는다(벌점 없음) */
   function press(d, src){
-    const m = S(); if(!m || G.over || G.paused || G.m !== m) return;
+    const m = S(); if(!m || G.over || G.paused || G.m !== m) return false;
     const t = elapsed(), now = performance.now();
     m.presses = m.presses.filter(x => now - x < 250); m.presses.push(now);
-    if(t < m.lockUntil) return;
-    if(m.presses.length > 3){ slow(t); return; }
-    keyFlash(d, '');
-    if(m.phase !== 'show') return;   /* 문제가 없는 순간·이미 판정된 뒤는 무시 */
-    judge(d, t, src);
+    const spam = m.presses.length > 3;
+    let judged = false;
+    if(m.phase === 'show'){
+      keyFlash(d, '');
+      const q = m.items[m.i];
+      if(t - m.t0 >= q.win) timeout(t); else { judge(d, t, src); judged = true; }
+    } else if(t >= m.lockUntil) keyFlash(d, '');
+    if(spam && t >= m.lockUntil && m.phase !== 'done') slow(t);
+    return judged;
   }
   function slow(t){
     const m = S(); m.lockUntil = t + .5; m.presses = []; m.slows++;
+    if(m.phase === 'gap') m.next = Math.max(m.next, m.lockUntil);   /* 다음 화살표만 늦게(판단 시간은 그대로) */
     sfx('arrowSlow');
     safe(() => { const e = $a('arSlow'); if(e){ e.classList.remove('on'); void e.offsetWidth; e.classList.add('on'); } });
     T(() => { const e = $a('arSlow'); if(e) e.classList.remove('on'); }, 700);
@@ -252,15 +289,16 @@ NG.arrow = (() => {
   function judge(d, t, src){
     const m = S(), q = m.items[m.i], rt = t - m.t0, ok = d === q.ans;
     m.phase = 'gap'; m.done++;
+    if(src === 'swipe') trail(ok ? 'ok' : 'bad');
     if(ok){
       const ratio = Math.max(0, (q.win - rt) / q.win);
       m.correct++; m.ratio += ratio; m.rtSum += rt; m.rtN++; m.combo++; m.maxCombo = Math.max(m.maxCombo, m.combo);
       good(q, d, ratio);
-      m.next = t + .42;
+      m.next = t + GAP_OK;
     } else {
       m.wrong++; m.combo = 0;
       bad(q, d);
-      m.next = t + .6;
+      m.next = t + GAP_BAD;
     }
     m.res.push(ok ? 1 : 0);
     hud(); afterJudge();
@@ -271,11 +309,11 @@ NG.arrow = (() => {
     if(q.ans === -1){   /* 가만히가 정답: 참은 것도 실력(빠르기 1.0) */
       m.correct++; m.ratio += 1; m.combo++; m.maxCombo = Math.max(m.maxCombo, m.combo); m.stays++;
       good(q, -1, 1);
-      m.next = t + .42; m.res.push(1);
+      m.next = t + GAP_OK; m.res.push(1);
     } else {
       m.wrong++; m.combo = 0;
       bad(q, null);
-      m.next = t + .6; m.res.push(0);
+      m.next = t + GAP_BAD; m.res.push(0);
     }
     hud(); afterJudge();
   }
@@ -288,8 +326,16 @@ NG.arrow = (() => {
   function good(q, d, ratio){
     const m = S(), L = $a('arLayer'), st = $a('arStamp');
     const lit = L && (L.querySelector('.ar-slot.lit') || L.querySelector('.ar-slot'));
-    if(d >= 0 && lit){ lit.style.setProperty('--fx', DV[d][0] * 120 + 'px'); lit.style.setProperty('--fy', DV[d][1] * 120 + 'px'); lit.classList.add('go'); }
-    if(st){ st.className = 'ar-stamp ok' + (d < 0 ? ' stay' : ''); st.innerHTML = d < 0 ? '<b>잘 참았어요</b>' : '<i class="ck"></i>'; }
+    /* 정답: 화살표가 민 방향으로 "휙" 날아간다(살짝 뒤로 당겼다가). 뒤에 잔상 두 장이 따라감 */
+    if(d >= 0 && lit) safe(() => {
+      const D = lit.closest('.ar-disc').offsetWidth || 260, k = D * .78;
+      lit.style.setProperty('--fx', DV[d][0] * k + 'px'); lit.style.setProperty('--fy', DV[d][1] * k + 'px');
+      if(!FXR.reduce) [2, 1].forEach(n => { const c = lit.cloneNode(true); c.classList.add('ar-after', 'a' + n); c.classList.remove('lit'); const tg = c.querySelector('.ar-tag'); if(tg) tg.remove(); lit.parentNode.insertBefore(c, lit); c.classList.add('go'); });
+      lit.classList.add('go');
+      L.querySelectorAll('.ar-slot.dim').forEach(e => e.classList.add('fade'));
+    });
+    if(d < 0 && L) L.classList.add('stayed');
+    if(st){ st.className = 'ar-stamp ok' + (d < 0 ? ' stay' : ''); st.innerHTML = d < 0 ? '<div class="msg"><i class="ico ck"></i><b>잘 참았어요</b></div>' : '<i class="ico ck"></i>'; }
     if(d >= 0) keyFlash(d, 'ok');
     ringFlash('rk');
     sfx(d < 0 ? 'arrowStay' : 'arrowOk', { n:Math.min(12, m.combo) }); fxBuzz(10);
@@ -312,14 +358,20 @@ NG.arrow = (() => {
   function bad(q, d){
     const m = S(), st = $a('arStamp'), L = $a('arLayer');
     m.lives = Math.max(0, m.lives - 1);
+    /* 실수: 화살표가 민 쪽으로 "툭" 밀렸다가 제자리로 튕겨 돌아온다(안 넘어감). 시간 초과는 작아지며 흐려짐 */
+    safe(() => {
+      const sl = L && (L.querySelector('.ar-slot.lit') || L.querySelector('.ar-slot')); if(!sl) return;
+      if(d != null){ const D = sl.closest('.ar-disc').offsetWidth || 260, k = D * .085; sl.style.setProperty('--bx', DV[d][0] * k + 'px'); sl.style.setProperty('--by', DV[d][1] * k + 'px'); sl.classList.add('bonk'); }
+      else sl.classList.add('drop');
+    });
     if(L) L.classList.add('miss');
     const ansHtml = q.ans === -1 ? '<small>정답: 가만히</small>' : `<small>정답 <span class="ar-ans" style="--r:${q.ans * 90}deg">${KEY_ARW(0)}</span></small>`;
-    if(st){ st.className = 'ar-stamp bad' + (d == null ? ' time' : ''); st.innerHTML = `<i class="${d == null ? 'clk' : 'x'}"></i><b>${whyText(q, d)}</b>${ansHtml}`; }
+    if(st){ st.className = 'ar-stamp bad' + (d == null ? ' time' : ''); st.innerHTML = `<i class="ico ${d == null ? 'clk' : 'x'}"></i><div class="msg"><b>${whyText(q, d)}</b>${ansHtml}</div>`; }
     if(d != null) keyFlash(d, 'bad');
     ringFlash('rb');
     if(q.ans >= 0) safe(() => { const k = document.querySelector(`.ng-arrow .ar-key[data-d="${q.ans}"]`); if(k) k.classList.add('ans'); });
     sfx(d == null ? 'arrowTime' : 'arrowBad'); fxBuzz([30, 30, 30]);
-    say(`<b class="bd">${whyText(q, d)}</b><span>${m.talk.oops}</span>`, 'pop'); m.sayBusy = elapsed() + .9;
+    say(`<b class="bd">${whyText(q, d)}</b><span>${m.talk.oops}</span>`, 'pop');   /* 다음 화살표가 0.4초 뒤에 바로 나오므로 이유는 말풍선에 조금 더 남겨 둔다 */ m.sayBusy = elapsed() + 1.1;
     hostMood('sad', 800);
     safe(() => {
       fxFlash('#FF4D5E', .1, 240); fxShake($a('arDisc'), 5);
@@ -360,7 +412,11 @@ NG.arrow = (() => {
     say(`<b class="cb">${m.talk.end}</b><span>평균 ${a ? a.toFixed(2) + '초' : '-'}${m.newBest ? ' · 내 최고 기록!' : m.best0 ? ' · 내 최고 ' + m.best0.toFixed(2) + '초' : ''}</span>`, 'pop');
     hostMood('joy');
     const L = $a('arLayer'); if(L) L.innerHTML = '';
-    const st = $a('arStamp'); if(st){ st.className = 'ar-stamp done'; st.innerHTML = `<i class="ck"></i><b>${m.correct}/${m.N}</b>`; }
+    /* 끝 순간: 표지판이 결과판이 된다(맞힌 수 · 평균 판단 속도 · 별이 하나씩 켜짐) */
+    const w = m.wrong, ns = w === 0 ? 3 : w === 1 ? 2 : 1;
+    const stars = G.adv ? `<span class="rs-st" aria-label="별 ${ns}개">${[0, 1, 2].map(k => `<i class="${k < ns ? 'on' : ''}" style="--k:${k}">★</i>`).join('')}</span>` : '';
+    const st = $a('arStamp'); if(st){ st.className = 'ar-stamp done'; st.innerHTML = `<div class="rs"><em class="rs-k">${m.correct === m.N ? '전부 정답' : '완주'}</em><b class="rs-n">${m.correct}<small>/${m.N}</small></b><span class="rs-a">평균 ${a ? a.toFixed(2) + '초' : '-'}</span>${stars}${m.newBest ? '<em class="rs-best">내 최고 기록!</em>' : ''}</div>`; }
+    safe(() => { const d = $a('arDisc'); if(d) d.classList.add('won'); setTimeout(() => document.querySelectorAll('.ng-arrow .ar-key').forEach(k => k.classList.remove('ok', 'bad', 'ans')), 350); });
     bar(0, 1);
     safe(() => { const c = fxCenter($a('arDisc')); fxRing(c.x, c.y, '#FFE07A', c.w * .6, .6, 8); fxBurst(c.x, c.y, ['#FFE07A', '#8FF0C0', '#9FC4FF', '#FFFFFF'], 24, { speed:320, size:5.5, kinds:['star', 'dot', 'spark'], up:120, g:420, glow:true, dur:1 }); });
     T(() => finish(true), 1000);
@@ -369,6 +425,7 @@ NG.arrow = (() => {
     const m = S(); if(m.phase === 'done') return;
     m.phase = 'done'; m.sec = elapsed();
     hostMood('sad');
+    T(() => { const st = $a('arStamp'), L = $a('arLayer'); if(L) L.innerHTML = ''; bar(0, 1); document.querySelectorAll('.ng-arrow .ar-key').forEach(k => k.classList.remove('ok', 'bad', 'ans')); if(st){ st.className = 'ar-stamp done lost'; st.innerHTML = `<div class="rs"><em class="rs-k">기회 끝</em><b class="rs-n">${m.correct}<small>/${m.N}</small></b><span class="rs-a">${m.done}번째 화살표까지</span></div>`; } }, 520);
     T(() => { say(`<b class="bd">기회를 다 썼어요</b><span>정답 ${m.correct}/${m.N}</span>`, 'pop'); sfx('arrowLose'); }, 500);
     T(() => finish(false), 1500);
   }
@@ -412,9 +469,24 @@ NG.arrow = (() => {
     help:[
       ['파랑은 그대로', '파란 화살표가 나오면 가리키는 쪽으로 밀어요. 화면 어디서든 손가락으로 밀거나, 아래 십자 버튼·키보드 화살표를 눌러도 돼요.'],
       ['빨강은 반대로', '빨간 화살표(꼬리에 되돌이 표시)는 반대쪽으로 밀어요. 오른쪽을 가리키면 왼쪽으로! 회색 화살표(멈춤 표시)는 가만히 있어야 정답이에요.'],
-      ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄고, 다 쓰면 끝나요. 빨리 맞힐수록 점수가 높지만, 마구 누르면 잠깐 멈춰요.'],
+      ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄고, 다 쓰면 끝나요. 빨리 맞힐수록 점수가 높아요. 화살표가 떠 있을 때 처음 민 것 하나만 판정하고, 마구 누르면 다음 화살표가 늦게 나와요.'],
       ['솔로: 5판마다 새 규칙', '엉뚱한 자리·글자 화살표·정지 표지·두 개 중 하나 같은 새 규칙과 번개·순간·외줄 타기 변주가 하나씩 나와요.']
     ],
+    /* 도움말 v2(쉬운 화면): 그림 1장(파랑·빨강·회색 세 칸, 움직임 없음) + 3줄 */
+    howto:{
+      pic(){
+        const card = (x, col, d, push, lab, sub, lc) => `<g transform="translate(${x} 0)"><rect x="4" y="14" width="96" height="152" rx="16" fill="#232A62" stroke="#3B468F" stroke-width="2"/>
+          <circle cx="52" cy="66" r="38" fill="#2E377C"/><image href="${spr(col, d)}" x="22" y="36" width="60" height="60"/>
+          ${push == null ? `<rect x="40" y="114" width="7" height="20" rx="3" fill="#C9D2FF"/><rect x="57" y="114" width="7" height="20" rx="3" fill="#C9D2FF"/>`
+            : `<path d="M32 124h40" stroke="${lc}" stroke-width="5" stroke-linecap="round" transform="rotate(${push * 90 - 90} 52 124)"/><path d="M64 114l11 10-11 10" fill="none" stroke="${lc}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="rotate(${push * 90 - 90} 52 124)"/>`}
+          <text x="52" y="156" text-anchor="middle" font-family="Jua,sans-serif" font-size="15" fill="#fff">${lab}</text>
+          <text x="52" y="34" text-anchor="middle" font-family="Jua,sans-serif" font-size="12" fill="#AEB8E8">${sub}</text></g>`;
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#151A44"/>
+          ${card(2, 'b', 1, 1, '그대로', '파랑', '#8FF0C0')}${card(108, 'r', 1, 3, '반대로', '빨강 ↺', '#8FF0C0')}${card(214, 'g', 0, null, '가만히', '회색 ‖', '#C9D2FF')}</svg>`;
+      },
+      lines:['파란 화살표는 그 방향으로 밀어요', '빨간 화살표(↺)는 반대로 밀어요', '틀리면 기회 별이 하나 줄어요'],
+      more:null
+    },
     helpExtra(){ const m = G && G.id === 'arrow' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['표지판 길', '미로 정원', '거울 터널', '바람개비 언덕', '나침반 탑'],
     starRule:'★ 클리어 · ★★ 실수 1번 · ★★★ 실수 없이',
@@ -442,6 +514,7 @@ NG.arrow = (() => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.off) m.off();
         if(G && G.raf) cancelAnimationFrame(G.raf);
+        if(TRAIL.raf){ cancelAnimationFrame(TRAIL.raf); TRAIL.raf = 0; } TRAIL.on = false; TRAIL.pts = [];
         safe(() => ['--ar-s1', '--ar-s2', '--ar-s3', '--ar-ring'].forEach(v => document.body.style.removeProperty(v)));
       };
     },
@@ -481,6 +554,7 @@ NG.arrow = (() => {
           <button class="ar-key k1" data-d="1" aria-label="오른쪽으로">${KEY_ARW(1)}</button>
           <button class="ar-key k2" data-d="2" aria-label="아래로">${KEY_ARW(2)}</button>
         </div>
+        <svg class="ar-trail" id="arTrail" aria-hidden="true"><path id="arTrailP" d=""/><path class="core" id="arTrailC" d=""/><circle id="arTrailH" r="9" cx="-40" cy="-40"/></svg>
         <p class="ar-sr" id="arSr" aria-live="assertive"></p>
         <div class="ar-vig" id="arVig" aria-hidden="true"></div>
       </div>`;
@@ -490,15 +564,26 @@ NG.arrow = (() => {
       else say(`<b>준비</b><span>${m.talk.hi}</span>`);
       /* 조작: 버튼(누르는 순간) · 화면 어디서든 밀기(24px) · 키보드 */
       root.querySelectorAll('.ar-key').forEach(b => {
-        b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); press(+b.dataset.d, 'key'); });
-        b.addEventListener('click', e => { if(e.detail === 0) press(+b.dataset.d, 'key'); });
+        let pt = -1e9;   /* 한 동작 = 한 번: 누름(pointerdown) 바로 뒤 따라오는 click은 detail과 상관없이 버림 */
+        b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); pt = performance.now(); press(+b.dataset.d, 'key'); });
+        b.addEventListener('click', e => { if(e.detail === 0 && performance.now() - pt > 600) press(+b.dataset.d, 'key'); });
       });
-      let sx = 0, sy = 0, pid = null, used = false;
-      const down = e => { if(e.button > 0) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; used = false; try{ root.setPointerCapture(pid); }catch(_){} };
-      const move = e => { if(e.pointerId !== pid || used) return; const dx = e.clientX - sx, dy = e.clientY - sy;
-        if(Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; used = true;
-        press(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0), 'swipe'); };
-      const up = e => { if(e.pointerId === pid) pid = null; };
+      /* 밀기 규칙(판정 버그 막기)
+         - 한 번 누른 손가락(한 획)은 화살표 하나만 판정한다. 판정에 쓰인 획은 손을 뗄 때까지 더 세지 않는다.
+         - 획이 앞 화살표·간격 중에 시작됐으면, 새 화살표가 나온 뒤 움직인 거리만 센다(미리 밀어 둔 것이 다음 화살표 답이 되지 않게).
+         - 간격 중에 24px을 다 민 획은 버려진다(그 획은 다음 화살표에도 안 씀). */
+      let sx = 0, sy = 0, pid = null, used = false, tok = '';
+      const tokNow = () => m.phase + ':' + m.i;
+      const down = e => { if(e.button > 0) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; used = false; tok = tokNow(); try{ root.setPointerCapture(pid); }catch(_){} trail('down', e.clientX, e.clientY); };
+      const move = e => { if(e.pointerId !== pid) return; trail('move', e.clientX, e.clientY); if(used) return;
+        const k = tokNow(); if(k !== tok){ tok = k; sx = e.clientX; sy = e.clientY; return; }
+        const dx = e.clientX - sx, dy = e.clientY - sy;
+        const ax = Math.abs(dx), ay = Math.abs(dy), mx = Math.max(ax, ay), mn = Math.min(ax, ay);
+        if(mx < 24) return;
+        if(mx < 56 && mx < mn * 1.25) return;   /* 대각선(애매한 획)은 한쪽이 뚜렷해질 때까지 기다림(56px 넘으면 큰 쪽) */
+        used = true;
+        press(ax > ay ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0), 'swipe'); };
+      const up = e => { if(e.pointerId === pid){ pid = null; trail('up'); } };
       root.addEventListener('pointerdown', down); root.addEventListener('pointermove', move);
       root.addEventListener('pointerup', up); root.addEventListener('pointercancel', up);
       const KEYS = { ArrowUp:0, ArrowRight:1, ArrowDown:2, ArrowLeft:3, w:0, d:1, s:2, a:3, W:0, D:1, S:2, A:3 };
@@ -542,6 +627,6 @@ NG.arrow = (() => {
 })();
 
 /* 대전: 같은 화살표(같은 씨앗·보통), 끝났을 때 점수가 높은 쪽 승. AI 상대 평균 시간·성공률(duelPace), 상대에게 보내는 수치(duelStat) */
-Object.assign(NG.arrow, { duelPace:[50, .75], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:G.m.lives }) }, duelHow:'같은 화살표 · 누가 더 빠르고 정확하게' });
+Object.assign(NG.arrow, { duelPace:[50, .75], duelStat:{ unit:'개', lfMax:3, get:() => ({ v:G.m.correct, t:G.m.N, lf:G.m.lives, mis:G.m.wrong }) }, duelHow:'같은 화살표 · 누가 더 빠르고 정확하게' });
 /* 움직이는 배경(core/scene.js): 밤 도로의 흐린 불빛 방울. 보이기만 하고 게임·대전에는 영향 없음 */
 NG.arrow.scene = { kind:'motes', colors:['#6FD6E8', '#9FB4FF', '#FFE07A'], density:.55, alpha:.45 };
