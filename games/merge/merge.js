@@ -1048,27 +1048,21 @@ function mergeDuelTick(){
     else if(v >= 64 && was < 64) duelNotify(`${esc(mergeNick(P.nick))} 64 만들었어요`, { from:P, kind:'hot' });
   });
 }
-/* 결과 창(사이트·모듈 공용 #modal)이 뜨면 순위 목록 아래에 모두의 끝 판을 끼워 넣음. 엔진(core)은 그대로 */
-function mergeResWatch(){
-  const me = G, m = document.getElementById('modal'); if(!m || typeof MutationObserver === 'undefined' || me.mgRes) return;
-  const ob = me.mgRes = new MutationObserver(() => { try{
-    if(G !== me){ ob.disconnect(); return; }
-    const D = G.duel; if(!D || !D.resolved || !D.res || m.querySelector('.mgres')) return;
-    const at = m.querySelector('.dres-list, .dres'); if(!at) return;
-    const mine = NG.merge.duelMini.get();
-    const figs = D.res.rows.slice(0, 5).map(x => { const P = D.P[x.pid] || {};
-      const s = x.me ? mine : (P.mv || mergeFakeBoard(x.v || (P.st && P.st.v) || 2, D.seed + x.pid));
-      return `<figure class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}" style="--sc:${x.col}">${mergeBoardSvg(s, 60)}<figcaption>${x.rank}위 ${x.me ? '나' : esc(mergeNick(x.nick))}</figcaption></figure>`; }).join('');
-    at.insertAdjacentHTML('afterend', `<div class="mgres" aria-label="모두의 끝 판">${figs}</div>`);
-    ob.disconnect();
-  }catch(_){ ob.disconnect(); } });
-  ob.observe(m, { childList:true });
+/* 결과 창에 모두의 끝 판 나란히: 엔진 훅 NG.merge.duelResHtml(rows, res)로(사이트·모듈 결과 창 모두) */
+function mergeResHtml(rows){
+  const D = G.duel; if(!D || !rows) return '';
+  const mine = NG.merge.duelMini.get();
+  const figs = rows.slice(0, 5).map(x => { const P = D.P[x.pid] || {};
+    const s = x.me ? mine : (P.mv || mergeFakeBoard(x.v || (P.st && P.st.v) || 2, D.seed + x.pid));
+    return `<figure class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}" style="--sc:${x.col}">${mergeBoardSvg(s, 60)}<figcaption>${x.rank}위 ${x.me ? '나' : esc(mergeNick(x.nick))}</figcaption></figure>`; }).join('');
+  return `<div class="mgres" aria-label="모두의 끝 판">${figs}</div>`;
 }
 Object.assign(NG.merge, {
   duelPace:[90, .6],
-  duelStat:{ unit:'', tile:true, get:() => { if(G.duel && G.duel.v === 3) mergeResWatch(); return { v:G.M.best, t:G.M.target, mis:G.M.mis || 0, p:G.M.pts }; } },
+  duelStat:{ unit:'', tile:true, get:() => { return { v:G.M.best, t:G.M.target, mis:G.M.mis || 0, p:G.M.pts }; } },
   duelHow:'같은 판에서 128을 먼저 만들면 승리 · 2분',
   duelKind:'race', duelMax:5,
+  duelResHtml:mergeResHtml,
   /* 대전 판: 128 먼저 · 2분. 느긋하게(4분)는 엔진이 duelSlow로 바꿈(여기서 pace를 보면 두 번 늘어남) */
   duelCfg(){ return Object.assign({}, NG.merge._tune.DUEL); },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || 120) * 2 }); },

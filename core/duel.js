@@ -592,7 +592,7 @@ function duelAiDelay(sec){
    (5) 화면: 준비·카운트다운 · 2명 막대 · 3~5명 칩 줄 · 미니 화면 · 큰 알림
    ====================================================================== */
 function duelGoOpen(){
-  const D = G.duel, id = G.id, rules = (HELP[id] || []).slice(0, 3), me = G, n = D.pl.length;
+  const D = G.duel, id = G.id, rules = duelHelpOf(id).slice(0, 3), me = G, n = D.pl.length;
   const old = $('#duelGo'); if(old) old.remove();
   document.body.classList.add('duel-ready');
   const el = document.createElement('div'); el.className = 'duelgo'; el.id = 'duelGo';
@@ -876,7 +876,7 @@ function duelRulesToggle(){
   if(!c){ c = document.createElement('div'); c.id = 'dRules'; c.className = 'drules'; document.body.appendChild(c); }
   const id = G.id;
   c.innerHTML = `<h4>${GAMES[id].name} 방법</h4><button class="x" aria-label="닫기">✕</button>
-    <ol class="dg-rules">${HELP[id].map((r, i) => `<li><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span><span><b style="font-weight:400">${r[0]}</b><br><small style="font-family:var(--font);font-size:13px;color:var(--sub)">${r[1]}</small></span></li>`).join('')}</ol>
+    <ol class="dg-rules">${duelHelpOf(id).map((r, i) => `<li><span class="hn" style="background:${GAME_META[id].col}">${i + 1}</span><span><b style="font-weight:400">${r[0]}</b><br><small style="font-family:var(--font);font-size:13px;color:var(--sub)">${r[1]}</small></span></li>`).join('')}</ol>
     <p class="dg-win" style="margin-top:6px">⏱ 대전 중이라 시간은 계속 가요</p>`;
   c.querySelector('.x').onclick = () => { c.hidden = true; };
   c.hidden = false;
@@ -1047,6 +1047,8 @@ function duelPub(force){
   D.lastPub = now; D.pubSig = sig; D.meStatLf = s.lf; D.urgent = false;
   try{ D.nr.presence(Object.assign({ hb:(D.hb = (D.hb || 0) + 1) }, o)).catch(() => {}); }catch(_){}
 }
+/* 대전 규칙 목록: 게임 정의 duelHelp([[제목, 설명], …], 선택)가 있으면 그것, 없으면 help */
+function duelHelpOf(id){ try{ const h = (NG[id] || {}).duelHelp; const r = typeof h === 'function' ? h() : h; if(Array.isArray(r) && r.length) return r; }catch(_){} return HELP[id] || []; }
 function duelTick(){
   const D = G && G.duel; if(!D || D.fleet) return;
   if(D.v !== 3) return;
@@ -1057,7 +1059,7 @@ function duelTick(){
   if(!G.over){
     duelJudge(D);
     const S = duelStatOf(G.id) || {}, st = duelStatNow();
-    if(S.score && G.mt && G.mt.E && G.mt.E.movesLeft != null && G.mt.E.movesLeft <= 3){ const o = D.P[D.pl.find(p => p !== D.myPid)]; duelPing('last10', `마지막 3번 · ${esc(o.nick)} ${fmt(o.st.v || 0)}점`); }
+    if(S.score && st && st.left != null && st.left <= 3){   /* 남은 수(st.left)는 게임의 duelStat.get이 줌 */ const o = D.P[D.pl.find(p => p !== D.myPid)]; duelPing('last10', `마지막 3번 · ${esc(o.nick)} ${fmt(o.st.v || 0)}점`); }
     if(st && D.mode === 'ai' && D.P.ai && !D.P.ai.st.dn && D.kind === 'race' && D.P.ai.st.t != null && D.P.ai.st.v >= D.P.ai.st.t - 1) duelPing('oppHot', `${esc(D.P.ai.nick)}님이 마무리 중이에요!`, D.P.ai);
   }
   duelRender();
@@ -1118,6 +1120,10 @@ function duelFinish(win){
   }
   /* 컴퓨터: 내가 끝나면 컴퓨터 판도 그 자리에서 끝 */
   const A = D.P.ai;
+  /* 점수전(모두 끝까지): 컴퓨터는 잘리지 않고 남은 수를 다 둔 점수로 끝(사람이 빨리 두면 컴퓨터가 늘 지던 문제) */
+  if(A && !A.st.dn && (D.kind === 'score' || (duelStatOf(G.id) || {}).score) && D.aiS && !D.aiS.smooth && D.ai){
+    try{ const t = elapsed(); D.aiS.at = D.aiS.at.map(x => Math.min(x, t)); D.ai.T = Math.min(D.ai.T, t); duelAiTick(D); }catch(_){}
+  }
   if(A && !A.st.dn){ try{ duelAiTick(D); }catch(_){} if(!A.st.dn){ A.st.dn = 1; A.st.ok = 0; A.st.sc = 0; A.cut = true; } }
   duelSyncOpp(D);
   duelRender();

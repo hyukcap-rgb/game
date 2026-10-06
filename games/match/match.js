@@ -1618,9 +1618,10 @@ function matchResWatch(){
   const ob = me.mtRes = new MutationObserver(() => { try{
     if(G !== me){ ob.disconnect(); return; }
     const D = G.duel; if(!D || !D.resolved || !D.res) return;
-    const list = m.querySelector('.dres-list'); if(!list && m.querySelector('.dres')){ ob.disconnect(); return; }
+    const list = m.querySelector('.dres-list, .dz-rows'); if(!list && m.querySelector('.dres')){ ob.disconnect(); return; }
     if(!list || list.querySelector('.mtcrown')) return;
-    list.querySelectorAll('li.win').forEach(li => li.insertAdjacentHTML('beforeend', '<span class="mtcrown" aria-label="1위 왕관">👑</span>'));
+    if(list.classList.contains('dz-rows') && list.children.length <= 2){ ob.disconnect(); return; }   /* 2명은 큰 순위에 왕관이 이미 있음 */
+    list.querySelectorAll('li.win').forEach(li => { const nm = li.querySelector('.dz-nm b'); (nm || li).insertAdjacentHTML('beforeend', '<span class="mtcrown" aria-label="1위 왕관">👑</span>'); });
     ob.disconnect();
   }catch(_){ ob.disconnect(); } });
   ob.observe(m, { childList:true });
@@ -1642,7 +1643,7 @@ Object.assign(NG.match, { duelKind:'score', duelMax:5, duelEnd:'all', duelPace:[
   /* 대전 판: 오늘의 normal 설정(요일 장애물) + 2분 30초. 느긋하게는 5분(컴퓨터 한 수 간격 ×2는 duelAi가 pace로) */
   duelCfg(){ return Object.assign(NG.match._eng.levelCfg('normal'), { limit:150 }); },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || 150) * 2 }); },
-  duelStat:{ unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) },
+  duelStat:{ unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target, left:G.mt && G.mt.E ? G.mt.E.movesLeft : null }) },
   duelHow:'20번 움직여 누가 더 높은 점수?',
   onDuelEvent(ev, from){ try{ if(ev && ev.kind === 'combo' && ev.data && typeof duelNotify === 'function') duelNotify(esc(matchNick(from && from.nick)) + ' ' + (+ev.data.n || 4) + '연쇄!', { from, kind:'hot' }); }catch(_){} } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */

@@ -209,11 +209,11 @@ function embDuelResult(r, a, b, res){
     kind:R.kind, round:R.round ? { r:R.round.r, series:R.round.series || {} } : null, room:EMB.room ? { code:EMB.room, r:EMB.roomRd } : (R.room && R.room.code ? { code:R.room.code } : null) });
   const tot = x.w + x.d + x.l, t = R.n <= 2 && R.tie ? '무승부' : `${R.tie ? '공동 ' : ''}${R.rank}위`;
   const me = R.rows.find(y => y.me) || {};
-  const rows = `<ol class="dz-rows">${R.rows.map(y => `<li class="${y.me ? 'me' : ''}${y.left ? ' left' : ''}"><span class="dz-medal${y.rank <= 3 ? ' m' + y.rank : ''}">${y.rank}</span>${duelShapeSvg(y.shape, y.col, 16)}${y.me ? avatar({ me:true }) : oppAv(y.nick)}
+  const rows = `<ol class="dz-rows">${R.rows.map(y => `<li class="${y.me ? 'me' : ''}${y.rank === 1 ? ' win' : ''}${y.left ? ' left' : ''}"><span class="dz-medal${y.rank <= 3 ? ' m' + y.rank : ''}">${y.rank}</span>${duelShapeSvg(y.shape, y.col, 16)}${y.me ? avatar({ me:true }) : oppAv(y.nick)}
     <span class="dz-nm"><b>${y.me ? '나' : esc(y.nick)}${y.ai ? ' <em class="aitag">컴퓨터</em>' : ''}</b><small>${esc(y.txt || '')}</small></span></li>`).join('')}</ol>`;
   let html = `${r1 ? '<div class="burst" aria-hidden="true"></div>' : ''}<div class="dzres" id="dzRes">
     <h3 class="dz-h${r1 ? ' r1' : ''}" data-r="${R.tie && R.rank === 1 ? 'd' : r1 ? 'w' : 'l'}">${r1 ? EMB_CROWN : ''}<span class="num">${t}</span></h3>
-    ${me.txt ? `<p class="dz-mine">${esc(me.txt)}</p>` : ''}${R.why ? `<p class="dz-why">${R.why}</p>` : ''}${rows}
+    ${me.txt ? `<p class="dz-mine">${esc(me.txt)}</p>` : ''}${R.why ? `<p class="dz-why">${R.why}</p>` : ''}${rows}${typeof duelResX === 'function' ? duelResX() : ''}
     <p class="dz-rec">대전 기록 1위 ${x.w}번 · 판 ${tot}번</p><p class="dz-again" id="dzAgain" aria-live="polite"></p>`;
   const quickAgain = R.room && R.room.canAgain && !R.ai;
   const pri = EMB.room ? ['한 판 더', () => embRoomDuel(EMB.roomRd + 1), '같은 방 코드로 새 문제']

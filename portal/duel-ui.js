@@ -181,7 +181,7 @@ function duelSeriesTxt(R, room){
 function duelRowsHtml(R, each){
   return `<ol class="dz-rows">${R.rows.map(x => {
     const k = R.rows.filter(y => y.rank === x.rank).length, p = each ? each[x.pid] : null;
-    return `<li class="${x.me ? 'me' : ''}${x.left ? ' left' : ''}"><span class="dz-medal${x.rank <= 3 ? ' m' + x.rank : ''}">${x.rank}</span>${duelShapeSvg(x.shape, x.col, 16)}${duelFace(x)}
+    return `<li class="${x.me ? 'me' : ''}${x.rank === 1 ? ' win' : ''}${x.left ? ' left' : ''}"><span class="dz-medal${x.rank <= 3 ? ' m' + x.rank : ''}">${x.rank}</span>${duelShapeSvg(x.shape, x.col, 16)}${duelFace(x)}
       <span class="dz-nm"><b>${duelNm(x)}${x.ai ? ' <em class="aitag">컴퓨터</em>' : ''}${k > 1 && R.n > 2 ? ' <em class="dz-tie">공동</em>' : ''}</b><small>${escH(x.txt || '')}</small></span>${p != null ? `<em class="dz-p num">+${fmt(p)}</em>` : '<em class="dz-p"></em>'}</li>`; }).join('')}</ol>`;
 }
 function duelBigHtml(R, streak){
@@ -227,7 +227,7 @@ function portalDuelResult(r, a, b, res){
     ${duelBigHtml(R, P.streak)}
     ${me.txt ? `<p class="dz-mine">${escH(me.txt)}</p>` : ''}
     ${R.why ? `<p class="dz-why">${R.why}</p>` : ''}
-    ${duelRowsHtml(R, P.each)}
+    ${duelRowsHtml(R, P.each)}${typeof duelResX === 'function' ? duelResX() : ''}
     <div class="dz-pts"><small>받은 포인트${room ? ' · ' + (RM_DNAME[diff] || '보통') : ''}</small><b class="num" id="bigScore">+0</b><p>${brk}</p>
       ${P.half ? `<p class="dz-half">${ic('help')}오늘 같은 친구들과 많이 해서 포인트 절반이에요</p>` : ''}
       ${P.tierUp >= 0 ? `<p class="dz-tier">${duelShield(P.tierUp, 22)} 이번 주 '${DUEL_TIERS[P.tierUp].n}' 등급이 됐어요!</p>` : ''}
