@@ -424,8 +424,11 @@ NG.match = (() => {
     for(let i = 0; i < n; i++){ at.push(x); x += (4 + rng() * 4) * slow; w.push(.35 + (rng() < .18 ? 1.5 + rng() * 2 : rng())); }
     const ws = w.reduce((s, v) => s + v, 0), cum = []; let acc = 0;
     w.forEach((v, i) => { acc += v; cum.push(i === n - 1 ? pts : r10(pts * acc / ws)); });
+    if(cfg.limit && at[n - 1] > cfg.limit * .93){ const k = (cfg.limit * .93 - at[0]) / Math.max(1, at[n - 1] - at[0]); for(let i = 1; i < n; i++) at[i] = at[0] + (at[i] - at[0]) * k; }   /* 대전 시간(2분 30초) 안에 20수를 다 둠 */
     const T = at[n - 1] + 1;
-    return { ok, T, pts, sc:ok ? 500 + bonus + extra : 0, fail:Math.min(.99, pts / t), final:pts,
+    /* 점수전은 '끝까지 20번을 다 씀'이 끝(ok:true) — ok:false면 공용 엔진이 계단을 fail 비율에서 멈춰 최종 점수가 pts보다 작아짐.
+       공용 엔진 v3는 at()을 읽지 않고 pts·T로 계단(첫 계단 3~6초, 약 T/6개 = 20수 안팎)을 만든다. 목표 미달이면 대전 점수(sc)만 0 */
+    return { ok:true, hit:ok, T, pts, sc:ok ? 500 + bonus + extra : 0, fail:Math.min(.99, pts / t), final:pts,
       at:s => { let v = 0; for(let i = 0; i < n && at[i] <= s; i++) v = cum[i]; return v; } };
   }
   /* ------------------------------------------------------------------
@@ -1380,6 +1383,7 @@ NG.match = (() => {
       if(G.raf) cancelAnimationFrame(G.raf);
       M.lt = 0; G.raf = requestAnimationFrame(frame);
       const obs = setInterval(() => { if(!M || M.dead || G.over){ clearInterval(obs); return; } bestEl(); }, 300);
+      if(G.duel && !G.duel.fleet && G.limit && typeof matchDuelClock === 'function') matchDuelClock();   /* 대전 2분 30초(파일 끝) */
       const oc = G.cleanup; G.cleanup = () => { clearInterval(obs); oc && oc(); };
     },
     progress(){ const m = G && G.mt; if(!m || !G.cfg) return 0; if(isMoves()){ const tot = G.cfg.goals.reduce((s, g) => s + g.n, 0); return Math.min(1, (tot - goalLeft(m.E)) / tot); } return Math.min(1, m.E.pts / G.cfg.target); },
@@ -1419,7 +1423,7 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .mt-prog{position:relative; align-self:stretch; height:20px; margin:3px 10px 3px 2px}
 .ng-match .mt-pbar{position:absolute; left:0; right:0; top:4px; height:12px; border-radius:99px; background:rgba(26,15,69,.12); border:2px solid #1A0F45; overflow:hidden}
 .ng-match .mt-pbar i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(180deg,#9BF07A,#2EBD55); box-shadow:inset 0 -3px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.6); transition:width .35s cubic-bezier(.2,.9,.3,1)}
-.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:2px solid #1A0F45; color:#D6CCE6; font-size:12px; line-height:1}
+.ng-match .mt-mk{position:absolute; top:0; transform:translateX(-50%); width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:#fff; border:2px solid #1A0F45; color:#D6CCE6; font-size:13px; line-height:1}
 .ng-match .mt-mk.last{transform:translateX(-70%)}
 .ng-match .mt-mk.on{background:linear-gradient(#FFE98E,#FFB020); color:#7A4A00; animation:mtBump .35s}
 .ng-match .mt-time b{font-family:var(--heavy); font-weight:400; font-size:28px; line-height:1; color:#3A2261}
@@ -1519,7 +1523,11 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
 .ng-match .mt-gc.done s{display:grid}
 .ng-match .mt-mvb b{font-size:28px}
 .ng-match .mt-mvb b.bump{animation:mtBump .28s cubic-bezier(.2,1.6,.4,1)}
-.ng-match .mt-diff{position:absolute; top:-11px; left:50%; transform:translateX(-50%); padding:1px 8px 2px; border-radius:8px; border:2px solid #1A0F45; font-family:var(--disp); font-size:12px; color:#fff; background:#E5484D; white-space:nowrap}
+.ng-match .mt-diff{position:absolute; top:-11px; left:50%; transform:translateX(-50%); padding:1px 8px 2px; border-radius:8px; border:2px solid #1A0F45; font-family:var(--disp); font-size:13px; color:#fff; background:#E5484D; white-space:nowrap}
+.ng-match .mt-diff.mt-dtime{top:-17px; padding:0 7px 1px; background:#3A2261; font-variant-numeric:tabular-nums}
+.ng-match .mt-diff.mt-dtime.warn{background:#E5484D}
+#modal .dres-list li .mtcrown{position:absolute; right:10px; top:50%; transform:translateY(-50%) rotate(12deg); font-size:22px; line-height:1; pointer-events:none}
+#modal .dres-list li.win .dl-txt{padding-right:26px}
 .ng-match .mt-diff.x{background:#7B3FE0}
 .ng-match.warn .mt-mvb{animation:mtWarn .5s ease-in-out infinite alternate}
 .ng-match.warn .mt-mvb b{color:#E5484D}
@@ -1588,6 +1596,7 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
     gate:{ matchBalloon:60, matchHoney:300, matchPop:40, matchWarn:250, matchLine:60, matchBomb:80, matchMake:60, matchSwap:40, matchStar:60 },
     jingle(){ [0, 2, 4, 5, 7, 9].forEach((d, i) => aMarimba(penta(d, 72), { t:i * .065, v:.16 })); [72, 76, 79, 84].forEach(m => aMarimba(m2f(m), { t:.48, d:1, v:.11 })); aSparkle({ t:.52, n:6 }); },
     duelAi,
+    _duelTimeUp(){ const m = G && G.mt; if(!m || m.ended || G.over) return; m.stop = true; endRound(); },   /* 대전 시간 끝 → 지금 점수로 끝 */
     _eng:{ makeEngine, move, listMoves, hasMove, findGroups, shuffleBoard, bestMove, botRun, clone, stepMs, BOT, levelCfg, duelAi, stageCfg, stagePlan, makeStage, botMoves, goalDone, goalLeft, blastCells, itemCells, gloveSwap, diagX, MT_D, S_STAR },
     _test:{
       auto(n){ const m = G.mt; if(!m) return; let k = 0; const go = async () => { while(k++ < n && !G.over && !m.stop){ const mv = bestMove(m.E); if(!mv) break; await tryMove(mv[0], mv[1]); } }; return go(); },
@@ -1600,11 +1609,41 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
   };
 })();
 
-/* 대전(2026-10-06): 20번 이동 점수전. 공용 대전 v3 항목(duelKind·duelMax·duelEnd)은 1단계에서 1:1(duelMax 2)로 먼저 내보낸다.
-   컴퓨터는 게임 전용 duelAi(사람처럼 한 수씩), 상대가 4연쇄 이상이면 알림(v3 duelSend/duelNotify가 있을 때만) */
-Object.assign(NG.match, { duelKind:'score', duelMax:2, duelEnd:'all', duelPace:[120,.62],
+/* 대전(2026-10-06): 20번 이동 점수전(대전 v3 점수, 2~5명). 모두 20번 다 쓰거나 2분 30초(느긋하게 5분)면 끝.
+   컴퓨터는 게임 전용 duelAi(사람처럼 한 수씩), 상대가 4연쇄 이상이면 큰 알림, 결과 창은 1위에만 왕관 */
+const matchNick = n => (typeof duelShortNick === 'function' ? duelShortNick(n) : String(n || '상대').split(/\s+/).pop()) || '상대';
+/* 결과 창(#modal)이 뜨면 1위 줄에 왕관을 붙임(3명 이상 순위 목록. 2명은 공용 결과 창이 이미 왕관을 그림). 엔진(core)은 그대로 */
+function matchResWatch(){
+  const me = G, m = document.getElementById('modal'); if(!m || typeof MutationObserver === 'undefined' || me.mtRes) return;
+  const ob = me.mtRes = new MutationObserver(() => { try{
+    if(G !== me){ ob.disconnect(); return; }
+    const D = G.duel; if(!D || !D.resolved || !D.res) return;
+    const list = m.querySelector('.dres-list'); if(!list && m.querySelector('.dres')){ ob.disconnect(); return; }
+    if(!list || list.querySelector('.mtcrown')) return;
+    list.querySelectorAll('li.win').forEach(li => li.insertAdjacentHTML('beforeend', '<span class="mtcrown" aria-label="1위 왕관">👑</span>'));
+    ob.disconnect();
+  }catch(_){ ob.disconnect(); } });
+  ob.observe(m, { childList:true });
+}
+/* 대전 시간(2분 30초): 다 되면 지금 점수로 끝. 남은 시간은 '남은 이동' 칸 위 꼬리표 */
+function matchDuelClock(){
+  const me = G, M0 = G.mt;
+  const iv = setInterval(() => { try{
+    if(G !== me || !G.mt || G.mt !== M0 || G.over){ clearInterval(iv); return; }
+    if(!G.duel || !G.limit) return;
+    if(G.duel.v === 3) matchResWatch();
+    const rem = Math.max(0, G.limit - elapsed()), box = document.querySelector('.ng-match .mt-mvb');
+    if(box){ let t = box.querySelector('.mt-dtime'); if(!t){ t = document.createElement('span'); t.className = 'mt-diff mt-dtime'; box.appendChild(t); }
+      t.textContent = '⏱ ' + mmss(Math.ceil(rem)); t.classList.toggle('warn', rem <= 20); }
+    if(rem <= 0 && !M0.ended && !M0.busy) NG.match._duelTimeUp();
+  }catch(_){} }, 300);
+}
+Object.assign(NG.match, { duelKind:'score', duelMax:5, duelEnd:'all', duelPace:[120,.62],
+  /* 대전 판: 오늘의 normal 설정(요일 장애물) + 2분 30초. 느긋하게는 5분(컴퓨터 한 수 간격 ×2는 duelAi가 pace로) */
+  duelCfg(){ return Object.assign(NG.match._eng.levelCfg('normal'), { limit:150 }); },
+  duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || 150) * 2 }); },
   duelStat:{ unit:'점', score:true, get:() => ({ v:G.mt ? G.mt.E.pts : 0, t:G.cfg.target }) },
   duelHow:'20번 움직여 누가 더 높은 점수?',
-  onDuelEvent(ev, from){ try{ if(ev && ev.kind === 'combo' && ev.data && typeof duelNotify === 'function') duelNotify(((from && from.nick) || '상대') + ' ' + ev.data.n + '연쇄!', { from, kind:'info' }); }catch(_){} } });
+  onDuelEvent(ev, from){ try{ if(ev && ev.kind === 'combo' && ev.data && typeof duelNotify === 'function') duelNotify(esc(matchNick(from && from.nick)) + ' ' + (+ev.data.n || 4) + '연쇄!', { from, kind:'hot' }); }catch(_){} } });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.match.scene = { kind:'bubbles', colors:['#FFFFFF','#9FD3FF','#FFD1E8'], density:1 };

@@ -548,6 +548,7 @@ NG.sudoku = {
   /* 대전 전용 작은 판(WP10): 6×6(2×3 상자), 빈칸 18개, 3분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
   duelCfg(){ return { size:6, holes:18, limit:180, duel:1 }; },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 6분 */
+  duelMax:5,   /* 2~5명 경주(2단계) */
   duelKind:'race',
   init(cfg, rng){
     if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.sudoku.duelCfg(); G.cfg = cfg; G.limit = cfg.limit; }
