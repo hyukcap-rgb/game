@@ -1,7 +1,7 @@
 {
   "id": "chosung",
   "name": "초성게임",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "summary": "초성과 분류를 보고 낱말을 떠올려 쓰는 추리 게임",
   "js": [
     "chosung-words.js",

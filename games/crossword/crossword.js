@@ -192,13 +192,14 @@ NG.crossword = (() => {
   const T = (fn, ms) => { const m = G.m, id = setTimeout(() => { m.timers.delete(id); if(G && G.m === m && !G.over) fn(); }, ms); m.timers.add(id); return id; };
   const cellEl = i => document.querySelector(`.ng-crossword .cw-c[data-i="${i}"]`);
   const dirName = d => d ? '세로' : '가로';
-  const canPlay = () => { const m = G && G.m; return !!(m && !G.over && !G.paused && m.phase === 'play'); };
+  const canPlay = () => { const m = G && G.m; return !!(m && !G.over && !G.paused && m.phase === 'play' && !(G.duel && !G.duel.go)); };
 
   const ICO = {
     word:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="8" width="7" height="7" rx="1.5" fill="#DFF7E6" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="1" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="9" y="15" width="7" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="16" y="8" width="6" height="7" rx="1.5" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/></svg>',
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
     check:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#CFEFFF" stroke="#1A0F45" stroke-width="2"/><path d="M15 15l6 6" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/><path d="M7 10.2l2 2 3.6-3.8" fill="none" stroke="#E5484D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    flag:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V3" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round"/><path d="M6 4h12l-3 4 3 4H6z" fill="#FF8FC8" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/></svg>',
     prev:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     next:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
@@ -206,6 +207,7 @@ NG.crossword = (() => {
   function hud(){
     const m = S(); if(!m) return;
     const f = $('#cwFound'); if(f) f.textContent = m.solved;
+    const fl = $('#cwLeft'); if(fl) fl.textContent = m.words.filter(wd => !wd.done).length;
     const h = $('#cwHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const x = $('#cwCheck'); if(x){ x.querySelector('b').textContent = m.checkLeft; x.disabled = m.checkLeft <= 0; }
     const lv = $('#cwLives');
@@ -236,8 +238,9 @@ NG.crossword = (() => {
   function clueLine(){
     const m = S(), wd = m.words[m.cur], e = $('#cwClue'); if(!e || !wd) return;
     const other = crossOf(m.cur);
-    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b><small>${wd.len}글자${wd.gold ? ' ★' : ''}</small>${other >= 0 ? `<button class="cw-dir" data-k="${other}" aria-label="${dirName(1 - wd.d)} 낱말로 바꾸기">⇄ ${dirName(1 - wd.d)}</button>` : ''}</span><span class="cw-ct">${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
-    const inp = $('#cwIn'); if(inp){ inp.placeholder = wd.done ? '맞힌 낱말이에요' : wd.len + '글자 낱말'; inp.disabled = wd.done || G.over; }
+    const who = m.sh && wd.done && wd.owner ? `<b class="cw-who" style="--oc:${wd.oc}">${wd.owner === G.duel.myPid ? '내 땅' : esc(wd.onick) + '님 땅'}</b> ` : '';
+    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b><small>${wd.len}글자${wd.gold ? ' ★' : ''}</small>${other >= 0 ? `<button class="cw-dir" data-k="${other}" aria-label="${dirName(1 - wd.d)} 낱말로 바꾸기">⇄ ${dirName(1 - wd.d)}</button>` : ''}</span><span class="cw-ct">${who}${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
+    const inp = $('#cwIn'); if(inp){ inp.placeholder = wd.done ? (m.sh ? '차지된 낱말이에요' : '맞힌 낱말이에요') : wd.len + '글자 낱말'; inp.disabled = wd.done || G.over; }
     const go = $('#cwGo'); if(go) go.disabled = wd.done || G.over;
   }
   /* 지금 낱말과 엇갈린 다른 방향 낱말(못 맞힌 것 먼저). 없으면 -1 → [가로/세로] 바꾸기 단추 */
@@ -260,12 +263,13 @@ NG.crossword = (() => {
       el.classList.toggle('lock', !!c.lock);
       el.classList.toggle('given', c.given === 'hint' || c.given === 'blind');
       el.classList.toggle('chk', c.given === 'check');
+      if(m.sh){ el.classList.toggle('own', !!c.own); el.classList.toggle('mine', !!c.own && c.own === G.duel.myPid); if(c.own){ el.style.setProperty('--oc', c.oc); el.dataset.sh = c.shape || 'circle'; } }
       el.querySelector('b').textContent = c.v || '';
     });
   }
   function listHtml(){
     const m = S();
-    return [0, 1].map(d => `<div class="cw-lsec"><h4>${dirName(d)} 열쇠</h4>${m.words.map((wd, k) => wd.d !== d ? '' : `<button class="cw-li${wd.done ? ' done' : ''}${k === m.cur ? ' cur' : ''}${wd.gold ? ' gold' : ''}" data-k="${k}"><b>${wd.num}</b><span>${wd.done ? '<em>' + wd.w + '</em> · ' : ''}${clueText(wd)}</span><small>${wd.len}</small></button>`).join('')}</div>`).join('');
+    return [0, 1].map(d => `<div class="cw-lsec"><h4>${dirName(d)} 열쇠</h4>${m.words.map((wd, k) => wd.d !== d ? '' : `<button class="cw-li${wd.done ? ' done' : ''}${k === m.cur ? ' cur' : ''}${wd.gold ? ' gold' : ''}" data-k="${k}"><b>${wd.num}</b><span>${m.sh && wd.done ? `<i class="cw-dot" style="--oc:${wd.oc}"></i>` : ''}${wd.done ? '<em>' + wd.w + '</em> · ' : ''}${clueText(wd)}</span><small>${wd.len}</small></button>`).join('')}</div>`).join('');
   }
   function refresh(){ paintCells(); clueLine(); const l = $('#cwList'); if(l) l.innerHTML = listHtml(); const sp = $('#cwStrip'); if(sp) sp.innerHTML = stripHtml(); hud(); }
 
@@ -324,6 +328,7 @@ NG.crossword = (() => {
     for(let k = 0; k < wd.len; k++){ const c = m.cell[wd.cells[k]]; if(c.lock && c.ch !== t[k]){ flash(`<span>${k + 1}번째 칸은 이미 '<b class="lk">${c.ch}</b>'예요</span>`); sfx('cwNo'); try{ fxShake(cellEl(wd.cells[k]), 4); }catch(_){} return; } }
     wd.cells.forEach((i, k) => { const c = m.cell[i]; if(!c.lock){ c.v = t[k]; c.given = null; } });
     inp.value = '';
+    if(m.sh){ shSubmit(wd, t); return; }
     if(t === wd.w){
       const got = lockSolved(true);
       m.typed++;
@@ -347,6 +352,92 @@ NG.crossword = (() => {
     if(got.length && m.solved >= m.words.length){ win(); return; }
     if(left === 0){ G.paws = 0; lose('기회를 다 썼어요', 'miss'); return; }
     if(left > 0) G.paws = left;
+  }
+
+  /* ===== 땅따먹기 대전(대전 v3 선점, 2~5명): 같은 판을 모두 같이 풀고, 낱말을 먼저 맞힌 사람이 그 낱말 칸을 자기 색으로 차지(duelClaim('w'+번호)) =====
+     차지된 낱말은 모두의 판에 글자가 드러나 잠긴다(엇갈린 글자가 힌트가 됨). 칸 색은 그 칸을 지나는 낱말 중 먼저 차지된 것.
+     주인·칸 색은 늘 엔진의 차지 기록(owners)으로 처음부터 다시 계산 → 늦게 도착한 기록(간발의 차)에도 모든 기기가 같은 판.
+     끝: 다 차지 · 남은 낱말을 다 가져가도 1등을 못 따라잡음 · 시간 → duelEndNow. 순위 = 차지한 낱말 수 → 틀린 수 → 마지막 차지 이른 순(엔진) */
+  function shPlayers(){ const o = {}; try{ (duelPlayers() || []).forEach(p => { o[p.pid] = p; }); }catch(_){} return o; }
+  function shSync(force){
+    const m = S(), D = G && G.duel; if(!m || !m.sh || !D) return false;
+    const own = D.owners || {}, sig = JSON.stringify(own);
+    if(!force && sig === m.sh.sig) return false;
+    m.sh.sig = sig;
+    const pl = shPlayers();
+    m.cell.forEach(c => { if(c){ c.lock = false; c.own = null; c.oc = null; c.shape = null; } });
+    m.words.forEach(wd => { wd.done = false; wd.owner = null; });
+    const order = m.words.map((wd, k) => k).filter(k => own['w' + k]).map(k => { const pid = own['w' + k], P = D.P[pid]; return { k, pid, at:P && P.cl ? +P.cl['w' + k] || 0 : 0 }; })
+      .sort((a, b) => a.at - b.at || a.k - b.k);
+    let mine = 0;
+    for(const o of order){
+      const wd = m.words[o.k], p = pl[o.pid];
+      wd.done = true; wd.owner = o.pid; wd.oc = p ? p.col : '#8E8AA6'; wd.onick = p ? p.nick : '상대';
+      if(o.pid === D.myPid) mine++;
+      wd.cells.forEach(i => { const c = m.cell[i]; c.v = c.ch; c.lock = true; if(!c.own){ c.own = o.pid; c.oc = wd.oc; c.shape = p ? p.shape : 'circle'; } });
+    }
+    m.solved = mine;
+    return true;
+  }
+  /* 차지한 칸이 차례로 반짝(보이기만) */
+  function shPop(wd){
+    try{ wd.cells.forEach((i, n) => { const el = cellEl(i); if(!el) return; el.style.setProperty('--d', (n * 50) + 'ms'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }); }catch(_){}
+  }
+  function shSubmit(wd, t){
+    const m = S(), k = m.words.indexOf(wd);
+    if(t === wd.w){
+      const r = duelClaim('w' + k);
+      shSync(true);
+      if(r && r.ok){
+        m.combo++; refresh(); shPop(wd);
+        sfx('cwRight', { n:m.combo - 1 }); fxBuzz(12);
+        try{ wd.cells.forEach(i => { const el = cellEl(i); if(el){ const q = fxCenter(el); fxBurst(q.x, q.y, ['#FF8FC8', '#FFE27A', '#FFFFFF'], 6, { speed:180, size:4, kinds:['star','dot','spark'], up:90, g:460, dur:.55 }); } }); }catch(_){}
+        flash(`<b>내 땅!</b><span>${wd.w}</span>`);
+        step(1);
+        return;
+      }
+      refresh();
+      const p = shPlayers()[r && r.owner];
+      flash(`<b class="bad">아깝다!</b><span>${p ? esc(p.nick) + '님이' : '다른 사람이'} 먼저 맞혔어요</span>`); sfx('cwNo');
+      step(1);
+      return;
+    }
+    /* 틀린 낱말 = 실수(순위 동점일 때 적은 쪽이 앞) */
+    m.misses++; m.combo = 0;
+    refresh(); sfx('cwWrong'); fxBuzz(25);
+    try{ wd.cells.forEach(i => { const el = cellEl(i); if(el && !m.cell[i].lock) el.classList.add('bad'); }); fxShake($('#cwBoard'), 4); }catch(_){}
+    T(() => document.querySelectorAll('.ng-crossword .cw-c.bad').forEach(e => e.classList.remove('bad')), 650);
+    flash('<b class="bad">아니에요</b><span>다른 낱말을 떠올려 봐요</span>');
+  }
+  /* 다른 사람이 차지(또는 간발의 차로 주인이 바뀜): 판을 다시 칠하고 알림. 판 끝 판단은 loop에서(콜백 안에서 끝내지 않음) */
+  function shOnClaim(key, owner, info){
+    const m = S(); if(!m || !m.sh || G.over) return;
+    if(!shSync()) return;
+    refresh();
+    const k = +String(key).slice(1), wd = m.words[k]; if(!wd) return;
+    if(owner !== G.duel.myPid && !info.lost){
+      shPop(wd); sfx('cwNo');
+      const p = shPlayers()[owner];
+      try{ duelNotify(`${p ? esc(p.nick) : '상대'}님이 ${dirName(wd.d)} ${wd.num} 차지 · ${wd.w}`, { from:p || null, kind:'info' }); }catch(_){}
+      if(m.cur === k) step(1);
+    }
+  }
+  function shEnd(why){
+    const m = S(); if(m.phase !== 'play') return;
+    m.phase = 'done';
+    const inp = $('#cwIn'); if(inp){ inp.disabled = true; inp.blur(); }
+    msg('<b>판 끝!</b><span>' + esc(why) + '</span>', 'cw-win');
+    duelEndNow(why);
+  }
+  function shCheck(){
+    const m = S(), D = G.duel; if(!D || !D.go || m.phase !== 'play') return;
+    if(shSync()) refresh();
+    const own = D.owners || {}, cnt = {}; let taken = 0;
+    m.words.forEach((wd, k) => { const p = own['w' + k]; if(p){ taken++; cnt[p] = (cnt[p] || 0) + 1; } });
+    const left = m.words.length - taken;
+    if(!left){ shEnd(`낱말 ${m.words.length}개를 모두 차지했어요`); return; }
+    const v = Object.values(cnt).sort((a, b) => b - a);
+    if(v.length && v[0] > (v[1] || 0) + left) shEnd('남은 낱말을 다 가져가도 1등을 따라잡을 수 없어요');
   }
 
   /* 글자 열기: 고른 낱말의 아직 맞지 않은 첫 칸을 열어 준다 */
@@ -434,6 +525,7 @@ NG.crossword = (() => {
     const m = S(), t = elapsed(), bar = $('#cwBar');
     if(m.phase === 'deal'){ m.phase = 'play'; msg(playMsg()); sfx('cwGo'); }
     if(m.phase !== 'play') return;
+    if(m.sh && G.duel && G.duel.go){ shCheck(); if(m.phase !== 'play') return; }
     const rem = remTime(t), sec = Math.ceil(rem);
     if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / G.limit)})`;
     if(sec !== m.lastSec){
@@ -443,7 +535,11 @@ NG.crossword = (() => {
       const b = $('#cwBarWrap'); if(b) b.classList.toggle('hurry', sec <= 15);
       if(sec <= 10 && sec > 0) sfx('cwTick', { hi:sec <= 5 });
     }
-    if(rem <= 0){ const e = $('#cwTime'); if(e) e.textContent = '0:00'; lose('시간이 다 됐어요', 'time'); }
+    if(rem <= 0){
+      const e = $('#cwTime'); if(e) e.textContent = '0:00';
+      if(m.sh){ m.cell.forEach((c, i) => { if(c && !c.lock){ const el = cellEl(i); if(el){ el.classList.add('miss'); el.querySelector('b').textContent = c.ch; } } }); shEnd('시간이 다 됐어요'); }
+      else lose('시간이 다 됐어요', 'time');
+    }
   }
   function win(){
     const m = S(); if(m.phase === 'done') return; m.phase = 'done'; m.sec = elapsed();
@@ -487,8 +583,8 @@ NG.crossword = (() => {
     $('#cwGo').onclick = submit;
     $('#cwPrev').onclick = () => step(-1);
     $('#cwNext').onclick = () => step(1);
-    $('#cwHint').onclick = useHint;
-    $('#cwCheck').onclick = useCheck;
+    const hb = $('#cwHint'); if(hb) hb.onclick = useHint;
+    const cb = $('#cwCheck'); if(cb) cb.onclick = useCheck;
     $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, true); };   /* 목록은 펼친 채로 둔다(세대별 테스트: 접혀 있으면 못 찾음) */
     const cl = $('#cwClue');
     cl.onpointerdown = e => { if(e.target.closest && e.target.closest('.cw-dir')) e.preventDefault(); };   /* 키보드가 내려가지 않게 */
@@ -521,8 +617,30 @@ NG.crossword = (() => {
       ['칸을 눌러 낱말을 골라요', '칸을 누르면 그 낱말이 노랗게 빛나고 아래에 뜻풀이(열쇠)가 나와요. 열쇠 옆 [⇄ 세로]·[⇄ 가로] 단추로 방향을 바꿔요.'],
       ['답을 넣어요', '입력창에 낱말을 쓰고 [넣기]. 맞으면 초록으로 잠기고, 겹친 글자가 다른 낱말의 힌트가 돼요.'],
       ['시간 안에 판을 채워요', '모든 낱말을 맞히면 성공! 막히면 💡 글자 열기, 🔍 틀린 칸 확인을 써요.'],
+      ['대전: 땅따먹기', '대전은 2~5명이 같은 판(7×7, 낱말 8개, 2분)을 함께 풀어요. 낱말을 먼저 맞힌 사람이 그 칸을 자기 색으로 차지하고, 차지된 글자는 모두에게 힌트가 돼요. 많이 차지한 사람이 1등!'],
       ['더 알아보기 · 점수', '틀린 낱말을 넣으면 실수 −20점(글자는 칸에 남아요), 글자 열기 −40점, 틀린 칸 확인 −25점. 솔로에서는 주제 판·빈 열쇠·황금 낱말·속담 열쇠 같은 새 규칙이 나와요.']
     ],
+    /* 도움말 v2: 움직이는 그림(320×180) + 3줄. 그림 = 낱말판에 가로 낱말이 분홍으로, 세로 낱말이 파랑으로 칠해짐(땅따먹기, 오리지널 도형) */
+    howto:{
+      pic(){
+        const cs = 30, x0 = 85, y0 = 16, N = 5;
+        const H = [[1, 0, '사'], [1, 1, '과'], [1, 2, '나'], [1, 3, '무']], V = [[0, 2, '바'], [1, 2, '나'], [2, 2, '나']], X = [[3, 1, ''], [3, 2, ''], [3, 3, '']];
+        const on = new Set([...H, ...V, ...X].map(([r, c]) => r * N + c));
+        let g = '';
+        for(let i = 0; i < N * N; i++){ const r = Math.floor(i / N), c = i % N, x = x0 + c * (cs + 2), y = y0 + r * (cs + 2);
+          g += on.has(i) ? `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="5" fill="#FFFDF4"/>` : `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="5" fill="#fff" opacity=".07"/>`; }
+        const paint = (L, col, d) => L.map(([r, c, ch], n) => { const x = x0 + c * (cs + 2), y = y0 + r * (cs + 2), b = (d + n * .12).toFixed(2);
+          return `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="5" fill="${col}" stroke="${col}" stroke-width="2" opacity="0"><animate attributeName="opacity" values="0;0;.55;.55;0" keyTimes="0;${(b / 6).toFixed(3)};${((+b + .2) / 6).toFixed(3)};.92;1" dur="6s" repeatCount="indefinite"/></rect>
+            <text x="${x + cs / 2}" y="${y + 22}" font-size="18" text-anchor="middle" fill="#1A0F45" font-family="Jua,sans-serif" opacity="0">${ch}<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;${(b / 6).toFixed(3)};${((+b + .2) / 6).toFixed(3)};.92;1" dur="6s" repeatCount="indefinite"/></text>`; }).join('');
+        return `<svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="16" fill="#FFE9CF"/>
+          <rect x="${x0 - 6}" y="${y0 - 6}" width="${N * (cs + 2) + 10}" height="${N * (cs + 2) + 10}" rx="10" fill="#3A2C8E" stroke="#1A0F45" stroke-width="3"/>${g}
+          ${paint(H, '#F0368A', .6)}${paint(V.filter(v => !(v[0] === 1 && v[1] === 2)), '#2F7BFF', 2.6)}
+          <g transform="translate(40 66)"><circle r="17" fill="#F0368A" stroke="#1A0F45" stroke-width="3"/><circle cy="-3" r="6" fill="#fff"/></g>
+          <g transform="translate(280 66)"><rect x="-16" y="-16" width="32" height="32" rx="5" fill="#2F7BFF" stroke="#1A0F45" stroke-width="3"/><circle cy="-3" r="6" fill="#fff"/></g>
+          <text x="40" y="104" font-size="14" text-anchor="middle" fill="#9A1F5A" font-family="Jua,sans-serif">가로 1</text><text x="280" y="104" font-size="14" text-anchor="middle" fill="#1F4FA8" font-family="Jua,sans-serif">세로 2</text></svg>`;
+      },
+      lines:['칸을 눌러 낱말을 골라요', '아래 열쇠를 보고 답을 넣어요', '겹친 글자가 다른 낱말의 힌트!']
+    },
     helpExtra(){ const m = G && G.id === 'crossword' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['골목 사전', '시장 골목', '바닷가 책방', '산마루 서당', '별빛 도서관'],
     starRule:'★ 클리어 · ★★ 도구 1번 이하·실수 2번 이하 · ★★★ 도구·실수 없이',
@@ -547,6 +665,8 @@ NG.crossword = (() => {
         theme:cfg.theme || null, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, phase:'deal', lastSec:-1, sec:0, fail:null, timers:new Set() };
       G.limit = cfg.limit; if(G.m.lives) G.paws = G.m.lives;
       const m = G.m;
+      /* 실시간 대전(v3) = 땅따먹기 선점: 도구 없음(모두 같은 조건) */
+      if(G.duel && G.duel.v === 3 && !G.duel.fleet){ m.sh = { sig:'' }; m.hintLeft = 0; m.checkLeft = 0; }
       /* 처음 고른 낱말: 가로 1번(빈 열쇠가 아닌 것 먼저) */
       const k0 = m.words.findIndex(wd => !wd.blind); m.cur = k0 >= 0 ? k0 : 0;
       lockSolved(false); m.combo = 0;   /* (빈 열쇠 첫 글자만으로 풀리는 낱말은 없지만 혹시 모르니) */
@@ -569,15 +689,19 @@ NG.crossword = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
-    _layout:layoutWords, _stage:stageCfg, _dict:dict, _modernOn:modernOn,
+    _layout:layoutWords, _stage:stageCfg, _dict:dict, _modernOn:modernOn, _shOnClaim:shOnClaim,
+    /* 테스트용: k번째 낱말을 골라 글자 t를 넣는다(대전 점검이 씀) */
+    _typeForTest(k, t){ if(!G || !G.m || !G.m.words[k]) return false; select(k, false); const inp = $('#cwIn'); inp.value = t; submit(); return true; },
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-crossword">
         <div class="hud-row">
-          <div class="hchip" aria-label="맞힌 낱말"><span class="hv">${ICO.word}<b id="cwFound">0</b><small>/${m.words.length}</small></span><em>맞힌 낱말</em></div>
+          ${m.sh ? `<div class="hchip mine" aria-label="내가 차지한 낱말"><span class="hv">${ICO.flag}<b id="cwFound">0</b></span><em>내 땅</em></div>
+          <div class="hchip time" id="cwTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="cwTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
+          <div class="hchip" aria-label="남은 낱말"><span class="hv">${ICO.word}<b id="cwLeft">${m.words.length}</b></span><em>남은 낱말</em></div>` : `<div class="hchip" aria-label="맞힌 낱말"><span class="hv">${ICO.word}<b id="cwFound">0</b><small>/${m.words.length}</small></span><em>맞힌 낱말</em></div>
           <div class="hchip time" id="cwTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="cwTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
           <button class="hchip item" id="cwHint" aria-label="글자 열기"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>글자 열기</em></button>
-          <button class="hchip item" id="cwCheck" aria-label="틀린 칸 확인"><span class="hv">${ICO.check}<b>${m.checkLeft}</b></span><em>틀린 칸</em></button>
+          <button class="hchip item" id="cwCheck" aria-label="틀린 칸 확인"><span class="hv">${ICO.check}<b>${m.checkLeft}</b></span><em>틀린 칸</em></button>`}
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cw-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cw-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cw-chip mj">${k === 'theme' && m.theme ? '주제 · ' + dict().catName[m.theme] : CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cw-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar cw-tbar" id="cwBarWrap"><i id="cwBar"></i></div>
@@ -653,6 +777,17 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-c.bad b{color:#C8102E}
 .ng-crossword .cw-c.x::after{content:''; position:absolute; inset:18%; border-radius:50%; border:2.5px solid #E5484D; opacity:.8}
 .ng-crossword .cw-c.miss b{color:#B9A6D9}
+/* 땅따먹기 대전: 차지한 사람의 자리 색(내 화면 기준, 나는 분홍) + 모서리 모양 표식(색약 대비) */
+.ng-crossword .cw-c.own, .ng-crossword .cw-c.own.on{background:linear-gradient(180deg, color-mix(in srgb, var(--oc) 22%, #fff), color-mix(in srgb, var(--oc) 42%, #fff)); box-shadow:inset 0 0 0 2.5px var(--oc), 0 2px 0 #1A0F45}
+.ng-crossword .cw-c.own b{color:#1A0F45}
+.ng-crossword .cw-c.own::before{content:''; position:absolute; right:2px; bottom:2px; width:max(8px, calc(var(--cw) * .24)); height:max(8px, calc(var(--cw) * .24)); background:var(--oc); outline:0}
+.ng-crossword .cw-c.own[data-sh="circle"]::before{border-radius:50%}
+.ng-crossword .cw-c.own[data-sh="tri"]::before{clip-path:polygon(50% 0,100% 100%,0 100%)}
+.ng-crossword .cw-c.own[data-sh="diamond"]::before{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.ng-crossword .cw-c.own[data-sh="star"]::before{clip-path:polygon(50% 0,63% 36%,100% 38%,70% 61%,80% 100%,50% 77%,20% 100%,30% 61%,0 38%,37% 36%)}
+.ng-crossword .cw-who{display:inline-block; font-family:var(--disp); font-weight:400; font-size:13px; line-height:1; padding:3px 7px; border-radius:99px; color:#fff; background:var(--oc); border:1.5px solid #1A0F45; vertical-align:1px}
+.ng-crossword .cw-dot{display:inline-block; width:10px; height:10px; margin-right:4px; border-radius:50%; background:var(--oc); border:1.5px solid #1A0F45; vertical-align:-1px}
+.ng-crossword .hchip.mine{background:linear-gradient(180deg,#FFF0F7,#FFC6E2)} .ng-crossword .hchip.mine em{color:#8A1F57}
 .ng-crossword .cw-c.pop{animation:cw-pop .5s cubic-bezier(.2,1.6,.4,1) var(--d, 0ms) both}
 @keyframes cw-pop{0%{transform:scale(1)} 40%{transform:scale(1.22) rotate(-4deg)} 100%{transform:none}}
 .ng-crossword .cw-board.in .cw-c{animation:cw-deal .45s cubic-bezier(.2,1.5,.4,1) both}
@@ -742,10 +877,20 @@ body[data-mode="crossword"]{background:
 })();
 
 /* 대전: 같은 판을 누가 먼저(더 많이) 맞히나. AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
+/* 대전 v3 = 땅따먹기 선점(2~5명, docs/21 WP11·안건 2): 7×7 판 낱말 8개 2분(느긋하게 4분), 낱말을 먼저 맞힌 사람이 그 칸을 차지.
+   컴퓨터 상대는 엔진이 계단마다 남은 낱말 하나를 차지(duelKeys, duelPace = 평균 시간·다 가져갈 확률) */
 Object.assign(NG.crossword, {
-  duelPace:[230, .7],
-  duelHow:'같은 낱말판 · 빨리 많이 맞혀 점수가 높으면 승리',
-  duelStat:{ unit:'낱말', get:() => ({ v:G.m.solved, t:G.m.words.length }) }
+  duelKind:'shared', duelMax:5, duelEnd:'game', duelRoom:true,   /* duelRoom: 대전 방(2~5명) 목록에 나옴(WP2) */
+  duelPace:[105, .5],
+  duelHow:'같은 낱말판 땅따먹기 · 먼저 맞히면 내 땅',
+  duelStat:{ unit:'낱말', get:() => (G.m.sh ? { t:G.m.words.length, mis:G.m.misses } : { v:G.m.solved, t:G.m.words.length, mis:G.m.misses }) },
+  duelCfg(o){
+    const d = o && o.diff;
+    const c = d === 'easy' ? { size:7, words:7, limit:120 } : d === 'hard' ? { size:8, words:10, limit:150 } : { size:7, words:8, limit:120 };
+    return Object.assign(c, { hints:0, checks:0 });
+  },
+  duelKeys:() => (G.m && G.m.words ? G.m.words.map((_, k) => 'w' + k) : []),
+  onDuelClaim(key, owner, info){ try{ NG.crossword._shOnClaim(key, owner, info || {}); }catch(_){} }
 });
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.crossword.scene = { kind:'motes', colors:['#FFFFFF', '#FFE2B8', '#FFF3B0'], density:1 };
