@@ -7,7 +7,8 @@
     "build": "node tools/build.js",
     "test": "node tools/test.mjs",
     "test:duel": "node tools/duel-test.mjs",
-    "test:room": "node tools/room-test.mjs"
+    "test:room": "node tools/room-test.mjs",
+    "test:bot": "node tools/random-bot.mjs"
   },
   "devDependencies": {
     "esbuild": "0.25.12",

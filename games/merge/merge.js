@@ -3,14 +3,19 @@
    규칙: 밀면 모든 타일이 끝까지 미끄러지고, 같은 숫자는 한 번씩 합쳐져 두 배가 된다.
    움직임이 생긴 뒤마다 빈칸 하나에 새 타일(2: 90%, 4: 10%). 새 타일의 자리·값은 "몇 번째 이동인지"로 정해진
    rng 수열에서 꺼내므로 되돌리기를 해도 같은 수가 나온다(같은 씨앗 + 같은 이동 = 같은 판).
-   보스 스테이지(n%10===0): 움직이지도 합쳐지지도 않는 돌 블록 1개(큰 목표는 2개가 아니라 1개로 고정). */
+   세대별 테스트(2026-10-06, 21번 문서 WP9): 레벨 = 숫자 키우기가 아니라 "목표 종류 7가지"의 조합.
+     A 숫자 만들기 · B 여러 개 만들기 · C 이동 제한 · D 얼음 깨기 · E 별 칸 배달 · F 미리 보기 퍼즐 · G 점수 목표.
+   오늘의 문제는 이동 제한 + 목표 조합(무작위로 눌러서는 못 깨게, tools/random-bot.mjs로 점검). */
 NG.merge = (() => {
   const ST = -1, SLIDE_MS = 110;
   /* par = 잘 두는 사람 기준 이동 수. 자동 플레이어로 측정:
      2수 탐색 AI 중앙값: 32→19, 64→38, 128→67, 256→132, 512→247, 1024→490 (30판). 약한 1수 AI는 256→158, 512→273. */
   const PAR = { 16:9, 32:19, 64:38, 128:67, 256:132, 512:247, 1024:490, 2048:980 };
   const parOf = t => PAR[t] || Math.round(t * 0.48);
-  /* 판 크기 N(4 기본, '좁은 판'은 3). 칸 값 v[i]: 0 빈칸, -1 돌, -2 이하 = 자물쇠 타일(값의 음수), 그 밖엔 값.
+  /* 새 오늘의 문제·대전·솔로 규칙은 이 날짜(0시)부터. 그 전 날짜의 오늘의 문제는 예전 그대로(같은 날 문제가 바뀌지 않게) */
+  const NEW_FROM = '2026-10-07';
+  /* 판 크기 N(4 기본, '좁은 판'은 3). 칸 값 v[i]: 0 빈칸, -1 돌, 짝수 음수 = 자물쇠 타일(값의 음수),
+     홀수 음수 = 얼음 타일 -(값×16 + 남은 맞기 수×2 + 1), 그 밖엔 값.
      방향: 0 위, 1 오른쪽, 2 아래, 3 왼쪽. 각 줄은 "미는 쪽 끝"부터 순서대로 */
   const GEO = {};
   function geo(N){
@@ -32,31 +37,38 @@ NG.merge = (() => {
     for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){ const s = r * N + (r % 2 ? N - 1 - c : c); snake[r * N + c] = Math.pow(4, (C - 1 - s) / 3); }
     const tr = [(r, c) => [r, c], (r, c) => [r, N - 1 - c], (r, c) => [N - 1 - r, c], (r, c) => [N - 1 - r, N - 1 - c], (r, c) => [c, r], (r, c) => [c, N - 1 - r], (r, c) => [N - 1 - c, r], (r, c) => [N - 1 - c, N - 1 - r]];
     const SYM = tr.map(f => { const w = new Array(C); for(let i = 0; i < C; i++){ const [r, c] = f(Math.floor(i / N), i % N); w[r * N + c] = snake[i]; } return w; });
-    return (GEO[N] = { N, C, L, SYM });
+    /* 이웃 칸(상하좌우) — 얼음 맞기 판정 */
+    const NB = []; for(let i = 0; i < C; i++){ const r = Math.floor(i / N), c = i % N, a = []; if(r) a.push(i - N); if(r < N - 1) a.push(i + N); if(c) a.push(i - 1); if(c < N - 1) a.push(i + 1); NB.push(a); }
+    return (GEO[N] = { N, C, L, SYM, NB });
   }
   const LINES = geo(4).L;
   const DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];
   const log2 = v => Math.round(Math.log2(v));
   const eul = v => '을을를을를를을을을를'[v % 10] === '를' ? v + '를' : v + '을';   /* 숫자 뒤 조사: 2 이→를, 8 팔→을 */
   const sizeOf = v => v.length === 9 ? 3 : 4;
+  const clamp01 = x => Math.max(0, Math.min(1, x));
+  /* 얼음 타일(D): 움직이지 않고 벽처럼 줄을 끊는다. 바로 옆(상하좌우) 칸에서 합치기가 일어나면 한 번 맞음(금), 두 번이면 깨져 보통 타일이 된다 */
+  const ICE_HP = 2;
+  const isIce = x => x < -1 && ((-x) & 1) === 1, mkIce = (val, h) => -(val * 16 + h * 2 + 1), iceVal = x => (-x) >> 4, iceHp = x => ((-x) >> 1) & 7;
 
   /* ---------- 숫자만 다루는 엔진(자동 플레이어·막힘 판정·시뮬레이션용) ----------
-     돌과 자물쇠 타일은 벽처럼 줄을 끊는다. 자물쇠 타일 쪽으로 미끄러져 온 첫 타일이 같은 숫자면
-     둘이 합쳐지며 자물쇠가 풀린다(합친 타일은 자물쇠 자리에 남고, 그 판에는 더 합쳐지지 않음). */
-  function slideV(v, d, N = sizeOf(v)){
+     돌·자물쇠·얼음 타일은 벽처럼 줄을 끊는다. 자물쇠 타일 쪽으로 미끄러져 온 첫 타일이 같은 숫자면
+     둘이 합쳐지며 자물쇠가 풀린다(합친 타일은 자물쇠 자리에 남고, 그 판에는 더 합쳐지지 않음).
+     cells를 주면 합쳐진 타일이 놓인 칸을 담는다(얼음 맞기 판정용). */
+  function slideV(v, d, N = sizeOf(v), cells = null){
     const o = v.slice(), buf = []; let moved = false, pts = 0, mc = 0;
     for(const line of geo(N).L[d]){
-      let a = 0;   /* 벽(돌·자물쇠) 사이 구간 line[a..b-1]을 앞쪽(line[a])으로 민다 */
+      let a = 0;   /* 벽(돌·자물쇠·얼음) 사이 구간 line[a..b-1]을 앞쪽(line[a])으로 민다 */
       for(let b = 0; b <= N; b++){
         if(b < N && v[line[b]] >= 0) continue;
         if(b > a){
           buf.length = 0; for(let j = a; j < b; j++){ const x = o[line[j]]; if(x > 0) buf.push(x); }
           let s = 0, w = a;
-          if(a > 0){ const f = line[a - 1]; if(o[f] < -1 && buf.length && buf[0] === -o[f]){ o[f] = buf[0] * 2; pts += o[f]; mc++; moved = true; s = 1; } }
+          if(a > 0){ const f = line[a - 1]; if(o[f] < -1 && buf.length && buf[0] === -o[f]){ o[f] = buf[0] * 2; pts += o[f]; mc++; moved = true; s = 1; if(cells) cells.push(f); } }
           for(let i = s; i < buf.length; i++){
-            let nv = buf[i];
-            if(i + 1 < buf.length && buf[i] === buf[i + 1]){ nv *= 2; pts += nv; mc++; i++; }
-            const ci = line[w++]; if(o[ci] !== nv){ moved = true; o[ci] = nv; }
+            let nv = buf[i], mg = false;
+            if(i + 1 < buf.length && buf[i] === buf[i + 1]){ nv *= 2; pts += nv; mc++; i++; mg = true; }
+            const ci = line[w++]; if(o[ci] !== nv){ moved = true; o[ci] = nv; } if(mg && cells) cells.push(ci);
           }
           for(; w < b; w++){ const ci = line[w]; if(o[ci] !== 0){ moved = true; o[ci] = 0; } }
         }
@@ -65,8 +77,30 @@ NG.merge = (() => {
     }
     return { v:o, moved, pts, mc };
   }
+  /* 합친 칸 옆의 얼음을 한 번씩 때린다(한 번 밀 때 얼음 하나는 최대 1번). 깨진 수를 돌려줌 */
+  function hitIce(v, cells, N = sizeOf(v)){
+    if(!cells.length) return 0; const NB = geo(N).NB; let br = 0;
+    for(let i = 0; i < v.length; i++){
+      const x = v[i]; if(!isIce(x) || !NB[i].some(j => cells.includes(j))) continue;
+      const h = iceHp(x) - 1; if(h <= 0){ v[i] = iceVal(x); br++; } else v[i] = mkIce(iceVal(x), h);
+    }
+    return br;
+  }
+  /* 한 번 밀기 = 미끄러짐 + 얼음 맞기 */
+  function stepV(v, d, N = sizeOf(v)){ const cells = []; const r = slideV(v, d, N, cells); if(r.moved) hitIce(r.v, cells, N); r.cells = cells; return r; }
+  /* 목표를 모두 채웠나(A·B 목표 숫자 개수, D 얼음 없음, E 별 칸, G 점수) */
+  function goalV(c, v, pts, stars){
+    if(c.target){ let n = 0; for(const x of v) if(x >= c.target) n++; if(n < (c.cnt || 1)) return false; }
+    if(c.ice && v.some(isIce)) return false;
+    if(c.star && stars) for(const i of stars) if(!(v[i] >= c.starV)) return false;
+    if(c.pts && pts < c.pts) return false;
+    return true;
+  }
   /* 움직일 수 있는 방향이 하나라도 있나(ban = 막힌 방향, -1 없음) */
   function canMoveV(v, ban = -1){ const N = sizeOf(v); for(let d = 0; d < 4; d++) if(d !== ban && slideV(v, d, N).moved) return true; return false; }
+  /* 자동 플레이어가 지금 판의 목표를 알게 하는 값(얼음·별 칸 가중) — simGame·화면 자동 풀기가 잠깐 켠다 */
+  let GX = null;
+  const goalCtx = (c, stars) => ({ c, stars:stars || [], ice:!!c.ice, starV:c.starV || 0 });
   const IDX = [], VAL = [];
   function evalV(v){
     const N = sizeOf(v), C = N * N, SYM = geo(N).SYM; let best = -Infinity, empty = 0, rough = 0, n = 0;
@@ -81,7 +115,12 @@ NG.merge = (() => {
     }
     for(let k = 0; k < 8; k++){ const w = SYM[k]; let s = 0; for(let j = 0; j < n; j++) s += VAL[j] * w[IDX[j]]; if(s > best) best = s; }
     if(!n) best = 0;
-    return best + empty * 120 * (1 + empty * .15) - rough * 30;
+    let e = best + empty * 120 * (1 + empty * .15) - rough * 30;
+    if(GX){
+      if(GX.ice) for(let i = 0; i < C; i++) if(isIce(v[i])) e -= 2500 * iceHp(v[i]);
+      for(const i of GX.stars){ const x = v[i]; if(x > 0) e += x >= GX.starV ? 9000 : 700 * (31 - Math.clz32(x)); }
+    }
+    return e;
   }
   const BR_FULL = [[2, .9], [4, .1]], BR_TWO = [[2, 1]];   /* two = 빠른 근사(새 타일을 2로만 가정) */
   function chanceV(v, depth, ban = -1, two = false){
@@ -101,22 +140,28 @@ NG.merge = (() => {
     }
     return s / em.length;
   }
-  /* 방향별 점수(움직일 수 없는 방향은 빠짐), 높은 순 */
-  function rankMoves(v, depth = 0, ban = -1, two = false){
+  /* 방향별 점수(움직일 수 없는 방향은 빠짐), 높은 순. 첫 수는 얼음 맞기까지 반영하고, 목표를 채우는 수는 맨 앞 */
+  function rankMoves(v, depth = 0, ban = -1, two = false, pts = 0){
     const N = sizeOf(v), out = [];
-    for(let d = 0; d < 4; d++){ if(d === ban) continue; const r = slideV(v, d, N); if(r.moved) out.push({ d, s:chanceV(r.v, depth, ban, two) }); }
+    for(let d = 0; d < 4; d++){
+      if(d === ban) continue; const r = GX ? stepV(v, d, N) : slideV(v, d, N); if(!r.moved) continue;
+      if(GX && goalV(GX.c, r.v, pts + r.pts, GX.stars)){ out.push({ d, s:1e12 }); continue; }
+      out.push({ d, s:chanceV(r.v, depth, ban, two) });
+    }
     return out.sort((a, b) => b.s - a.s);
   }
   /* 가장 좋은 방향(없으면 -1). depth 0 = 한 수 + 평균, 1 = 두 수 */
-  function aiMove(v, depth = 0, greedy = false, ban = -1){
+  function aiMove(v, depth = 0, greedy = false, ban = -1, pts = 0){
     if(greedy){ for(const d of [2, 3, 1, 0]) if(d !== ban && slideV(v, d).moved) return d; return -1; }
-    const r = rankMoves(v, depth, ban); return r.length ? r[0].d : -1;
+    const r = rankMoves(v, depth, ban, false, pts); return r.length ? r[0].d : -1;
   }
 
-  /* ---------- 새 판 만들기(화면·시뮬레이션 공용, 같은 난수면 같은 판) ---------- */
+  /* ---------- 새 판 만들기(화면·시뮬레이션 공용, 같은 난수면 같은 판) ----------
+     rng를 꺼내는 순서: 돌 → 자물쇠 → 얼음 → 처음 놓인 타일(pre) → 별 칸 → 첫 타일 2개. 없는 것은 rng를 쓰지 않는다(예전 판과 같은 수열) */
   /* 돌 자리: 구석이 아닌 테두리 칸. 두 개면 한 구석을 막아 가두지 않게 */
   const EDGE = { 4:[1, 2, 4, 7, 8, 11, 13, 14], 3:[1, 3, 5, 7] };
   const CORNER_PAIRS = { 4:['1,4', '2,7', '8,13', '11,14'], 3:['1,3', '1,5', '3,7', '5,7'] };
+  const ICE_VALS = [2, 4, 8];
   function spawnV(v, pair, p4){
     const em = []; for(let i = 0; i < v.length; i++) if(v[i] === 0) em.push(i);
     if(!em.length) return -1;
@@ -133,15 +178,17 @@ NG.merge = (() => {
       }
       for(const c of got) v[c] = ST;
     }
-    /* 자물쇠 타일: 구석이 아닌 빈칸에 */
-    const corners = [0, N - 1, C - N, C - 1];
-    for(const val of cfg.locks || []){
-      const em = []; for(let i = 0; i < C; i++) if(v[i] === 0 && !corners.includes(i)) em.push(i);
-      if(!em.length) break;
-      v[em[Math.floor(rng() * em.length)]] = -val;
-    }
+    /* 자물쇠·얼음 타일: 구석이 아닌 빈칸에 */
+    const corners = [0, N - 1, C - N, C - 1], inner = () => { const em = []; for(let i = 0; i < C; i++) if(v[i] === 0 && !corners.includes(i)) em.push(i); return em; };
+    for(const val of cfg.locks || []){ const em = inner(); if(!em.length) break; v[em[Math.floor(rng() * em.length)]] = -val; }
+    for(let k = 0; k < (cfg.ice || 0); k++){ const em = inner(); if(!em.length) break; const c = em[Math.floor(rng() * em.length)]; v[c] = mkIce(ICE_VALS[Math.floor(rng() * ICE_VALS.length)], ICE_HP); }
+    /* 처음부터 놓인 타일(짧은 퍼즐·오늘의 문제) */
+    for(const val of cfg.pre || []){ const em = []; for(let i = 0; i < C; i++) if(v[i] === 0) em.push(i); if(!em.length) break; v[em[Math.floor(rng() * em.length)]] = val; }
+    /* 별 칸(E): 구석이 아니고 벽이 아닌 칸(타일이 있어도 됨) */
+    const stars = [];
+    for(let k = 0; k < (cfg.star || 0); k++){ const em = []; for(let i = 0; i < C; i++) if(v[i] >= 0 && !corners.includes(i) && !stars.includes(i)) em.push(i); if(!em.length) break; stars.push(em[Math.floor(rng() * em.length)]); }
     for(let k = 0; k < 2; k++) spawnV(v, [rng(), rng()], .1);
-    return v;
+    return { v, stars };
   }
   /* 한 수에 나오는 새 타일 수 — '쌍둥이 타일' 변주면 4번째 밀기마다 2개 */
   const spawnCount = (cfg, moves) => cfg.extra && moves % 4 === 0 ? 2 : 1;
@@ -150,32 +197,63 @@ NG.merge = (() => {
   const banOf = (cfg, moves) => cfg.rot ? Math.floor(moves / ROT_EVERY) % 4 : -1;
   const bestV = v => v.reduce((m, x) => x > m ? x : m, 0);
 
-  /* 사람 같은 자동 플레이어로 한 판(되돌리기 1번 포함) — 난이도 맞추기용. 규칙은 화면의 doMove와 같다.
-     bot: { depth, eps } — eps 확률로 가장 좋은 수 대신 두 번째(가끔 그 밖의) 수를 둔다 */
-  function simGame(cfg, rng, bot = {}){
-    const depth = bot.depth == null ? 1 : bot.depth, two = bot.two !== false, eps = bot.eps == null ? .2 : bot.eps, br = bot.rng || rng;
-    let v = initV(cfg, rng); const seq = [], p4 = cfg.p4 || .1, lim = cfg.mv || 0;
-    const pairAt = k => { while(seq.length <= k) seq.push(cfg.extra ? [rng(), rng(), rng(), rng()] : [rng(), rng()]); return seq[k]; };
-    let moves = 0, undo = cfg.noUndo ? 0 : 1, snap = null, avoid = -1, lastD = -1;
-    for(let guard = 0; guard < 6000; guard++){
-      let r = rankMoves(v, depth, banOf(cfg, moves), two); if(avoid >= 0) r = r.filter(x => x.d !== avoid);
-      if(!r.length){
-        if(undo && snap){ undo = 0; v = snap.v; moves = snap.moves; avoid = lastD; snap = null; continue; }
-        return { win:false, moves, best:bestV(v), why:'stuck' };
-      }
-      let pick = r[0];
-      if(r.length > 1 && br() < eps) pick = r.length > 2 && br() < .3 ? r[2 + Math.floor(br() * (r.length - 2))] : r[1];
-      snap = { v, moves }; lastD = pick.d; avoid = -1;
-      const nv = slideV(v, pick.d).v; moves++;
-      if(bestV(nv) >= cfg.target) return { win:true, moves, best:bestV(nv) };
-      const pr = pairAt(moves - 1); spawnV(nv, pr, p4); if(spawnCount(cfg, moves) > 1) spawnV(nv, [pr[2], pr[3]], p4);
-      v = nv;
-      if(lim && moves >= lim){
-        if(undo){ undo = 0; v = snap.v; moves = snap.moves; avoid = lastD; snap = null; continue; }
-        return { win:false, moves, best:bestV(v), why:'moves' };
-      }
+  /* 점수: 이동 제한 판은 "남긴 이동"이 효율 = (제한 − 이동) ÷ (제한 − par×0.8)(무작위로 겨우 깨면 400점 아래), 그 밖은 기준 이동(par) 대비 */
+  function scoreOf(c, moves, undoUsed){
+    const par = c.par || parOf(c.target || 128);
+    if(c.mv){
+      const good = Math.min(c.mv - 1, Math.round(par * .8)), eff = clamp01((c.mv - moves) / Math.max(1, c.mv - good));
+      return { base:200, time:Math.round(700 * eff), extra:undoUsed ? 0 : Math.round(100 * eff) };   /* 되돌리기 안 쓴 보너스도 효율만큼 */
     }
-    return { win:false, moves, best:bestV(v), why:'guard' };
+    return { base:500, time:Math.round(350 * clamp01((1.6 * par - moves) / (0.8 * par))), extra:undoUsed ? 0 : 150 };
+  }
+  const scoreSum = s => s.base + s.time + s.extra;
+
+  /* 사람 같은 자동 플레이어로 한 판(되돌리기 1번 포함) — 난이도 맞추기용. 규칙은 화면의 doMove와 같다.
+     bot: { depth, eps, two, rng } — eps 확률로 가장 좋은 수 대신 두 번째(가끔 그 밖의) 수를 둔다
+     bot.kind: 'greedy'(가장 큰 합치기) · 'lr'(←→ 번갈아) · 'ud'(↑↓) · 'cw'(시계 방향) · 'any'(아무거나) — 되돌리기 없이 */
+  function simGame(cfg, rng, bot = {}){
+    const depth = bot.depth == null ? 1 : bot.depth, two = bot.two !== false, eps = bot.eps == null ? .2 : bot.eps, br = bot.rng || rng, kind = bot.kind || 'ai';
+    const B = initV(cfg, rng), stars = B.stars, N = cfg.N || 4; let v = B.v;
+    const seq = [], p4 = cfg.p4 != null ? cfg.p4 : .1, lim = cfg.mv || 0;
+    const pairAt = k => { while(seq.length <= k) seq.push(cfg.extra ? [rng(), rng(), rng(), rng()] : [rng(), rng()]); return seq[k]; };
+    let moves = 0, pts = 0, undo = cfg.noUndo || kind !== 'ai' ? 0 : 1, used = false, snap = null, avoid = -1, lastD = -1, tries = 0;
+    const gx0 = GX; GX = goalCtx(cfg, stars);
+    const end = (win, why) => { const o = { win, moves, best:bestV(v), pts, why, undo:used }; if(win) o.score = scoreSum(scoreOf(cfg, moves, used)); return o; };
+    try{
+      for(let guard = 0; guard < 6000; guard++){
+        const ban = banOf(cfg, moves); let d;
+        if(kind === 'ai'){
+          let r = rankMoves(v, depth, ban, two, pts); if(avoid >= 0) r = r.filter(x => x.d !== avoid);
+          if(!r.length){
+            if(undo && snap){ undo = 0; used = true; v = snap.v; moves = snap.moves; pts = snap.pts; avoid = lastD; snap = null; continue; }
+            return end(false, 'stuck');
+          }
+          let pick = r[0];
+          if(r.length > 1 && br() < eps) pick = r.length > 2 && br() < .3 ? r[2 + Math.floor(br() * (r.length - 2))] : r[1];
+          d = pick.d;
+        } else {
+          if(!canMoveV(v, ban)) return end(false, 'stuck');
+          if(++tries > 3000) return end(false, 'guard');
+          if(kind === 'greedy'){ let bp = -1; for(const k of [2, 3, 1, 0]){ if(k === ban) continue; const r = slideV(v, k, N); if(r.moved && r.pts > bp){ bp = r.pts; d = k; } } }
+          else if(kind === 'lr') d = tries % 2 ? 3 : 1;
+          else if(kind === 'ud') d = tries % 2 ? 0 : 2;
+          else if(kind === 'cw') d = tries % 4;
+          else d = Math.floor(br() * 4);
+          if(d === ban) continue;
+        }
+        const r = stepV(v, d, N); if(!r.moved) continue;
+        snap = { v, moves, pts }; lastD = d; avoid = -1;
+        const nv = r.v; moves++; pts += r.pts;
+        if(goalV(cfg, nv, pts, stars)){ v = nv; return end(true); }
+        const pr = pairAt(moves - 1); spawnV(nv, pr, p4); if(spawnCount(cfg, moves) > 1) spawnV(nv, [pr[2], pr[3]], p4);
+        v = nv;
+        if(lim && moves >= lim){
+          if(undo){ undo = 0; used = true; v = snap.v; moves = snap.moves; pts = snap.pts; avoid = lastD; snap = null; continue; }
+          return end(false, 'moves');
+        }
+      }
+      return end(false, 'guard');
+    } finally { GX = gx0; }
   }
 
   /* ---------- 화면용 타일 판: 새 타일은 n번째 이동 뒤 seq[n]에서 꺼낸다(되돌리기로 다른 수를 뽑을 수 없게) ---------- */
@@ -186,9 +264,9 @@ NG.merge = (() => {
     const cell = em[Math.min(em.length - 1, Math.floor(pair[0] * em.length))], v = pair[1] < M.p4 ? 4 : 2;
     const t = { id:++M.nid, v }; grid[cell] = t; return { cell, t };
   }
-  const valsOf = g => g.map(x => x === ST ? ST : x ? (x.lk ? -x.v : x.v) : 0);
-  const bestOf = g => g.reduce((m, x) => x && x !== ST && !x.lk && x.v > m ? x.v : m, 0);
-  const isWall = x => x === ST || !!(x && x.lk);
+  const valsOf = g => g.map(x => x === ST ? ST : x ? (x.lk ? -x.v : x.ice ? mkIce(x.v, x.ice) : x.v) : 0);
+  const bestOf = g => g.reduce((m, x) => x && x !== ST && !x.lk && !x.ice && x.v > m ? x.v : m, 0);
+  const isWall = x => x === ST || !!(x && (x.lk || x.ice));
 
   /* 타일 객체 판에서 밀기: 합치기 목록과 이동 정보를 함께 돌려준다(규칙은 slideV와 같음) */
   function slideT(g, d){
@@ -216,42 +294,97 @@ NG.merge = (() => {
       run();
     }
     for(const m of merges) m.cell = o.findIndex(x => x && x !== ST && x.id === m.keep);
-    return { g:o, moved, pts, merges };
+    /* 얼음 맞기(slideV + hitIce와 같은 규칙): 타일 객체는 새로 만들어 되돌리기 사진을 건드리지 않는다 */
+    const hits = [];
+    if(moved && merges.length){
+      const NB = geo(sizeOf(g)).NB, cells = merges.map(m => m.cell);
+      o.forEach((t, i) => { if(!t || t === ST || !t.ice || !NB[i].some(j => cells.includes(j))) return;
+        const h = t.ice - 1; o[i] = h > 0 ? { id:t.id, v:t.v, ice:h } : { id:t.id, v:t.v }; hits.push({ cell:i, id:t.id, broke:h <= 0 }); });
+    }
+    return { g:o, moved, pts, merges, hits };
   }
 
-  /* ---------- 솔로 난이도 v2: 5판마다 새 개념(기획팀 2026-09-30) ----------
-     새 규칙: 11 돌 칸 · 21 이동 제한 · 31 자물쇠 타일 · 41 좁은 판(3×3). 변주: 6 번개 · 16 4가 우르르 · 26 맨손 · 36 쌍둥이 타일 · 46 막힌 길.
-     규칙 조합마다 '사다리'(쉬움 → 어려움 설정 목록)를 두고, 판마다 사다리의 한 칸을 고른다.
-     칸 고르기는 사람 같은 자동 플레이어(2수 탐색 + 20%는 두 번째로 좋은 수)로 첫 도전 성공률을 재서 맞췄다:
-     챕터 자리 k=1·6·9 약 90% · 보통 75~85% · k=5 약 60% · k=10 보스 약 40%(챕터마다 조금씩 낮아짐).
-     챕터 1(1~10)은 기본 익히기라 목표만 32→128로 키우고, 5·10판만 512로 어렵게. 자동 플레이어 = _core.simGame(판마다 40판으로 칸 찾기, 100판으로 검증).
-     사다리 칸: T 목표, s 돌 수, l 자물쇠 타일 값들, p4 새 타일이 4일 확률(숨은 손잡이, 기본 .1), mf 이동 제한 = 기준 이동 × mf */
-  const LAD = {
-    '':            [{ T:32 }, { T:64 }, { T:128 }, { T:256, p4:.01 }, { T:256 }, { T:256, p4:.3 }, { T:256, p4:.5 }, { T:512, p4:.01 }, { T:512 }, { T:512, p4:.5 }],
-    stone:         [{ T:64, s:1 }, { T:128, s:1 }, { T:128, s:2 }, { T:128, s:2, p4:.4 }, { T:256, s:1, p4:.01 }, { T:256, s:1 }, { T:256, s:1, p4:.4 }, { T:128, s:3 }, { T:128, s:3, p4:.4 }, { T:256, s:2, p4:.01 }, { T:256, s:2 }, { T:256, s:2, p4:.4 }],
-    moves:         [{ T:128, mf:1.8 }, { T:128, mf:1.5 }, { T:128, mf:1.35 }, { T:128, mf:1.25 }, { T:128, mf:1.15 }, { T:128, mf:1.08 }, { T:256, mf:1.1 }, { T:256, mf:1.05 }, { T:128, mf:1.0 }, { T:256, mf:1.0 }, { T:256, mf:.96 }],
-    lock:          [{ T:128, l:[32] }, { T:256, l:[64] }, { T:256, l:[64, 32] }, { T:256, l:[64, 64] }, { T:256, l:[128, 64] }, { T:256, l:[128, 64], p4:.4 }, { T:512, l:[128, 64] }, { T:512, l:[128] }, { T:512, l:[128, 128] }],
-    small:         [{ T:32 }, { T:64, p4:.01 }, { T:64 }, { T:64, p4:.5 }, { T:128, p4:.8 }, { T:128, p4:.6 }, { T:128, p4:.3 }, { T:128 }, { T:128, p4:.01 }],
-    'moves+stone': [{ T:128, s:1, mf:1.6 }, { T:128, s:1, mf:1.45 }, { T:128, s:1, mf:1.35 }, { T:128, s:1, mf:1.2 }, { T:128, s:1, mf:1.1 }, { T:128, s:2, mf:1.15 }, { T:128, s:2, mf:1.05 }, { T:128, s:2, mf:1.0 }, { T:128, s:2, mf:.95 }],
-    'lock+moves':  [{ T:256, l:[64], mf:1.75 }, { T:256, l:[64], mf:1.6 }, { T:256, l:[64], mf:1.48 }, { T:256, l:[64], mf:1.38 }, { T:256, l:[64], mf:1.3 }, { T:256, l:[64], mf:1.24 }, { T:256, l:[64], mf:1.17 }, { T:256, l:[64], mf:1.1 }, { T:256, l:[64], mf:1.02 }, { T:256, l:[64], mf:.95 }],
-    'moves+small': [{ T:64, mf:1.4 }, { T:64, mf:1.25 }, { T:64, mf:1.15 }, { T:64, mf:1.08 }, { T:64, mf:1.02 }, { T:64, mf:.96 }, { T:64, mf:.9 }, { T:64, mf:.85 }],
-    'lock+stone':  [{ T:128, s:1, l:[32] }, { T:128, s:1, l:[32, 32] }, { T:128, s:2, l:[32] }, { T:256, s:1, l:[64] }, { T:256, s:1, l:[64, 32] }, { T:256, s:1, l:[128, 64] }, { T:256, s:2, l:[64] }, { T:256, s:1, l:[64, 64] }, { T:256, s:2, l:[128, 64] }],
-    'lock+small':  [{ T:32, l:[8] }, { T:64, l:[8] }, { T:64, l:[16] }, { T:64, l:[8, 8] }, { T:64, l:[16, 16] }, { T:64, l:[32, 8] }, { T:128, l:[16] }, { T:128, l:[64, 16] }, { T:128, l:[32] }],
-    'small+stone': [{ T:32, s:1, p4:.01 }, { T:32, s:1 }, { T:32, s:1, p4:.4 }, { T:64, s:1, p4:.01 }, { T:64, s:1 }, { T:64, s:1, p4:.3 }]
-  };
-  const ladKey = mj => mj.slice().sort().join('+');
-  /* 판별 기준 이동 수(별·이동 제한 기준): 목표까지 쌓아야 할 합 ÷ 한 번에 새로 생기는 평균 값 */
-  function parFor(c){
-    const spv = (2 + 2 * c.p4) * (c.extra ? 1.25 : 1), lockSum = (c.locks || []).reduce((a, b) => a + b, 0);
-    return Math.max(6, Math.round((parOf(c.target) * 2.2 - lockSum * .6) / spv));
+  /* ---------- 목표 문장 ---------- */
+  /* 판 설정 → 목표 한 줄. short: "40번 안에 64 이상 2개", 아니면 "40번 안에 64 이상 타일을 2개 만들어요" */
+  function goalText(c, short){
+    if(short){
+      const b = []; if(c.target) b.push(c.cnt > 1 ? `${c.target} 이상 ${c.cnt}개` : String(c.target));
+      if(c.ice) b.push(`얼음 ${c.ice}개`); if(c.star) b.push(`별 칸 ${c.starV}↑${c.star > 1 ? ' ' + c.star + '곳' : ''}`); if(c.pts) b.push(`점수 ${fmt(c.pts)}`);
+      return (c.mv ? c.mv + '번 안에 ' : '') + b.join(' + ');
+    }
+    const acts = [];
+    if(c.ice) acts.push(`얼음 ${c.ice}개를 깨`);
+    if(c.star) acts.push(`별 칸${c.star > 1 ? ' ' + c.star + '곳' : ''}에 ${c.starV} 이상을 올려 두`);
+    if(c.pts) acts.push(`합친 점수 ${fmt(c.pts)}점을 넘기`);
+    if(c.target) acts.push(c.cnt > 1 ? `${c.target} 이상 타일을 ${c.cnt}개 만들` : `${eul(c.target)} 만들`);
+    const END = { '깨':'깨요', '두':'둬요', '기':'겨요', '들':'들어요' }, last = acts.pop() || '';
+    return (c.mv ? c.mv + '번 안에 ' : '') + acts.map(a => a + '고 ').join('') + last.slice(0, -1) + (END[last.slice(-1)] || last.slice(-1) + '요');
   }
-  /* 사다리 칸 + 계획(규칙·변주) → 판 설정 */
-  function buildCfg(p, b){
-    const tw = p.tw || null, mj = p.mj || [];
-    const c = { limit:0, target:b.T, N:mj.includes('small') ? 3 : 4, stones:b.s || 0, locks:(b.l || []).slice(), p4:tw === 'four' ? .45 : b.p4 != null ? b.p4 : .1,
-      extra:tw === 'extra', rot:tw === 'rot', noUndo:tw === 'bare', flash:tw === 'flash', mj:mj.slice(), tw, boss:!!p.boss, hard:!!p.hard, intro:p.intro || null, introKind:p.introKind || null };
-    c.par = parFor(c); c.mv = b.mf ? Math.ceil(c.par * b.mf) : 0;
-    return c;
+
+  /* ---------- 오늘의 문제 · 대전 (2026-10-07부터) ----------
+     쉬움 = B+C "40번 안에 64 이상 2개", 보통 = A+C+F "38번 안에 128, 다음 타일 2개 미리 보기", 어려움 = A+C+D "40번 안에 128 + 얼음 2개".
+     처음 놓인 타일(pre)이 있어야 이동 안에 만들 수 있다(새 타일만으로는 40번에 합 88 정도). 자리는 날짜 씨앗으로 매일 다름.
+     이동 수는 설계서 예시(50·60번)보다 짧다: 그만큼 주면 시계 방향으로 돌려 누르기만 해도 30~40%가 깨져서, 잘 두는 자동 플레이어 60~80% ·
+     무작위 4종 합계 3% 이하가 되는 자리로 맞췄다(30~60일 측정). par = 잘 두는 자동 플레이어(2수 탐색) 중앙값 = 점수의 효율 기준 */
+  const DAILY = {
+    easy:  { limit:0, target:64,  cnt:2, mv:40, pre:[16, 16, 16, 8, 4], par:37, goals:'BC' },
+    normal:{ limit:0, target:128, mv:38, peek:2, pre:[32, 32, 8, 4], par:33, goals:'ACF' },
+    hard:  { limit:0, target:128, mv:40, ice:2, pre:[32, 16, 8, 4], par:38, goals:'ACD' }
+  };
+  const OLD_LEVELS = { easy:{ limit:0, target:128, stones:0 }, normal:{ limit:0, target:256, stones:0 }, hard:{ limit:0, target:512, stones:0 } };
+  /* 대전: 같은 판·같은 새 타일 수열로 128 먼저(2분, 되돌리기 없음). 느긋하게는 4분 */
+  const DUEL = { limit:120, target:128, pre:[16, 16, 8, 8, 4], noUndo:true, duel:true, par:44, goals:'A' };
+  const dailyCfg = (lv, day) => (day || (typeof dayKey === 'function' ? dayKey() : NEW_FROM)) >= NEW_FROM ? DAILY[lv] || DAILY.normal : OLD_LEVELS[lv] || OLD_LEVELS.normal;
+
+  /* ---------- 솔로: 목표 종류 7가지로 짠 레벨(세대별 테스트 2026-10-06, 21번 문서 WP9) ----------
+     5판마다 새 개념(엔진 개념 사이클): 11 얼음 타일 · 21 별 칸 · 31 자물쇠 타일 · 41 좁은 판(3×3). 변주: 6 번개 · 16 4가 우르르 · 26 맨손 · 36 쌍둥이 타일 · 46 막힌 길.
+     챕터마다 목표 종류를 바꾼다: 1 = A·B(최대 64) · 2 = C·D(최대 128) · 3 = E·F · 4 = G + 섞기 · 5 = 모두 섞기(최대 256). 51부터 리믹스(씨앗으로 고름).
+     글자: A 숫자 만들기 · B 여러 개 · C 이동 제한 · D 얼음 깨기 · E 별 칸 배달 · F 미리 보기 퍼즐(처음 놓인 타일 + 다음 3개 보임 + 짧은 이동) · G 점수 목표(이동 제한 포함).
+     난이도 손잡이 x(0~35): 0 = 이동 제한 없음(C·F·G 판은 넉넉한 제한), 1~35 = 이동 제한 = par × (2.3 − (x−1)×0.045).
+     판마다 x는 사람 같은 자동 플레이어(2수 탐색 + 20% 두 번째 수 + 되돌리기 1번, 그 판 씨앗 그대로 40번)로 첫 도전 성공률 wantRate에 맞췄다(TUNE). */
+  const GOALS = {
+    1:['A', 'B', 'A', 'B', 'A', 'A', 'B', 'A', 'A', 'B'],
+    2:['D', 'DC', 'D', 'DC', 'DC', 'AC', 'D', 'DC', 'D', 'DC'],
+    3:['E', 'EF', 'E', 'ED', 'EF', 'F', 'E', 'EF', 'E', 'EDC'],
+    4:['A', 'G', 'G', 'EG', 'G', 'G', 'AC', 'G', 'A', 'EG'],
+    5:['A', 'B', 'C', 'G', 'DC', 'E', 'F', 'DC', 'A', 'BC']
+  };
+  const PRE_F = { '4:64':[16, 8, 8, 4, 2], '4:128':[32, 16, 16, 8, 4], '3:64':[16, 8, 4] };
+  function goalsOf(p){
+    if(p.c <= 5) return GOALS[p.c][p.k - 1];
+    const r = mulberry(seedFrom('mgoal:' + p.c + ':' + p.k)), hI = p.mj.includes('ice'), hS = p.mj.includes('star');
+    const pool = hI && hS ? ['DE', 'DEC'] : hI ? ['D', 'DC', 'AD', 'DG'] : hS ? ['E', 'EC', 'EG', 'EF'] : ['A', 'B', 'AC', 'BC', 'G', 'F'];
+    return pool[Math.floor(r() * pool.length)];
+  }
+  /* 기준 이동 어림값(TUNE에 잰 값이 없는 101판부터) */
+  function estPar(c){
+    const spv = (2 + 2 * c.p4) * (c.extra ? 1.25 : 1), pre = (c.pre || []).reduce((a, b) => a + b, 0), lk = (c.locks || []).reduce((a, b) => a + b, 0);
+    const sum = (c.target || 0) * (c.cnt || 1) + (c.star ? c.starV * c.star : 0) + (c.pts ? c.pts / 5 : 0);
+    return Math.max(6, Math.round((sum * 1.15 - pre - lk * .6) / spv + (c.ice || 0) * 4));
+  }
+  const round50 = x => Math.round(x / 50) * 50;
+  /* 스테이지 n + 손잡이 x + 기준 이동 par → 판 설정 */
+  function soloCfg(n, x = 0, par = 0){
+    const p = planOf('merge', n), c = p.c, k = p.k, L = goalsOf(p), has = ch => L.includes(ch), tw = p.tw || null, hardish = p.hard || p.boss;
+    const small = p.mj.includes('small'), lock = p.mj.includes('lock'), N = small ? 3 : 4;
+    const cfg = { limit:0, N, stones:c >= 3 && p.hard && !small ? 1 : 0, locks:lock ? (small ? [16] : p.boss ? [64, 32] : [32]) : [], p4:tw === 'four' ? .45 : .1,
+      extra:tw === 'extra', rot:tw === 'rot', noUndo:tw === 'bare', flash:tw === 'flash', tw, boss:!!p.boss, hard:!!p.hard, intro:p.intro || null, introKind:p.introKind || null,
+      goals:L, target:0, cnt:1, ice:0, star:0, starV:0, pts:0, peek:0, pre:[], mv:0 };
+    if(has('A') || (has('C') && !/[BDEFG]/.test(L))) cfg.target = small ? (hardish ? 128 : 64) : c === 1 ? (k === 1 ? 32 : 64) : c === 2 ? (hardish ? 128 : 64) : (hardish ? 256 : 128);
+    if(has('B')){ cfg.target = small || (c === 1 && k === 2) ? 32 : 64; cfg.cnt = p.boss && c > 1 && !small ? 3 : 2; }
+    if(has('F')){ cfg.target = small || c <= 3 ? 64 : 128; cfg.peek = 3; cfg.pre = PRE_F[N + ':' + cfg.target].slice(); }
+    if(has('D')) cfg.ice = small ? (p.boss ? 2 : 1) : k === 1 ? 2 : hardish ? 4 : 3;
+    if(has('E')){ cfg.star = p.boss && !small ? 2 : 1; cfg.starV = small || (c <= 3 && k === 1) ? 32 : 64; }
+    if(has('G')) cfg.pts = round50((small ? 300 : 500) * (hardish ? 1.4 : p.easy ? .8 : 1));
+    /* 자동 플레이어로 재 보니 이동을 아무리 줘도 거의 못 깨는 조합은 장애물을 덜어 준다: 막힌 길 + 별 칸·좁은 판 퍼즐, 돌 + 얼음 4개 */
+    if(cfg.rot && cfg.star){ cfg.star = 1; cfg.starV = 32; }
+    if(cfg.rot && cfg.peek && small){ cfg.target = 32; cfg.pre = [8, 8, 4]; }
+    if(cfg.stones && cfg.ice > 3) cfg.ice = 3;
+    cfg.par = par || estPar(cfg);
+    const mf = x > 0 ? 2.3 - (x - 1) * .045 : /[CFG]/.test(L) ? 2.4 : 0;
+    cfg.mv = mf ? Math.max(6, Math.ceil(cfg.par * mf)) : 0;
+    cfg.mj = [cfg.ice && 'ice', cfg.star && 'star', cfg.locks.length && 'lock', small && 'small', cfg.stones && 'stone'].filter(Boolean);
+    return cfg;
   }
   /* 판마다 원하는 첫 도전 성공률(%) — 로얄 매치식 톱니: 쉬움 90 · 보통 75~85 · 어려움 60 · 보스 40 */
   function wantRate(n){
@@ -260,17 +393,10 @@ NG.merge = (() => {
     const base = { 2:86, 3:83, 4:80, 5:60, 7:80, 8:77, 10:40 }[k], drop = k === 5 || k === 10 ? Math.min(4, (c - 1) * .8) : Math.min(6, (c - 1) * 1.2);
     return base - drop + (c === 1 ? 5 : 0);
   }
-  /* 판별 사다리 칸(스테이지 1~100, 자동 플레이어로 맞춘 값 · 36진수 한 글자) */
-  const TUNE = '0124824429133372241901314423150223521216113342011322423232151223402316143231322512333232251333600315';
-  /* 100판 뒤(리믹스 반복): 사다리 칸별 측정 성공률(변주 없음)로 원하는 성공률에 가장 가까운 칸. 변주는 그만큼 쉬운 칸으로 */
-  const RATE = { '':[100,100,100,90,90,93,82,57,45,30], 'stone':[100,98,87,83,78,68,65,55,50,40,40,33], 'moves':[100,83,85,75,60,55,53,40,25,33,10], 'lock':[100,95,82,77,68,53,35,30,23], 'small':[100,93,93,95,55,50,42,38,35], 'moves+stone':[93,83,73,60,55,48,30,12,5], 'lock+moves':[95,90,85,75,68,60,52,45,40,30], 'moves+small':[98,92,85,78,70,55,40,30], 'lock+stone':[92,80,75,65,47,37,35,28,18], 'lock+small':[98,85,85,70,60,50,42,30,20], 'small+stone':[97,100,95,57,57,53] };
-  const TW_EASE = { four:6, bare:4, extra:6, rot:20 };
-  function rungOf(n, p, key){
-    if(n <= TUNE.length) return parseInt(TUNE[n - 1], 36);
-    const lad = LAD[key] || LAD[''], rt = RATE[key], want = Math.min(97, wantRate(n) + (TW_EASE[p.tw] || 0));
-    if(!rt) return Math.round((lad.length - 1) * (1 - want / 100) * 1.4);
-    let bi = 0; rt.forEach((r, i) => { if(Math.abs(r - want) < Math.abs(rt[bi] - want)) bi = i; }); return bi;
-  }
+  /* 스테이지 1~100: 두 글자씩(36진수) = 손잡이 x · 기준 이동 par/4 */
+  const TUNE = '060a0a0hvb0a0hp90dsh03a4y5o3t5wbt4n405s30g8cji17sbm51azr0bqz0hufufegugtaoetc0l0n09t9t908y10az5y309090frkkfscu403tksdkdyw0gvahds7x80en6t808t50brdtevetha833120fvf06khq8r8s20482y1p4y20fhfvjxi0brd07mfcaq8';
+  const tuneOf = n => { if(n <= TUNE.length / 2){ const s = TUNE.substr((n - 1) * 2, 2); return { x:parseInt(s[0], 36), par:parseInt(s[1], 36) * 4 }; }
+    return { x:Math.max(0, Math.min(35, Math.round((96 - wantRate(n)) * .45))), par:0 }; };
   /* 별 기준 [★★★ 이하, ★★ 이하] */
   function starCut(c){
     const par = c.par || parOf(c.target); let t3 = par, t2 = par * 1.3;
@@ -290,18 +416,40 @@ NG.merge = (() => {
   const tcol = v => TCOL[v] || ['#FF3DA5', '#FFB2E0'];
 
   const ICON_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#1A0F45" stroke-width="3.2" stroke-linecap="round"/><path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#E8E2FF" stroke-width="1.6" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="11" rx="3" fill="#FFD84A" stroke="#1A0F45" stroke-width="2"/><circle cx="12" cy="15" r="1.7" fill="#1A0F45"/><path d="M12 15.5v2.5" stroke="#1A0F45" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  /* 얼음 덮개(디자인팀: 하늘 #BFE6FF 60% + 한 번 맞으면 금 1줄) */
+  const ICE_HTML = '<i class="mice" aria-hidden="true"><svg viewBox="0 0 40 40" preserveAspectRatio="none"><path class="gl" d="M6 12l7-6M8 20l12-12" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".85"/><path class="ck" d="M4 23l9-3 4 5 7-9 5 4 7-6" stroke="#2E6E9E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></i>';
+  const STAR_PATH = 'M12 2.6l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.9 6.2 20.1l1.4-6.4L2.7 9.3l6.5-.7z';
   const ARROW = ['↑', '→', '↓', '←'], DIRN = ['위', '오른쪽', '아래', '왼쪽'];
   const cOf = i => i % G.M.N, rOf = i => Math.floor(i / G.M.N);
   const nameOf = k => (conceptInfo('merge', k) || {}).name || k;
   const banNow = M => banOf(M.cfg, M.moves);
+  const iceLeft = M => M.grid.reduce((n, t) => n + (t && t !== ST && t.ice ? 1 : 0), 0);
+  const starOK = M => M.stars.filter(i => { const t = M.grid[i]; return t && t !== ST && !t.lk && !t.ice && t.v >= M.cfg.starV; }).length;
+  const cntOK = M => M.grid.reduce((n, t) => n + (t && t !== ST && !t.lk && !t.ice && t.v >= M.target ? 1 : 0), 0);
 
+  /* 위 칩 줄(UI팀: "목표 128" · "지금 32" · 이동). 판 종류에 따라 3~4칸 */
+  function chipDefs(M){
+    const c = M.cfg, a = [];
+    if(c.pts) a.push({ cls:'mgoal', em:'점수 목표', v:fmt(c.pts) }, { id:'mNowP', em:'지금 점수', v:'0' });
+    if(c.target) a.push({ cls:'mgoal', em:'목표', v:c.cnt > 1 ? `${c.target}<small>이상 ×${c.cnt}</small>` : String(c.target) }, { id:'mNow', em:c.cnt > 1 ? '만든 개수' : '지금', v:'' });
+    if(c.ice) a.push({ id:'mIce', cls:'mice-c', em:'얼음 깨기', v:'' });
+    if(c.star) a.push({ id:'mStar', cls:'mstar-c', em:`별 칸 ${c.starV}↑`, v:'' });
+    if(M.limit) a.push({ id:'mTime', cls:'time', em:'남은 시간', v:mmss(M.limit) });
+    a.push({ id:'mMoves', cls:M.mv ? 'lim' : '', em:M.mv ? '남은 이동' : '이동', v:String(M.mv || 0) });
+    return a;
+  }
+  const chipHTML = d => `<div class="hchip ${d.cls || ''}"${d.id ? ` data-k="${d.id}"` : ''}><span class="hv"><b${d.id ? ` id="${d.id}"` : ''}>${d.v}</b></span><em>${d.em}</em></div>`;
+  function peekVals(M){ const a = []; for(let j = 0; j < M.peek; j++) a.push(seqAt(M, M.moves + j)[1] < M.p4 ? 4 : 2); return a; }
   function hud(){
-    const M = G.M, s = (id, t) => { const e = document.getElementById(id); if(e) e.textContent = t; };
+    const M = G.M, s = (id, t) => { const e = document.getElementById(id); if(e) e.innerHTML = t; };
     if(M.mv){ const left = Math.max(0, M.mv - M.moves); s('mMoves', left); const e = document.getElementById('mMoves'); if(e) e.closest('.hchip').classList.toggle('warn', left <= Math.max(3, Math.round(M.mv * .12))); }
     else s('mMoves', M.moves);
-    s('mPts', fmt(M.pts));
-    const b = document.getElementById('mBest'); if(b && +b.dataset.v !== M.best){ b.dataset.v = M.best; b.innerHTML = tileHTML(M.best); }
-    const f = document.getElementById('mFill'); if(f) f.style.width = (NG.merge.progress() * 100).toFixed(1) + '%';
+    if(M.cfg.pts) s('mNowP', fmt(M.pts));
+    if(M.target) s('mNow', M.cfg.cnt > 1 ? `${Math.min(cntOK(M), M.cfg.cnt)}<small>/${M.cfg.cnt}</small>` : String(M.best || '-'));
+    if(M.cfg.ice) s('mIce', `${M.cfg.ice - iceLeft(M)}<small>/${M.cfg.ice}</small>`);
+    if(M.cfg.star){ const k = starOK(M); s('mStar', `${k}<small>/${M.stars.length}</small>`);
+      if(M.starEl) M.stars.forEach((ci, j) => { const t = M.grid[ci], ok = !!(t && t !== ST && !t.lk && !t.ice && t.v >= M.cfg.starV), b = M.starEl[j]; if(b && b.classList.contains('ok') !== ok){ b.classList.toggle('ok', ok); if(ok) try{ const p = cellXY(ci); fxRing(p.x, p.y, '#FFE38A', p.w * .9, .45, 7); sfx('mergeStar'); }catch(_){} } }); }
+    if(M.peek){ const e = document.getElementById('mPeek'); if(e) e.innerHTML = peekVals(M).map((v, j) => `<span class="mpk${j ? '' : ' first'}">${tileHTML(v)}</span>`).join(''); }
     const u = document.getElementById('mUndo');
     if(u){ u.disabled = M.noUndo || !M.snap || M.undoUsed || M.lock; u.querySelector('.cnt').textContent = M.noUndo || M.undoUsed ? '0' : '1'; }
     if(M.cfg.rot){
@@ -311,9 +459,10 @@ NG.merge = (() => {
     }
   }
   function mkTile(t, cell, cls){
-    const el = document.createElement('div'); el.className = 'mt' + (cls ? ' ' + cls : '') + (t.lk ? ' lk' : '');
-    el.style.setProperty('--c', cell % G.M.N); el.style.setProperty('--r', Math.floor(cell / G.M.N)); el.innerHTML = tileHTML(t.v) + (t.lk ? '<i class="mlk">' + ICON_LOCK + '</i>' : '');
-    if(t.lk) el.setAttribute('aria-label', '자물쇠 ' + t.v);
+    const el = document.createElement('div'); el.className = 'mt' + (cls ? ' ' + cls : '') + (t.lk ? ' lk' : '') + (t.ice ? ' ice' + (t.ice < ICE_HP ? ' crk' : '') : '');
+    el.style.setProperty('--c', cell % G.M.N); el.style.setProperty('--r', Math.floor(cell / G.M.N));
+    el.innerHTML = tileHTML(t.v) + (t.lk ? '<i class="mlk">' + ICON_LOCK + '</i>' : '') + (t.ice ? ICE_HTML : '');
+    if(t.lk) el.setAttribute('aria-label', '자물쇠 ' + t.v); else if(t.ice) el.setAttribute('aria-label', '얼음 속 ' + t.v);
     G.M.els.set(t.id, el); G.M.layer.appendChild(el); return el;
   }
   function drawAll(cls){
@@ -322,12 +471,6 @@ NG.merge = (() => {
       el.innerHTML = '<div class="mi"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 14l7 4 3 8M19 26l8-3 4 5M16 18l9-6" fill="none" stroke="#4E4670" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
       el.setAttribute('aria-label', '돌 칸'); M.layer.appendChild(el); }
       else if(t) mkTile(t, i, cls); });
-  }
-  /* 화면 아래까지 채운다: 되돌리기·안내 줄은 엄지가 닿는 아래쪽(문서 위치는 transform에 흔들리지 않게 offsetTop으로) */
-  function fillH(){
-    const M = G && G.M; if(!M || !M.wrap) return;
-    let t = 0; for(let e = M.wrap; e; e = e.offsetParent) t += e.offsetTop;
-    M.wrap.style.minHeight = Math.max(0, Math.min(innerHeight, Math.floor(innerHeight - t - 10))) + 'px';
   }
   function measure(){
     const M = G && G.M; if(!M || !M.board) return;
@@ -346,9 +489,10 @@ NG.merge = (() => {
     return { x:r.left + cOf(cell) * (ts + M.gapPx) + ts / 2, y:r.top + rOf(cell) * (ts + M.gapPx) + ts / 2, w:ts };
   }
   function bump(d){
-    const M = G.M, [dx, dy] = DV[d]; sfx('mergeBump');
+    const M = G.M, [dx, dy] = DV[d]; sfx('mergeBump'); M.mis++;
     if(M.board.animate && !FXR.reduce) M.board.animate([{ transform:'translate(0,0)' }, { transform:`translate(${dx * 5}px,${dy * 5}px)` }, { transform:'translate(0,0)' }], { duration:160, easing:'ease-out' });
   }
+  const goalNow = M => goalV(M.cfg, valsOf(M.grid), M.pts, M.stars);
 
   function doMove(d){
     const M = G && G.M;
@@ -364,7 +508,7 @@ NG.merge = (() => {
     M.snap = { grid:M.grid.slice(), moves:M.moves, pts:M.pts, best:M.best, merges:M.mergeN };
     M.grid = res.g; M.moves++; M.pts += res.pts; M.mergeN += res.merges.length;
     M.best = Math.max(M.best, bestOf(M.grid));
-    const won = M.best >= M.target, sps = [];
+    const won = goalNow(M), sps = [];
     if(!won){ const pr = seqAt(M, M.moves - 1); sps.push(spawnInto(M, M.grid, pr)); if(spawnCount(M.cfg, M.moves) > 1) sps.push(spawnInto(M, M.grid, [pr[2], pr[3]])); }
     /* 1) 미끄러짐: 모든 타일의 칸 좌표만 바꾸면 CSS transform이 움직인다 */
     const gone = new Map(res.merges.map(m => [m.gone, m.cell]));
@@ -375,19 +519,31 @@ NG.merge = (() => {
     const top = res.merges.reduce((m, x) => x.v > m ? x.v : m, 0), unl = res.merges.filter(m => m.unlock);
     if(top){ sfx('mergeHit', { v:top, n:res.merges.length }); fxBuzz(top >= 256 ? [20, 30, 30] : 12); } else sfx('mergeSlide');
     if(unl.length) sfx('mergeUnlock');
+    if(res.hits.length) sfx('mergeIce', { broke:res.hits.some(h => h.broke) });
     M.pend = () => {
       for(const id of gone.keys()){ const el = M.els.get(id); if(el) el.remove(); M.els.delete(id); }
       for(const m of res.merges){ const el = M.els.get(m.keep); if(!el) continue; el.innerHTML = tileHTML(m.v); el.classList.remove('pop', 'lk'); el.removeAttribute('aria-label'); void el.offsetWidth; el.classList.add('pop'); }
       for(const el of M.layer.querySelectorAll('.mt.new')) el.classList.remove('new', 'twin');
+      try{ iceFx(res.hits); }catch(_){}
       mergeFx(res);
       for(const m of unl){ const p = cellXY(m.cell); fxBurst(p.x, p.y, ['#FFD84A', '#FFF3A8', '#FFFFFF'], 14, { speed:240, size:4.5, kinds:['spark', 'dot'], up:40, dur:.6 }); fxFloat(p.x, p.y + p.w * .1, '자물쇠 풀림!', 'mgf unl'); }
     };
     M.pendT = setTimeout(() => { if(M.pend){ const f = M.pend; M.pend = null; f(); } }, SLIDE_MS);
     hud();
     if(won) celebrate();
-    else if(M.mv && M.moves >= M.mv) stuck(true);
-    else if(!canMoveV(valsOf(M.grid), M.cfg.rot ? banNow(M) : -1)) stuck(false);
+    else if(M.mv && M.moves >= M.mv) stuck('moves');
+    else if(!canMoveV(valsOf(M.grid), M.cfg.rot ? banNow(M) : -1)) stuck('stuck');
     return true;
+  }
+  /* 얼음: 금 가기(한 번) · 깨짐(두 번). 보이기만 함 */
+  function iceFx(hits){
+    const M = G.M;
+    for(const h of hits){
+      const el = M.els.get(h.id); if(!el) continue; const p = cellXY(h.cell);
+      if(h.broke){ el.classList.remove('ice', 'crk'); const ic = el.querySelector('.mice'); if(ic) ic.remove(); el.removeAttribute('aria-label');
+        fxBurst(p.x, p.y, ['#BFE6FF', '#FFFFFF', '#8FD0F5'], 16, { speed:260, size:5, kinds:['shard', 'spark', 'dot'], up:50, glow:true, dur:.7 }); fxFloat(p.x, p.y - p.w * .2, '얼음 깨짐!', 'mgf ice'); }
+      else { el.classList.add('crk'); fxBurst(p.x, p.y, ['#BFE6FF', '#FFFFFF'], 7, { speed:150, size:3.5, kinds:['shard', 'dot'], up:20, dur:.45 }); }
+    }
   }
   function mergeFx(res){
     const M = G.M; if(!res.merges.length || !M.layer.isConnected) return;
@@ -398,9 +554,14 @@ NG.merge = (() => {
     const p = cellXY(big.cell);
     if(M.lastF) M.lastF.remove();   /* 빠르게 밀어도 '+N'이 쌓이지 않게 하나만 */
     M.lastF = fxFloat(p.x, p.y - p.w * .35, '+' + fmt(res.pts), 'mgf' + (big.v >= 128 ? ' hi' : ''));
-    if(big.v >= 256){ fxShake(M.board, big.v >= 512 ? 7 : 5); sfx('mergeBig', { v:big.v });
-      /* 이펙트 v2: 큰 수가 생기면 빛 알갱이가 그 칸으로 빨려 들어간 뒤 번쩍 */
-      try{ const q = cellXY(big.cell); if(q && typeof fxEmit === 'function'){ fxEmit(q.x, q.y, { quantity:18, x:{ min:-q.w * 1.6, max:q.w * 1.6 }, y:{ min:-q.w * 1.6, max:q.w * 1.6 }, speed:{ min:0, max:20 }, lifespan:{ min:420, max:560 }, kind:'glow', tint:['#FFE27A', '#FFFFFF'], scale:{ start:2.6, end:.6 }, alpha:{ start:1, end:0 }, well:{ x:q.x, y:q.y, power:big.v >= 512 ? 2.2 : 1.5 } }); if(big.v >= 512) setTimeout(() => fxFlash('#FFE9A8', .2, 280), 380); } }catch(_){} }
+    /* 64 이상을 처음 만들면: 그 타일이 커졌다 돌아오고 빛 알갱이가 빨려 들어감(크기는 숫자에 비례). 512 이상은 번쩍 */
+    if(big.v >= 64 && !M.seen.has(big.v)){
+      M.seen.add(big.v); const k = log2(big.v) - 5;   /* 64 → 1, 128 → 2 … */
+      try{ const el = M.els.get(big.keep); if(el && el.animate && !FXR.reduce){ el.style.zIndex = 5; el.animate([{ scale:'1' }, { scale:String(1.25 + k * .07), offset:.35 }, { scale:'1' }], { duration:520, easing:'cubic-bezier(.2,1.5,.4,1)' }).onfinish = () => { el.style.zIndex = ''; }; } }catch(_){}
+      try{ const q = cellXY(big.cell); if(q && typeof fxEmit === 'function') fxEmit(q.x, q.y, { quantity:8 + k * 5, x:{ min:-q.w * (1 + k * .25), max:q.w * (1 + k * .25) }, y:{ min:-q.w * (1 + k * .25), max:q.w * (1 + k * .25) }, speed:{ min:0, max:20 }, lifespan:{ min:420, max:560 }, kind:'glow', tint:['#FFE27A', '#FFFFFF', tcol(big.v)[1]], scale:{ start:1.8 + k * .3, end:.6 }, alpha:{ start:1, end:0 }, well:{ x:q.x, y:q.y, power:1.1 + k * .25 } }); }catch(_){}
+      if(big.v >= 128){ fxShake(M.board, Math.min(7, 3 + k)); sfx('mergeBig', { v:big.v }); }
+      if(big.v >= 512) setTimeout(() => { try{ fxFlash('#FFE9A8', .2, 280); }catch(_){} }, 380);
+    }
     if(res.merges.length >= 2) combo(res.merges.length);
   }
   function combo(n){
@@ -414,24 +575,26 @@ NG.merge = (() => {
     const M = G.M; M.lock = true; hud();
     later(() => {
       flush();
-      let ti = -1; M.grid.forEach((x, i) => { if(x && x !== ST && !x.lk && (ti < 0 || x.v > M.grid[ti].v)) ti = i; });
+      let ti = -1; M.grid.forEach((x, i) => { if(x && x !== ST && !x.lk && !x.ice && (ti < 0 || x.v > M.grid[ti].v)) ti = i; });
       const el = ti >= 0 && M.els.get(M.grid[ti].id);
       if(el){ el.classList.add('win'); fxPop(el, 'gold'); }
-      const b = document.createElement('div'); b.className = 'mbanner win' + (ti >= M.N * M.N / 2 ? ' up' : ''); b.innerHTML = `<b>목표 ${M.target} 완성!</b><span>${M.mv ? (M.mv - M.moves) + '번 남기고' : M.moves + '번 만에'} 해냈어요</span>`;
+      const b = document.createElement('div'); b.className = 'mbanner win' + (ti >= M.N * M.N / 2 ? ' up' : ''); b.innerHTML = `<b>목표 완성!</b><span>${M.mv ? (M.mv - M.moves) + '번 남기고' : M.moves + '번 만에'} 해냈어요</span>`;
       M.bwrap.appendChild(b);
       fxConfetti(); sfx('win', { g:'merge' }); fxBuzz([30, 60, 30, 60, 80]);
     }, SLIDE_MS + 40);
     later(() => { if(G && G.M === M) finish(true); }, 1500);
   }
-  /* 막힘(out = 이동 제한을 다 씀) */
-  function stuck(out){
-    const M = G.M; M.lock = true; M.out = !!out; hud();
+  /* 끝남: 'moves' 이동을 다 씀 · 'stuck' 막힘 · 'time' 대전 시간 끝 */
+  function stuck(why){
+    const M = G.M; M.lock = true; M.out = why; hud();
     later(() => {
       flush();
       sfx('mergeStuck'); fxShake(M.board, 6); fxBuzz([60, 40, 90]);
-      const canUndo = M.snap && !M.undoUsed && !M.noUndo;
+      const canUndo = why !== 'time' && M.snap && !M.undoUsed && !M.noUndo;
       const b = document.createElement('div'); b.className = 'mbanner bad';
-      b.innerHTML = `<b>${out ? '이동을 다 썼어요' : '더 움직일 수 없어요'}</b><span>${canUndo ? '되돌리기로 한 번 살려 볼까요?' : out ? M.mv + '번 안에 ' + eul(M.target) + ' 만들지 못했어요' : '빈칸이 없고 합칠 짝도 없어요'}</span>` +
+      const t1 = why === 'time' ? '시간이 다 됐어요' : why === 'moves' ? '이동을 다 썼어요' : '더 움직일 수 없어요';
+      const t2 = canUndo ? '되돌리기로 한 번 살려 볼까요?' : why === 'time' ? '가장 큰 타일 ' + M.best + '까지 만들었어요' : why === 'moves' ? M.mv + '번 안에 목표를 다 채우지 못했어요' : '빈칸이 없고 합칠 짝도 없어요';
+      b.innerHTML = `<b>${t1}</b><span>${t2}</span>` +
         (canUndo ? `<div class="mbb"><button class="btn small secondary" id="mEnd" aria-label="여기서 끝내기">끝내기</button><button class="btn small primary" id="mSave" aria-label="되돌리기 사용">${ICON_UNDO}되돌리기</button></div>` : '');
       M.bwrap.appendChild(b); M.banner = b;
       if(canUndo){ b.querySelector('#mSave').onclick = () => undo(); b.querySelector('#mEnd').onclick = () => { b.remove(); finish(false); }; }
@@ -449,25 +612,42 @@ NG.merge = (() => {
     const u = document.getElementById('mUndo'); if(u) fxPop(u);
     hud();
   }
-  /* 판 아래 한 줄 안내: 새 규칙/변주 판이면 그 설명, 아니면 켜진 규칙 요약 */
+  /* 판 아래 한 줄 안내: 새 규칙/변주 판이면 그 설명, 아니면 이번 판 목표 문장 */
   function tipHTML(M){
     const c = M.cfg, bits = [];
     if(c.intro){ const inf = conceptInfo('merge', c.intro); if(inf) return `<b>${c.introKind === 'twist' ? '새 변주' : '새 규칙'}</b>${inf.desc}`; }
-    if(c.mj && c.mj.includes('stone')) bits.push('<u>돌 칸</u>은 안 움직여요');
-    if(c.mj && c.mj.includes('lock')) bits.push('<u>자물쇠</u>는 같은 숫자로 부딪혀 풀어요');
-    if(M.mv) bits.push(M.mv + '번 안에');
+    if(c.stones) bits.push('<u>돌 칸</u>은 안 움직여요');
+    if(c.locks && c.locks.length) bits.push('<u>자물쇠</u>는 같은 숫자로 부딪혀 풀어요');
+    if(c.ice) bits.push('<u>얼음</u> 옆에서 두 번 합치면 깨져요');
+    if(c.peek) bits.push('위에 <u>다음 타일</u>이 보여요');
     if(c.tw === 'rot') bits.push('막힌 방향은 ' + ROT_EVERY + '번마다 바뀌어요');
     if(c.tw === 'extra') bits.push('4번째마다 새 타일 2개');
     if(c.tw === 'bare') bits.push('되돌리기 없이');
     if(c.tw === 'four') bits.push('4가 자주 나와요');
     if(c.tw === 'flash') bits.push('별 기준 이동이 짧아요');
-    const lead = c.boss ? '<b>보스</b>' : c.hard ? '<b>어려움</b>' : '';
-    return bits.length ? lead + bits.join(' · ') + ` — <b class="n">${M.target}</b>` + eul(M.target).slice(String(M.target).length) + ' 만들어요'
-      : lead + '같은 숫자끼리 밀어 붙여 <b class="n">' + M.target + '</b>' + eul(M.target).slice(String(M.target).length) + ' 만들어요';
+    if(M.limit) return `<b>대전</b>상대보다 먼저 <b class="n">${M.target}</b>${eul(M.target).slice(String(M.target).length)} 만들면 승리 · ${Math.round(M.limit / 60)}분`;
+    const lead = c.boss ? '<b>대장 판</b>' : c.hard ? '<b>어려움</b>' : '';
+    return lead + goalText(Object.assign({}, c, { mv:M.mv })) + (bits.length ? ' · ' + bits.join(' · ') : '');
+  }
+  /* 대전 시계(2분): 시간이 다 되면 그 자리에서 끝(가장 큰 타일로 판정) */
+  function duelClock(M){
+    const iv = setInterval(() => {
+      if(!G || G.M !== M){ clearInterval(iv); return; }
+      if(!G.duel || G.over || !M.limit) return;
+      const rem = M.limit - elapsed(), e = document.getElementById('mTime');
+      if(e){ e.textContent = mmss(Math.max(0, Math.ceil(rem))); e.closest('.hchip').classList.toggle('warn', rem <= 20); }
+      if(rem <= 0 && !M.lock){ M.lock = true; stuck('time'); }
+    }, 250);
+    M.timers.add(iv);
   }
 
+  const tileOf = x => x === ST ? ST : x > 0 ? { v:x } : isIce(x) ? { v:iceVal(x), ice:iceHp(x) } : x < -1 ? { v:-x, lk:true } : null;
+  function lpOf(v, T){ return v >= T ? 1 : clamp01((Math.log2(Math.max(2, v)) - 1) / (Math.log2(T) - 1)); }
+  /* 자동 풀기(테스트·_ai): 목표를 아는 자동 플레이어로 한 수 */
+  function aiNow(M, depth){ const gx = GX; GX = goalCtx(M.cfg, M.stars); try{ return aiMove(valsOf(M.grid), depth, false, M.cfg.rot ? banNow(M) : -1, M.pts); } finally { GX = gx; } }
+
   return {
-    name:'숫자 합치기', abil:'전략력', col:['#FFB86B', '#F2711C', '#9A3A00'], time:'약 4분',
+    name:'숫자 합치기', abil:'전략력', col:['#FFB86B', '#F2711C', '#9A3A00'], time:'약 3분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="1.5" y="2.5" width="8" height="8" rx="2.2"/><rect x="1.5" y="13.5" width="8" height="8" rx="2.2" opacity=".6"/><path d="M11 12h3.2l-1.6-1.8a1 1 0 0 1 1.5-1.3l3.1 3.1-3.1 3.1a1 1 0 0 1-1.5-1.3L14.2 12H11z" transform="translate(-.5 0)"/><rect x="16.5" y="6" width="6.5" height="12" rx="2.2"/></svg>',
     art(){
       const t = (x, y, s, v) => { const c = tcol(v); const fs = s * fsz(v) * 1.02;
@@ -481,21 +661,24 @@ NG.merge = (() => {
         <rect x="${x0 - 5}" y="${y0 - 5}" width="${4 * s + 3 * gp + 10}" height="${4 * s + 3 * gp + 10}" rx="10" fill="#2A1B6E" stroke="#1A0F45" stroke-width="2.5"/>${g}
         ${t(8, 34, 28, 1024)}${t(126, 34, 26, 64)}<path d="M139 16l2.2 5.8 5.8 2.2-5.8 2.2-2.2 5.8-2.2-5.8-5.8-2.2 5.8-2.2z" fill="#FFF3A8" stroke="#1A0F45" stroke-width="1.5" stroke-linejoin="round"/><path d="M22 76l1.4 3.6 3.6 1.4-3.6 1.4-1.4 3.6-1.4-3.6-3.6-1.4 3.6-1.4z" fill="#fff"/></svg>`;
     },
-    help:[['밀어서 모두 움직여요', '위·아래·왼쪽·오른쪽으로 밀면(키보드 화살표도 돼요) 모든 타일이 그쪽 끝까지 미끄러져요.'],
-      ['같은 숫자는 하나로', '같은 숫자끼리 부딪히면 합쳐져 두 배가 돼요. 한 번 밀 때마다 빈칸에 새 타일(2 또는 4)이 생겨요.'],
-      ['목표 숫자를 만들면 성공', '목표 타일을 만들면 이겨요. 더 움직일 수 없으면 실패예요. 적게 움직일수록 점수가 높고, 되돌리기는 한 판에 1번이에요.'],
-      ['솔로는 5판마다 새 규칙', '돌 칸(안 움직여요) · 이동 제한 · 자물쇠 타일(같은 숫자로 부딪히면 풀리며 합쳐져요) · 좁은 3×3 판이 차례로 나오고, 사이사이 변주가 더해져요. 판 위 칩에 지금 규칙이 보여요.']],
+    /* 도움말 3줄(세대별 테스트: 4번 카드 삭제) */
+    help:[['밀어서 모두 움직여요', '밀면 타일이 끝까지 미끄러져요. 키보드 화살표도 돼요.'],
+      ['같은 숫자는 하나로', '같은 숫자가 부딪히면 합쳐져 두 배가 돼요.'],
+      ['목표를 만들면 성공', '목표를 이동 안에 만들면 성공이에요. 남긴 이동이 많을수록 점수가 높아요.']],
     chapters:['숫자 마을', '계산 공장', '합산 탑', '제곱 협곡', '무한 궁전'],
     starRule:'★ 목표 달성 · ★★ 적은 이동으로 · ★★★ 아주 적은 이동으로',
-    levels:{ easy:{ limit:0, target:128, stones:0 }, normal:{ limit:0, target:256, stones:0 }, hard:{ limit:0, target:512, stones:0 } },
+    /* 오늘의 문제·연습: 날짜 문턱(NEW_FROM) 전에는 예전 판, 그 뒤엔 새 목표 조합 */
+    get levels(){ return { easy:dailyCfg('easy'), normal:dailyCfg('normal'), hard:dailyCfg('hard') }; },
+    levelCfg(lv){ const B = (typeof LEVELS !== 'undefined' && (LEVELS[lv] || LEVELS.normal)) || { name:'보통', mult:1 }; return Object.assign({}, B, { merge:Object.assign({}, dailyCfg(lv)) }); },
     /* 난이도 v2 계약: 새 규칙 4개(11·21·31·41) + 변주 5개(6·16·26·36·46) */
     concepts:{
-      order:['stone', 'moves', 'lock', 'small'],
+      order:['ice', 'star', 'lock', 'small'],
       info:{
-        stone:{ name:'돌 칸', desc:'회색 돌 칸은 움직이지도, 합쳐지지도 않아요. 돌이 줄을 끊으니 타일이 돌 앞에서 멈춰요.' },
-        moves:{ name:'이동 제한', desc:'정해진 이동 수 안에 목표 숫자를 만들어야 해요. 남은 이동이 0이 되면 실패예요.' },
+        ice:{ name:'얼음 타일', desc:'얼음에 갇힌 타일은 움직이지 않아요. 바로 옆에서 합치면 금이 가고, 두 번이면 깨져요. 얼음을 모두 깨면 성공!' },
+        star:{ name:'별 칸', desc:'판에 노란 별 칸이 생겨요. 별 칸 위에 정해진 숫자 이상 타일을 올려 두면 성공!' },
         lock:{ name:'자물쇠 타일', desc:'자물쇠 타일은 움직이지 않고 벽처럼 막아요. 같은 숫자 타일을 밀어 부딪히면 자물쇠가 풀리며 둘이 합쳐져요!' },
-        small:{ name:'좁은 판', desc:'판이 3×3으로 줄어요. 목표는 낮지만 빈칸이 금방 차니 한 수 한 수 신중하게!' }
+        small:{ name:'좁은 판', desc:'판이 3×3으로 줄어요. 빈칸이 금방 차니 한 수 한 수 신중하게!' },
+        stone:{ name:'돌 칸', desc:'회색 돌 칸은 움직이지도, 합쳐지지도 않아요. 돌이 줄을 끊으니 타일이 돌 앞에서 멈춰요.' }
       },
       twists:['flash', 'four', 'bare', 'extra', 'rot'],
       twInfo:{
@@ -506,22 +689,26 @@ NG.merge = (() => {
         rot:{ name:'막힌 길', desc:'한 방향으로는 밀 수 없어요. 막힌 방향은 8번 밀 때마다 위 → 오른쪽 → 아래 → 왼쪽으로 바뀌어요.' }
       }
     },
-    stage(n){
-      const p = planOf('merge', n), key = ladKey(p.mj), lad = LAD[key] || LAD[''];
-      return buildCfg(p, lad[Math.max(0, Math.min(lad.length - 1, rungOf(n, p, key)))]);
-    },
+    stage(n){ const t = tuneOf(n); return soloCfg(n, t.x, t.par); },
     stageDesc(n){
       const s = this.stage(n);
-      return (s.N === 3 ? '3×3 판 · ' : '') + '목표 ' + s.target + (s.mv ? ' · 이동 ' + s.mv + '번' : '') + (s.stones ? ' · 돌 ' + s.stones + '개' : '') + (s.locks.length ? ' · 자물쇠 ' + s.locks.join('·') : '');
+      return (s.N === 3 ? '3×3 판 · ' : '') + goalText(s, true) + (s.stones ? ' · 돌 ' + s.stones + '개' : '') + (s.locks.length ? ' · 자물쇠 ' + s.locks.join('·') : '') + (s.peek ? ' · 미리 보기' : '');
     },
-    levelDesc(lv){ return '목표 ' + (this.levels[lv] || this.levels.normal).target; },
+    levelDesc(lv){ return goalText(dailyCfg(lv), true); },
     init(cfg, rng){
-      const v = initV(cfg, rng);
-      const M = { rng, cfg, N:cfg.N || 4, target:cfg.target || 256, p4:cfg.p4 != null ? cfg.p4 : .1, extra:!!cfg.extra, mv:cfg.mv || 0, noUndo:!!cfg.noUndo,
+      /* 대전(1:1 경주): 오늘의 문제 설정 대신 대전 판(128 먼저 · 2분 · 되돌리기 없음) */
+      if(typeof G !== 'undefined' && G && G.duel && !G.duel.fleet && !cfg.duel){
+        cfg = this.duelCfg({}); try{ G.cfg = cfg; G.limit = cfg.limit; if(G.L) G.L = Object.assign({}, G.L, { merge:cfg }); }catch(_){}
+      }
+      const B = initV(cfg, rng);
+      const M = { rng, cfg, N:cfg.N || 4, target:cfg.target || 0, p4:cfg.p4 != null ? cfg.p4 : .1, extra:!!cfg.extra, mv:cfg.mv || 0, noUndo:!!cfg.noUndo,
+        limit:cfg.duel ? cfg.limit || 0 : 0, stars:B.stars, peek:cfg.peek || 0, seen:new Set(), mis:0,
         grid:null, seq:[], nid:0, moves:0, pts:0, best:0, mergeN:0,
         snap:null, undoUsed:false, lock:false, out:false, pend:null, pendT:0, timers:new Set(), els:new Map(), stones:cfg.stones || 0, gapPx:8 };
-      M.grid = v.map(x => x === ST ? ST : x > 0 ? { id:++M.nid, v:x } : x < -1 ? { id:++M.nid, v:-x, lk:true } : null);
+      M.grid = B.v.map(x => { const t = tileOf(x); if(t && t !== ST) t.id = ++M.nid; return t; });
+      M.iceN = M.grid.filter(t => t && t !== ST && t.ice).length;
       M.best = bestOf(M.grid);
+      for(const t of M.grid) if(t && t !== ST && !t.lk && !t.ice && t.v >= 64) M.seen.add(t.v);   /* 처음 놓인 큰 타일은 "처음 만듦" 연출에서 뺌 */
       G.M = M;
       G.cleanup = () => { if(M.lastF) M.lastF.remove(); clearTimeout(M.pendT); M.pend = null; for(const t of M.timers) clearTimeout(t); M.timers.clear(); if(M.off) M.off(); };
     },
@@ -529,25 +716,26 @@ NG.merge = (() => {
       const M = G.M, c = M.cfg, chips = [];
       for(const k of c.mj || []) chips.push(`<span class="mc r">${nameOf(k)}</span>`);
       if(c.tw) chips.push(`<span class="mc t">${nameOf(c.tw)}</span>`);
-      if(c.boss) chips.unshift('<span class="mc b">보스</span>'); else if(c.hard) chips.unshift('<span class="mc h">어려움</span>');
+      if(c.boss) chips.unshift('<span class="mc b">대장 판</span>'); else if(c.hard) chips.unshift('<span class="mc h">어려움</span>');
+      const STAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
+      const slots = Array.from({ length:M.N * M.N }, (_, i) => M.stars.includes(i) ? `<i class="star">${STAR_SVG}</i>` : '<i></i>').join('');
+      const badges = M.stars.map(i => `<span class="msb" style="--c:${i % M.N};--r:${Math.floor(i / M.N)}">${STAR_SVG}<small>${c.starV}</small></span>`).join('');
       st.innerHTML = `<div class="ng-merge${c.boss || M.stones ? ' boss' : ''}${M.N === 3 ? ' n3' : ''}" style="--n:${M.N}">
-        <div class="hud-row mhud">
-          <div class="hchip mgoal" aria-label="목표 ${M.target}"><span class="mgl"><b class="mbest" id="mBest" data-v="0"></b><span class="mto" aria-hidden="true">→</span><span class="mgt">${tileHTML(M.target)}</span></span>
-            <span class="hbar mprog" aria-hidden="true"><i id="mFill"></i></span><em>최고 → 목표</em></div>
-          <div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>
-          <div class="hchip${M.mv ? ' lim' : ''}"><span class="hv"><b id="mMoves">0</b></span><em>${M.mv ? '남은 이동' : '이동'}</em></div>
-          <div class="hchip mpts"><span class="hv"><b id="mPts">0</b></span><em>점수</em></div>
-        </div>
+        <div class="hud-row mhud">${chipDefs(M).map(chipHTML).join('')}</div>
         ${chips.length ? `<div class="mchips" aria-label="이번 판 규칙">${chips.join('')}${c.rot ? '<span class="mc x" id="mBanTxt"></span>' : ''}</div>` : ''}
+        ${M.peek ? `<div class="mpeek" aria-label="다음에 나올 새 타일"><em>다음 타일</em><span class="mpks" id="mPeek"></span></div>` : ''}
         <div class="mbwrap"><div class="mboard" id="mBoard" role="application" aria-label="숫자 판. 밀거나 화살표 키로 움직여요">
-          <div class="mslots">${'<i></i>'.repeat(M.N * M.N)}</div><div class="mlayer"></div>${c.rot ? '<div class="mban" id="mBan"></div>' : ''}</div></div>
+          <div class="mslots">${slots}</div><div class="mlayer"></div>${badges ? `<div class="mstars" aria-hidden="true">${badges}</div>` : ''}${c.rot ? '<div class="mban" id="mBan"></div>' : ''}</div></div>
         <div class="mtools">
           <button class="tool item mundo" id="mUndo" aria-label="되돌리기 한 번">${ICON_UNDO}<span>되돌리기</span><b class="cnt">1</b></button>
           <div class="mtip">${tipHTML(M)}</div>
         </div></div>`;
       M.wrap = st.querySelector('.ng-merge'); M.board = st.querySelector('#mBoard'); M.bwrap = st.querySelector('.mbwrap'); M.layer = st.querySelector('.mlayer');
-      drawAll('new'); measure(); hud(); fillH();
-      requestAnimationFrame(() => { if(G && G.M === M) { fillH(); measure(); } });   /* 화면이 자리 잡은 뒤 한 번 더 */
+      M.starEl = [...st.querySelectorAll('.msb')];
+      if(M.noUndo) M.wrap.querySelector('.mundo').hidden = true;
+      drawAll('new'); measure(); hud();
+      if(M.limit) duelClock(M);
+      requestAnimationFrame(() => { if(G && G.M === M) measure(); });   /* 화면이 자리 잡은 뒤 한 번 더 */
       /* 밀기: 24px 넘게 끌면 바로 움직임(손을 떼기 전에) */
       let sx = 0, sy = 0, pid = null, used = false;
       const down = e => { if(e.button > 0) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; used = false; try{ M.wrap.setPointerCapture(pid); }catch(_){} };
@@ -560,23 +748,41 @@ NG.merge = (() => {
       const KEYS = { ArrowUp:0, ArrowRight:1, ArrowDown:2, ArrowLeft:3, w:0, d:1, s:2, a:3, W:0, D:1, S:2, A:3 };
       const key = e => { if(!G || G.M !== M) return; const v = document.getElementById('veil'); if(v && v.classList.contains('on')) return;
         if(e.key in KEYS){ e.preventDefault(); doMove(KEYS[e.key]); } else if((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)){ e.preventDefault(); undo(); } };
-      const rs = () => { fillH(); measure(); };
+      const rs = () => measure();
       addEventListener('keydown', key); addEventListener('resize', rs);
       M.off = () => { removeEventListener('keydown', key); removeEventListener('resize', rs); };
       st.querySelector('#mUndo').onclick = () => undo();
       /* 처음 보는 장치에는 말풍선 한 번 */
       later(() => {
-        const s = M.layer.querySelector('.stone'), l = M.layer.querySelector('.mt.lk');
-        if(l) fxBubble(l, '같은 숫자로 부딪히면 풀려요'); else if(s) fxBubble(s, '돌 칸: 움직이지 않아요');
+        const s = M.layer.querySelector('.stone'), l = M.layer.querySelector('.mt.lk'), ic = M.layer.querySelector('.mt.ice'), sb = M.starEl[0];
+        if(ic) fxBubble(ic, '옆에서 두 번 합치면 깨져요'); else if(sb) fxBubble(sb, `별 칸에 ${c.starV} 이상을 올려요`);
+        else if(l) fxBubble(l, '같은 숫자로 부딪히면 풀려요'); else if(s) fxBubble(s, '돌 칸: 움직이지 않아요');
         else if(M.mv){ const e = document.getElementById('mMoves'); if(e) fxBubble(e.closest('.hchip'), M.mv + '번 안에 만들어요'); }
       }, 700);
     },
-    progress(){ const M = G && G.M; if(!M) return 0; return Math.max(0, Math.min(1, (Math.log2(Math.max(2, M.best)) - 1) / (Math.log2(M.target) - 1))); },
-    lossText(){ const M = G.M; return M.out ? `이동 ${M.mv}번을 다 썼어요. 목표 ${M.target}까지 ${eul(M.best)} 만들었어요.` : `목표 ${M.target}까지 ${eul(M.best)} 만들었어요.`; },
+    progress(){
+      const M = G && G.M; if(!M) return 0; const c = M.cfg, parts = [];
+      if(c.target){
+        if((c.cnt || 1) > 1){ const vs = M.grid.filter(t => t && t !== ST && !t.lk && !t.ice).map(t => t.v).sort((a, b) => b - a).slice(0, c.cnt); parts.push(vs.reduce((s, v) => s + lpOf(v, c.target), 0) / c.cnt); }
+        else parts.push(lpOf(M.best, c.target));
+      }
+      if(M.iceN) parts.push(M.grid.reduce((s, t) => s + (t && t !== ST && t.ice ? (ICE_HP - t.ice) / ICE_HP : 0), M.iceN - iceLeft(M)) / M.iceN);
+      if(c.star) parts.push(M.stars.reduce((s, i) => { const t = M.grid[i]; return s + (t && t !== ST && !t.lk && !t.ice ? lpOf(t.v, c.starV) : 0); }, 0) / Math.max(1, M.stars.length));
+      if(c.pts) parts.push(clamp01(M.pts / c.pts));
+      return parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : 0;
+    },
+    lossText(){
+      const M = G.M, c = M.cfg, b = [];
+      if(c.target) b.push(c.cnt > 1 ? `${c.target} 이상 ${Math.min(cntOK(M), c.cnt)}/${c.cnt}개` : `목표 ${c.target}까지 ${eul(M.best)} 만들었어요`);
+      if(M.iceN) b.push(`얼음 ${M.iceN - iceLeft(M)}/${M.iceN}개 깸`);
+      if(c.star) b.push(`별 칸 ${starOK(M)}/${M.stars.length}곳`);
+      if(c.pts) b.push(`점수 ${fmt(M.pts)}/${fmt(c.pts)}`);
+      const head = M.out === 'moves' ? `이동 ${M.mv}번을 다 썼어요. ` : M.out === 'time' ? '시간이 다 됐어요. ' : '';
+      return head + b.join(' · ') + (/요$/.test(b[b.length - 1] || '') ? '' : '.');
+    },
     score(){
-      const M = G.M, par = M.cfg.par || parOf(M.target), mv = M.moves;
-      const time = Math.round(350 * Math.max(0, Math.min(1, (1.6 * par - mv) / (0.8 * par))));
-      return { base:500, time, extra:M.undoUsed ? 0 : 150, rows:['목표 ' + M.target + ' 만들기', '효율 보너스 (' + mv + '번 이동)', M.undoUsed ? '되돌리기 사용' : '되돌리기 안 씀'] };
+      const M = G.M, s = scoreOf(M.cfg, M.moves, M.undoUsed);
+      return Object.assign(s, { rows:['목표 달성', M.mv ? `남긴 이동 보너스 (${Math.max(0, M.mv - M.moves)}번 남김)` : '효율 보너스 (' + M.moves + '번 이동)', M.undoUsed ? '되돌리기 사용' : '되돌리기 안 씀'] });
     },
     /* 별: 기준 이동(par) 안이면 ★★★, 1.3배 안이면 ★★. 이동 제한 판은 제한보다 넉넉하지 않게, 번개는 기준 ×0.8 */
     stars(){ const M = G.M, t = starCut(M.cfg); return M.moves <= t[0] ? 3 : M.moves <= t[1] ? 2 : 1; },
@@ -587,24 +793,42 @@ body[data-mode="merge"]{background:
   linear-gradient(170deg,#FF9A5C 0%, #F0568F 42%, #8B3FD0 78%, #4A2398 100%) fixed}
 .ng-merge{--gap:8px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none; color:#fff; padding-bottom:6px}
 .ng-merge{display:flex; flex-direction:column}
+/* 위 칩 줄(UI팀): 목표 · 지금 · (얼음·별·시간) · 이동 */
 .ng-merge .mhud{margin:0; color:#3A2261}
-.ng-merge .mhud .hchip{height:auto; min-height:60px}
-.ng-merge .mhud .hv b{font-size:18px}
-.ng-merge .mgoal{flex:1.9 1 0; padding:5px 8px; gap:3px}
-.ng-merge .mgl{display:flex; align-items:center; gap:5px}
-.ng-merge .mto{font-family:var(--heavy); font-size:15px; color:#6A5884}
-.ng-merge .mgt{position:relative; display:block; width:34px; height:34px; --ts:34px}
-.ng-merge .mbest{position:relative; width:30px; height:30px; --ts:30px; display:block}
-.ng-merge .mbest .mi, .ng-merge .mgt .mi{border-width:2px}
-.ng-merge .mprog{margin:0; height:8px}
-.ng-merge .mprog i{transition:width .35s cubic-bezier(.2,.8,.3,1)}
-.ng-merge .mbwrap{position:relative; margin:auto 0; padding:14px 0}
+.ng-merge .mhud .hchip{height:auto; min-height:56px; padding:4px 6px}
+.ng-merge .mhud .hchip b{font-size:20px}
+.ng-merge .mhud .hchip b small{font-family:var(--heavy); font-size:13px; color:#6A5884; margin-left:2px}
+.ng-merge .mhud .hchip em{font-size:13px}
+.ng-merge .mhud .hchip.mgoal{background:linear-gradient(180deg,#FFF3B0,#FFC93C)}
+.ng-merge .mhud .hchip.mgoal b{color:#8A3A00}
+.ng-merge .mhud .hchip.mgoal em{color:#7A4A00}
+.ng-merge .mhud .hchip.mice-c{background:linear-gradient(180deg,#F2FAFF,#BFE6FF)}
+.ng-merge .mhud .hchip.mice-c em{color:#1F5A86}
+.ng-merge .mhud .hchip.mstar-c{background:linear-gradient(180deg,#FFFBE6,#FFE38A)}
+/* 미리 보기 줄(F): 판 위 40px */
+.ng-merge .mpeek{display:flex; align-items:center; justify-content:center; gap:10px; height:40px; margin:8px 0 0}
+.ng-merge .mpeek em{font-style:normal; font-family:var(--disp); font-size:14px; color:#fff; -webkit-text-stroke:3px #1A0F45; paint-order:stroke fill}
+.ng-merge .mpks{display:flex; gap:6px}
+.ng-merge .mpk{position:relative; display:block; width:34px; height:34px; --ts:34px; opacity:.75}
+.ng-merge .mpk.first{opacity:1; transform:scale(1.08)}
+.ng-merge .mpk .mi{border-width:2px}
+.ng-merge .mbwrap{position:relative; margin:0; padding:10px 0 10px}
 .ng-merge .mboard{--ts:70px; position:relative; aspect-ratio:1; width:100%; max-width:440px; margin:0 auto; padding:var(--gap); border-radius:22px;
   background:linear-gradient(180deg,#34228A,#241668); border:3px solid #1A0F45;
   box-shadow:inset 0 3px 0 rgba(255,255,255,.18), inset 0 -4px 0 rgba(0,0,0,.25), 0 6px 0 #0E0730, 0 16px 30px rgba(20,5,60,.45)}
-.ng-merge .mslots, .ng-merge .mlayer{position:absolute; inset:var(--gap)}
+.ng-merge .mslots, .ng-merge .mlayer, .ng-merge .mstars{position:absolute; inset:var(--gap)}
 .ng-merge .mslots{display:grid; grid-template-columns:repeat(var(--n,4),1fr); grid-template-rows:repeat(var(--n,4),1fr); gap:var(--gap)}
-.ng-merge .mslots i{border-radius:22%; background:#1B1150; box-shadow:inset 0 3px 6px rgba(0,0,0,.5), inset 0 -2px 0 rgba(255,255,255,.06)}
+.ng-merge .mslots i{position:relative; border-radius:22%; background:#1B1150; box-shadow:inset 0 3px 6px rgba(0,0,0,.5), inset 0 -2px 0 rgba(255,255,255,.06)}
+/* 별 칸(디자인팀: 칸 바닥에 연노랑 별 #FFE38A 50%) */
+.ng-merge .mslots i.star{background:#2A1C6E; box-shadow:inset 0 0 0 3px rgba(255,227,138,.55), inset 0 3px 6px rgba(0,0,0,.4)}
+.ng-merge .mslots i.star svg{position:absolute; inset:14%; width:72%; height:72%; fill:#FFE38A; opacity:.5}
+.ng-merge .mstars{z-index:6; pointer-events:none}
+.ng-merge .msb{position:absolute; left:0; top:0; width:var(--ts); height:var(--ts); transform:translate(calc(var(--c) * (100% + var(--gap))), calc(var(--r) * (100% + var(--gap))))}
+.ng-merge .msb svg{position:absolute; left:-7%; top:-9%; width:38%; height:38%; fill:#FFE38A; stroke:#1A0F45; stroke-width:2; filter:drop-shadow(0 2px 0 rgba(10,4,40,.6))}
+.ng-merge .msb small{position:absolute; left:-4%; top:26%; min-width:28%; padding:0 3px; border-radius:6px; background:#1A0F45; color:#FFE38A; font:13px/16px var(--heavy); text-align:center}
+.ng-merge .msb.ok svg{fill:#FFC93C; animation:merge_star .9s cubic-bezier(.2,1.6,.4,1)}
+.ng-merge .msb.ok small{background:#2BB673; color:#fff}
+@keyframes merge_star{0%{transform:scale(1)} 40%{transform:scale(1.5) rotate(18deg)} 100%{transform:scale(1)}}
 .ng-merge .mt{position:absolute; left:0; top:0; width:var(--ts); height:var(--ts); will-change:transform; z-index:2;
   transform:translate(calc(var(--c) * (100% + var(--gap))), calc(var(--r) * (100% + var(--gap)))); transition:transform ${SLIDE_MS}ms cubic-bezier(.25,.8,.35,1)}
 .ng-merge .mlayer.snap .mt{transition:none}
@@ -635,15 +859,23 @@ body[data-mode="merge"]{background:
 .ng-merge .mt.back .mi{animation:merge_mgrow .22s cubic-bezier(.3,1.4,.5,1) both}
 @keyframes merge_mgrow{0%{transform:scale(0); opacity:.4} 100%{transform:scale(1); opacity:1}}
 .ng-merge .mt.pop{z-index:3}
-.ng-merge .mt.pop .mi{animation:merge_mpop .2s cubic-bezier(.3,1.6,.5,1)}
-@keyframes merge_mpop{0%{transform:scale(1)} 45%{transform:scale(1.2)} 100%{transform:scale(1)}}
+/* 합칠 때 '쿵': 0.08초 눌렸다가 튀어 오름(디자인팀) */
+.ng-merge .mt.pop .mi{animation:merge_mpop .3s cubic-bezier(.3,1.4,.5,1)}
+@keyframes merge_mpop{0%{transform:scale(1)} 27%{transform:scale(.84,.8)} 62%{transform:scale(1.18)} 100%{transform:scale(1)}}
 .ng-merge .mt.win{z-index:4}
 .ng-merge .mt.win .mi{animation:merge_mwin 1.2s cubic-bezier(.3,1.5,.5,1) both; box-shadow:0 0 0 4px #FFF3A8, 0 0 36px 10px rgba(255,214,90,.95)}
 @keyframes merge_mwin{0%{transform:scale(1)} 25%{transform:scale(1.35) rotate(-6deg)} 45%{transform:scale(1.18) rotate(4deg)} 100%{transform:scale(1.22)}}
 .ng-merge .mt.stone .mi{--gl:transparent; background:radial-gradient(circle at 28% 70%, rgba(40,30,80,.28) 0 6%, transparent 7%), radial-gradient(circle at 74% 34%, rgba(40,30,80,.22) 0 5%, transparent 6%), radial-gradient(circle at 66% 78%, rgba(255,255,255,.3) 0 4%, transparent 5%), linear-gradient(180deg,#C9C2DE 0%, #9890B6 50%, #6C648C 100%); border-color:#1A0F45; box-shadow:inset 0 -5px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 rgba(10,4,40,.55)}
 .ng-merge .mt.stone .mi::before{opacity:.45}
 .ng-merge .mt.stone svg{position:relative; width:80%; height:80%}
-.ng-merge .merge_mcombo{position:absolute; left:50%; top:-24px; z-index:8; pointer-events:none; transform:translate(-50%,0); display:flex; align-items:center; gap:8px; padding:6px 14px 6px 8px; border-radius:999px; white-space:nowrap;
+/* 얼음 타일(디자인팀: 숫자 위 반투명 하늘 #BFE6FF 60% + 한 번 맞으면 금 1줄) */
+.ng-merge .mice{position:absolute; inset:0; z-index:3; border-radius:22%; background:rgba(191,230,255,.6); border:3px solid #2E6E9E; box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), inset 0 -6px 10px rgba(46,110,158,.35); overflow:hidden}
+.ng-merge .mice svg{position:absolute; inset:0; width:100%; height:100%}
+.ng-merge .mice .ck{display:none}
+.ng-merge .mt.crk .mice .ck{display:block}
+.ng-merge .mt.crk .mice{background:rgba(191,230,255,.45); animation:merge_crk .3s ease-out}
+@keyframes merge_crk{0%{transform:translateX(0)} 30%{transform:translateX(-3px)} 60%{transform:translateX(3px)} 100%{transform:translateX(0)}}
+.ng-merge .merge_mcombo{position:absolute; left:50%; top:-14px; z-index:8; pointer-events:none; transform:translate(-50%,0); display:flex; align-items:center; gap:8px; padding:6px 14px 6px 8px; border-radius:999px; white-space:nowrap;
   background:linear-gradient(90deg,#FF8A3D,#FF5C8A); border:2.5px solid #1A0F45; box-shadow:0 4px 0 #0E0730, 0 8px 18px rgba(255,92,138,.45); animation:merge_mcombo 1.1s cubic-bezier(.2,1.4,.4,1) forwards}
 .ng-merge .merge_mcombo.max{background:linear-gradient(90deg,#FFB300,#FF5C8A,#8E6BD1)}
 .ng-merge .merge_mcombo b{font-family:var(--heavy); font-weight:400; font-size:20px; background:#fff; color:#E0306F; border-radius:999px; padding:1px 9px; line-height:1.2}
@@ -661,16 +893,18 @@ body[data-mode="merge"]{background:
 .ng-merge .mbb .btn{height:46px; flex:1; gap:4px}
 .ng-merge .mbb .btn svg{width:18px; height:18px}
 @keyframes merge_mban{0%{opacity:0; scale:.5} 100%{opacity:1; scale:1}}
-.ng-merge .mtools{display:flex; align-items:stretch; gap:10px; margin:0; padding-bottom:4px}
+/* 되돌리기·안내 줄: 판 바로 아래 엄지 자리(UI팀), 안내 14px 진하게 */
+.ng-merge .mtools{display:flex; align-items:stretch; gap:10px; margin:2px 0 0; padding-bottom:4px}
 .ng-merge .mundo{flex:0 0 96px; min-height:56px}
+.ng-merge .mundo[hidden]{display:none}
 .ng-merge .mundo svg{width:22px; height:22px}
-.ng-merge .mtip{flex:1; min-width:0; align-self:center; font-size:13.5px; font-weight:700; line-height:1.35; color:#fff; background:rgba(26,15,69,.4); border-radius:16px; padding:8px 12px}
+.ng-merge .mtip{flex:1; min-width:0; align-self:center; font-size:14px; font-weight:800; line-height:1.4; color:#fff; background:rgba(26,15,69,.62); border-radius:16px; padding:9px 12px}
 .ng-merge .mtip b{font-family:var(--heavy); font-weight:400; color:#FFE27A}
-.ng-merge.boss .mtip{background:rgba(26,15,69,.6); box-shadow:inset 0 0 0 2px rgba(207,197,255,.4)}
-.ng-merge .mtip b:not(.n){display:inline-block; font-family:var(--disp); font-size:12px; color:#1A0F45; background:#FFE27A; border-radius:6px; padding:0 6px; margin-right:4px}
-.ng-merge .mtip u{text-decoration:none; color:#E2DCFA; border-bottom:2px solid #A69DC4}
-/* 난이도 v2: 규칙 칩 · 남은 이동 · 자물쇠 타일 · 막힌 길 · 3×3 판 */
-.ng-merge .mchips{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:10px 4px -2px}
+.ng-merge.boss .mtip{background:rgba(26,15,69,.72); box-shadow:inset 0 0 0 2px rgba(207,197,255,.4)}
+.ng-merge .mtip b:not(.n){display:inline-block; font-family:var(--disp); font-size:13px; color:#1A0F45; background:#FFE27A; border-radius:6px; padding:0 6px; margin-right:4px}
+.ng-merge .mtip u{text-decoration:none; color:#FFFFFF; border-bottom:2px solid #FFE27A}
+/* 규칙 칩 · 남은 이동 · 자물쇠 타일 · 막힌 길 · 3×3 판 */
+.ng-merge .mchips{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:10px 4px 0}
 .ng-merge .mc{font-family:var(--disp); font-size:13px; line-height:1; padding:5px 10px 4px; border-radius:999px; border:2px solid #1A0F45; color:#1A0F45; background:#fff; box-shadow:0 2px 0 #0E0730; white-space:nowrap}
 .ng-merge .mc.r{background:#FFE27A}
 .ng-merge .mc.t{background:#9FE3FF}
@@ -695,41 +929,65 @@ body[data-mode="merge"]{background:
 .ng-merge .mban.d3{top:12%; bottom:12%; left:-8px; width:12px}
 .ng-merge.n3 .mboard{max-width:330px}
 body[data-mode="merge"] .fxfloat.mgf.unl{color:#FFD84A; font-size:20px}
+body[data-mode="merge"] .fxfloat.mgf.ice{color:#BFE6FF; font-size:20px}
 body[data-mode="merge"] .fxfloat.mgf{font-family:var(--heavy); font-weight:400; font-size:24px; color:#fff; -webkit-text-stroke:5px #1A0F45}
 body[data-mode="merge"] .fxfloat.mgf.hi{color:#FFE27A; font-size:28px}
-@media (max-width:370px){ .ng-merge{--gap:7px} .ng-merge .mgt{width:30px; height:30px; --ts:30px} .ng-merge .mbest{width:26px; height:26px; --ts:26px} .ng-merge .mhud .hv b{font-size:16px} .ng-merge .mtip{font-size:13px} }
-@media (prefers-reduced-motion: reduce){ .ng-merge .mt{transition-duration:60ms} .ng-merge .v512::after, .ng-merge .v1024::after, .ng-merge .v2048::after, .ng-merge .mgt{animation:none} }
+@media (max-width:370px){ .ng-merge{--gap:7px} .ng-merge .mhud .hchip b{font-size:18px} .ng-merge .mhud .hchip{padding:4px 3px} .ng-merge .mtip{font-size:13px} }
+@media (prefers-reduced-motion: reduce){ .ng-merge .mt{transition-duration:60ms} .ng-merge .v512::after, .ng-merge .v1024::after, .ng-merge .v2048::after, .ng-merge .msb.ok svg{animation:none} }
 `,
     sounds:{
       mergeSlide(){ aNoise({ ft:'bandpass', f:900, f2:1800, q:1.4, a:.01, d:.07, v:.035 }); aTone({ f:340, f2:260, type:'triangle', d:.05, v:.035 }); },
       mergeBump(){ aThump({ f:120, f2:70, d:.08, v:.1 }); },
       mergeHit(o){ const k = log2(o.v || 4); aMarimba(penta(k + 1, 67), { v:.17 }); aMarimba(penta(k + 3, 67), { t:.05, v:.1 });
-        if(k >= 6) aBell({ f:penta(k + 6, 67), t:.08, d:.6, v:.05, rev:.4 }); aThump({ f:170, f2:80, d:.08, v:.09 }); },
+        if(k >= 6) aBell({ f:penta(k + 6, 67), t:.08, d:.6, v:.05, rev:.4 }); aThump({ f:170, f2:80, d:.08, v:.11 }); },
       mergeCombo(o){ const n = Math.min(5, o.n || 2); for(let i = 0; i < n + 1; i++) aBell({ f:penta(8 + i * 2, 67), t:.1 + i * .05, d:.45, v:.045, idx:1.3, rev:.35 }); },
       mergeBig(o){ aThump({ f:130, f2:40, d:.4, v:.28 }); aNoise({ ft:'lowpass', f:2200, f2:200, d:.45, v:.14, rev:.3 }); aSparkle({ root:(o.v || 256) >= 512 ? 86 : 79, n:5, t:.08 }); },
       mergeUnlock(){ aTone({ f:880, f2:1320, type:'square', d:.08, v:.04, lp:3000 }); aBell({ f:m2f(84), t:.06, d:.5, v:.06, rev:.35 }); aBell({ f:m2f(91), t:.12, d:.6, v:.05, rev:.4 }); },
+      mergeIce(o){ aNoise({ ft:'highpass', f:3500, f2:6000, a:.005, d:o && o.broke ? .25 : .1, v:o && o.broke ? .12 : .06 }); if(o && o.broke){ aBell({ f:m2f(93), t:.04, d:.5, v:.05, rev:.4 }); aBell({ f:m2f(98), t:.1, d:.5, v:.04, rev:.4 }); } else aTone({ f:2400, f2:1800, type:'triangle', d:.06, v:.04 }); },
+      mergeStar(){ aBell({ f:m2f(88), d:.5, v:.05, rev:.35 }); aBell({ f:m2f(95), t:.07, d:.6, v:.045, rev:.4 }); },
       mergeUndo(){ aTone({ f:1300, f2:420, type:'triangle', d:.18, v:.06 }); aWhoosh({ f:3200, f2:500, a:.02, d:.2, v:.04 }); },
       mergeStuck(){ aThump({ f:150, f2:50, d:.3, v:.3 }); [64, 61, 57].forEach((m, i) => aTone({ f:m2f(m), type:'triangle', t:.05 + i * .13, d:.3, v:.07, lp:2000, rev:.3 })); }
     },
-    gate:{ mergeSlide:45, mergeBump:120, mergeHit:35, mergeCombo:120, mergeBig:150 },
+    gate:{ mergeSlide:45, mergeBump:120, mergeHit:35, mergeCombo:120, mergeBig:150, mergeIce:60, mergeStar:150 },
     jingle(){ [0, 2, 4, 5, 7, 9, 11].forEach((d, i) => aMarimba(penta(d, 67), { t:i * .06, v:.15 })); [72, 76, 79, 84, 88].forEach(m => aBell({ f:m2f(m), t:.48, d:1.3, v:.06, idx:1.3, rev:.45 })); aThump({ f:140, f2:60, t:.45, d:.4, v:.22 }); aSparkle({ t:.55, n:6 }); },
+    /* 무작위 입력 봇 점검(tools/random-bot.mjs): 오늘의 문제(날짜·난이도)를 숫자 엔진으로 한 판. kind = lr·ud·cw·any·greedy·ai */
+    botRun(o){
+      const cfg = dailyCfg(o.lv, o.day), rng = mulberry(seedFrom('exam:' + o.day + ':merge'));
+      const bot = o.kind === 'ai' ? { depth:1, eps:0 } : o.kind === 'human' ? { depth:1, eps:.25, rng:mulberry(seedFrom('h:' + o.run)) } : { kind:o.kind, rng:mulberry(seedFrom(o.kind + ':' + o.day + ':' + o.run)) };
+      const g = simGame(cfg, rng, bot); return { win:g.win, score:g.win ? g.score : 0, moves:g.moves };
+    },
     /* ---- 테스트용 ---- */
-    _core:{ slideV, canMoveV, aiMove, evalV, valsOf, PAR, parOf, LINES, geo, initV, simGame, rankMoves, slideT },
-    _tune:{ LAD, ladKey, buildCfg, wantRate, parFor, starCut, rungOf },
+    _core:{ slideV, stepV, hitIce, goalV, canMoveV, aiMove, evalV, valsOf, PAR, parOf, LINES, geo, initV, simGame, rankMoves, slideT, scoreOf, isIce, mkIce },
+    _tune:{ soloCfg, goalsOf, GOALS, wantRate, estPar, starCut, tuneOf, DAILY, DUEL, OLD_LEVELS, dailyCfg, goalText, NEW_FROM },
     _move(d){ return doMove(d); },
     _undo(){ undo(); },
-    _ai(depth = 0){ const M = G.M; return aiMove(valsOf(M.grid), depth, false, M.cfg.rot ? banNow(M) : -1); },
+    _ai(depth = 0){ return aiNow(G.M, depth); },
     /* 자동 플레이로 끝까지(애니메이션 없이 즉시). 성공/막힘까지 이동 수 반환 */
-    _solveForTest(max = 5000, depth = 0){ const M = G.M; let k = 0; while(!M.lock && !G.over && k < max){ const d = aiMove(valsOf(M.grid), depth, false, M.cfg.rot ? banNow(M) : -1); if(d < 0) break; doMove(d); k++; } return { moves:M.moves, best:M.best, lock:M.lock }; },
-    _set(vals){ const M = G.M; flush(); M.grid = vals.map(v => v === ST ? ST : v > 0 ? { id:++M.nid, v } : v < -1 ? { id:++M.nid, v:-v, lk:true } : null); M.best = bestOf(M.grid); drawAll(); hud(); },
-    _state(){ const M = G.M; return { grid:valsOf(M.grid).join(','), moves:M.moves, pts:M.pts, best:M.best, undoUsed:M.undoUsed, seq:M.seq.length }; }
+    _solveForTest(max = 5000, depth = 0){ const M = G.M; let k = 0; while(!M.lock && !G.over && k < max){ const d = aiNow(M, depth); if(d < 0) break; doMove(d); k++; } return { moves:M.moves, best:M.best, lock:M.lock }; },
+    _set(vals){ const M = G.M; flush(); M.grid = vals.map(v => { const t = tileOf(v); if(t && t !== ST) t.id = ++M.nid; return t; }); M.best = bestOf(M.grid); drawAll(); hud(); },
+    _state(){ const M = G.M; return { grid:valsOf(M.grid).join(','), moves:M.moves, pts:M.pts, best:M.best, undoUsed:M.undoUsed, seq:M.seq.length, stars:M.stars.join(','), mv:M.mv, target:M.target }; }
   };
 })();
 
 /* @@NG_MODULES_END@@ */
 
 
-/* 대전: AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-Object.assign(NG.merge, { duelPace:[240,.62], duelStat:{ unit:'', tile:true,    get:() => ({ v:G.M.best, t:G.M.target }) } });
+/* 대전(1:1 경주, 세대별 테스트 2026-10-06): 같은 판·같은 새 타일 수열로 128 먼저, 2분(느긋하게 4분), 되돌리기 없음.
+   duelKind·duelMax·duelCfg·duelSlow·duelRank·duelMini는 대전 v3(WP1) 선택 항목 — 지금 엔진은 duelPace·duelStat·duelHow만 읽고, 판 설정은 init이 바꾼다 */
+Object.assign(NG.merge, {
+  duelPace:[90, .6],
+  duelStat:{ unit:'', tile:true, get:() => ({ v:G.M.best, t:G.M.target, mis:G.M.mis || 0, p:G.M.pts }) },
+  duelHow:'같은 판에서 128을 먼저 만들면 승리 · 2분',
+  duelKind:'race', duelMax:2,
+  duelCfg(o){ return Object.assign({}, NG.merge._tune.DUEL, o && o.pace === 's' ? { limit:240 } : {}); },
+  duelSlow(cfg){ return Object.assign({}, cfg, { limit:(cfg.limit || 120) * 2 }); },
+  /* 순위: 128 먼저(ok·ft) → 가장 큰 타일(v) → 합친 값 합(p) → 실수(mis) 적은 순 */
+  duelRank(a, b){ return (b.ok ? 1 : 0) - (a.ok ? 1 : 0) || (a.ok && b.ok ? (a.ft || 0) - (b.ft || 0) : 0) || (b.v || 0) - (a.v || 0) || (b.p || 0) - (a.p || 0) || (a.mis || 0) - (b.mis || 0); },
+  /* 미니 화면(72×56): 상대 판 4×4 숫자 색 칸 */
+  duelMini:{ w:72, h:56,
+    get:() => NG.merge._core.valsOf(G.M.grid).map(x => x > 0 ? Math.round(Math.log2(x)).toString(36) : x === 0 ? '.' : '#').join(''),
+    draw(el, s){ if(!el) return; s = String(s || ''); const n = s.length === 9 ? 3 : 4, C = ['#1B1150', '#FFE9C2', '#FFDD5C', '#FFA53A', '#FF7A45', '#FF4F6A', '#F0368A', '#C040E8', '#7C4DFF', '#FFC93C', '#FFA820', '#26D1B8'];
+      el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${n},1fr);gap:2px;width:56px;height:56px;margin:auto">${[...s].map(ch => { const k = ch === '.' ? 0 : ch === '#' ? -1 : parseInt(ch, 36); return `<i style="border-radius:3px;background:${k < 0 ? '#9890B6' : C[Math.min(11, k)]}"></i>`; }).join('')}</div>`; } }
+});
 /* 움직이는 배경(core/scene.js) — 보이기만 하고 게임·대전에는 영향 없음 */
 NG.merge.scene = { kind:'motes', colors:['#FFD27A','#FF9AC0','#FFFFFF'], density:1 };
