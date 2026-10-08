@@ -14,6 +14,7 @@ NG.wordchain = (() => {
   WC_DICT.core.split(' ').sort().forEach(add);
   const NCORE = W.length;
   WC_DICT.extra.split(' ').sort().forEach(add);
+  (WC_DICT.more || '').split(' ').sort().forEach(add);   /* 국어사전 명사 보강(사람이 넣으면 인정) */
   const BYF = new Map(), BYL = new Map();   /* 첫 글자 → 낱말 번호들, 끝 글자 → 낱말 번호들(core가 먼저) */
   const push = (M, k, i) => { let a = M.get(k); if(!a) M.set(k, a = []); a.push(i); };
   W.forEach((w, i) => { push(BYF, w[0], i); push(BYL, w[w.length - 1], i); });
@@ -318,7 +319,7 @@ NG.wordchain = (() => {
   /* ===== 내가 넣기 ===== */
   function submit(){
     const m = S(), inp = $('#wcInput'); if(!m || !inp || G.over) return;
-    const w = inp.value.replace(/\s+/g, '');
+    const w = inp.value.replace(/\s+/g, '').normalize('NFC');   /* 자모가 나뉘어 들어오는 입력기(맥 등)도 사전과 맞게 */
     if(!w) return;
     if(m.phase !== 'play' || m.turn !== 'me'){ msg('<span>상대 차례예요. 잠깐만요!</span>', 'soft'); return; }
     if(G.paused && !pvp()) return;
