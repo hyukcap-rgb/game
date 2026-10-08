@@ -1,0 +1,14 @@
+{
+  "id": "goback",
+  "name": "고백점프",
+  "version": "1.0.0",
+  "summary": "고·백·점프로 차례를 넘기는 2~5명 순발력 놀이 — 앞사람이 외친 걸 보고 내 차례를 알아채요",
+  "js": [
+    "goback.js"
+  ],
+  "css": [
+    "goback.css"
+  ],
+  "duel": true,
+  "order": 28
+}

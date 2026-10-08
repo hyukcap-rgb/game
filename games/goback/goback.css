@@ -1,0 +1,119 @@
+/* ===== 고백점프: 빨간 카드 테이블 구도(가운데 타원 판 + 둘레 2~5자리 + 아래 큰 버튼 3개) ===== */
+body[data-mode="goback"]{background:radial-gradient(120% 70% at 50% 40%, #4A0E1E 0%, #2A0A12 55%, #170409 100%) fixed; background-color:#2A0A12}
+body[data-mode="goback"] .hud-row .hchip{background:linear-gradient(180deg,#FFFFFF,#F3E6EA)}
+
+.ng-gb{position:relative; display:flex; flex-direction:column; width:100%; max-width:560px; margin:0 auto; color:#fff; -webkit-user-select:none; user-select:none}
+.ng-gb .hud-row{margin:0 0 4px; flex:none}
+.ng-gb .hv svg{width:22px; height:22px; display:block; flex:none}
+
+/* 방(무늬 벽지) + 테이블 */
+.ng-gb .gb-table{position:relative; flex:1 1 auto; min-height:0; border-radius:22px; overflow:hidden;
+  background:var(--dmk) 0 0/64px 64px, radial-gradient(90% 70% at 50% 45%, #5A1426 0%, #33091A 60%, #1C050D 100%);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.55)}
+.ng-gb .gb-felt{position:absolute; border-radius:50%; z-index:1;
+  background:radial-gradient(70% 60% at 50% 42%, #F0284A 0%, #C3162F 46%, #8A0B20 82%, #6A0617 100%);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.08), inset 0 -18px 40px rgba(60,0,10,.45), 0 0 0 9px #3B2420, 0 0 0 11px #9C7A44, 0 0 0 14px #1A0C08, 0 22px 40px rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center}
+.ng-gb .gb-felt::after{content:''; position:absolute; inset:9%; border-radius:50%; border:1.5px solid rgba(255,255,255,.14); pointer-events:none}
+.ng-gb .gb-felt.thump{animation:gb-thump .22s ease-out}
+@keyframes gb-thump{40%{transform:scale(1.012)}}
+.ng-gb .gb-mark{position:absolute; left:0; right:0; bottom:13%; text-align:center; font-family:var(--heavy); font-size:17px; letter-spacing:2px; color:rgba(70,0,14,.42); pointer-events:none}
+.ng-gb .gb-arc{position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; overflow:visible}
+.ng-gb .gb-ar{animation:gb-ar 1.1s ease-out both}
+@keyframes gb-ar{0%{opacity:0} 12%{opacity:1} 70%{opacity:1} 100%{opacity:.25}}
+
+/* 가운데: 방향 · 큰 외침 · 누가 · 최근 외침 */
+.ng-gb .gb-center{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:4px; max-width:84%; text-align:center; pointer-events:none}
+.ng-gb .gb-dir{display:inline-flex; align-items:center; gap:5px; padding:4px 11px 4px 7px; border-radius:99px; background:rgba(255,255,255,.93); border:2px solid #1A0F45;
+  color:#8A0B20; font-family:var(--disp); font-size:14px; line-height:1; box-shadow:0 3px 0 rgba(26,15,69,.6)}
+.ng-gb .gb-dir svg{width:20px; height:20px; display:block}
+.ng-gb .gb-dir.ccw{color:#B14A00; background:#FFF0DE}
+.ng-gb .gb-dir.flip svg{animation:gb-flip .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes gb-flip{from{transform:rotate(-200deg) scale(.6)}}
+.ng-gb .gb-big{--cc:#FFFFFF; --ci:#1A0F45; min-height:56px; font-family:var(--heavy); font-size:50px; line-height:1.05; color:var(--cc); -webkit-text-stroke:7px var(--ci); paint-order:stroke fill; letter-spacing:1px; white-space:nowrap}
+.ng-gb .gb-big.pop{animation:gb-pop .32s cubic-bezier(.2,1.6,.4,1)}
+@keyframes gb-pop{from{transform:scale(.55); opacity:.2}}
+.ng-gb .gb-big.lyr{--cc:#FFE27A; --ci:#5A1426; font-size:56px}
+.ng-gb .gb-big.lyr.k3{--cc:#FFFFFF}
+.ng-gb .gb-big.start{--cc:#7DF3A9; --ci:#0B3B1F}
+.ng-gb .gb-big.again{--cc:#FFB36B; --ci:#5A1F00; font-size:44px}
+.ng-gb .gb-big.win{--cc:#FFE27A; --ci:#5A2E00}
+.ng-gb .gb-big.lose{--cc:#E9DCE1; --ci:#3A1020; font-size:44px}
+.ng-gb .gb-who{min-height:22px; display:inline-flex; align-items:center; gap:6px; font-family:var(--disp); font-size:16px; color:#FFF2F4; text-shadow:0 2px 0 rgba(60,0,14,.7)}
+.ng-gb .gb-who i{width:11px; height:11px; border-radius:50%; background:var(--sc); border:2px solid #fff; flex:none}
+.ng-gb .gb-log{display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:3px; min-height:26px; margin-top:4px}
+.ng-gb .gb-lc{display:inline-flex; align-items:center; gap:4px; padding:3px 8px 3px 5px; border-radius:99px; background:rgba(40,0,10,.45); border:1.5px solid rgba(255,255,255,.22); font-family:var(--disp); font-size:13px; color:#FFE9EE; white-space:nowrap}
+.ng-gb .gb-lc i{width:9px; height:9px; border-radius:50%; background:var(--sc); flex:none}
+.ng-gb .gb-lc b{font-family:var(--heavy); font-weight:400; color:var(--cc)}
+.ng-gb .gb-lc.new{background:rgba(255,255,255,.95); color:#3A1020; border-color:var(--cc); animation:gb-pop .3s cubic-bezier(.2,1.6,.4,1)}
+.ng-gb .gb-log em{font-style:normal; font-family:var(--heavy); color:rgba(255,255,255,.6); font-size:13px}
+
+/* 자리: 점(left/top)이 얼굴 가운데 */
+.ng-gb .gb-seat{--a:var(--av); position:absolute; width:0; height:0; z-index:3}
+.ng-gb .gb-seat.me{--a:var(--avme); z-index:4}
+.ng-gb .gb-av{position:absolute; left:calc(var(--a) / -2); top:calc(var(--a) / -2); width:var(--a); height:var(--a); border-radius:50%;
+  background:radial-gradient(circle at 50% 35%, #FFFFFF 0%, #F5E9EE 60%, #D9C6CF 100%); border:3.5px solid var(--sc);
+  box-shadow:0 0 0 2.5px #1A0F45, 0 6px 14px rgba(0,0,0,.55); display:grid; place-items:center; overflow:hidden; transition:filter .3s}
+.ng-gb .gb-avimg{width:88%; height:88%; display:block; margin-top:6%}
+.ng-gb .gb-av.hop{animation:gb-hop .38s cubic-bezier(.2,1.5,.4,1)}
+@keyframes gb-hop{35%{transform:translateY(-9px) scale(1.08)}}
+.ng-gb .gb-nm{position:absolute; left:0; top:calc(var(--a) / 2 - 3px); transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:0; white-space:nowrap; pointer-events:none}
+.ng-gb .gb-nm b{max-width:84px; overflow:hidden; text-overflow:ellipsis; font-family:var(--disp); font-weight:400; font-size:14px; line-height:1.15; color:#fff;
+  padding:1px 7px; border-radius:99px; background:rgba(20,4,10,.72); border:1.5px solid var(--sc)}
+.ng-gb .gb-nm b em{font-style:normal; font-size:13px; color:#FFD9A8}
+.ng-gb .gb-lv{font-family:var(--disp); font-size:13px; line-height:1.1; color:#FFD23F; text-shadow:0 1px 0 #3A1020, 0 0 3px rgba(0,0,0,.6); letter-spacing:1px}
+.ng-gb .gb-lv i{font-style:normal}
+.ng-gb .gb-lv i.off{color:rgba(255,255,255,.28)}
+.ng-gb .gb-seat.me .gb-nm b{font-size:15px}
+.ng-gb .gb-seat.out .gb-av{filter:grayscale(1) brightness(.75)}
+.ng-gb .gb-seat.out .gb-nm b{opacity:.7}
+.ng-gb .gb-seat.hint .gb-av{animation:gb-hint .7s ease-in-out infinite alternate}
+@keyframes gb-hint{to{box-shadow:0 0 0 2.5px #1A0F45, 0 0 0 9px rgba(255,226,122,.75), 0 6px 14px rgba(0,0,0,.55)}}
+
+/* 말풍선: 그 사람이 외친 것(최근 것은 크게, 지난 것은 흐리게) */
+.ng-gb .gb-bub{--cc:#fff; --ci:#1A0F45; position:absolute; left:var(--bx); top:var(--by); transform:translate(-50%,-50%) scale(0); opacity:0; z-index:5;
+  display:inline-flex; align-items:center; gap:4px; padding:5px 12px 5px 8px; border-radius:99px; background:#fff; border:3px solid var(--cc);
+  box-shadow:0 0 0 2px #1A0F45, 0 6px 12px rgba(0,0,0,.45); white-space:nowrap; pointer-events:none; transition:transform .16s, opacity .16s}
+.ng-gb .gb-bub b{font-family:var(--heavy); font-weight:400; font-size:24px; line-height:1; color:var(--ci)}
+.ng-gb .gb-bub .gb-bi{width:22px; height:22px; color:var(--cc); display:block}
+.ng-gb .gb-bub .gb-bi svg{width:100%; height:100%; display:block}
+.ng-gb .gb-bub.on{transform:translate(-50%,-50%) scale(1); opacity:1; animation:gb-bub .34s cubic-bezier(.2,1.7,.4,1)}
+@keyframes gb-bub{from{transform:translate(-50%,-50%) scale(.3)}}
+.ng-gb .gb-bub.on.old{transform:translate(-50%,-50%) scale(.72); opacity:.5; animation:none}
+.ng-gb .gb-bub.out{--cc:#8A8A93; background:#5B5B66; padding:5px 12px}
+.ng-gb .gb-bub.out b{color:#fff; font-size:19px}
+.ng-gb .gb-stamp{position:absolute; left:0; top:0; transform:translate(-50%,-50%) rotate(-12deg) scale(0); z-index:6; padding:3px 9px; border-radius:8px; border:3px solid #fff;
+  background:#E5203F; color:#fff; font-family:var(--heavy); font-size:19px; white-space:nowrap; box-shadow:0 0 0 2px #1A0F45; pointer-events:none; opacity:0}
+.ng-gb .gb-stamp.f{background:#7A1FD8}
+.ng-gb .gb-stamp.on{opacity:1; animation:gb-stamp .45s cubic-bezier(.2,1.8,.4,1) forwards}
+@keyframes gb-stamp{from{transform:translate(-50%,-50%) rotate(-12deg) scale(2.2); opacity:0} to{transform:translate(-50%,-50%) rotate(-12deg) scale(1); opacity:1}}
+
+.ng-gb .gb-note{position:absolute; left:50%; top:8px; transform:translate(-50%,-8px); z-index:8; padding:6px 14px; border-radius:99px; background:rgba(255,255,255,.96); color:#3A1020;
+  font-family:var(--disp); font-size:15px; border:2px solid #1A0F45; white-space:nowrap; opacity:0; transition:opacity .18s, transform .18s; pointer-events:none}
+.ng-gb .gb-note.bad{background:#FFE3E6; color:#A3122A}
+.ng-gb .gb-note.on{opacity:1; transform:translate(-50%,0)}
+
+/* 아래 큰 버튼 3개 */
+.ng-gb .gb-btns{flex:none; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px 2px 2px}
+.ng-gb .gb-b{position:relative; height:86px; padding:0; border-radius:18px; border:2.5px solid #050203; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  background:linear-gradient(180deg,#4A4750 0%,#24222A 45%,#121116 100%); box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 5px 0 #050203, 0 10px 18px rgba(0,0,0,.5);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:#fff}
+.ng-gb .gb-b::before{content:''; position:absolute; inset:7px; border-radius:12px; border:2px solid rgba(0,0,0,.4); box-shadow:inset 0 -6px 0 rgba(0,0,0,.22), inset 0 2px 0 rgba(255,255,255,.35)}
+.ng-gb .gb-b.b-go::before{background:linear-gradient(180deg,#53E68E,#16A653)}
+.ng-gb .gb-b.b-back::before{background:linear-gradient(180deg,#FFB05C,#E8700A)}
+.ng-gb .gb-b.b-jump::before{background:linear-gradient(180deg,#C7A2FF,#8148F0)}
+.ng-gb .gb-b > *{position:relative}
+.ng-gb .gb-b .gb-bi{width:26px; height:26px; display:block; color:#fff; filter:drop-shadow(0 1.5px 0 rgba(26,15,69,.7))}
+.ng-gb .gb-b .gb-bi svg{width:100%; height:100%; display:block}
+.ng-gb .gb-b b{font-family:var(--heavy); font-weight:400; font-size:30px; line-height:1; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill}
+.ng-gb .gb-b:active, .ng-gb .gb-b.hit{transform:translateY(3px); box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 2px 0 #050203, 0 6px 12px rgba(0,0,0,.5)}
+.ng-gb .gb-b.hit::before{filter:brightness(1.18)}
+.ng-gb .gb-b:disabled{filter:grayscale(.85) brightness(.7); cursor:default}
+.ng-gb.watch .gb-btns::after{content:'탈락 · 끝날 때까지 구경해요'; position:absolute; left:50%; transform:translate(-50%,-50%); margin-top:-48px; padding:6px 14px; border-radius:99px; background:#fff; color:#3A1020; font-family:var(--disp); font-size:15px; border:2px solid #1A0F45; white-space:nowrap}
+.ng-gb.watch .gb-btns{position:relative}
+
+body.big .ng-gb .gb-nm b{font-size:16px}
+body.big .ng-gb .gb-lc{font-size:15px}
+body.big .ng-gb .gb-who{font-size:18px}
+@media (max-width:370px){ .ng-gb .gb-big{font-size:42px} .ng-gb .gb-b{height:78px} .ng-gb .gb-b b{font-size:26px} .ng-gb .gb-bub b{font-size:21px} }
+@media (prefers-reduced-motion: reduce){ .ng-gb .gb-av.hop, .ng-gb .gb-big.pop, .ng-gb .gb-bub.on, .ng-gb .gb-felt.thump, .ng-gb .gb-dir.flip svg, .ng-gb .gb-seat.hint .gb-av{animation:none} }
