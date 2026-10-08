@@ -161,6 +161,7 @@ function frManage(){
   openModal(`<h3>친구</h3>
     <div class="frcode"><small>내 친구 코드</small><b class="num" id="frMy">${frCode() || (api ? '만드는 중…' : '준비 중')}</b><button class="btn small secondary" id="frCopy" ${frCode() ? '' : 'disabled'}>복사</button></div>
     <button class="btn gold block" id="frInv">${ic('share')} 친구 초대하기 · 카톡으로 보내기</button>
+    <button class="btn secondary block frqr" id="frQr">${QR_IC} 방 QR로 초대하기 <small>옆 친구가 찍으면 바로 같은 방</small></button>
     <div class="fradd"><input id="frIn" maxlength="6" placeholder="친구 코드 6자리" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="친구 코드"><button class="btn small primary" id="frGo">추가</button></div>
     ${!api ? '<p class="note">친구 서버를 준비하고 있어요. 지금은 예시 친구로 보여 줘요.</p>' : !FR.online && FR.err ? '<p class="note">지금 친구 서버에 연결이 안 돼요. 잠시 뒤 자동으로 다시 시도해요.</p>' : ''}
     <div class="frlist">${list || '<p class="note">아직 친구가 없어요. 초대 링크를 보내거나 친구 코드를 넣어 보세요.<br>링크로 들어온 친구와는 바로 친구가 돼요.</p>'}</div>
@@ -168,6 +169,7 @@ function frManage(){
   $('#frClose').onclick = frHub;
   $('#frCopy').onclick = async () => { try{ await navigator.clipboard.writeText(frCode()); toast('친구 코드를 복사했어요'); }catch(_){ toast('코드: ' + frCode()); } };
   $('#frInv').onclick = () => viralShare(cardInvite(), frManage);
+  $('#frQr').onclick = () => frQrInvite(frManage);
   const go = async () => { const v = $('#frIn').value; $('#frGo').disabled = true; const ok = await frAdd(v); if(ok) frManage(); else { const b = $('#frGo'); if(b) b.disabled = false; } };
   $('#frGo').onclick = go; $('#frIn').onkeydown = e => { if(e.key === 'Enter') go(); };
   $('#frIn').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };

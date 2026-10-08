@@ -6,6 +6,7 @@ frStart(ARRIVE && ARRIVE.f);   /* 친구 v1: 저장된 친구 → 서버에서 �
 renderHome(); lastSig = homeSig(); checkOvertake();
 const LG_RES = leagueRollover();
 if(onArrive(ARRIVE)){}
+else if(RM_ARRIVE){}   /* 방 링크로 왔으면 환영 창으로 막지 않고 바로 방으로 */
 else if(store.get('hp:welcome', 0) < 3) welcome();
 else if(LG_RES) showLeagueResult(LG_RES);
 else { const ls0 = leagueState(); if(ls0.last && ls0.seen === false) showLeagueResult(ls0.last); }

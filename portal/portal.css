@@ -800,3 +800,21 @@ body.big .rppast{font-size:18px} body.big .rprow .rpm b{font-size:19px} body.big
 .dz-sec{position:absolute; right:12px; top:50%; transform:translateY(-50%); width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-family:var(--heavy); font-size:13px; color:#fff; background:rgba(26,15,69,.35); border:2px solid rgba(255,255,255,.8)}
 body.big .dz-nm b{font-size:17px} body.big .dz-nm small, body.big .dz-why, body.big .dz-pts p{font-size:15px} body.big .dz-mine{font-size:19px}
 body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
+
+/* 방 QR로 초대(2026-10-08) */
+.frtop .frqr{grid-column:1 / -1}
+.frqr{display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; line-height:1.15}
+.frqr small{font-size:12px; color:rgba(255,255,255,.88); font-family:var(--body, inherit); width:100%; text-align:center; margin-top:-2px}
+.frtop .frqr{height:auto; min-height:52px; padding:6px}
+#frQr{height:auto; min-height:52px; margin-top:7px; padding:6px}
+.qric{flex:none; vertical-align:-3px}
+.riway{display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:8px}
+.riway .btn{font-size:15px; padding:0 6px; display:flex; align-items:center; justify-content:center; gap:5px}
+.rmqr{text-align:center}
+.rmqr .kick{margin:0}
+.rmqr h3{margin:2px 0 6px}
+.rmqr-m{display:flex; justify-content:center; align-items:center; gap:8px; margin:0 0 8px; font-family:var(--disp); font-size:14px; color:var(--sub)}
+.qrbox{display:grid; place-items:center; margin:0 auto; width:min(240px, 68vw); aspect-ratio:1; padding:6px; background:#fff; border-radius:18px; border:3px solid var(--gc, #7C5CFF); box-shadow:0 4px 0 rgba(26,15,69,.18)}
+.qrbox svg{width:100%; height:auto; display:block}
+.rmqr-s{margin:10px 0 4px; font-size:15px; line-height:1.45; color:var(--ink)}
+.rmqr-s small{font-size:13px; color:var(--sub)}

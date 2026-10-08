@@ -223,6 +223,10 @@ function onArrive(o){
   if(o.n && !store.get('hp:invGift', 0)){ store.set('hp:invGift', 1); addHearts(2); gift = true; }
   store.set('hp:welcome', Math.max(3, store.get('hp:welcome', 0)));
   renderHome();
+  if(typeof RM_ARRIVE !== 'undefined' && RM_ARRIVE){   /* 방 링크·방 QR로 왔으면 환영 창 없이 바로 그 방으로(rmStart가 들어감) */
+    setTimeout(() => toast((o.n ? o.n + '님 대전 방으로 들어가는 중…' : '대전 방으로 들어가는 중…') + (gift ? ' · 초대 선물 하트 +2' : '')), 300);
+    return true;
+  }
   if(o.g){ showChallenge(o); if(gift) setTimeout(() => toast(`${o.n}님의 초대 선물 · 하트 +2`), 600); return true; }
   const n = escH(o.n);
   openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">WELCOME</p><div class="ttl">${n}님이 초대했어요</div>

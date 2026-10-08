@@ -16,6 +16,8 @@ const RM_DNAME = { easy:'쉬움', normal:'보통', hard:'어려움' };
 const RM_PTS = DUEL_TWO;   /* 2명 줄(결정 199) — 인원별 표는 duelPts(portal/duel-ui.js) */
 const RM_HARD_LV = 5, RM_BAND = 5, RM_BONUS = DUEL_STRONG, RM_INV_GAP = 30000, RM_REST = 3, RM_AUTO = 3000;
 const RM_CODE_A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/* 방 링크·방 QR(?room=)로 들어온 방 번호: readLink(start.js)가 주소를 지우기 전에 먼저 잡아 둔다 */
+const RM_ARRIVE = (() => { try{ return String(new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); }catch(_){ return ''; } })();
 const rmLv = () => { try{ return lvInfo().L; }catch(_){ return 1; } };
 const rmRec = L => L >= 12 ? 'hard' : L >= 5 ? 'normal' : 'easy';
 const rmCanD = (d, L = rmLv()) => d !== 'hard' || L >= RM_HARD_LV;
@@ -35,6 +37,7 @@ function rmUid(){ let u = store.get('hp:uid', ''); if(!u){ u = Math.random().toS
 const rmHash = code => code ? 'f' + (seedFrom('fr:' + code) >>> 0).toString(36) : '';
 const rmVisible = () => store.get('hp:fronline', true) !== false;
 const rmPlaying = () => !!(G && !G.over && $('#play') && $('#play').style.display === 'block');
+const QR_IC = `<svg class="qric" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M6 6h1v1H6zM17 6h1v1h-1zM6 17h1v1H6zM14 14h3v3h-3zM18 18h3v3h-3zM18 14h3M14 18v3" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg>`;
 const RM_CROWN = `<svg class="rmcrown" viewBox="0 0 32 24" width="16" height="12" aria-hidden="true"><path d="M3 7l6.5 6L16 3l6.5 10L29 7l-3 14H6z" fill="#FFC93C" stroke="#1A0F45" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
 
 /* ---------- 대기실 presence ---------- */
@@ -349,9 +352,43 @@ function rmInviteFriend(f){
   }
   rmRefreshViews();
 }
-function rmLink(){
+function rmLink(keepF){
   const c = RM.cur; if(!c) return '';
-  const u = new URL(linkOf({ room:c.id })); u.searchParams.delete('f'); return u.toString();
+  const u = new URL(linkOf({ room:c.id })); if(!keepF) u.searchParams.delete('f'); return u.toString();   /* QR(얼굴 보고 초대)은 친구 코드도 넣어 들어오면 친구가 됨 */
+}
+/* 방 QR로 초대: 옆에 있는 친구가 폰 카메라로 찍으면 이 방으로 바로 들어옴(초대받은 사람이라 레벨 제한 없음 · 처음이면 친구도 맺어짐) */
+function rmQrSheet(back){
+  const c = RM.cur; if(!c){ frQrInvite(); return; }
+  const url = rmLink(true), n = Math.max(1, c.ord.length);
+  openModal(`<div class="rmqr" id="rmQr" style="--gc:${GCOL[c.g][1]}"><p class="kick">방 QR로 초대</p><h3>${GAMES[c.g].name}</h3>
+    <p class="rmqr-m">${rmChip(c.d)}<span>${c.cap}명 방</span><span id="rqN">지금 ${n}/${c.cap}명</span></p>
+    <div class="qrbox">${qrSvg(url, 5)}</div>
+    <p class="rmqr-s">친구 폰 <b>카메라로 찍으면</b> 이 방으로 바로 들어와요<br><small>처음 온 친구는 하트 2개 선물 · 친구도 바로 맺어져요</small></p>
+    <div class="rmcode sm"><span>방 코드</span><b class="num">${rmCodeFmt(c.id)}</b><button class="btn small secondary" id="rqCode">코드 복사</button></div>
+    <div class="mbtns"><button class="b2" id="rqLink">링크 보내기</button><button class="b1" id="rqBack">방으로</button></div></div>`);
+  $('#rqCode').onclick = rmCopyCode;
+  $('#rqLink').onclick = rmShareLink;
+  $('#rqBack').onclick = typeof back === 'function' ? back : rmOpen;
+}
+/* 친구 초대하기 → 방 QR: 방에 있으면 그 방 QR, 없으면 게임 고르기 → 방 만들기(비공개) → QR */
+function frQrInvite(back){
+  if(RM.cur){ rmQrSheet(); return; }
+  if(!duelLive()){   /* 실시간이 안 되면 방 대신 친구 초대 QR */
+    const url = linkOf({ i:1 });
+    openModal(`<div class="rmqr" id="rmQr"><p class="kick">QR로 친구 초대</p><h3>하루퍼즐 리그</h3>
+      <div class="qrbox">${qrSvg(url, 5)}</div>
+      <p class="rmqr-s">지금은 실시간 연결이 안 돼서 대전 방 대신 <b>친구 초대 QR</b>이에요<br><small>친구 폰 카메라로 찍으면 바로 친구가 되고 하트 2개 선물</small></p>
+      <div class="mbtns one"><button class="b2" id="rqBack">뒤로</button></div></div>`);
+    $('#rqBack').onclick = typeof back === 'function' ? back : frHub;
+    return;
+  }
+  const set = dayState().set, ids = GAME_IDS.filter(g => rmOk(g) && !isAdult(g)).sort((a, b) => (set.includes(b) ? 1 : 0) - (set.includes(a) ? 1 : 0));
+  openModal(`<div class="frpickg"><p class="kick">방 QR로 초대</p><h3>어떤 게임 방을 열까요?</h3>
+    <p class="note">방을 만들면 QR이 나와요. 옆에 있는 친구가 폰 카메라로 찍으면 바로 같은 방으로 들어와요.</p>
+    <div class="gpick">${ids.map(g => `<button data-qg="${g}" style="--gc:${GCOL[g][1]}"><span class="g-art">${ART[g]()}</span><b>${GAMES[g].name}</b><em class="mx5">${duelMaxOf(g) > 2 ? duelMaxOf(g) + '명' : '2명'}</em>${set.includes(g) ? '<em class="tdy">오늘</em>' : ''}</button>`).join('')}</div>
+    <div class="mbtns one"><button class="b2" id="qgBack">뒤로</button></div></div>`);
+  $('#qgBack').onclick = typeof back === 'function' ? back : frHub;
+  document.querySelectorAll('[data-qg]').forEach(b => b.onclick = () => rmCreateSheet(b.dataset.qg, { qr:true, pv:true, back:() => frQrInvite(back) }));
 }
 async function rmShareLink(){
   const c = RM.cur; if(!c) return;
@@ -375,10 +412,11 @@ function rmInviteSheet(){
   openModal(`<h3>친구 초대</h3><p class="note">${GAMES[c.g].name} · ${RM_DNAME[c.d]} · ${c.cap}명 방으로 불러요. 초대받은 친구는 레벨이 달라도 들어올 수 있어요.</p>
     <div class="rmcode sm"><span>방 코드</span><b class="num">${rmCodeFmt(c.id)}</b><button class="btn small secondary" id="riCode">코드 복사</button></div>
     <div class="frlist">${fs.length ? fs.map(row).join('') : `<p class="note">아직 친구가 없어요. 아래 링크나 방 코드를 보내거나, 친구 메뉴에서 친구를 먼저 맺어 보세요.</p>`}</div>
-    <button class="btn gold block" id="riLink">${ic('share')} 방 링크 보내기 · 카톡</button>
+    <div class="riway"><button class="btn gold" id="riLink">${ic('share')} 방 링크 · 카톡</button><button class="btn secondary" id="riQr">${QR_IC} QR로 초대</button></div>
     <div class="mbtns one"><button class="b2" id="riBack">방으로</button></div>`);
   document.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { const f = FR.friends.find(q => q.fid === b.dataset.inv); if(f){ rmInviteFriend(f); rmInviteSheet(); } });
   $('#riLink').onclick = rmShareLink;
+  $('#riQr').onclick = () => rmQrSheet(rmInviteSheet);
   $('#riCode').onclick = rmCopyCode;
   $('#riBack').onclick = rmOpen;
 }
@@ -464,7 +502,7 @@ function rmCreateSheet(g, o = {}){
   if(RM.cur){ rmOpen(); return; }
   const L = rmLv(), mx = rmMax(g); let d = rmCanD(o.d || rmRec(L), L) ? (o.d || rmRec(L)) : 'normal', band = o.band || 'near', pv = o.friend ? true : !!o.pv, cap = Math.max(2, Math.min(mx, +o.cap || mx));
   const draw = () => {
-    openModal(`<div class="rmmake" style="--gc:${GCOL[g][1]}"><p class="kick">${o.friend ? escH(o.friend.nick) + '님과 같이 하기' : '방 만들기'}</p><h3>${GAMES[g].name}</h3>
+    openModal(`<div class="rmmake" style="--gc:${GCOL[g][1]}"><p class="kick">${o.friend ? escH(o.friend.nick) + '님과 같이 하기' : o.qr ? '방 QR로 초대' : '방 만들기'}</p><h3>${GAMES[g].name}</h3>
       <p class="rmlb">난이도 · 1위 보상</p>
       <div class="rmdiffs">${RM_DIFF.map(x => { const lk = !rmCanD(x, L); return `<button class="rmd ${x}${x === d ? ' on' : ''}${lk ? ' lock' : ''}" data-d="${x}" ${lk ? 'disabled' : ''}>${rmChip(x)}${x === rmRec(L) ? '<em>추천</em>' : ''}<b class="num">1위 +${duelPtsAt(cap, 1, x)}</b><small>${cap > 2 ? `꼴찌 +${DUEL_LAST[x]}` : `무 +${RM_PTS[x].d}<br>패 +${RM_PTS[x].l}`}</small>${lk ? `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>` : ''}</button>`; }).join('')}</div>
       <p class="rmlb">정원</p>
@@ -474,7 +512,7 @@ function rmCreateSheet(g, o = {}){
       <div class="seg"><button data-b="near" class="${band === 'near' ? 'on' : ''}">내 레벨 근처<small>Lv ${Math.max(1, L - RM_BAND)}~${L + RM_BAND}</small></button><button data-b="all" class="${band === 'all' ? 'on' : ''}">누구나<small>레벨 상관없이</small></button></div>
       <label class="rmpv"><input type="checkbox" id="rmPv" ${pv ? 'checked' : ''}><span><b>비공개 방</b><small>목록에 안 보이고 초대·링크·방 코드로만 들어와요</small></span></label>`}
       <p class="rmme">강자 보너스: 나보다 ${RM_BAND}레벨 이상 높은 사람보다 높은 순위면 +${RM_BONUS}<br>첫 판 ${ic('heart')}1 · 같은 방 2~4판째 무료</p>
-      <div class="mbtns"><button class="b2" id="rcBack">뒤로</button><button class="b1" id="rcGo">${o.friend ? '방 만들고 초대하기' : '방 만들기'}</button></div></div>`);
+      <div class="mbtns"><button class="b2" id="rcBack">뒤로</button><button class="b1" id="rcGo">${o.friend ? '방 만들고 초대하기' : o.qr ? '방 만들고 QR 보기' : '방 만들기'}</button></div></div>`);
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { d = b.dataset.d; sfx('toggle'); draw(); });
     document.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { cap = +b.dataset.cap; sfx('toggle'); draw(); });
     document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { band = b.dataset.b; draw(); });
@@ -485,7 +523,7 @@ function rmCreateSheet(g, o = {}){
       const c = await rmCreate({ g, d, cap, band:o.friend ? 'all' : band, pv:o.friend ? true : pv });
       if(!c){ const b = $('#rcGo'); if(b) b.disabled = false; return; }
       if(o.friend) rmInviteFriend(o.friend);
-      rmOpen();
+      if(o.qr) rmQrSheet(); else rmOpen();
     };
   };
   draw();
@@ -584,7 +622,7 @@ function rmRoomRender(force){
   const i1 = $('#rmInv'); if(i1) i1.onclick = rmInviteSheet;
   const cp = $('#rmCopy'); if(cp) cp.onclick = rmCopyCode;
 }
-function rmRefreshViews(){ if($('#rmRoom')) rmRoomRender(); if($('#rmRows')) rmListRender(); rmPillRender(); }
+function rmRefreshViews(){ const qn = $('#rqN'); if(qn && RM.cur) qn.textContent = `지금 ${Math.max(1, RM.cur.ord.length)}/${RM.cur.cap}명`; if($('#rmRoom')) rmRoomRender(); if($('#rmRows')) rmListRender(); rmPillRender(); }
 /* 방 창을 접었을 때 아래에 떠 있는 알약 */
 function rmPillRender(){
   let el = $('#rmPill'); const c = RM.cur;
@@ -616,7 +654,7 @@ function frHub(){
       ${join}<button class="btn small ${s.on ? 'primary' : 'secondary'}" data-ft="${f.fid}">같이 하기</button></div>`;
   };
   openModal(`<div class="frhub"><button class="mx" id="fhX" aria-label="닫기">✕</button><h3>친구 <small>${on.length ? `접속 중 <b>${on.length}</b>명` : ''}</small></h3>
-    <div class="frtop"><button class="btn gold" id="fhInv">${ic('share')} 친구 초대하기</button><button class="btn secondary" id="fhMng">코드 · 추가 · 삭제</button></div>
+    <div class="frtop"><button class="btn gold" id="fhInv">${ic('share')} 친구 초대하기</button><button class="btn secondary" id="fhMng">코드 · 추가 · 삭제</button><button class="btn secondary frqr" id="fhQr">${QR_IC} 방 QR로 초대하기 <small>옆 친구가 찍으면 바로 같은 방</small></button></div>
     ${!duelLive() ? '<p class="note">실시간 연결이 안 돼서 접속 상태를 못 보고 있어요. 같이 하기는 알림함으로 보내져요.</p>' : ''}
     ${all.length ? `${on.length ? `<p class="frsec"><i class="ondot"></i>접속 중 ${on.length}</p><div class="frlist">${on.map(row).join('')}</div>` : '<p class="frsec">접속 중인 친구가 없어요</p>'}
       ${off.length ? `<p class="frsec">다른 친구 ${off.length}</p><div class="frlist">${off.map(row).join('')}</div>` : ''}`
@@ -625,6 +663,7 @@ function frHub(){
   $('#fhX').onclick = closeModal;
   $('#fhInv').onclick = () => viralShare(cardInvite(), frHub);
   $('#fhMng').onclick = frManage;
+  $('#fhQr').onclick = () => frQrInvite(frHub);
   $('#fhVis').onchange = e => { store.set('hp:fronline', !!e.target.checked); lbPush(); toast(e.target.checked ? '친구에게 접속 상태가 보여요' : '접속 상태를 숨겼어요'); };
   document.querySelectorAll('[data-fo]').forEach(b => b.onclick = () => frFriendSheet({ fid:b.dataset.fo }));
   document.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { const f = FR.friends.find(q => q.fid === b.dataset.ft); if(f) frTogether(f); });
@@ -678,9 +717,9 @@ function rmStart(){
   setInterval(rmTick, 1200);
   addEventListener('pagehide', () => { if(RM.cur) try{ RM.cur.nr.presence({ bye:1 }).catch(() => {}); }catch(_){} });
   /* 방 링크(?room=)로 들어옴: 실시간 연결을 기다렸다가 들어가기 */
-  let id = ''; try{ id = new URLSearchParams(location.search).get('room') || ''; }catch(_){}
+  const id = RM_ARRIVE;   /* 주소에서 먼저 잡아 둔 값(초대 링크라 readLink가 주소를 이미 지웠을 수 있음) */
   if(id){
-    try{ const u = new URL(location.href); u.searchParams.delete('room'); history.replaceState(history.state, '', u.toString()); }catch(_){}
+    try{ const u = new URL(location.href); if(u.searchParams.has('room')){ u.searchParams.delete('room'); history.replaceState(history.state, '', u.toString()); } }catch(_){}
     let n = 0; const t = setInterval(() => {
       if(duelLive() && !($('#veil').classList.contains('on') && !$('#rmRoom'))){ clearInterval(t); rmJoin(id, { invited:true }); }
       else if(++n > 120){ clearInterval(t); if(!duelLive()) toast('실시간 연결이 안 돼서 대전 방에 못 들어갔어요'); }
