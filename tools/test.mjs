@@ -49,6 +49,9 @@ async function run(label, url, steps, g, needEvents){
   await page.goto(url); await wait(700);
   await page.evaluate(() => typeof closeModal === 'function' && closeModal());
   const bad = [];
+  /* 대전 전용 게임(게임 정의 modes:['duel'], 예: 산넘어산): 모듈은 대전 단계만, 솔로 이벤트(progress)는 안 봄 */
+  const duelOnly = needEvents && await page.evaluate(() => { try{ return Array.isArray(EMB.modes) && EMB.modes.length === 1 && EMB.modes[0] === 'duel'; }catch(_){ return false; } });
+  if(duelOnly) steps = steps.filter(s => s[0].startsWith('대전'));
   for(const [name, code, ms] of steps){
     const n0 = errs.length;
     try{ await page.evaluate(new Function(code(g))); }catch(e){ errs.push(name + ': ' + String(e).split('\n')[0]); }
@@ -57,7 +60,7 @@ async function run(label, url, steps, g, needEvents){
   }
   if(needEvents){
     const ev = await page.evaluate(() => window.__ev);
-    for(const t of ['ready', 'start', 'finish', 'progress']) if(!ev.includes(t)) bad.push('이벤트 없음: ' + t);
+    for(const t of ['ready', 'start', 'finish'].concat(duelOnly ? [] : ['progress'])) if(!ev.includes(t)) bad.push('이벤트 없음: ' + t);
   }
   await page.close();
   console.log(`${bad.length ? '✗' : '✓'} ${label} ${g}${bad.length ? '\n    ' + bad.join('\n    ') : ''}`);

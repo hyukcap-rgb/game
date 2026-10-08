@@ -44,7 +44,7 @@ function attach(ws,tag){const c={id:'p'+(++N)+'x'+Math.random().toString(36).sli
       if(DELAY[tag]) setTimeout(ap,DELAY[tag]); else ap();}});
   ws.onClose(()=>{for(const r of [...c.rooms.keys()])leave(c,r)});}
 const br=await chromium.launch(process.env.PW_CHROMIUM?{executablePath:process.env.PW_CHROMIUM}:{});
-const HELPED=['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','mines','parking','hidden','spot','crossword','chosung','wordchain','omok','gostop'];
+const HELPED=['mountain','fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','mines','parking','hidden','spot','crossword','chosung','wordchain','omok','gostop'];
 async function mk(tag){const ctx=await br.newContext({viewport:{width:390,height:844}});
   await ctx.routeWebSocket(/battle-production/,ws=>attach(ws,tag));
   await ctx.route(/function-bun|railway\.app\/api|fonts\.(googleapis|gstatic)\.com/,r=>r.abort());   /* 바깥 서버·글꼴은 막음(불러오기 멈춤 방지) */
@@ -654,7 +654,64 @@ async function wordchainTurn3(){
   await rest[0].pg.screenshot({path:SHOT+'/wordchain3-result.png'});
   ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
 }
+/* 산넘어산: 같은 산길 · 처음부터 따라 하고 하나 얹기 · 남이 누른 행동이 무대에 보임 · 시간 초과 탈락 · 탈락한 사람 차례 넘김 · 틀리면 탈락 → 마지막 남은 사람 1위 */
+async function mountainTurn3(){
+  const L=[await mk('A'),await mk('B'),await mk('C')];
+  const go=await turnStart(L,'mountain'), I=await info(L);
+  await Promise.all(L.map(x=>until(x,()=>G.m.phase==='play',null,8000)));
+  const st=()=>Promise.all(L.map(x=>x.pg.evaluate(()=>{const m=G.m;return JSON.stringify([m.seq,G.duel.pl.map(p=>[m.P[p].adds,m.P[p].out,m.P[p].outN]),duelTurn.cur(),duelTurn.n()]);})));
+  const same=a=>a.every(h=>h===a[0]);
+  const who=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.myPid)));
+  /* 내 차례: 지금까지를 순서대로 누르고(wrong이면 그 칸에서 틀림) 새 행동 하나 */
+  const play=(x,add,wrongAt)=>x.pg.evaluate(async([add,wrongAt])=>{const m=G.m,cl=i=>document.querySelector(`.mt-act[data-i="${i}"]`).click(),sl=t=>new Promise(r=>setTimeout(r,t));
+    for(let k=0;k<m.seq.length;k++){ if(k===wrongAt){ cl((m.seq[k]+1)%30); return 'out'; } cl(m.seq[k]); await sl(120); }
+    cl(add); return 'add';},[add,wrongAt==null?-1:wrongAt]);
+  ok(go&&I[0].pl.split(',').length===3&&same(await st()),'산넘어산 3명 모임: 같은 방·같은 시작 상태');
+  let c=await curIdx(L); await play(L[c],3); await w(900);
+  c=await curIdx(L); await play(L[c],16); await w(900);
+  const s1=await st(), seq=JSON.parse(s1[0])[0];
+  const seen=await L[(c+1)%3].pg.evaluate(()=>document.querySelector('#mtName').textContent);
+  ok(same(s1)&&seq.join()==='3,16'&&seen==='기타 치기',`돌아가며 따라 하고 얹기: [${seq}] · 남의 화면 무대에 '${seen}' (모든 기기 같음)`);
+  const third=await curIdx(L);
+  await allTimeout(L,1); await w(STRESS?6000:4200);
+  const s2=await st(), outs=JSON.parse(s2[0])[1].filter(p=>p[1]);
+  ok(same(s2)&&outs.length===1&&outs[0][1]==='time',`시간 초과 → 탈락 ${JSON.stringify(outs)}`);
+  c=await curIdx(L); await play(L[c],22); await w(900);
+  c=await curIdx(L); await play(L[c],7); await w(1500);
+  c=await curIdx(L); const s3=await st();
+  ok(same(s3)&&c>=0&&c!==third&&JSON.parse(s3[0])[0].length===4,'탈락한 사람 차례는 넘어감(차례 '+(c>=0?who[c]:'?')+')');
+  const loser=c; await play(L[c],0,2); await w(500);
+  const res=(await Promise.all(L.map(x=>until(x,()=>G.duel&&G.duel.resolved,null,20000)))).every(Boolean); await w(800);
+  const rows=await Promise.all(L.map(x=>x.pg.evaluate(()=>JSON.stringify(G.duel.res.rows.map(r=>[r.pid,r.rank]).sort()))));
+  const R=await L[0].pg.evaluate(()=>({why:G.duel.res.why,ord:G.duel.res.rows.map(r=>r.pid)}));
+  const survivor=who.find((p,i)=>i!==loser&&i!==third);
+  ok(res&&same(rows)&&R.ord[0]===survivor&&R.ord[1]===who[loser]&&R.ord[2]===who[third]&&/끝까지 남았어요/.test(R.why),`산넘어산 순위 같음 · 1위 끝까지 남은 사람 · 2위 틀린 사람 · 3위 먼저 시간 초과 · "${R.why}"`);
+  await L[0].pg.screenshot({path:SHOT+'/mountain3-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+}
+/* 산넘어산 컴퓨터 1:1: 컴퓨터가 따라 하고 얹음 · 내가 틀리면 끝 */
+async function mountainAi(){
+  const X=await mk('A'); await X.pg.evaluate(()=>duelStart('mountain')); await w(400);
+  await X.pg.evaluate(()=>{const b=document.querySelector('#dsAi'); if(b) b.click();});
+  const go=await until(X,()=>G&&G.duel&&G.duel.go&&G.m&&G.m.phase==='play',null,20000);
+  let mine=0;
+  for(let k=0;k<120&&mine<4;k++){
+    const t=await X.pg.evaluate(()=>G.over?'over':duelTurn.mine()&&G.m.turn==='me'?'me':'');
+    if(t==='over') break;
+    if(t==='me'){ await X.pg.evaluate(async()=>{const m=G.m,cl=i=>document.querySelector(`.mt-act[data-i="${i}"]`).click();for(const a of m.seq.slice()){cl(a);await new Promise(r=>setTimeout(r,80));}cl((m.seq.length*7)%30);}); mine++; }
+    await w(500);
+  }
+  const s=await X.pg.evaluate(()=>({len:G.m.seq.length,ai:G.m.P.ai.adds,st:G.duel.P.ai.st.v,over:G.over}));
+  ok(go&&mine>=3&&s.ai>=3&&s.st===s.ai,`산넘어산 컴퓨터 1:1: 내 차례 ${mine}번 · 컴퓨터가 얹은 산 ${s.ai}개 · 산 ${s.len}개`);
+  await X.pg.screenshot({path:SHOT+'/mountain-ai.png'});
+  await until(X,()=>G.over||(duelTurn.mine()&&G.m.turn==='me'),null,20000);
+  await X.pg.evaluate(()=>{const m=G.m;if(!G.over)document.querySelector(`.mt-act[data-i="${(m.seq[0]+1)%30}"]`).click();});
+  const end=await until(X,()=>G.duel&&G.duel.resolved,null,15000);
+  ok(end,'내가 틀리면 대전 끝');
+  ok(!X.errs.length,'오류 없음 '+X.errs.join(' | ')); await closeAll([X]);
+}
 const TURN3=ARGS.length?GAMES:['memory','wordchain'];
+if(MULTI&&TURN3.includes('mountain')&&HAS('mountain')){ console.log('— 산넘어산 3명 차례 대전 —'); await mountainTurn3(); console.log('— 산넘어산 컴퓨터 1:1 —'); await mountainAi(); }
 if(MULTI&&TURN3.includes('memory')&&HAS('memory')){ console.log('— 카드 짝 3명 차례 대전 —'); await memoryTurn3(); }
 if(MULTI&&TURN3.includes('wordchain')&&HAS('wordchain')){ console.log('— 끝말잇기 3명 차례 대전 —'); await wordchainTurn3(); }
 

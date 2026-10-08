@@ -1,0 +1,12 @@
+{
+  "id": "mountain",
+  "name": "산넘어산",
+  "version": "1.0.0",
+  "summary": "앞사람 행동을 처음부터 순서대로 따라 하고 하나씩 얹는 기억력 대전 — 2~5명 돌아가며, 틀리면 탈락",
+  "js": [
+    "mountain.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 29
+}
