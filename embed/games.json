@@ -224,12 +224,12 @@
     {
       "id": "twin",
       "name": "쌍둥이 찾기",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
       "duel": true,
       "file": "twin.html",
-      "bytes": 324649,
-      "gzip": 107350
+      "bytes": 338010,
+      "gzip": 112184
     },
     {
       "id": "arrow",

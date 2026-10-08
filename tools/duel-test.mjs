@@ -564,6 +564,50 @@ async function sharedTest3(g){
   ok(!X.errs.length,'오류 없음 '+X.errs.join(' | ')); await closeAll([X]);
 }
 if(MULTI) for(const g of GAMES) await sharedTest3(g);
+/* ================= 쌍둥이 찾기 여럿 대전(2026-10-08): 5명 · 가운데 카드 같음 · 내 카드 5장 모두 다름 · 모두 같은 쌍둥이 그림 하나 =================
+   B가 0판을 먼저 찾음 → 5명 모두 주인 B · C 오답 → 1초 못 누름·틀린 수 1 · 나머지 판은 A가 찾음 → 15판 뒤 모두 같은 순위 */
+async function twinParty5(){
+  console.log('— 쌍둥이 찾기 5명 —');
+  const L=[]; for(const t of ['A','B','C','D','E']) L.push(await mk(t));
+  await Promise.all(L.map(x=>x.pg.evaluate(()=>duelStart('twin'))));
+  const go=await goAll(L,32000), I=await info(L);
+  const kind=await L[0].pg.evaluate(()=>G.duel.kind+'/'+G.duel.pl.length+'/'+G.m.N+'/'+!!G.m.party);
+  const cards=await Promise.all(L.map(x=>x.pg.evaluate(()=>{const p=G.m.P[0],c=p.center.ids,mine=p.seats[G.m.seat].ids;return {ctr:c.join(','),mine:mine.slice().sort((a,b)=>a-b).join(','),ans:p.ans,com:mine.filter(id=>c.includes(id)),seat:G.m.seat,minis:document.querySelectorAll('#dMinis .dmini').length};})));
+  const sameC=cards.every(c=>c.ctr===cards[0].ctr&&c.ans===cards[0].ans), diff=new Set(cards.map(c=>c.mine)).size===5, one=cards.every(c=>c.com.length===1&&c.com[0]===c.ans), seats=new Set(cards.map(c=>c.seat)).size===5;
+  ok(go&&kind==='shared/5/15/true'&&sameC&&diff&&one&&seats&&cards.every(c=>c.minis===4), `5명: ${kind} · 가운데 같음=${sameC} · 내 카드 5장 다름=${diff} · 모두 같은 그림 하나=${one} · 미니 카드 ${cards.map(c=>c.minis)}`);
+  const pid=I.map(i=>i.me), key=(x,k,ms)=>until(x,k=>G.m.pt.key===k,k,ms||20000);
+  const tap=(x,f)=>x.pg.evaluate(f=>{const q=G.m[f]();if(!q)return false;const el=document.elementFromPoint(q.x,q.y)||document.querySelector('#twTable');el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,clientX:q.x,clientY:q.y,pointerId:1}));return true;},f);
+  await key(L[1],'0:open:'); await w(500);
+  await L[1].pg.screenshot({path:SHOT+'/twin5-play.png'});
+  /* C 오답 → 1초 쉼 */
+  const bad=await tap(L[2],'_wrongPoint'); await w(80);
+  const cb=await L[2].pg.evaluate(()=>({lock:G.m.pt.lockUntil-Date.now(),mis:duelStatNow().mis}));
+  const blocked=await tap(L[2],'_answerPoint'); await w(150);
+  const notC=await L[2].pg.evaluate(()=>duelOwner('r0')!==G.duel.myPid);
+  ok(bad&&cb.lock>700&&cb.lock<=1000&&cb.mis===1&&notC, `C 오답: 1초 못 누름(${cb.lock}ms, 그 사이 정답도 안 받음=${notC}) · 틀린 수 ${cb.mis}`);
+  /* B가 찾음 → 다섯 화면 모두 B 차지 */
+  await tap(L[1],'_answerPoint');
+  const s0=(await Promise.all(L.map(x=>key(x,'0:show:'+pid[1],6000)))).every(Boolean);
+  await w(300); await L[0].pg.screenshot({path:SHOT+'/twin5-show.png'});
+  const mk1=await L[0].pg.evaluate(()=>({own:document.querySelectorAll('.ng-twin .tw-mk.own').length,who:(document.querySelector('.ng-twin .tw-who')||{}).textContent||'',won:document.querySelectorAll('#dMinis .tw-mini.won').length}));
+  ok(s0&&mk1.own===1&&mk1.won===1, `0판: B가 먼저 → 다섯 화면 모두 B 차지=${s0} · A 화면 고리 ${mk1.own} 이름표 "${mk1.who}" · 미니 카드 표시 ${mk1.won}`);
+  /* 1~14판: A가 찾음 */
+  for(let i=1;i<15;i++){ if(!await key(L[0],i+':open:',25000)) break; await w(120); await tap(L[0],'_answerPoint'); }
+  const res=(await Promise.all(L.map(x=>until(x,()=>G.duel.resolved,null,20000)))).every(Boolean); await w(1300);
+  const rk=await ranksOf(L), own=await ownersOf(L), cl=await bodyClean(L);
+  const R=await L[0].pg.evaluate(()=>({rank:G.duel.res.rank,why:G.duel.res.why,rows:G.duel.res.rows.map(r=>r.txt)}));
+  ok(res&&rk.every(x=>x===rk[0])&&own.every(x=>x===own[0])&&R.rank===1&&cl.every(Boolean)&&/14장 차지/.test(R.rows[0])&&/15장/.test(R.why), `쌍둥이 결과: 순위·주인 모두 같음 · A 1위 · "${R.why}" · ${R.rows.join(' / ')}`);
+  await L[2].pg.screenshot({path:SHOT+'/twin5-result.png'});
+  ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);
+  /* 컴퓨터 상대: 판마다 게임이 직접 차지 */
+  const X=await mk('AI');
+  await X.pg.evaluate(()=>startGame('twin','normal',{duel:duelMakeAI('twin','나','n')}));
+  const got=await until(X,()=>G.duel&&G.duel.go&&Object.values(G.duel.owners||{}).includes('ai'),null,STRESS?60000:40000);
+  const aiv=await X.pg.evaluate(()=>({t:Math.round(elapsed()),ai:G.duel.P.ai.st.v,mini:document.querySelectorAll('#dMinis .tw-mini').length}));
+  ok(got&&aiv.ai>=1&&aiv.mini===1, `컴퓨터가 ${aiv.t}초까지 ${aiv.ai}장 차지 · 컴퓨터 미니 카드 ${aiv.mini}`);
+  ok(!X.errs.length,'오류 없음 '+X.errs.join(' | ')); await closeAll([X]);
+}
+if(MULTI&&WANT('twin')) await twinParty5();
 /* ================= 3) 차례 게임 3명(WP12 카드 짝 · WP11 끝말잇기): 모든 기기 같은 판·같은 결과, 시간 초과·나감 ================= */
 const turnStart=async(L,g)=>{for(const x of L){ await x.pg.evaluate(g=>duelStart(g),g); await w(250);} return goAll(L,30000);};
 const curIdx=async L=>{for(let i=0;i<L.length;i++){ if(await L[i].pg.evaluate(()=>!!(G&&G.duel&&!G.over&&duelTurn.mine()))) return i; } return -1;};
