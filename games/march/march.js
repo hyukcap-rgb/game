@@ -6,7 +6,7 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:24, BOSS_WALK:7, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
+    SPEED:24, BOSS_WALK:5, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
@@ -25,8 +25,8 @@ NG.march = (() => {
   };
   const NEWF = { 2:'barrel', 4:'mul', 5:'saw', 7:'grow', 8:'tower', 10:'move', 11:'door' };
   const KIND = {
-    brute:{ name:'몽둥이 거인', hpk:6.5 }, knight:{ name:'방패 기사', hpk:5 },
-    shaman:{ name:'주술사', hpk:3 }, dragon:{ name:'화염 용', hpk:5.6 }
+    brute:{ name:'몽둥이 거인', hpk:6 }, knight:{ name:'방패 기사', hpk:5 },
+    shaman:{ name:'주술사', hpk:2.6 }, dragon:{ name:'화염 용', hpk:5.6 }
   };
   const BOSS_ORDER = ['brute', 'knight', 'shaman', 'dragon'];
   const RIVALS = ['철벽 민수', '돌격대장 하나', '궁수왕 지훈', '행군의 달인', '성문지기 소라', '붉은 깃발 태오'];
@@ -43,7 +43,7 @@ NG.march = (() => {
   try{ if(/\/embed\/[^/]*$/.test(location.pathname)) BASE = '../games/march/img/'; }catch(_){}
   const IMGF = { soldier:'soldier.webp', enemy:'enemy.webp', brute:'brute.webp', knight:'knight.webp', shaman:'shaman.webp', dragon:'dragon.webp',
     tower:'tower.webp', stone:'stone.jpg', gateB:'gateB.webp', gateR:'gateR.webp', door:'door.webp', saw:'saw.webp',
-    barrel:'barrel.webp', crate:'crate.webp', xbow:'xbow.webp', rock:'rock.webp' };
+    barrel:'barrel.webp', crate:'crate.webp', xbow:'xbow.webp', rock:'rock.webp', horizon:'horizon.jpg', water:'water.jpg' };
   const IMG = {};
   function loadImgs(){ if(IMG.soldier) return; for(const k in IMGF){ const im = new Image(); im.decoding = 'async'; im.src = BASE + IMGF[k]; IMG[k] = im; } }
   const ok = im => im && im.complete && im.naturalWidth > 0;
@@ -61,6 +61,17 @@ NG.march = (() => {
     return STRIP = { near:mk(.6, .5), far:mk(3, .7) };
   }
 
+  /* 바다 무늬·수평선 그림(보이기만) */
+  let BACKDROP = null;
+  function getBackdrop(){
+    if(BACKDROP) return BACKDROP; const im = IMG.horizon; if(!ok(im)) return null;
+    const cv = document.createElement('canvas'); cv.width = 640; cv.height = Math.round(640 * im.naturalHeight / im.naturalWidth); const x = cv.getContext('2d');
+    x.drawImage(im, 0, 0, cv.width, cv.height);
+    x.globalCompositeOperation = 'destination-out'; const g = x.createLinearGradient(0, cv.height * .62, 0, cv.height); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)'); x.fillStyle = g; x.fillRect(0, cv.height * .62, cv.width, cv.height);
+    return BACKDROP = cv;
+  }
+  function waterPat(c){ if(c.__wp) return c.__wp; if(!ok(IMG.water)) return null; try{ c.__wp = c.createPattern(IMG.water, 'repeat'); }catch(_){ return null; } return c.__wp; }
+
   /* ---------- 관문 계산 ---------- */
   function applyOp(n, o){ if(o.op === '+') return n + o.v; if(o.op === '-') return n - o.v; if(o.op === '×') return n * o.v; if(o.op === '÷') return Math.ceil(n / o.v); return n; }
   function opText(o){ if(o.op === '+') return (o.v >= 0 ? '+' : '−') + Math.abs(Math.round(o.v)); if(o.op === '-') return '−' + o.v; return o.op + o.v; }
@@ -73,7 +84,7 @@ NG.march = (() => {
   function genOpening(g){
     const r = g.rng, d = gD(g), side = r() < .5 ? -1 : 1, lx = side * 25;
     const n = 7 + Math.min(d, 6), k = 1 + Math.floor(d / 4), hp = Math.round(2 + g.E + d * .4), hn = Math.round(22 + d * 6 + g.E * 2);
-    const z0 = 48;   /* 출발 후 약 2초 안에 길을 골라야 함 */
+    const z0 = 66;   /* 출발 후 약 2.8초 안에 길을 골라야 함(v1.3: 48→66, 고르기 전에 끝나는 일 줄임) */
     g.items.push({ t:'wall', z:z0, len:16 + n * 7, x:0 });
     g.items.push({ t:'crate', z:z0 + 6, x:lx, hp, max:hp });
     g.items.push({ t:'col', z:z0 + 16, x:lx, n, k, step:7, got:[] });
@@ -89,13 +100,13 @@ NG.march = (() => {
     if(g.mode === 'solo'){
       if(g.seg >= 9 + Math.min(d, 12)){
         if(isBossStage(d)){
-          const kind = bossKindFor(d), hp = Math.round(KIND[kind].hpk * g.E + 60 + d * 12);
+          const kind = bossKindFor(d), hp = Math.round(KIND[kind].hpk * RULE.BOSS_HP * g.E + 80 + d * 15);
           g.items.push({ t:'boss', z:g.z + 30, x:0, kind, hp, max:hp, final:true, d, minion:Math.round(g.E * .22 + 4), sc:0, cd:1.6, ai:0, atk:null });
-        } else { const hn = Math.round(g.E * .7 + 6 + d); g.items.push({ t:'crowd', z:g.z + 10, x:0, n:hn, max:hn, horde:true }); g.items.push({ t:'finish', z:g.z + 40 }); }
+        } else { const hn = Math.round(g.E * .9 + 8 + d); g.items.push({ t:'crowd', z:g.z + 10, x:0, n:hn, max:hn, horde:true }); g.items.push({ t:'finish', z:g.z + 40 }); }
         g.ended = true; return;
       }
     } else if(g.z >= g.nextBoss){
-      const kind = BOSS_ORDER[g.bossN % 4], hp = Math.round(KIND[kind].hpk * g.E * .85 + 60 + d * 10);
+      const kind = BOSS_ORDER[g.bossN % 4], hp = Math.round(KIND[kind].hpk * RULE.BOSS_HP * g.E * .85 + 70 + d * 12);
       g.items.push({ t:'boss', z:g.z + 20, x:0, kind, hp, max:hp, final:false, d, minion:Math.round(g.E * .2 + 4), sc:0, cd:1.6, ai:0, atk:null });
       g.bossN++; g.nextBoss = g.z + 760; g.z += 70; g.E *= .75; return;
     }
@@ -115,7 +126,7 @@ NG.march = (() => {
     if(t === 'gate'){
       const grow = f.grow && r() < (nf === 'grow' ? .6 : .25);
       const moving = !grow && f.move && r() < (nf === 'move' ? .6 : .25);
-      const addV = Math.round(R(5, 13) + d * 3 + E * .16);
+      const addV = Math.round(R(4, 10) + d * 2.5 + E * .13);
       let ops;
       if(grow){
         const a = { op:'+', v:-Math.round(R(2, 6) + d * .6 + E * .05) }, b = { op:'+', v:-Math.round(R(8, 14) + d * 1.5 + E * .15) };
@@ -128,7 +139,7 @@ NG.march = (() => {
         const br = r();
         if(br < .3) bad = { op:'+', v:Math.max(1, Math.round(addV * R(.2, .5))) };
         else if(f.mul && br < .55) bad = { op:'÷', v:2 };
-        else bad = { op:'-', v:Math.min(Math.round(R(4, 10) + d * 2.5 + E * .25), Math.round(E * .7) + 2) };
+        else bad = { op:'-', v:Math.min(Math.round(R(4, 10) + d * 2.5 + E * .25), Math.round(E * .9) + 3) };
         if(!g.firstGate){ g.firstGate = true; bad = { op:'+', v:Math.max(1, Math.round(addV * .4)) }; }   /* 첫 관문은 둘 다 플러스(가만히 있어도 안 죽게) */
         ops = r() < .5 ? [good, bad] : [bad, good];
         g.E = Math.max(E, applyOp(E, good) * .93);
@@ -136,11 +147,11 @@ NG.march = (() => {
       g.items.push({ t:'gate', z:g.z, ops, grow, moving, used:false });
       g.z += 52;
     } else if(t === 'col'){
-      const n = 5 + Math.floor(R(0, 6)), k = 1 + Math.floor(d / 4);
+      const n = 4 + Math.floor(R(0, 5)), k = 1 + Math.floor(d / 4);
       g.items.push({ t:'col', z:g.z, x:(r() < .5 ? -1 : 1) * R(14, 32), n, k, step:7, got:[] });
       g.E += n * k * .8; g.z += n * 7 + 26;
     } else if(t === 'crowd'){
-      const n = Math.round(E * R(.5, .95) + 2 + d * .6);
+      const n = Math.round(E * R(.75, 1.25) + 4 + d);   /* v1.3 상향 */
       g.items.push({ t:'crowd', z:g.z, x:R(-26, 26), n, max:n });
       g.E = Math.max(5, E - Math.max(0, n - .5 * E)); g.z += 52;
     } else if(t === 'saw'){
@@ -200,10 +211,10 @@ NG.march = (() => {
     while(run.idx < g.items.length && g.items[run.idx].z < run.z + 240){
       const c = JSON.parse(JSON.stringify(g.items[run.idx++])); c.id = ++UID;
       if(g.mode === 'solo'){   /* 솔로는 실제 내 병력에 맞춰 적 크기·성문·보스 체력을 줄여 줌(생성기의 기대 병력보다 적을 때) */
-        if(c.t === 'crowd' && !c.pen) c.n = c.max = Math.max(3, Math.round(Math.min(c.n, run.N * .9 + 3 + g.stage * .5)));
+        if(c.t === 'crowd' && !c.pen) c.n = c.max = Math.max(4, Math.round(Math.min(c.n, run.N * 1.15 + 5 + g.stage)));
         if(c.t === 'crate') c.hp = c.max = Math.max(3, Math.round(Math.min(c.hp, run.N * .5 + 4 + g.stage)));
         if(c.t === 'barrel') c.hp = c.max = Math.max(4, Math.round(Math.min(c.hp, run.N * .4 + 6 + g.stage * 2)));
-        if(c.t === 'boss'){ c.hp = c.max = Math.round(Math.min(c.hp, KIND[c.kind].hpk * Math.max(run.N, 12) * 1.05 + 60 + c.d * 12)); c.minion = Math.max(4, Math.round(Math.min(c.minion, run.N * .2 + 4))); }
+        if(c.t === 'boss'){ c.hp = c.max = Math.round(Math.min(c.hp, KIND[c.kind].hpk * RULE.BOSS_HP * Math.max(run.N, 12) + 80 + c.d * 15)); c.minion = Math.max(4, Math.round(Math.min(c.minion, run.N * .2 + 4))); }
         if(c.t === 'door') c.hp = c.max = Math.round(Math.min(c.hp, run.N * 1.3 + 30 + g.stage * 5));
       }
       run.ents.push(c);
@@ -218,7 +229,7 @@ NG.march = (() => {
     for(const e of run.ents){
       if(e.t === 'crowd' && e.n > 0){
         const dz = e.z - run.z;
-        if(!e.pen && dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -12 * dt, 12 * dt); e.z -= 7 * dt; }
+        if(!e.pen && dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -15 * dt, 15 * dt); e.z -= 12 * dt; }   /* v1.3: 더 빨리 달려듦 */
         const er = crowdR(e.n);
         if(Math.abs(e.z - run.z) < R * .5 + er * .5 + 2 && Math.abs(run.x - e.x) < R + er - 2){
           fighting = true;
@@ -246,7 +257,7 @@ NG.march = (() => {
         e.walk = run.z < hz - .5;
         if(e.z - run.z < 85) creep = Math.min(creep, RULE.BOSS_WALK);
         if(e.z - run.z < 95){ run.bossActive = e; if(run.lastBoss !== e.id){ run.lastBoss = e.id; if(run.isMe) bossIntro(e); } }
-        if(run.z >= hz - .05 && e.kind !== 'shaman') bossDmg(e, run.N * .35 * dt);
+        if(run.z >= hz - .05 && e.kind !== 'shaman') bossDmg(e, run.N * .25 * dt);
         if(e.z - run.z < 75) bossAI(run, e, dt, R);
       } else if(e.t === 'saw'){
         e.x = e.x0 + Math.sin(run.time * e.sp + e.ph) * e.amp; e.rot = (e.rot || 0) + dt * 14;
@@ -392,7 +403,7 @@ NG.march = (() => {
     e.cd -= dt * (e.rage ? 1.45 : 1);
     if(e.cd > 0) return;
     const list = ATK[e.kind], k = list[(e.ai = (e.ai || 0) + 1) % list.length];
-    e.cd = Math.max(1.1, 2.2 - e.d * .03);
+    e.cd = Math.max(.85, 1.7 - e.d * .03);   /* v1.3: 공격 간격 짧게 */
     const N = { k, t:0, tele:(e.rage ? .8 : 1) * TELE[k], spots:[], hit:false };
     const W = (x, r) => N.spots.push({ x:clamp(x, -44, 44), r });
     const rr2 = 9 + R * .25;
@@ -406,7 +417,7 @@ NG.march = (() => {
     if(run.isMe && k !== 'summon') snd('mcWarn');
   }
   function bossHit(run, e, A, R){
-    const fr = f => Math.min(.6, f * (1 + e.d * .015));
+    const fr = f => Math.min(.65, f * 1.25 * (1 + e.d * .02));   /* v1.3: 피해 1.25배 */
     let lost = 0;
     for(const s of A.spots){
       addFx(run, { k:'crater', x:s.x, z:run.z, r:s.r, life:.55, col:A.k === 'bolts' ? '#ffe86b' : A.k === 'balls' ? '#ff8a3d' : '#8a6a44' });
@@ -480,13 +491,18 @@ NG.march = (() => {
   function strokeText(c, t, x, y, fill, stroke, lw){ c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = stroke; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); }
 
   function render(c, w, h, run, mini, clock){
-    const F = 55, unit = Math.min(w / 108, 6.2), horizon = h * (mini ? .06 : .1), armyY = h * (mini ? .8 : .76);
+    const F = 55, unit = Math.min(w / 108, 6.2), horizon = h * (mini ? .06 : .17), armyY = h * (mini ? .8 : .76);
     let shx = 0, shy = 0;
     if(run.shake > 0 && !mini){ shx = (S.vr() - .5) * 10 * run.shake; shy = (S.vr() - .5) * 10 * run.shake; }
     const P = (x, z) => { const d = z - run.z; if(d < -F + 6) return null; const s = F / (F + d); return { X:w / 2 + x * s * unit + shx, Y:horizon + (armyY - horizon) * s + shy, s }; };
-    let gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#bfe6ff'); gr.addColorStop(.12, '#5aa9ec'); gr.addColorStop(1, '#2f7fd6');
-    c.fillStyle = gr; c.fillRect(0, 0, w, h);
-    if(!mini){ c.fillStyle = 'rgba(255,255,255,.18)'; for(let i = 0; i < 26; i++){ const zz = run.z + i * 9 - 20 + Math.sin(clock * .6 + i) * 1.5, px = ((i * 37) % 23) - 11; const L = P(-70 - ((i * 13) % 30), zz), Rr = P(70 + ((i * 17) % 30), zz); if(L) c.fillRect(L.X + px * L.s, L.Y, 10 * L.s * unit * .4, 1.5); if(Rr) c.fillRect(Rr.X + px * Rr.s, Rr.Y, 10 * Rr.s * unit * .4, 1.5); } }
+    /* v1.3 배경: 바다 무늬(고정) + 수평선 너머 적 요새(Figma) */
+    let gr;
+    const wp = waterPat(c);
+    if(wp){ c.fillStyle = wp; c.fillRect(0, 0, w, h); }
+    else { gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#bfe6ff'); gr.addColorStop(.12, '#5aa9ec'); gr.addColorStop(1, '#2f7fd6'); c.fillStyle = gr; c.fillRect(0, 0, w, h); }
+    const bd = getBackdrop();
+    if(bd){ const bw = w * 1.18, bh = bw * bd.height / bd.width, by = horizon - bh * .62; c.drawImage(bd, (w - bw) / 2 + shx * .3, by, bw, bh); if(by > 0){ c.fillStyle = '#9fd4f7'; c.fillRect(0, 0, w, by + 1); } }
+    else { c.fillStyle = '#bfe6ff'; c.fillRect(0, 0, w, horizon); }
     const quad = (x1, x2, z1, z2, col) => { const a = P(x1, z1), b = P(x2, z1), cc = P(x2, z2), d = P(x1, z2); if(!a || !b || !cc || !d) return; c.fillStyle = col; c.beginPath(); c.moveTo(a.X, a.Y); c.lineTo(b.X, b.Y); c.lineTo(cc.X, cc.Y); c.lineTo(d.X, d.Y); c.closePath(); c.fill(); };
     const z0 = run.z - 42, zEnd = run.z + 235, strip = getStrip();   /* v1.2: 바닥·성벽은 화면에 고정 — 적·관문·보스가 다가옴 */
     for(let zz = z0, bi = 0; zz < zEnd; zz += 6, bi++){
@@ -518,7 +534,7 @@ NG.march = (() => {
         c.beginPath(); c.ellipse(p.X, p.Y, e.r * p.s * unit, e.r * p.s * unit * .5, 0, 0, 7); c.fill();
         c.strokeStyle = 'rgba(60,140,30,.8)'; c.lineWidth = 2; c.stroke();
       }
-      if(e.t === 'wall') drawWall(c, P, unit, e, run);
+      if(e.t === 'wall'){ drawWall(c, P, unit, e, run); if(e.lock === undefined && !mini && S && !S.battle && S.stage <= 3) drawHint(c, P, unit, e, run, clock); }
       if(e.t === 'boss' && e.atk && e.hp > 0) drawTele(c, P, unit, e, run, quad, clock, mini);
       if(e.t === 'col') quad(e.x - 6.5, e.x + 6.5, e.z - 4, e.z + e.n * e.step, 'rgba(255,200,61,.25)');
     }
@@ -608,6 +624,18 @@ NG.march = (() => {
     /* 가까운 끝 앞면 */
     const f = L[0], g = Rt[0]; c.fillStyle = '#a8854f'; c.fillRect(f[0], f[1], g[0] - f[0], f[2] - f[1]); c.strokeStyle = '#8a6a38'; c.strokeRect(f[0], f[1], g[0] - f[0], f[2] - f[1]);
   }
+  /* 초반 3판: 갈림길 앞 바닥에 '상자 쪽' 금색 화살표(보이기만) */
+  function drawHint(c, P, unit, e, run, clock){
+    const col = run.ents.find(q => q.t === 'col' && q.z >= e.z && q.z <= e.z + e.len); if(!col) return;
+    for(let i = 0; i < 3; i++){
+      const z = e.z - 30 + i * 9, p = P(col.x, z); if(!p) continue; const w = 7 * p.s * unit, h = 4 * p.s * unit;
+      c.globalAlpha = .55 + .35 * Math.max(0, Math.sin(clock * 4 - i));
+      c.fillStyle = '#ffc83d'; c.strokeStyle = '#16233d'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(p.X - w, p.Y + h * .3); c.lineTo(p.X, p.Y - h); c.lineTo(p.X + w, p.Y + h * .3); c.lineTo(p.X + w * .55, p.Y + h * .55); c.lineTo(p.X, p.Y - h * .25); c.lineTo(p.X - w * .55, p.Y + h * .55); c.closePath(); c.fill(); c.stroke();
+    }
+    c.globalAlpha = 1;
+    const p = P(col.x, e.z - 34); if(p){ const fs = Math.max(14, 20 * p.s); c.font = fs + 'px ' + FONT; c.textAlign = 'center'; strokeText(c, '상자 쪽으로!', p.X, p.Y - 6, '#ffd84a', '#16233d', fs * .2); }
+  }
   /* 보스 공격 예고: 빨간 원(차오름)·줄·틈·한쪽 불 */
   function drawTele(c, P, unit, e, run, quad, clock, mini){
     const A = e.atk, pr = Math.min(1, A.t / A.tele), pulse = (.22 + .14 * Math.sin(clock * 22)).toFixed(2);
@@ -634,10 +662,10 @@ NG.march = (() => {
   }
   function drawArmy(c, P, unit, x, z, N, red, clock, mini){
     const n = Math.min(Math.ceil(N), mini ? 45 : 120); if(n <= 0) return;
-    const sp = red ? 2.9 * .85 : 3 * .85, pts = [];
+    const sp = red ? 2.6 * .85 : 2.55 * .85, pts = [];
     for(let i = 0; i < n; i++){ const s = SUN[i]; pts.push([x + s[0] * sp, z + s[1] * sp, i]); }
     pts.sort((a, b) => b[1] - a[1]);
-    for(const q of pts){ const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.05 * p.s * unit, red, mini ? 0 : red ? Math.abs(Math.sin(clock * 10 + q[2])) * 2.2 * p.s : Math.abs(Math.sin(clock * 3 + q[2] * .7)) * .5 * p.s); }
+    for(const q of pts){ const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.35 * p.s * unit, red, mini ? 0 : red ? Math.abs(Math.sin(clock * 10 + q[2])) * 2.2 * p.s : Math.abs(Math.sin(clock * 3 + q[2] * .7)) * .5 * p.s); }
     const top = P(x, z + (red ? crowdR(N) : armyR(N)) * .75); if(!top) return;
     const label = String(Math.ceil(N)), fs = mini ? 11 : Math.max(14, 22 * top.s);
     c.font = fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -726,7 +754,7 @@ NG.march = (() => {
     const p = P(0, e.z); if(!p) return;
     const S_ = p.s * unit, X = p.X, Y = p.Y, im = IMG[e.kind];
     c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(X, Y, 16 * S_, 6 * S_, 0, 0, 7); c.fill();
-    const h = (e.kind === 'dragon' ? 52 : 48) * S_;
+    const h = (e.kind === 'dragon' ? 74 : 68) * S_;   /* v1.3: 보스 1.4배 크게 */
     let lift = 0, sq = 1, rot = 0;
     if(e.kind === 'brute' && e.swing > 0){ const k = (.5 - e.swing) / .5; lift = Math.sin(k * Math.PI) * 8 * S_; sq = 1 + Math.sin(k * Math.PI) * .06; rot = Math.sin(k * Math.PI * 2) * .08; }
     if(e.kind === 'knight' && e.swing > 0) rot = -.08 * Math.sin((.4 - e.swing) / .4 * Math.PI);
@@ -794,7 +822,8 @@ NG.march = (() => {
     }
     S.end = E;
     snd(win ? 'mcWin' : 'mcLose');
-    const g = G; setTimeout(() => { if(G === g && !g.over) finish(!!win); }, 900);
+    fx(() => { const el = $s('.mc-end'); if(el){ el.querySelector('b').textContent = win === null ? '무승부' : win ? (S.battle ? '승리!' : '클리어!') : '전멸!'; el.querySelector('small').textContent = why || ''; el.className = 'mc-end ' + (win ? 'win' : 'lose'); el.hidden = false; } });
+    const g = G; setTimeout(() => { if(G === g && !g.over) finish(!!win); }, win ? 1300 : 1900);   /* v1.3: 끝 연출을 보여 준 뒤 결과 창(갑자기 꺼진 듯한 느낌 방지) */
   }
   function checkEnd(){
     const me = S.me;
@@ -864,6 +893,7 @@ NG.march = (() => {
       ${solo ? '' : `<div class="mc-mini"><canvas aria-label="라이벌 화면"></canvas><span class="mc-mtag"></span></div>`}
       <div class="mc-bi" hidden><img alt=""><div><small>보스 등장!</small><b></b></div></div>
       <div class="mc-hint">좌우로 끌어서 부대 이동</div>
+      <div class="mc-end" hidden><b></b><small></small></div>
       <div class="mc-new" hidden><span class="mc-tag"></span><b></b><p></p><small>눌러서 바로 시작</small></div>
     </div>`;
     S.root = st.querySelector('.mcw');
@@ -973,6 +1003,13 @@ NG.march = (() => {
 .mcw .mc-bi b{display:block; font-family:var(--heavy); font-weight:400; font-size:26px; color:#fff; line-height:1.1}
 .mcw .mc-hint{position:absolute; left:50%; bottom:16px; transform:translateX(-50%); padding:7px 14px; border-radius:99px; background:rgba(22,35,61,.75); color:#fff; font-family:var(--disp); font-size:15px; white-space:nowrap; pointer-events:none; transition:opacity .4s}
 .mcw.touched .mc-hint{opacity:0}
+.mcw .mc-end{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; pointer-events:none; background:radial-gradient(circle at 50% 45%, rgba(22,35,61,.15), rgba(22,35,61,.55)); animation:mcFade .3s ease-out}
+.mcw .mc-end b{font-family:var(--heavy); font-weight:400; font-size:56px; line-height:1; color:#fff; -webkit-text-stroke:7px #16233d; paint-order:stroke fill; animation:mcSlamEnd .45s cubic-bezier(.2, 1.6, .4, 1)}
+.mcw .mc-end.win b{color:#ffc83d; -webkit-text-stroke-color:#1a4ea8}
+.mcw .mc-end.lose b{color:#ff8a80; -webkit-text-stroke-color:#7a1410}
+.mcw .mc-end small{font-family:var(--disp); font-size:16px; color:#fff; background:rgba(22,35,61,.7); padding:4px 12px; border-radius:99px}
+@keyframes mcFade{from{opacity:0} to{opacity:1}}
+@keyframes mcSlamEnd{0%{transform:scale(2.2); opacity:0} 100%{transform:scale(1); opacity:1}}
 .mcw .mc-new{position:absolute; left:50%; top:42%; transform:translate(-50%, -50%); width:min(320px, calc(100% - 40px)); padding:16px 18px 14px; border-radius:22px; text-align:center; background:linear-gradient(#fffaf0, #f3e6c8); box-shadow:0 0 0 3px #e9c46a, 0 6px 0 #b8893a, 0 16px 34px rgba(0,0,0,.3); animation:mcIn .35s cubic-bezier(.2, 1.4, .4, 1); cursor:pointer}
 @keyframes mcIn{0%{transform:translate(-50%, -40%) scale(.85); opacity:0} 100%{transform:translate(-50%, -50%) scale(1); opacity:1}}
 .mcw .mc-tag{display:inline-block; font-family:var(--heavy); font-size:13px; letter-spacing:.06em; color:#fff; background:var(--mc-red); padding:3px 11px; border-radius:99px; box-shadow:0 2px 0 #a92723}
