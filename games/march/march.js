@@ -6,7 +6,7 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:24, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
+    SPEED:24, BOSS_WALK:7, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
@@ -26,7 +26,7 @@ NG.march = (() => {
   const NEWF = { 2:'barrel', 4:'mul', 5:'saw', 7:'grow', 8:'tower', 10:'move', 11:'door' };
   const KIND = {
     brute:{ name:'몽둥이 거인', hpk:6.5 }, knight:{ name:'방패 기사', hpk:5 },
-    shaman:{ name:'주술사', hpk:3.6 }, dragon:{ name:'화염 용', hpk:5.6 }
+    shaman:{ name:'주술사', hpk:3 }, dragon:{ name:'화염 용', hpk:5.6 }
   };
   const BOSS_ORDER = ['brute', 'knight', 'shaman', 'dragon'];
   const RIVALS = ['철벽 민수', '돌격대장 하나', '궁수왕 지훈', '행군의 달인', '성문지기 소라', '붉은 깃발 태오'];
@@ -213,7 +213,7 @@ NG.march = (() => {
     run.x += clamp(run.tx - run.x, -100 * dt, 100 * dt);
     run.x = clamp(run.x, -44, 44);
     const R = armyR(run.N);
-    let haltZ = Infinity, fighting = false;
+    let haltZ = Infinity, fighting = false, creep = Infinity;
     run.bossActive = null;
     for(const e of run.ents){
       if(e.t === 'crowd' && e.n > 0){
@@ -243,6 +243,8 @@ NG.march = (() => {
         if(run.z >= hz - .05){ e.hp -= run.N * .6 * dt; e.hitT = .08; }
       } else if(e.t === 'boss' && e.hp > 0){
         const sd = e.kind === 'shaman' ? 30 : 13, hz = e.z - sd - R * .5; haltZ = Math.min(haltZ, hz);
+        e.walk = run.z < hz - .5;
+        if(e.z - run.z < 85) creep = Math.min(creep, RULE.BOSS_WALK);
         if(e.z - run.z < 95){ run.bossActive = e; if(run.lastBoss !== e.id){ run.lastBoss = e.id; if(run.isMe) bossIntro(e); } }
         if(run.z >= hz - .05 && e.kind !== 'shaman') bossDmg(e, run.N * .35 * dt);
         if(e.z - run.z < 75) bossAI(run, e, dt, R);
@@ -261,7 +263,7 @@ NG.march = (() => {
       if(e.hitT) e.hitT = Math.max(0, e.hitT - dt);
     }
     run.prevZ = run.z;
-    let nz = run.z + RULE.SPEED * (fighting ? .3 : 1) * dt;
+    let nz = run.z + Math.min(RULE.SPEED * (fighting ? .3 : 1), creep) * dt;
     if(nz >= haltZ){ nz = Math.max(run.z, haltZ); run.halted = true; } else run.halted = false;
     run.z = nz;
     const pz = run.prevZ, z = run.z;
@@ -484,11 +486,11 @@ NG.march = (() => {
     const P = (x, z) => { const d = z - run.z; if(d < -F + 6) return null; const s = F / (F + d); return { X:w / 2 + x * s * unit + shx, Y:horizon + (armyY - horizon) * s + shy, s }; };
     let gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#bfe6ff'); gr.addColorStop(.12, '#5aa9ec'); gr.addColorStop(1, '#2f7fd6');
     c.fillStyle = gr; c.fillRect(0, 0, w, h);
-    if(!mini){ c.fillStyle = 'rgba(255,255,255,.18)'; for(let i = 0; i < 26; i++){ const zz = Math.floor(run.z / 9) * 9 + i * 9 - 20, px = ((i * 37) % 23) - 11; const L = P(-70 - ((i * 13) % 30), zz), Rr = P(70 + ((i * 17) % 30), zz); if(L) c.fillRect(L.X + px * L.s, L.Y, 10 * L.s * unit * .4, 1.5); if(Rr) c.fillRect(Rr.X + px * Rr.s, Rr.Y, 10 * Rr.s * unit * .4, 1.5); } }
+    if(!mini){ c.fillStyle = 'rgba(255,255,255,.18)'; for(let i = 0; i < 26; i++){ const zz = run.z + i * 9 - 20 + Math.sin(clock * .6 + i) * 1.5, px = ((i * 37) % 23) - 11; const L = P(-70 - ((i * 13) % 30), zz), Rr = P(70 + ((i * 17) % 30), zz); if(L) c.fillRect(L.X + px * L.s, L.Y, 10 * L.s * unit * .4, 1.5); if(Rr) c.fillRect(Rr.X + px * Rr.s, Rr.Y, 10 * Rr.s * unit * .4, 1.5); } }
     const quad = (x1, x2, z1, z2, col) => { const a = P(x1, z1), b = P(x2, z1), cc = P(x2, z2), d = P(x1, z2); if(!a || !b || !cc || !d) return; c.fillStyle = col; c.beginPath(); c.moveTo(a.X, a.Y); c.lineTo(b.X, b.Y); c.lineTo(cc.X, cc.Y); c.lineTo(d.X, d.Y); c.closePath(); c.fill(); };
-    const z0 = Math.floor((run.z - 40) / 6) * 6, zEnd = run.z + 235, strip = getStrip();
-    for(let zz = z0; zz < zEnd; zz += 6){
-      const alt = (Math.round(zz / 6) % 2 + 2) % 2;
+    const z0 = run.z - 42, zEnd = run.z + 235, strip = getStrip();   /* v1.2: 바닥·성벽은 화면에 고정 — 적·관문·보스가 다가옴 */
+    for(let zz = z0, bi = 0; zz < zEnd; zz += 6, bi++){
+      const alt = bi % 2;
       if(!strip) quad(-50, 50, zz, zz + 6.05, alt ? '#e8d9bb' : '#e4d4b4');
       quad(-58, -50, zz, zz + 6.05, alt ? '#c9b083' : '#c4ab7d');   /* 성벽: 띠 색 차이를 작게(깜박임 줄임) */
       quad(50, 58, zz, zz + 6.05, alt ? '#c9b083' : '#c4ab7d');
@@ -498,7 +500,7 @@ NG.march = (() => {
       quad(-50, 50, run.z - 40, zEnd, '#e8d9bb');   /* 먼 곳은 무늬 없이 고른 모래색 */
       for(let Y = Math.floor(horizon); Y < h; Y += 2){
         const s = (Y - horizon) / (armyY - horizon); if(s <= .22) continue;
-        const zz = run.z + F / s - F, hw = 50 * s * unit, v = Math.min(255, Math.floor(((zz * 10.24) % 256 + 256) % 256));
+        const zz = F / s - F, hw = 50 * s * unit, v = Math.min(255, Math.floor(((zz * 10.24) % 256 + 256) % 256));
         const x0 = w / 2 - hw + shx;
         c.globalAlpha = Math.min(1, (s - .22) / .25);   /* 흐린 무늬가 먼저, 가까이 오면 또렷한 무늬가 서서히 겹쳐짐(경계선 없음) */
         c.drawImage(strip.far, 0, v, 1024, 1, x0, Y + shy, hw * 2, 2.6);
@@ -635,7 +637,7 @@ NG.march = (() => {
     const sp = red ? 2.9 * .85 : 3 * .85, pts = [];
     for(let i = 0; i < n; i++){ const s = SUN[i]; pts.push([x + s[0] * sp, z + s[1] * sp, i]); }
     pts.sort((a, b) => b[1] - a[1]);
-    for(const q of pts){ const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.05 * p.s * unit, red, mini ? 0 : Math.abs(Math.sin(clock * 9 + q[2])) * 1.6 * p.s); }
+    for(const q of pts){ const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.05 * p.s * unit, red, mini ? 0 : red ? Math.abs(Math.sin(clock * 10 + q[2])) * 2.2 * p.s : Math.abs(Math.sin(clock * 3 + q[2] * .7)) * .5 * p.s); }
     const top = P(x, z + (red ? crowdR(N) : armyR(N)) * .75); if(!top) return;
     const label = String(Math.ceil(N)), fs = mini ? 11 : Math.max(14, 22 * top.s);
     c.font = fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -730,6 +732,7 @@ NG.march = (() => {
     if(e.kind === 'knight' && e.swing > 0) rot = -.08 * Math.sin((.4 - e.swing) / .4 * Math.PI);
     if(e.kind === 'dragon') lift = (3 + Math.sin(clock * 3) * 2.5) * S_;
     if(e.kind === 'shaman') lift = Math.sin(clock * 2.4) * 2 * S_;
+    if(e.walk && !(e.atk && !e.atk.hit)){ lift += Math.abs(Math.sin(clock * 5)) * 3 * S_; rot += Math.sin(clock * 5) * .04; }   /* 다가오는 걸음 */
     if(e.atk && !e.atk.hit){ const pr = Math.min(1, e.atk.t / e.atk.tele); lift += pr * 7 * S_; sq = 1 + pr * .08; rot += Math.sin(clock * 40) * .02 * pr; }   /* 준비 동작: 들썩이며 떨림 */
     if(e.rage){ const g = c.createRadialGradient(X, Y - h * .5, 0, X, Y - h * .5, h * .75); g.addColorStop(0, 'rgba(255,60,30,.35)'); g.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = g; c.beginPath(); c.arc(X, Y - h * .5, h * .75, 0, 7); c.fill(); }
     const w = ok(im) ? h * im.naturalWidth / im.naturalHeight : h * .8;
