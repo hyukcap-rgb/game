@@ -6,34 +6,34 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:24, BATTLE_TIME:120, BATTLE_START:10, ARROW_RANGE:58, BOSS_EVERY:3,
+    SPEED:24, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
-    1:['기본 관문', '+는 더하고 −는 빼요. 좋은 숫자 쪽으로 이동하세요. 파란 +판 줄은 지나갈 때마다 병사가 늘어요.'],
-    2:['적 부대', '빨간 부대와 부딪히면 서로 병력을 잃어요. 다가오는 동안 화살이 먼저 줄여 줘요.'],
-    3:['보스 · 몽둥이 거인', '내려찍기로 병사를 쓸어내요. 화살과 돌격으로 쓰러뜨리세요.'],
+    1:['빠른 판단', '병사 1명으로 출발! 숫자 상자를 쏴 부수면 +1 줄이 열려요. 화살은 앞쪽으로만 나가니 줄을 맞추고, 빨간 대군 쪽은 피하세요.'],
+    2:['보상 통', '숫자 통을 쏴 부수면 병사·석궁(공격력)·연사가 늘어요. 갈림길에선 벽 너머로 못 건너가요.'],
+    3:['보스 · 몽둥이 거인', '빨간 원이 차오르면 내려찍기, 원 여러 개는 바위 던지기! 원 밖으로 피하면서 쏘세요.'],
     4:['곱셈 관문', '×는 병력을 배로, ÷는 반으로 만들어요.'],
     5:['회전 톱날', '좌우로 움직이는 톱날에 닿으면 병사를 잃어요. 틈을 노려 지나가세요.'],
-    6:['보스 · 방패 기사', '방패를 든 동안엔 피해가 거의 안 들어가요. 방패를 내릴 때가 기회예요.'],
+    6:['보스 · 방패 기사', '창 돌진은 빨간 줄 밖으로, 회전 베기는 초록 틈으로 피하세요. 방패를 든 동안엔 피해가 거의 안 들어가요.'],
     7:['성장 관문', '마이너스 관문도 줄 서서 쏘면 숫자가 1씩 올라가요. 일찍 줄을 서세요.'],
     8:['적 궁수탑', '길가의 탑이 병사를 저격해요. 화살로 먼저 부수세요.'],
-    9:['보스 · 주술사', '졸개를 부르고 발밑에 독 웅덩이를 깔아요. 초록 원에서 비켜나세요.'],
+    9:['보스 · 주술사', '번개 원 여러 개·졸개 소환·발밑 독 웅덩이. 표시된 곳에서 비켜나세요.'],
     10:['움직이는 관문', '관문 숫자가 좌우로 자리를 바꿔요. 지나가는 순간을 맞추세요.'],
     11:['성문', '길을 막은 성문은 부숴야 지나갈 수 있어요.'],
-    12:['보스 · 화염 용', '붉게 표시된 쪽에 불을 뿜어요. 반대쪽으로 피하세요.']
+    12:['보스 · 화염 용', '붉게 표시된 쪽에 불, 불덩이 비, 날개 바람으로 밀어내기. 반 박자 먼저 움직이세요.']
   };
-  const NEWF = { 2:'crowd', 4:'mul', 5:'saw', 7:'grow', 8:'tower', 10:'move', 11:'door' };
+  const NEWF = { 2:'barrel', 4:'mul', 5:'saw', 7:'grow', 8:'tower', 10:'move', 11:'door' };
   const KIND = {
     brute:{ name:'몽둥이 거인', hpk:6.5 }, knight:{ name:'방패 기사', hpk:5 },
-    shaman:{ name:'주술사', hpk:4.6 }, dragon:{ name:'화염 용', hpk:5.6 }
+    shaman:{ name:'주술사', hpk:3.6 }, dragon:{ name:'화염 용', hpk:5.6 }
   };
   const BOSS_ORDER = ['brute', 'knight', 'shaman', 'dragon'];
   const RIVALS = ['철벽 민수', '돌격대장 하나', '궁수왕 지훈', '행군의 달인', '성문지기 소라', '붉은 깃발 태오'];
-  const feat = d => ({ crowd:d >= 2, mul:d >= 4, saw:d >= 5, grow:d >= 7, tower:d >= 8, move:d >= 10, door:d >= 11 });
+  const feat = d => ({ crowd:d >= 1, barrel:d >= 2, split:d >= 2, mul:d >= 4, saw:d >= 5, grow:d >= 7, tower:d >= 8, move:d >= 10, door:d >= 11 });
   const isBossStage = n => n % RULE.BOSS_EVERY === 0;
   const bossKindFor = n => BOSS_ORDER[(n / RULE.BOSS_EVERY - 1) % 4];
-  const startN = n => 5 + Math.min(25, n);
+  const startN = n => Math.min(8, 1 + Math.floor((n - 1) / 3));   /* v1.1: 1명으로 시작(빠른 판단) */
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const fx = f => { try{ f(); }catch(_){} };
   function mul32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -42,7 +42,8 @@ NG.march = (() => {
   let BASE = 'games/march/img/';
   try{ if(/\/embed\/[^/]*$/.test(location.pathname)) BASE = '../games/march/img/'; }catch(_){}
   const IMGF = { soldier:'soldier.webp', enemy:'enemy.webp', brute:'brute.webp', knight:'knight.webp', shaman:'shaman.webp', dragon:'dragon.webp',
-    tower:'tower.webp', stone:'stone.jpg', gateB:'gateB.webp', gateR:'gateR.webp', door:'door.webp', saw:'saw.webp' };
+    tower:'tower.webp', stone:'stone.jpg', gateB:'gateB.webp', gateR:'gateR.webp', door:'door.webp', saw:'saw.webp',
+    barrel:'barrel.webp', crate:'crate.webp', xbow:'xbow.webp', rock:'rock.webp' };
   const IMG = {};
   function loadImgs(){ if(IMG.soldier) return; for(const k in IMGF){ const im = new Image(); im.decoding = 'async'; im.src = BASE + IMGF[k]; IMG[k] = im; } }
   const ok = im => im && im.complete && im.naturalWidth > 0;
@@ -66,23 +67,36 @@ NG.march = (() => {
   const opGood = o => (o.op === '+' && o.v >= 0) || o.op === '×';
 
   /* ---------- 길 만들기(대전은 두 부대가 같은 길을 나눠 씀) ---------- */
-  function newGen(rng, mode, stage, sN){ return { rng, items:[], z:40, E:sN, mode, stage, seg:0, nextBoss:620, bossN:0, ended:false, lastT:'', firstGate:false }; }
+  function newGen(rng, mode, stage, sN){ return { rng, items:[], z:40, E:sN, mode, stage, seg:0, nextBoss:620, bossN:0, ended:false, lastT:'', firstGate:false, opened:false }; }
+  const pickRw = (r, E, d) => { const q = r(); return q < .45 ? { k:'men', v:Math.round(4 + E * .25 + d) } : q < .75 ? { k:'bow', v:1.3 } : { k:'rate', v:1.25 }; };
+  /* 시작 구간(빠른 판단): 벽으로 나뉜 두 길 — 한쪽은 숫자 상자 + +1 줄, 다른 쪽은 빨간 대군 */
+  function genOpening(g){
+    const r = g.rng, d = gD(g), side = r() < .5 ? -1 : 1, lx = side * 25;
+    const n = 7 + Math.min(d, 6), k = 1 + Math.floor(d / 4), hp = Math.round(2 + g.E + d * .4), hn = Math.round(22 + d * 6 + g.E * 2);
+    const z0 = 48;   /* 출발 후 약 2초 안에 길을 골라야 함 */
+    g.items.push({ t:'wall', z:z0, len:16 + n * 7, x:0 });
+    g.items.push({ t:'crate', z:z0 + 6, x:lx, hp, max:hp });
+    g.items.push({ t:'col', z:z0 + 16, x:lx, n, k, step:7, got:[] });
+    g.items.push({ t:'crowd', z:z0 + 26, x:-lx, n:hn, max:hn, pen:true });
+    g.E += n * k; g.z = z0 + 16 + n * 7 + 24; g.opened = true;
+  }
   const gD = g => g.mode === 'solo' ? g.stage : Math.min(14, 1 + Math.floor(g.z / 220));
   function extendGen(g, toZ){ while(!g.ended && g.z < toZ) genSeg(g); }
   function genSeg(g){
     const r = g.rng, d = gD(g), f = feat(d), R = (a, b) => a + (b - a) * r();
     const nf = g.mode === 'solo' ? NEWF[d] : null;
+    if(!g.opened){ genOpening(g); return; }
     if(g.mode === 'solo'){
       if(g.seg >= 9 + Math.min(d, 12)){
         if(isBossStage(d)){
           const kind = bossKindFor(d), hp = Math.round(KIND[kind].hpk * g.E + 60 + d * 12);
-          g.items.push({ t:'boss', z:g.z + 30, x:0, kind, hp, max:hp, final:true, d, minion:Math.round(g.E * .22 + 4), t1:0, t2:0, sc:0 });
-        } else g.items.push({ t:'finish', z:g.z + 20 });
+          g.items.push({ t:'boss', z:g.z + 30, x:0, kind, hp, max:hp, final:true, d, minion:Math.round(g.E * .22 + 4), sc:0, cd:1.6, ai:0, atk:null });
+        } else { const hn = Math.round(g.E * .7 + 6 + d); g.items.push({ t:'crowd', z:g.z + 10, x:0, n:hn, max:hn, horde:true }); g.items.push({ t:'finish', z:g.z + 40 }); }
         g.ended = true; return;
       }
     } else if(g.z >= g.nextBoss){
       const kind = BOSS_ORDER[g.bossN % 4], hp = Math.round(KIND[kind].hpk * g.E * .85 + 60 + d * 10);
-      g.items.push({ t:'boss', z:g.z + 20, x:0, kind, hp, max:hp, final:false, d, minion:Math.round(g.E * .2 + 4), t1:0, t2:0, sc:0 });
+      g.items.push({ t:'boss', z:g.z + 20, x:0, kind, hp, max:hp, final:false, d, minion:Math.round(g.E * .2 + 4), sc:0, cd:1.6, ai:0, atk:null });
       g.bossN++; g.nextBoss = g.z + 760; g.z += 70; g.E *= .75; return;
     }
     const even = g.seg % 2 === 0; g.seg++;
@@ -91,8 +105,9 @@ NG.march = (() => {
     if(f.saw) haz.push('saw');
     if(f.tower) haz.push('tower');
     if(f.door && g.lastT !== 'door') haz.push('door');
+    if(f.split && g.lastT !== 'split') haz.push('split');
     let t;
-    if(even || !haz.length) t = r() < .7 ? 'gate' : 'col';
+    if(even || !haz.length){ const q = r(); t = q < .55 ? 'gate' : (f.barrel && q < .8) ? 'barrel' : 'col'; if(nf === 'barrel' && r() < .4) t = 'barrel'; }
     else if(nf && ['crowd', 'saw', 'tower', 'door'].includes(nf) && r() < .55) t = nf;
     else t = haz[Math.floor(r() * haz.length)];
     g.lastT = t;
@@ -138,6 +153,21 @@ NG.march = (() => {
       g.items.push({ t:'tower', z:g.z, x:side * 45, hp, max:hp, rate, dmg, tt:0 });
       if(d >= 10 && r() < .5) g.items.push({ t:'tower', z:g.z + 14, x:-side * 45, hp, max:hp, rate, dmg, tt:.3 });
       g.E = Math.max(5, E - 4 - d); g.z += 40;
+    } else if(t === 'barrel'){
+      const side = r() < .5 ? -1 : 1, bh = Math.round(6 + E * .35 + d * 2);
+      g.items.push({ t:'barrel', z:g.z, x:side * R(18, 32), hp:bh, max:bh, rw:pickRw(r, E, d) });
+      if(r() < .5){ const cn = Math.round(E * R(.3, .5) + 2 + d * .5); g.items.push({ t:'crowd', z:g.z + 8, x:-side * R(10, 26), n:cn, max:cn }); g.E = Math.max(3, g.E - cn * .4); }
+      g.E += 3 + E * .1; g.z += 40;
+    } else if(t === 'split'){
+      /* 갈림길: 벽 한쪽은 숫자 상자 + +판 줄, 다른 쪽은 적 부대가 지키는 보상 통 */
+      const side = r() < .5 ? -1 : 1, lx = side * 25, n = 5 + Math.floor(R(0, 4)), k = 1 + Math.floor(d / 3);
+      const hp = Math.round(4 + E * .45 + d * 1.5), bh = Math.round(6 + E * .35 + d * 2), cn = Math.round(E * R(.35, .6) + 3 + d);
+      g.items.push({ t:'wall', z:g.z, len:16 + n * 7, x:0 });
+      g.items.push({ t:'crate', z:g.z + 6, x:lx, hp, max:hp });
+      g.items.push({ t:'crowd', z:g.z + 10, x:-lx, n:cn, max:cn, pen:true });
+      g.items.push({ t:'col', z:g.z + 16, x:lx, n, k, step:7, got:[] });
+      g.items.push({ t:'barrel', z:g.z + 26, x:-lx, hp:bh, max:bh, rw:pickRw(r, E, d) });
+      g.E += n * k * .6; g.z += 16 + n * 7 + 22;
     } else if(t === 'door'){
       const hp = Math.round(E * 1.2 + 30 + d * 5);
       g.items.push({ t:'door', z:g.z, hp, max:hp });
@@ -149,7 +179,7 @@ NG.march = (() => {
   let UID = 0;
   function newRun(gen, n, isMe, rng){
     return { gen, idx:0, ents:[], arrows:[], earrows:[], fx:[], z:0, prevZ:0, x:0, tx:0, N:n, peak:n, time:0, rng,
-      dead:false, done:false, win:false, deathTime:null, isMe, fireT:0, ai:{}, bossActive:null, halted:false, shake:0, kills:0, bossKills:0, lastBoss:null };
+      dead:false, done:false, win:false, deathTime:null, isMe, fireT:0, ai:{}, bossActive:null, halted:false, shake:0, kills:0, bossKills:0, lastBoss:null, dmgMul:1, rateMul:1 };
   }
   const armyR = n => 3 * Math.sqrt(Math.min(Math.max(n, 1), 120)) * .85 + 2;
   const crowdR = n => 2.9 * Math.sqrt(Math.min(Math.max(n, 1), 90)) * .85 + 2;
@@ -170,7 +200,9 @@ NG.march = (() => {
     while(run.idx < g.items.length && g.items[run.idx].z < run.z + 240){
       const c = JSON.parse(JSON.stringify(g.items[run.idx++])); c.id = ++UID;
       if(g.mode === 'solo'){   /* 솔로는 실제 내 병력에 맞춰 적 크기·성문·보스 체력을 줄여 줌(생성기의 기대 병력보다 적을 때) */
-        if(c.t === 'crowd') c.n = c.max = Math.max(3, Math.round(Math.min(c.n, run.N * .9 + 3 + g.stage * .5)));
+        if(c.t === 'crowd' && !c.pen) c.n = c.max = Math.max(3, Math.round(Math.min(c.n, run.N * .9 + 3 + g.stage * .5)));
+        if(c.t === 'crate') c.hp = c.max = Math.max(3, Math.round(Math.min(c.hp, run.N * .5 + 4 + g.stage)));
+        if(c.t === 'barrel') c.hp = c.max = Math.max(4, Math.round(Math.min(c.hp, run.N * .4 + 6 + g.stage * 2)));
         if(c.t === 'boss'){ c.hp = c.max = Math.round(Math.min(c.hp, KIND[c.kind].hpk * Math.max(run.N, 12) * 1.05 + 60 + c.d * 12)); c.minion = Math.max(4, Math.round(Math.min(c.minion, run.N * .2 + 4))); }
         if(c.t === 'door') c.hp = c.max = Math.round(Math.min(c.hp, run.N * 1.3 + 30 + g.stage * 5));
       }
@@ -186,7 +218,7 @@ NG.march = (() => {
     for(const e of run.ents){
       if(e.t === 'crowd' && e.n > 0){
         const dz = e.z - run.z;
-        if(dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -12 * dt, 12 * dt); e.z -= 7 * dt; }
+        if(!e.pen && dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -12 * dt, 12 * dt); e.z -= 7 * dt; }
         const er = crowdR(e.n);
         if(Math.abs(e.z - run.z) < R * .5 + er * .5 + 2 && Math.abs(run.x - e.x) < R + er - 2){
           fighting = true;
@@ -194,6 +226,17 @@ NG.march = (() => {
           e.n -= k; hurt(run, k, false); run.kills += k;
           if(S.vr() < dt * 14) addFx(run, { k:'puff', x:(run.x + e.x) / 2 + (S.vr() - .5) * R, z:run.z + R * .4, life:.4 });
           if(run.isMe && S.vr() < dt * 6) snd('mcClash');
+        }
+      } else if((e.t === 'crate' || e.t === 'barrel') && e.hp > 0){
+        /* 상자·통: 정면으로 부딪히면 막힘(부수거나 비켜 가야 함) */
+        if(Math.abs(run.x - e.x) < 7 + R * .35){ const hz = e.z - 3 - R * .5; haltZ = Math.min(haltZ, hz); if(run.z >= hz - .05){ e.hp -= run.N * .6 * dt; e.hitT = .08; } }
+      } else if(e.t === 'wall'){
+        /* 칸막이 벽: 들어간 쪽에서 못 건너감 */
+        if(run.z >= e.z - 2 && run.z <= e.z + e.len){
+          if(e.lock === undefined) e.lock = run.x < e.x ? -1 : 1;
+          const lim = 2 + R * .35;
+          if(e.lock < 0){ run.x = Math.min(run.x, e.x - lim); run.tx = Math.min(run.tx, e.x - lim); }
+          else { run.x = Math.max(run.x, e.x + lim); run.tx = Math.max(run.tx, e.x + lim); }
         }
       } else if(e.t === 'door' && e.hp > 0){
         const hz = e.z - 3 - R * .5; haltZ = Math.min(haltZ, hz);
@@ -247,7 +290,7 @@ NG.march = (() => {
     for(const a of run.earrows){ a.t += dt; if(a.t >= a.dur && !a.hit){ a.hit = 1; hurt(run, a.dmg, false); if(S.vr() < .5) addFx(run, { k:'txt', x:run.x, z:run.z + 2, text:'−' + a.dmg, col:'#ff5a4f', life:.6 }); } }
     run.earrows = run.earrows.filter(a => !a.hit);
     /* 우리 화살: 병력이 많을수록 빠르고 셈 */
-    const rate = Math.min(2 + run.N * .25, 18), per = Math.max(1, (2 + run.N * .25) / 18);
+    const rate = Math.min(2 + run.N * .25, 18) * run.rateMul, per = Math.max(1, (2 + run.N * .25) / 18) * run.dmgMul;
     run.fireT -= dt;
     if(run.fireT <= 0 && run.N >= 1){
       run.fireT = 1 / rate;
@@ -267,7 +310,7 @@ NG.march = (() => {
       if(a.t >= a.dur && !a.hit){
         a.hit = 1; const e = a.tg;
         if(e.t === 'crowd' && e.n > 0){ const k = Math.min(e.n, a.dmg); e.n -= k; run.kills += k; }
-        else if(e.t === 'tower' && e.hp > 0){ e.hp -= a.dmg; e.hitT = .1; }
+        else if((e.t === 'tower' || e.t === 'crate' || e.t === 'barrel') && e.hp > 0){ e.hp -= a.dmg; e.hitT = .1; }
         else if(e.t === 'door' && e.hp > 0){ e.hp -= a.dmg; e.hitT = .08; }
         else if(e.t === 'boss' && e.hp > 0) bossDmg(e, a.dmg);
         else if(e.t === 'gate' && !e.used){
@@ -279,6 +322,7 @@ NG.march = (() => {
     run.arrows = run.arrows.filter(a => !a.hit);
     for(const e of run.ents){
       if(e.t === 'crowd' && e.n <= 0 && !e.gone){ e.gone = 1; addFx(run, { k:'ring', x:e.x, z:e.z, col:'#ffffff', life:.4 }); }
+      if((e.t === 'crate' || e.t === 'barrel') && e.hp <= 0 && !e.gone){ e.gone = 1; addFx(run, { k:'boom', x:e.x, z:e.z, life:.5 }); if(e.t === 'barrel') reward(run, e); if(run.isMe) snd(e.t === 'barrel' ? 'mcReward' : 'mcBreak'); }
       if((e.t === 'tower' || e.t === 'door') && e.hp <= 0 && !e.gone){ e.gone = 1; addFx(run, { k:'boom', x:e.t === 'door' ? 0 : e.x, z:e.z, life:.6 }); if(run.isMe) snd('mcBreak'); }
       if(e.t === 'boss' && e.hp <= 0 && !e.gone){
         e.gone = 1; run.bossKills++;
@@ -296,58 +340,119 @@ NG.march = (() => {
     if(run.N < 1 && !run.done){ run.N = 0; run.dead = true; run.deathTime = run.time; }
     run.peak = Math.max(run.peak, run.N);
   }
+  function reward(run, e){
+    const w = e.rw || { k:'men', v:5 };
+    if(w.k === 'men'){ run.N += w.v; addFx(run, { k:'txt', x:e.x, z:e.z + 4, text:'+' + w.v + ' 병사', col:'#ffd84a', life:1.3, big:1 }); }
+    else if(w.k === 'bow'){ run.dmgMul = Math.min(3, run.dmgMul * w.v); addFx(run, { k:'ico', x:e.x, z:e.z + 4, life:1.3 }); addFx(run, { k:'txt', x:e.x, z:e.z + 6, text:'석궁! 공격력 ×' + run.dmgMul.toFixed(1), col:'#ffd84a', life:1.4, big:1 }); }
+    else { run.rateMul = Math.min(2.5, run.rateMul * w.v); addFx(run, { k:'ico', x:e.x, z:e.z + 4, life:1.3 }); addFx(run, { k:'txt', x:e.x, z:e.z + 6, text:'연사! ×' + run.rateMul.toFixed(1), col:'#9fe0ff', life:1.4, big:1 }); }
+  }
+  /* 화살은 부대 앞쪽(좌우 aim 안)으로만 — 줄을 맞춰야 상자·통·탑을 쏨. 보스·성문은 어디서나 */
   function findTarget(run){
-    let best = null, bd = 1e9;
+    let best = null, bd = 1e9; const aim = armyR(run.N) * .9 + RULE.AIM;
     for(const e of run.ents){
       const dz = e.z - run.z; if(dz < -2) continue;
       let can = false;
-      if(e.t === 'crowd' && e.n > 0 && dz < RULE.ARROW_RANGE) can = true;
-      else if((e.t === 'tower' || e.t === 'door') && e.hp > 0 && dz < 72) can = true;
+      if(e.t === 'crowd' && e.n > 0 && dz < RULE.ARROW_RANGE && Math.abs(e.x - run.x) < aim + crowdR(e.n) * .6) can = true;
+      else if(e.t === 'door' && e.hp > 0 && dz < 72) can = true;
+      else if(e.t === 'tower' && e.hp > 0 && dz < 72 && Math.abs(e.x - run.x) < aim + 8) can = true;
+      else if((e.t === 'crate' || e.t === 'barrel') && e.hp > 0 && dz < 70 && Math.abs(e.x - run.x) < aim) can = true;
       else if(e.t === 'boss' && e.hp > 0 && dz < 85) can = true;
       else if(e.t === 'gate' && e.grow && !e.used && dz < 62 && dz > 4) can = true;
       if(can && dz < bd){ bd = dz; best = e; }
     }
     return best;
   }
-  function bossAI(run, e, dt, R){
-    e.t1 += dt;
-    if(e.kind === 'brute'){
-      if(e.swing > 0) e.swing -= dt;
-      if(e.t1 > 2.4 && run.halted){ e.t1 = 0; e.swing = .5; hurt(run, Math.round(2 + run.N * .08 + e.d * .3), true); run.shake = .35; addFx(run, { k:'ring', x:run.x, z:run.z, col:'#ffb347', life:.6, big:1 }); if(run.isMe) snd('mcSlam'); }
-    } else if(e.kind === 'knight'){
-      e.sc += dt; e.shield = (e.sc % 5.5) < 3;
-      if(e.swing > 0) e.swing -= dt;
-      if(e.t1 > 1.9 && run.halted){ e.t1 = 0; e.swing = .4; hurt(run, Math.round(1 + run.N * .05 + e.d * .2), true); run.shake = .2; if(run.isMe) snd('mcSlam'); }
-    } else if(e.kind === 'shaman'){
-      e.t2 += dt;
-      if(e.t1 > 4.5){ e.t1 = 0; const n = Math.round(e.minion); run.ents.push({ t:'crowd', z:e.z - 14, x:(run.rng() - .5) * 50, n, max:n, id:++UID }); addFx(run, { k:'ring', x:0, z:e.z - 12, col:'#b07cff', life:.6, big:1 }); }
-      if(e.t2 > 5 && run.halted){ e.t2 = 0; run.ents.push({ t:'puddle', z:run.z, x:run.x, r:9 + R * .3, life:4.2, id:++UID }); }
-    } else if(e.kind === 'dragon'){
-      if(!e.phase){ e.phase = 'idle'; e.fireN = 0; }
-      if(e.phase === 'idle' && e.t1 > 3.6){ e.phase = 'tele'; e.t1 = 0; e.fireSide = run.x < 0 ? -1 : 1; e.fireN++; }
-      else if(e.phase === 'tele' && e.t1 > 1.3){
-        e.phase = 'fire'; e.t1 = 0;
-        const inSide = e.fireSide < 0 ? run.x < 4 : run.x > -4;
-        if(inSide){ hurt(run, Math.ceil(run.N * .42), true); run.shake = .45; if(run.isMe) snd('mcFire'); }
-        else addFx(run, { k:'txt', x:run.x, z:run.z + 4, text:'회피!', col:'#7fd0ff', life:1, big:1 });
-      } else if(e.phase === 'fire' && e.t1 > .7){ e.phase = 'idle'; e.t1 = 0; }
-      e.t2 += dt; if(e.t2 > 2.2 && run.halted){ e.t2 = 0; hurt(run, Math.round(1 + run.N * .03), false); }
-    }
+  /* ---------- 보스 공격(v1.1): 예고(빨간 표시) → 타격. 표시 밖으로 피하면 '회피!' ---------- */
+  const ATK = { brute:['slam', 'rocks', 'slam', 'rocks'], knight:['line', 'sweep', 'line', 'sweep'], shaman:['bolts', 'summon', 'poison', 'bolts'], dragon:['fire', 'balls', 'gust', 'fire'] };
+  const TELE = { slam:1.1, rocks:1, line:.9, sweep:1.1, bolts:.95, summon:.35, poison:.6, fire:1.3, balls:1, gust:.6 };
+  function danger(A, x, R){
+    for(const s of A.spots) if(Math.abs(x - s.x) < s.r + R * .35) return true;
+    if(A.k === 'line') return Math.abs(x - A.x) < A.w + R * .3;
+    if(A.k === 'sweep') return Math.abs(x - A.safe) > A.gap - R * .25;
+    if(A.k === 'fire') return A.side < 0 ? x < 4 : x > -4;
+    return false;
   }
+  function bossAI(run, e, dt, R){
+    const rr = run.rng, RN = (a, b) => a + (b - a) * rr();
+    if(e.kind === 'knight'){ e.sc += dt; e.shield = (e.sc % 5.5) < 3; }
+    if(e.swing > 0) e.swing -= dt;
+    if(!e.rage && e.hp < e.max * .5){
+      e.rage = true; addFx(run, { k:'txt', x:0, z:e.z + 10, text:'분노!', col:'#ff5a4f', life:1.4, big:1 });
+      if(run.isMe){ snd('mcRoar'); flash('#ff3b30', .35); }
+    }
+    const A = e.atk;
+    if(A){
+      A.t += dt;
+      if(!A.hit && A.t >= A.tele){ A.hit = true; bossHit(run, e, A, R); }
+      if(A.t >= A.tele + (A.k === 'fire' ? .7 : .45)) e.atk = null;
+      return;
+    }
+    e.cd -= dt * (e.rage ? 1.45 : 1);
+    if(e.cd > 0) return;
+    const list = ATK[e.kind], k = list[(e.ai = (e.ai || 0) + 1) % list.length];
+    e.cd = Math.max(1.1, 2.2 - e.d * .03);
+    const N = { k, t:0, tele:(e.rage ? .8 : 1) * TELE[k], spots:[], hit:false };
+    const W = (x, r) => N.spots.push({ x:clamp(x, -44, 44), r });
+    const rr2 = 9 + R * .25;
+    if(k === 'slam') W(run.x, 13 + R * .45);
+    else if(k === 'rocks' || k === 'balls'){ const o = rr() < .5 ? -1 : 1; W(run.x, rr2); W(run.x + o * RN(20, 28), rr2); W(RN(-40, 40), rr2); if(e.rage) W(run.x - o * RN(20, 28), rr2); }
+    else if(k === 'bolts'){ W(run.x, 8 + R * .2); for(let i = 0; i < (e.rage ? 5 : 4); i++) W(RN(-42, 42), 8 + R * .2); }
+    else if(k === 'line'){ N.x = run.x; N.w = 11 + R * .3; }
+    else if(k === 'sweep'){ N.gap = 11 + R * .45; N.safe = clamp(run.x + (rr() < .5 ? -1 : 1) * RN(18, 34), -36, 36); }
+    else if(k === 'fire' || k === 'gust') N.side = run.x < 0 ? -1 : 1;
+    e.atk = N;
+    if(run.isMe && k !== 'summon') snd('mcWarn');
+  }
+  function bossHit(run, e, A, R){
+    const fr = f => Math.min(.6, f * (1 + e.d * .015));
+    let lost = 0;
+    for(const s of A.spots){
+      addFx(run, { k:'crater', x:s.x, z:run.z, r:s.r, life:.55, col:A.k === 'bolts' ? '#ffe86b' : A.k === 'balls' ? '#ff8a3d' : '#8a6a44' });
+      if(A.k === 'bolts') addFx(run, { k:'bolt', x:s.x, z:run.z, life:.25 });
+      if(Math.abs(run.x - s.x) < s.r + R * .35) lost += fr(A.k === 'slam' ? .32 : A.k === 'bolts' ? .12 : .15);
+    }
+    if(A.k === 'line' && Math.abs(run.x - A.x) < A.w + R * .3) lost += fr(.36);
+    if(A.k === 'sweep' && Math.abs(run.x - A.safe) > A.gap - R * .25) lost += fr(.28);
+    if(A.k === 'fire' && danger(A, run.x, R)) lost += fr(.42);
+    if(A.k === 'gust'){ run.x = clamp(run.x + A.side * 24, -44, 44); run.tx = run.x; lost += fr(.04); addFx(run, { k:'txt', x:run.x, z:run.z + 4, text:'밀려남!', col:'#cfe6ff', life:.9, big:1 }); }
+    if(A.k === 'summon'){ const n = Math.round(e.minion); for(let i = 0; i < 2; i++) run.ents.push({ t:'crowd', z:e.z - 14 - i * 6, x:(run.rng() - .5) * 60, n:Math.ceil(n / 2), max:Math.ceil(n / 2), id:++UID }); addFx(run, { k:'ring', x:0, z:e.z - 12, col:'#b07cff', life:.6, big:1 }); }
+    if(A.k === 'poison') run.ents.push({ t:'puddle', z:run.z, x:run.x, r:9 + R * .3, life:4.2, id:++UID });
+    e.swing = .5;
+    if(lost > 0){ const k = Math.max(1, Math.round(run.N * Math.min(.7, lost))); hurt(run, k, false); impact(run, k, true, A.k === 'fire' || A.k === 'balls' ? '#ff8a3d' : '#ffffff'); }
+    else if(!['summon', 'poison', 'gust'].includes(A.k)){ addFx(run, { k:'txt', x:run.x, z:run.z + 4, text:'회피!', col:'#7fd0ff', life:1, big:1 }); impact(run, 0, false); }
+  }
+  /* 타격감(보이기만): 흔들림·번쩍·잠깐 멈춤·튕겨 나가는 병사·큰 숫자 */
+  function impact(run, k, hit, col){
+    run.shake = hit ? .55 : .25;
+    if(hit){
+      addFx(run, { k:'txt', x:run.x, z:run.z + 5, text:'−' + k, col:'#ff5a4f', life:1.2, huge:1, big:1 });
+      for(let i = 0; i < Math.min(16, k); i++) addFx(run, { k:'fly', x:run.x + (S.vr() - .5) * 14, z:run.z + (S.vr() - .3) * 8, vx:(S.vr() - .5) * 60, vy:40 + S.vr() * 40, rot:(S.vr() - .5) * 14, life:.9 });
+    }
+    if(run.isMe){ S.hitstop = hit ? .1 : .04; if(hit){ flash(col || '#ffffff', .55); snd('mcSlam'); } else snd('mcThud'); }
+  }
+  function flash(col, a){ if(S) S.flash = { col, a, t:0 }; }
 
   /* ---------- 라이벌 판단(씨앗 rng) ---------- */
   function aiThink(run){
     const R = armyR(run.N), ahead = run.ents.filter(e => e.z > run.z - 3).sort((a, b) => a.z - b.z);
     for(const e of ahead){
-      if(e.t === 'boss' && e.kind === 'dragon' && e.phase === 'tele'){
-        const key = 'd' + e.id + '_' + e.fireN;
-        if(run.ai[key] === undefined) run.ai[key] = run.rng() < .72;
-        if(run.ai[key]){ run.tx = e.fireSide > 0 ? -32 : 32; return; }
+      if(e.t === 'boss' && e.atk && !e.atk.hit && e.z - run.z < 80){
+        const key = 'a' + e.id + '_' + e.ai;
+        if(run.ai[key] === undefined) run.ai[key] = run.rng() < .7;
+        if(run.ai[key] && danger(e.atk, run.x, R)){
+          let best = run.x, bs = 1e9;
+          for(let x = -40; x <= 40; x += 5){ if(danger(e.atk, x, R)) continue; const d = Math.abs(x - run.x); if(d < bs){ bs = d; best = x; } }
+          run.tx = best; return;
+        }
       }
     }
     for(const e of ahead) if(e.t === 'puddle' && Math.abs(e.x - run.x) < e.r + R * .4 + 3){ run.tx = clamp(e.x > 0 ? e.x - e.r - R - 6 : e.x + e.r + R + 6, -44, 44); return; }
     for(const e of ahead){
       const dz = e.z - run.z; if(dz > 75) break;
+      if(e.t === 'wall' && e.lock === undefined && dz < 45){
+        const col = ahead.find(q => q.t === 'col' && q.z >= e.z && q.z <= e.z + e.len);
+        if(col){ run.tx = col.x; return; }
+      }
       if(e.t === 'gate' && !e.used){
         const key = 'g' + e.id;
         if(run.ai[key] === undefined) run.ai[key] = run.rng() < .8;
@@ -355,9 +460,13 @@ NG.march = (() => {
         let side = a >= b ? 0 : 1; if(!run.ai[key]) side = 1 - side;
         run.tx = side ? 24 : -24; return;
       }
+      if((e.t === 'crate' || e.t === 'barrel') && e.hp > 0 && dz < 60){
+        const key = 'b' + e.id; if(run.ai[key] === undefined) run.ai[key] = e.t === 'crate' || run.rng() < .6;
+        if(run.ai[key]){ run.tx = e.x; return; }
+      }
       if(e.t === 'col' && dz < 40 && dz > -e.n * e.step){ run.tx = e.x; return; }
       if(e.t === 'saw' && !e.done && dz < 30 && dz > 0 && Math.abs(e.x - run.x) < R + 9){ run.tx = e.x > 0 ? -38 : 38; return; }
-      if(e.t === 'crowd' && e.n > run.N * .7 && dz < 50 && dz > 0){ run.tx = e.x > 0 ? -40 : 40; return; }
+      if(e.t === 'crowd' && !e.pen && e.n > run.N * .7 && dz < 50 && dz > 0){ run.tx = e.x > 0 ? -40 : 40; return; }
     }
   }
 
@@ -407,11 +516,8 @@ NG.march = (() => {
         c.beginPath(); c.ellipse(p.X, p.Y, e.r * p.s * unit, e.r * p.s * unit * .5, 0, 0, 7); c.fill();
         c.strokeStyle = 'rgba(60,140,30,.8)'; c.lineWidth = 2; c.stroke();
       }
-      if(e.t === 'boss' && e.kind === 'dragon' && (e.phase === 'tele' || e.phase === 'fire') && e.hp > 0){
-        const x1 = e.fireSide < 0 ? -50 : -4, x2 = e.fireSide < 0 ? 4 : 50;
-        if(e.phase === 'tele'){ const a = .18 + .18 * Math.sin(clock * 18); quad(x1, x2, run.z - 30, e.z, 'rgba(255,40,30,' + a.toFixed(2) + ')'); }
-        else quad(x1, x2, run.z - 30, e.z, 'rgba(255,140,30,.55)');
-      }
+      if(e.t === 'wall') drawWall(c, P, unit, e, run);
+      if(e.t === 'boss' && e.atk && e.hp > 0) drawTele(c, P, unit, e, run, quad, clock, mini);
       if(e.t === 'col') quad(e.x - 6.5, e.x + 6.5, e.z - 4, e.z + e.n * e.step, 'rgba(255,200,61,.25)');
     }
     const list = [];
@@ -422,6 +528,15 @@ NG.march = (() => {
     list.push({ z:run.z, army:1, f:() => drawArmy(c, P, unit, run.x, run.z, run.N, false, clock, mini) });
     list.sort((a, b) => b.z - a.z || (a.army ? 1 : -1));
     for(const it of list) it.f();
+    for(const e of run.ents) if(e.t === 'boss' && e.atk && !e.atk.hit && (e.atk.k === 'rocks' || e.atk.k === 'balls')){
+      const A = e.atk, pr = Math.min(1, A.t / A.tele);
+      A.spots.forEach((sp, i) => {
+        const k = clamp(pr * 1.15 - i * .05, 0, 1), x = sp.x * k, z = e.z + (run.z - e.z) * k, p = P(x, z); if(!p) return;
+        const up = Math.sin(k * Math.PI) * 30 * p.s * unit + (1 - k) * 30 * p.s * unit, sz = (7 + 4 * k) * p.s * unit;
+        if(A.k === 'rocks' && ok(IMG.rock)){ c.save(); c.translate(p.X, p.Y - up); c.rotate(k * 6); c.drawImage(IMG.rock, -sz, -sz, sz * 2, sz * 2); c.restore(); }
+        else { const g = c.createRadialGradient(p.X, p.Y - up, 0, p.X, p.Y - up, sz); g.addColorStop(0, '#fff6b0'); g.addColorStop(.4, '#ff9a3c'); g.addColorStop(1, 'rgba(255,60,20,0)'); c.fillStyle = g; c.beginPath(); c.arc(p.X, p.Y - up, sz, 0, 7); c.fill(); }
+      });
+    }
     c.lineCap = 'round';
     for(const a of run.arrows){
       const k = a.t / a.dur, x = a.sx + (a.tx - a.sx) * k, z = a.sz + (a.tz - a.sz) * k, arc = Math.sin(k * Math.PI) * 6, k2 = Math.max(0, k - .12);
@@ -439,7 +554,7 @@ NG.march = (() => {
       const p = P(f.x, f.z); if(!p) continue; const k = f.t / f.life;
       if(f.k === 'txt'){
         if(mini && !f.big) continue;
-        const sz = (f.big ? 30 : 20) * (mini ? .45 : 1);
+        const sz = (f.huge ? 44 : f.big ? 30 : 20) * (mini ? .45 : 1);
         c.font = sz + 'px ' + FONT; c.textAlign = 'center'; c.globalAlpha = 1 - k * k;
         strokeText(c, f.text, p.X, p.Y - 24 * p.s - k * 40 * (mini ? .4 : 1), f.col, '#16233d', sz * .18); c.globalAlpha = 1;
       } else if(f.k === 'ring'){
@@ -447,12 +562,66 @@ NG.march = (() => {
         const r = (f.big ? 30 : 14) * p.s * unit * (.4 + k); c.beginPath(); c.ellipse(p.X, p.Y, r, r * .5, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
       } else if(f.k === 'puff'){
         c.fillStyle = 'rgba(255,255,255,' + (.8 * (1 - k)).toFixed(2) + ')'; c.beginPath(); c.arc(p.X, p.Y - 3 * p.s * unit, (2 + k * 4) * p.s * unit, 0, 7); c.fill();
+      } else if(f.k === 'fly'){
+        if(mini) continue;
+        const t = f.t, X = p.X + f.vx * t * p.s * unit * .5, Y = p.Y - (f.vy * t - 70 * t * t) * p.s * unit * .5, sz = 2.2 * p.s * unit;
+        c.globalAlpha = 1 - k * k; c.save(); c.translate(X, Y); c.rotate(f.rot * t);
+        if(ok(IMG.soldier)){ const hh = sz * 3.6, ww = hh * IMG.soldier.naturalWidth / IMG.soldier.naturalHeight; c.drawImage(IMG.soldier, -ww / 2, -hh / 2, ww, hh); }
+        c.restore(); c.globalAlpha = 1;
+      } else if(f.k === 'crater'){
+        const r = f.r * p.s * unit * (1 + k * .4);
+        c.globalAlpha = 1 - k; c.fillStyle = f.col; c.beginPath(); c.ellipse(p.X, p.Y, r, r * .5, 0, 0, 7); c.fill();
+        c.strokeStyle = '#fff'; c.lineWidth = 3; c.stroke(); c.globalAlpha = 1;
+      } else if(f.k === 'bolt'){
+        c.globalAlpha = 1 - k; c.strokeStyle = '#fff8b0'; c.lineWidth = 4 * p.s + 1; c.beginPath();
+        let x = p.X, y = 0; c.moveTo(x, y); for(let i = 1; i <= 6; i++){ y = p.Y * i / 6; x = p.X + (i < 6 ? (S.vr() - .5) * 24 : 0); c.lineTo(x, y); } c.stroke();
+        c.strokeStyle = '#ffd84a'; c.lineWidth = 1.5; c.stroke(); c.globalAlpha = 1;
+      } else if(f.k === 'ico'){
+        if(!ok(IMG.xbow)) continue; const w = 30 * (mini ? .5 : 1) * (1 + Math.sin(Math.min(1, k * 3) * Math.PI) * .3), hh = w * IMG.xbow.naturalHeight / IMG.xbow.naturalWidth;
+        c.globalAlpha = 1 - k * k; c.drawImage(IMG.xbow, p.X - w / 2, p.Y - 50 * p.s - k * 40 - hh, w, hh); c.globalAlpha = 1;
       } else if(f.k === 'boom'){
         const r = (f.big ? 26 : 14) * p.s * unit * (.3 + k);
         c.fillStyle = 'rgba(255,200,70,' + (.8 * (1 - k)).toFixed(2) + ')'; c.beginPath(); c.arc(p.X, p.Y - r * .4, r, 0, 7); c.fill();
         c.fillStyle = 'rgba(255,255,255,' + (.7 * (1 - k)).toFixed(2) + ')'; c.beginPath(); c.arc(p.X, p.Y - r * .4, r * .5, 0, 7); c.fill();
       }
     }
+    if(!mini && run.isMe && S.flash && S.flash.t < .28){ c.globalAlpha = S.flash.a * (1 - S.flash.t / .28); c.fillStyle = S.flash.col; c.fillRect(0, 0, w, h); c.globalAlpha = 1; }
+  }
+  /* 칸막이 벽(보이기): 바닥 위로 솟은 돌벽 */
+  function drawWall(c, P, unit, e, run){
+    const z1 = Math.max(e.z, run.z - 30), z2 = e.z + e.len; if(z2 < z1) return;
+    const hw = 2.6, H = 7, L = [], Rt = [];
+    const steps = 20; for(let i = 0; i <= steps; i++){ const z = z1 + (z2 - z1) * i / steps, a = P(e.x - hw, z), b = P(e.x + hw, z); if(!a || !b) continue; const up = H * a.s * unit; L.push([a.X, a.Y - up, a.Y]); Rt.push([b.X, b.Y - up, b.Y]); }
+    if(L.length < 2) return;
+    /* 바닥 그림자 */
+    c.fillStyle = 'rgba(70,45,15,.2)'; c.beginPath(); Rt.forEach(([x, , y], i) => i ? c.lineTo(x + 6, y) : c.moveTo(x + 6, y)); for(let i = Rt.length - 1; i >= 0; i--) c.lineTo(Rt[i][0], Rt[i][2]); c.closePath(); c.fill();
+    /* 옆면(양쪽) */
+    c.fillStyle = '#b8955f';
+    c.beginPath(); L.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); for(let i = L.length - 1; i >= 0; i--) c.lineTo(L[i][0], L[i][2]); c.closePath(); c.fill();
+    c.beginPath(); Rt.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); for(let i = Rt.length - 1; i >= 0; i--) c.lineTo(Rt[i][0], Rt[i][2]); c.closePath(); c.fill();
+    /* 윗면(갓돌) */
+    c.beginPath(); L.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); for(let i = Rt.length - 1; i >= 0; i--) c.lineTo(Rt[i][0], Rt[i][1]); c.closePath();
+    c.fillStyle = '#f2e1b4'; c.fill(); c.strokeStyle = '#9c7a45'; c.lineWidth = 1.5; c.stroke();
+    c.strokeStyle = 'rgba(120,90,45,.45)'; c.lineWidth = 1; for(let i = 1; i < L.length; i += 2){ c.beginPath(); c.moveTo(L[i][0], L[i][1]); c.lineTo(Rt[i][0], Rt[i][1]); c.stroke(); }
+    /* 가까운 끝 앞면 */
+    const f = L[0], g = Rt[0]; c.fillStyle = '#a8854f'; c.fillRect(f[0], f[1], g[0] - f[0], f[2] - f[1]); c.strokeStyle = '#8a6a38'; c.strokeRect(f[0], f[1], g[0] - f[0], f[2] - f[1]);
+  }
+  /* 보스 공격 예고: 빨간 원(차오름)·줄·틈·한쪽 불 */
+  function drawTele(c, P, unit, e, run, quad, clock, mini){
+    const A = e.atk, pr = Math.min(1, A.t / A.tele), pulse = (.22 + .14 * Math.sin(clock * 22)).toFixed(2);
+    if(A.hit){ if(A.k === 'fire'){ const x1 = A.side < 0 ? -50 : -4, x2 = A.side < 0 ? 4 : 50; quad(x1, x2, run.z - 30, e.z, 'rgba(255,140,30,.55)'); } return; }
+    for(const sp of A.spots){
+      const p = P(sp.x, run.z); if(!p) continue; const rx = sp.r * p.s * unit;
+      c.fillStyle = 'rgba(255,40,30,' + pulse + ')'; c.beginPath(); c.ellipse(p.X, p.Y, rx, rx * .5, 0, 0, 7); c.fill();
+      c.fillStyle = 'rgba(255,70,40,.45)'; c.beginPath(); c.ellipse(p.X, p.Y, rx * pr, rx * .5 * pr, 0, 0, 7); c.fill();
+      c.strokeStyle = A.k === 'bolts' ? '#ffe86b' : '#ff3b30'; c.lineWidth = mini ? 1.5 : 3; c.beginPath(); c.ellipse(p.X, p.Y, rx, rx * .5, 0, 0, 7); c.stroke();
+    }
+    if(A.k === 'line'){ quad(A.x - A.w, A.x + A.w, run.z - 30, e.z, 'rgba(255,40,30,' + pulse + ')'); quad(A.x - A.w * pr, A.x + A.w * pr, run.z - 30, e.z, 'rgba(255,70,40,.3)'); }
+    if(A.k === 'sweep'){
+      quad(-50, A.safe - A.gap, run.z - 30, e.z - 6, 'rgba(255,40,30,' + pulse + ')'); quad(A.safe + A.gap, 50, run.z - 30, e.z - 6, 'rgba(255,40,30,' + pulse + ')');
+      quad(A.safe - A.gap, A.safe + A.gap, run.z - 30, e.z - 6, 'rgba(120,255,160,.22)');
+    }
+    if(A.k === 'fire' || A.k === 'gust'){ const x1 = A.side < 0 ? -50 : -4, x2 = A.side < 0 ? 4 : 50; quad(x1, x2, run.z - 30, e.z, (A.k === 'gust' ? 'rgba(160,210,255,' : 'rgba(255,40,30,') + pulse + ')'); }
   }
   function soldier(c, X, Y, sz, red, bob){
     const im = red ? IMG.enemy : IMG.soldier;
@@ -509,6 +678,19 @@ NG.march = (() => {
       }
     } else if(e.t === 'crowd' && e.n > 0){
       drawArmy(c, P, unit, e.x, e.z, e.n, true, clock, mini);
+    } else if((e.t === 'crate' || e.t === 'barrel') && e.hp > 0){
+      const p = P(e.x, e.z), im = IMG[e.t]; if(!p || !ok(im)) return;
+      const bw = (e.t === 'crate' ? 15 : 14) * p.s * unit, bh = bw * im.naturalHeight / im.naturalWidth;
+      c.fillStyle = 'rgba(40,30,10,.2)'; c.beginPath(); c.ellipse(p.X, p.Y, bw * .55, bw * .16, 0, 0, 7); c.fill();
+      c.save(); if(e.hitT){ c.translate((S.vr() - .5) * 3, 0); c.filter = 'brightness(1.5)'; }
+      c.drawImage(im, p.X - bw / 2, p.Y - bh, bw, bh); c.filter = 'none'; c.restore();
+      const fs = Math.max(12, bw * (e.t === 'crate' ? .3 : .26)), lx = e.t === 'crate' ? p.X - bw * .03 : p.X + bw * .22, ly = p.Y - bh * (e.t === 'crate' ? .38 : .42);
+      c.font = fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; strokeText(c, String(Math.ceil(e.hp)), lx, ly, '#16233d', '#fff', fs * .12); c.textBaseline = 'alphabetic';
+      if(e.t === 'barrel' && !mini){   /* 위에 보상 표시 */
+        const w2 = e.rw.k === 'men' ? 0 : bw * .8, ty = p.Y - bh - 4 * p.s * unit;
+        if(e.rw.k === 'men'){ const f2 = Math.max(13, bw * .3); c.font = f2 + 'px ' + FONT; strokeText(c, '+' + e.rw.v, p.X, ty, '#ffd84a', '#16233d', f2 * .2); if(ok(IMG.soldier)){ const sh = f2 * 1.3, sw = sh * IMG.soldier.naturalWidth / IMG.soldier.naturalHeight; c.drawImage(IMG.soldier, p.X + c.measureText('+' + e.rw.v).width / 2 + 2, ty - sh * .85, sw, sh); } }
+        else if(ok(IMG.xbow)){ const hh = w2 * IMG.xbow.naturalHeight / IMG.xbow.naturalWidth, bob = Math.sin(clock * 4) * 2; c.drawImage(IMG.xbow, p.X - w2 / 2, ty - hh + bob, w2, hh); const f3 = Math.max(12, bw * .2); c.font = f3 + 'px ' + FONT; strokeText(c, e.rw.k === 'bow' ? '공격 ×' + e.rw.v : '연사 ×' + e.rw.v, p.X, ty - hh - 2, '#ffd84a', '#16233d', f3 * .2); }
+      }
     } else if(e.t === 'saw'){
       const g1 = P(-50, e.z), g2 = P(50, e.z); if(g1 && g2){ c.fillStyle = 'rgba(90,70,50,.5)'; c.fillRect(g1.X, g1.Y - 2 * g1.s, g2.X - g1.X, 3 * g1.s); }
       const p = P(e.x, e.z); if(!p) return; const r = e.r * p.s * unit;
@@ -548,6 +730,8 @@ NG.march = (() => {
     if(e.kind === 'knight' && e.swing > 0) rot = -.08 * Math.sin((.4 - e.swing) / .4 * Math.PI);
     if(e.kind === 'dragon') lift = (3 + Math.sin(clock * 3) * 2.5) * S_;
     if(e.kind === 'shaman') lift = Math.sin(clock * 2.4) * 2 * S_;
+    if(e.atk && !e.atk.hit){ const pr = Math.min(1, e.atk.t / e.atk.tele); lift += pr * 7 * S_; sq = 1 + pr * .08; rot += Math.sin(clock * 40) * .02 * pr; }   /* 준비 동작: 들썩이며 떨림 */
+    if(e.rage){ const g = c.createRadialGradient(X, Y - h * .5, 0, X, Y - h * .5, h * .75); g.addColorStop(0, 'rgba(255,60,30,.35)'); g.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = g; c.beginPath(); c.arc(X, Y - h * .5, h * .75, 0, 7); c.fill(); }
     const w = ok(im) ? h * im.naturalWidth / im.naturalHeight : h * .8;
     c.save(); c.translate(X, Y - lift); c.rotate(rot); c.scale(1 / sq, sq);
     if(e.hitT > 0) c.filter = 'brightness(1.9)';
@@ -559,11 +743,13 @@ NG.march = (() => {
       c.strokeStyle = 'rgba(200,230,255,.9)'; c.lineWidth = 2 * S_; c.stroke();
     }
     if(e.kind === 'shaman'){ const gl = .35 + .25 * Math.sin(clock * 6); c.fillStyle = 'rgba(170,255,90,' + gl.toFixed(2) + ')'; c.beginPath(); c.arc(X + w * .3, Y - lift - h * .86, 6 * S_, 0, 7); c.fill(); }
-    if(e.kind === 'dragon' && e.phase === 'fire'){
-      const tg = P(e.fireSide * 24, e.z - 40);
+    if(e.kind === 'dragon' && e.atk && e.atk.k === 'fire' && e.atk.hit){
+      const tg = P(e.atk.side * 24, e.z - 40);
       if(tg){ c.lineCap = 'round'; c.strokeStyle = 'rgba(255,120,30,.85)'; c.lineWidth = 12 * S_; c.beginPath(); c.moveTo(X, Y - lift - h * .62); c.lineTo(tg.X, tg.Y - 4 * tg.s * unit); c.stroke(); c.strokeStyle = 'rgba(255,240,150,.95)'; c.lineWidth = 5 * S_; c.stroke(); }
     }
-    hpBar(c, X, Y - lift - h - 10 * S_, 40 * S_, e.hp / e.max, e.shield ? '#9cc6ff' : '#ff5a4f');
+    hpBar(c, X, Y - lift - h - 10 * S_, 46 * S_, e.hp / e.max, e.shield ? '#9cc6ff' : '#ff5a4f');
+    const fs = Math.max(16, 8 * S_); c.font = fs + 'px ' + FONT; c.textAlign = 'center';
+    strokeText(c, String(Math.ceil(e.hp)), X, Y - lift - h - 13 * S_, '#fff', '#16233d', fs * .2);   /* 보스 체력 큰 숫자 */
   }
 
   /* ---------- 판 상태 ---------- */
@@ -648,6 +834,8 @@ NG.march = (() => {
       const tot = Math.max(1, me.N + S.rv.N); $s('.mc-tug i').style.width = (me.N / tot * 100).toFixed(1) + '%';
       $s('.mc-tm').classList.toggle('hot', l <= 15);
     }
+    const bf = $s('.mc-buff');
+    if(me.dmgMul > 1 || me.rateMul > 1){ bf.hidden = false; const t = (me.dmgMul > 1 ? '공격 ×' + me.dmgMul.toFixed(1) : '') + (me.dmgMul > 1 && me.rateMul > 1 ? ' · ' : '') + (me.rateMul > 1 ? '연사 ×' + me.rateMul.toFixed(1) : ''); if(bf.dataset.t !== t){ bf.dataset.t = t; bf.querySelector('span').textContent = t; } }
     const b = me.bossActive, bb = $s('.mc-boss');
     if(b && b.hp > 0){
       bb.hidden = false;
@@ -664,7 +852,8 @@ NG.march = (() => {
     st.innerHTML = `<div class="mcw">
       <canvas class="mc-cv" aria-label="행군대작전 전장"></canvas>
       <div class="mc-top">
-        <div class="mc-plate"><img class="mc-ic" src="${BASE}soldier.webp" alt=""><div class="mc-cnt"><small>병력</small><b class="mc-n">0</b></div></div>
+        <div class="mc-col"><div class="mc-plate"><img class="mc-ic" src="${BASE}soldier.webp" alt=""><div class="mc-cnt"><small>병력</small><b class="mc-n">0</b></div></div>
+        <div class="mc-buff" hidden><img src="${BASE}xbow.webp" alt=""><span></span></div></div>
         ${solo ? `<div class="mc-road" aria-label="결승까지 진행"><i></i><span class="mc-mk"></span><span class="mc-fl">${isBossStage(S.stage) ? '보스' : '결승'}</span></div>`
         : `<div class="mc-vs"><div class="mc-side me"><small>나</small><b class="mc-vme">0</b></div><div class="mc-tm">2:00</div><div class="mc-side rv"><small class="mc-rvn"></small><b class="mc-vrv">0</b></div><div class="mc-tug"><i></i></div></div>`}
       </div>
@@ -708,7 +897,9 @@ NG.march = (() => {
     const g = G;
     const loop = now => {
       if(G !== g) return;
-      const dt = Math.min(.05, (now - (S.lt || now)) / 1000); S.lt = now; S.clock += dt;
+      const dt0 = Math.min(.05, (now - (S.lt || now)) / 1000); S.lt = now; S.clock += dt0;
+      let dt = dt0; if(S.hitstop > 0){ S.hitstop -= dt0; dt = dt0 * .15; }   /* 큰 타격 순간 잠깐 느려짐 */
+      if(S.flash) S.flash.t += dt0;
       try{
         if(S.hold <= 0 && !nc.hidden) nc.hidden = true;
         if(S.hold > 0){ if(!g.paused){ S.hold -= dt; hud(); } }
@@ -737,6 +928,9 @@ NG.march = (() => {
 .mcw [hidden]{display:none!important}
 .mcw .mc-cv{position:absolute; inset:0; width:100%; height:100%; display:block}
 .mcw .mc-top{position:absolute; left:10px; right:10px; top:10px; display:flex; gap:8px; align-items:stretch; pointer-events:none}
+.mcw .mc-col{display:flex; flex-direction:column; gap:6px; flex:none}
+.mcw .mc-buff{display:flex; align-items:center; gap:4px; padding:2px 8px 2px 4px; border-radius:10px; background:rgba(22,35,61,.85); box-shadow:0 0 0 2px #ffc83d; font-family:var(--heavy); font-size:13px; color:#ffd84a; white-space:nowrap}
+.mcw .mc-buff img{width:26px; height:17px; object-fit:contain}
 .mcw .mc-plate{display:flex; align-items:center; gap:6px; padding:4px 12px 4px 4px; border-radius:16px; background:linear-gradient(#24365c, #16233d); box-shadow:0 0 0 2px #e9c46a, 0 4px 0 #0b1426; flex:none}
 .mcw .mc-ic{width:30px; height:38px; object-fit:contain; filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
 .mcw .mc-cnt{display:flex; flex-direction:column; line-height:1}
@@ -758,14 +952,14 @@ NG.march = (() => {
 @keyframes mcBlink{50%{opacity:.45}}
 .mcw .mc-tug{position:absolute; left:10px; right:10px; bottom:5px; height:4px; border-radius:99px; background:var(--mc-red); overflow:hidden}
 .mcw .mc-tug i{display:block; height:100%; background:var(--mc-blue); width:50%; transition:width .3s}
-.mcw .mc-boss{position:absolute; left:10px; right:10px; top:68px; display:flex; align-items:center; gap:8px; padding:5px 10px 5px 5px; border-radius:16px; background:rgba(22,35,61,.88); box-shadow:0 0 0 2px #ff7a6e; pointer-events:none}
+.mcw .mc-boss{position:absolute; left:10px; right:10px; top:96px; display:flex; align-items:center; gap:8px; padding:5px 10px 5px 5px; border-radius:16px; background:rgba(22,35,61,.88); box-shadow:0 0 0 2px #ff7a6e; pointer-events:none}
 .mcw .mc-boss img{width:44px; height:44px; object-fit:contain; background:radial-gradient(#ffd0a0, #c0563a); border-radius:12px; box-shadow:0 0 0 2px #fff}
 .mcw .mc-bw{flex:1; min-width:0}
 .mcw .mc-bh{display:flex; justify-content:space-between; gap:6px; font-family:var(--heavy); font-size:14px; color:#fff}
 .mcw .mc-bt{height:10px; margin-top:4px; border-radius:99px; background:#3a1f22; overflow:hidden}
 .mcw .mc-bt i{display:block; height:100%; background:linear-gradient(90deg, #ff5a4f, #ff9a3c); transition:width .15s}
 .mcw .mc-boss.mc-sh{box-shadow:0 0 0 2px #9cc6ff} .mcw .mc-boss.mc-sh .mc-bt i{background:linear-gradient(90deg, #7fb4ff, #c9e1ff)}
-.mcw .mc-mini{position:absolute; right:10px; top:122px; width:96px; pointer-events:none}
+.mcw .mc-mini{position:absolute; right:10px; top:150px; width:96px; pointer-events:none}
 .mcw .mc-mini canvas{display:block; width:96px; height:150px; border-radius:12px; box-shadow:0 0 0 3px #fff, 0 6px 14px rgba(0,0,0,.3)}
 .mcw .mc-mtag{display:block; margin-top:6px; text-align:center; font-family:var(--heavy); font-size:13px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mcw .mc-bi{position:absolute; left:50%; top:34%; display:flex; align-items:center; gap:10px; padding:8px 18px 8px 8px; border-radius:20px; background:linear-gradient(#b8322b, #7a1410); box-shadow:0 0 0 3px #ffc83d, 0 8px 24px rgba(0,0,0,.35); transform:translate(-50%, -50%); pointer-events:none}
@@ -795,10 +989,11 @@ NG.march = (() => {
         <rect width="160" height="100" fill="url(#${u})"/><image href="${BASE}thumb.jpg" x="0" y="0" width="160" height="100" preserveAspectRatio="xMidYMid slice"/></svg>`;
     },
     help:[
-      ['좌우로 끌어 이동', '화면을 좌우로 끌면 부대가 따라 움직여요(PC는 ← → 키). 부대는 앞으로 저절로 걸어가요.'],
+      ['좌우로 끌어 이동', '화면을 좌우로 끌면 부대가 따라 움직여요(PC는 ← → 키). 부대는 앞으로 저절로 걸어가요. 병사 1명으로 출발해요!'],
+      ['상자·통·갈림길', '화살은 부대 앞쪽으로만 나가요. 숫자 상자를 쏴 부수면 길이 열리고, 숫자 통을 부수면 병사·석궁(공격력)·연사가 늘어요. 벽으로 나뉜 길은 한번 들어가면 못 건너가요.'],
       ['관문을 골라 키우기', '파란 관문(+, ×)으로 지나가면 병력이 늘고, 빨간 관문(−, ÷)은 줄어요. 노란 줄의 파란 +판은 지나갈 때마다 병사가 늘어요.'],
       ['화살과 돌격', '부대는 앞의 적에게 화살을 자동으로 쏴요. 병력이 많을수록 빨리, 세게 쏴요. 빨간 부대와 부딪히면 서로 병력을 잃어요.'],
-      ['보스와 별', '3·6·9…스테이지 끝엔 보스가 나와요. 끝까지 남은 병력이 최대 병력의 40%면 ★★, 70%면 ★★★(보스 판은 30%·55%).']
+      ['보스와 별', '3·6·9…스테이지 끝엔 보스! 땅에 빨간 원·줄이 차오르면 공격이 와요 — 밖으로 피하세요(회전 베기는 초록 틈으로). 체력 절반이면 분노해서 빨라져요. 남은 병력이 최대의 40%면 ★★, 70%면 ★★★(보스 판 30%·55%).']
     ],
     helpExtra:() => S && S.battle ? [['대전 판정', `라이벌과 똑같은 길을 동시에 걸어요(오른쪽 위 작은 화면). 먼저 전멸하면 패배, 2:00까지 둘 다 살면 남은 병력이 많은 쪽이 이겨요.`]] : [],
     chapters:['푸른 성벽', '바닷가 다리', '톱날 협곡', '궁수 요새', '용의 성'],
@@ -835,12 +1030,26 @@ NG.march = (() => {
       mcBreak(){ aThump({ f:120, f2:40, d:.3, v:.22 }); },
       mcSlam(){ aThump({ f:90, f2:35, d:.35, v:.25 }); },
       mcFire(){ aTone({ f:220, f2:60, type:'sawtooth', d:.5, v:.08 }); },
+      mcWarn(){ aTone({ f:440, f2:880, type:'square', d:.22, v:.035 }); },
+      mcThud(){ aThump({ f:140, f2:60, d:.15, v:.12 }); },
+      mcRoar(){ aTone({ f:110, f2:70, type:'sawtooth', d:.7, v:.09 }); aThump({ f:80, f2:30, d:.5, v:.2 }); },
+      mcReward(){ [0, 7, 12, 16].forEach((d, i) => aMarimba(m2f(76 + d), { t:i * .05, v:.1 })); },
       mcBoss(){ [0, -3, -7].forEach((d, i) => aTone({ f:m2f(57 + d), type:'square', t:i * .12, d:.18, v:.06 })); },
       mcBossDown(){ [0, 4, 7, 12].forEach((d, i) => aMarimba(m2f(72 + d), { t:i * .06, v:.12 })); },
       mcWin(){ [0, 4, 7, 12].forEach((d, i) => aMarimba(m2f(79 + d), { t:i * .05, v:.1 })); },
       mcLose(){ aTone({ f:300, f2:120, type:'triangle', d:.6, v:.08 }); }
     },
     gate:{ mcPlus:60, mcClash:120, mcUp:80 },
-    _rules:{ RULE, applyOp, newGen, extendGen, isBossStage }   /* 점검용 */
+    _rules:{ RULE, applyOp, newGen, extendGen, isBossStage },   /* 점검용 */
+    /* 점검용: 그리지 않고 스테이지 n을 라이벌 AI로 끝까지 돌려 결과를 봄(난이도 확인) */
+    _sim(n, seed){
+      const keep = S, rng = mul32(seed || n * 7919 + 1);
+      S = { rng, battle:false, stage:n, keyDir:0, clock:0, end:null, mine:false, hold:0, vr:mul32(99) };
+      const gen = newGen(mul32(Math.floor(rng() * 4294967296)), 'solo', n, startN(n)); extendGen(gen, 1e9);
+      const me = newRun(gen, startN(n), false, mul32(Math.floor(rng() * 4294967296)));
+      let i = 0; for(; i < 9000 && !me.dead && !me.done; i++) step(me, 1 / 30);
+      const out = { n, win:!!me.win, N:Math.ceil(me.N), peak:Math.ceil(me.peak), t:Math.round(me.time), prog:Math.round(Math.min(1, me.z / gen.items[gen.items.length - 1].z) * 100) };
+      S = keep; return out;
+    }
   };
 })();
