@@ -80,6 +80,7 @@ A 사이트엔 구슬, D 사이트엔 함대처럼 `data-haru-game`만 바꾸면
 | 옵션 | 뜻 |
 |---|---|
 | `mode` | 처음 화면: `menu` `daily` `solo` `practice` `duel` |
+| `art` | (더함, 2026-10-10) 틀린그림(`spot`)의 명화 그림 폴더 주소(끝에 `/`). 모듈 파일(`embed/spot.html`)과 `games/spot/art/`를 같은 저장소 모양(`../games/spot/art/`)으로 두지 않았을 때 지정해요. 예: `spot.html?art=https://내서버/art/` |
 | `modes` | 보일 모드만: `daily,solo` |
 | `level` | 연습 난이도 |
 | `stage` · `unlock=1` | 솔로 시작 스테이지(unlock=1이면 아직 안 연 스테이지도) |

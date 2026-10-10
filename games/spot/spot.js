@@ -5,6 +5,17 @@
    그림 조각·테마는 spot-art.js(SPOT_ART). 모두 직접 그린 오리지널 SVG(굵은 외곽선 #1A0F45). */
 NG.spot = (() => {
   const A = SPOT_ART, P = A.P, TH = A.TH, W = A.W, H = A.H, OL = A.OL;
+  /* 명화 틀린그림(2026-10-10): spot-masters.js(SPOT_MASTERS)에 그림이 있으면 직접 그린 장면 대신 명화 한 장 + 일부 차이 조각을 쓴다 */
+  const MS = (typeof SPOT_MASTERS !== 'undefined' && SPOT_MASTERS.list) || [];
+  const useMs = () => MS.length > 0;
+  const msIds = () => MS.map(p => p.id);
+  function artBase(){
+    try{
+      const a = new URLSearchParams(location.search).get('art'); if(a) return a.replace(/\/?$/, '/');
+      return (/\/embed\//.test(location.pathname) ? '../games/spot/' : 'games/spot/') + ((typeof SPOT_MASTERS !== 'undefined' && SPOT_MASTERS.base) || 'art/');
+    }catch(_){ return 'games/spot/art/'; }
+  }
+  const SUBTLE_KINDS = ['색 바꾸기', '밝기 바꾸기'];
   /* 테마 8개. 뒤 3개(교실·놀이터·옛 골목)는 2026-10-07 0시부터 오늘의 문제·연습·솔로에 섞인다(오늘 문제가 바뀌지 않게).
      대전은 날짜와 상관없이 늘 8개(두 기기의 날짜가 달라도 같은 그림이 나오게) */
   const THEMES = ['town', 'park', 'kitchen', 'beach', 'space', 'class', 'play', 'alley'];
@@ -105,7 +116,25 @@ NG.spot = (() => {
     return diffs.length >= N ? { B, diffs } : null;
   }
   /* 판 하나: 장면을 만들고 차이 N곳을 고른다. 못 고르면 장면을 새로 만든다(점검: 수천 씨앗에서 실패 0) */
+  /* 명화 판: 그림 하나를 고르고(rng, 최근 본 그림 피하기), 그 그림의 차이 조각 중 N개만 위 그림에 얹는다(고르지 않은 곳은 원본 그대로) */
+  function masterGen(cfg, rng, avoid){
+    const ids = msIds(); let id = cfg.theme && ids.includes(cfg.theme) ? cfg.theme : null;
+    if(!id){ const pool = ids.filter(t => !(avoid || []).includes(t)), L = pool.length ? pool : ids; id = L[Math.floor(rng() * L.length)]; }
+    const p = MS.find(x => x.id === id), N = Math.min(cfg.diffs, p.diffs.length), base = artBase();
+    const sc = Math.min(W / p.w, H / p.h), iw = p.w * sc, ih = p.h * sc, ox = (W - iw) / 2, oy = (H - ih) / 2, long = Math.max(iw, ih);
+    const order = shuffle(p.diffs.map((d, i) => i), rng);
+    if(cfg.subtle) order.sort((a, b) => (SUBTLE_KINDS.includes(p.diffs[b].kind) ? 1 : 0) - (SUBTLE_KINDS.includes(p.diffs[a].kind) ? 1 : 0));
+    const pick = order.slice(0, N).sort((a, b) => a - b), urls = [base + p.file];
+    const diffs = [], B = [];
+    pick.forEach(k => {
+      const d = p.diffs[k], cx = ox + d.x * iw, cy = oy + d.y * ih, r = Math.max(14, d.r * long), side = d.side * long, u = base + p.file.replace('.webp', '_d' + (k + 1) + '.webp');
+      urls.push(u); diffs.push({ cx, cy, r, kind:d.kind }); B.push({ patch:1, href:u, x:cx - side / 2, y:cy - side / 2, w:side, h:side });
+    });
+    const bg = `<rect width="${W}" height="${H}" fill="${OL}"/><image href="${base + p.file}" x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${iw.toFixed(2)}" height="${ih.toFixed(2)}" preserveAspectRatio="none"/>`;
+    return { theme:id, master:p, bg, A:[], B, diffs, ok:diffs.length === N, tries:1, urls };
+  }
   function gen(cfg, rng, list){
+    if(useMs()) return masterGen(cfg, rng, cfg.avoid);
     const TL = list || themesFor(false), N = cfg.diffs, theme = cfg.theme || TL[Math.floor(rng() * TL.length)];
     const opt = { mirror:!!cfg.mirror, tiles:!!cfg.tiles, subtle:!!cfg.subtle };
     let last = null;
@@ -121,6 +150,7 @@ NG.spot = (() => {
     return { theme, bg:last.bg, A:last.objs, B:last.objs.map(clone), diffs:[], ok:false, tries:40 };
   }
   function objSvg(o){
+    if(o.patch) return `<image href="${o.href}" x="${o.x.toFixed(2)}" y="${o.y.toFixed(2)}" width="${o.w.toFixed(2)}" height="${o.h.toFixed(2)}" preserveAspectRatio="none"/>`;
     if(o.hide) return '';
     const p = P[o.t];
     return `<g transform="translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) scale(${(o.f ? -o.s : o.s).toFixed(3)} ${o.s.toFixed(3)}) translate(${-p.w / 2} ${-p.h / 2})">${p.draw(o)}</g>`;
@@ -129,7 +159,7 @@ NG.spot = (() => {
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
-    order:['mirror', 'blink', 'tiles', 'secret'],
+    order:useMs() ? ['mirror', 'blink', 'secret'] : ['mirror', 'blink', 'tiles', 'secret'],   /* 명화 판에는 조각 그림 변주가 없다 */
     info:{
       mirror:{ name:'거울 그림', desc:'아래 그림이 거울에 비친 것처럼 좌우가 뒤집혀 있어요. 왼쪽과 오른쪽을 바꿔 생각하며 찾아요.' },
       blink:{ name:'깜빡 커튼', desc:'두 그림이 번갈아 잠깐씩 커튼에 가려져요. 가려진 그림은 누를 수 없으니 보이는 동안 재빨리!' },
@@ -168,7 +198,7 @@ NG.spot = (() => {
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(40, Math.round(limit / 5) * 5);
-    const TL = themesFor(false);
+    const TL = useMs() ? msIds() : themesFor(false);
     return { diffs, limit, hints:tw === 'bare' ? 0 : p.boss ? 2 : 3, lives:tw === 'tight' ? 2 : 0, theme:TL[(n - 1 + c) % TL.length],
       mirror:has('mirror'), blink:has('blink'), tiles:has('tiles'), secret:has('secret'), subtle:tw === 'subtle',
       boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
@@ -401,7 +431,7 @@ NG.spot = (() => {
     G.raf = requestAnimationFrame(loop);
     if(G.paused) return;
     const m = S(), t = elapsed(), bar = $('#spBar');
-    if(m.phase === 'deal'){ if(t >= .45){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('spotGo'); } return; }
+    if(m.phase === 'deal'){ if(t >= .45 && (!m.imgs.length || m.imgs.every(im => !im || im.complete) || Date.now() - m.dealAt > 9000)){ m.phase = 'play'; G.start = Date.now(); G.pausedMs = 0; msg(playMsg()); sfx('spotGo'); } return; }
     if(m.phase !== 'play') return;
     if(m.blink){
       const c = coverOf(t);
@@ -450,8 +480,9 @@ NG.spot = (() => {
   /* 대전 테마 고르기(rng만, 대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고, 최근 본 테마(duelAvoidKey → G.duel.avoid,
      빠른 대전은 방장 목록을 모두가 같이 씀) 2개를 빼고 고른다. 예전에 게임 안에서 세던 판 번호(DUEL_SEEN)·이 기기 기록(hp:spot:duelSeen)은 엔진으로 옮김 */
   function duelTheme(cfg, rng){
-    const avoid = [].concat((G.duel && G.duel.avoid) || [], cfg.avoid || []).filter(t => THEMES.includes(t)).slice(-2);
-    const pool = THEMES.filter(t => !avoid.includes(t)), L = pool.length ? pool : THEMES;
+    const ALL = useMs() ? msIds() : THEMES;
+    const avoid = [].concat((G.duel && G.duel.avoid) || [], cfg.avoid || []).filter(t => ALL.includes(t)).slice(-2);
+    const pool = ALL.filter(t => !avoid.includes(t)), L = pool.length ? pool : ALL;
     return L[Math.floor(rng() * L.length)];
   }
 
@@ -583,16 +614,16 @@ NG.spot = (() => {
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return `${TH[c.theme].name} · 차이 ${c.secret ? '?' : c.diffs}곳 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
+    stageDesc(n){ const c = stageCfg(n); return `${useMs() ? (MS.find(x => x.id === c.theme) || MS[0]).title : TH[c.theme].name} · 차이 ${c.secret ? '?' : c.diffs}곳 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `차이 ${c.diffs}곳 · ${mmss(c.limit)}`; },
     init(cfg, rng){
       for(let i = 0; i < (cfg.diffs || 0) * 7; i++) rng();   /* 같은 날 난이도마다 다른 장면이 나오게(차이 수로 rng를 조금 넘김) */
-      const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng, THEMES) : gen(cfg, rng);
+      const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng, useMs() ? msIds() : THEMES) : gen(cfg, rng);
       let perm = null;
       if(cfg.tiles){ do{ perm = shuffle([0, 1, 2, 3], rng); }while(perm.some((q, i) => q === i)); }   /* 조각 그림: 제자리에 남는 조각 없이 */
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       g.diffs.forEach((d, i) => { d.i = i; d.own = null; });   /* 선점 대전 열쇠 'd' + i */
-      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
+      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, master:g.master || null, imgs:(g.urls || []).map(u => { try{ const im = new Image(); im.src = u; return im; }catch(_){ return null; } }), dealAt:Date.now(), bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
         mirror:!!cfg.mirror, perm, blink:!!cfg.blink, secret:!!cfg.secret && !G.duel, cover:null,
         found:0, misses:0, hints:0, streak:0, coolUntil:0, hintLeft:cfg.hints == null ? 3 : cfg.hints,
         lives:G.duel ? 0 : cfg.lives || 0,   /* 기본은 기회 제한 없음(빗나가면 점수·쉬는 시간만). 외줄 타기만 기회 2번 */
@@ -628,7 +659,7 @@ NG.spot = (() => {
     },
     onDuelClaim(key, owner, info){ try{ claimSeen(key, owner, info || {}); }catch(_){} },
     duelKeys(){ const m = G && G.id === 'spot' && G.m; return m ? m.diffs.map(d => 'd' + d.i) : []; },
-    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES, _themesFor:themesFor,
+    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES, _useMs:useMs, _masters:MS, _themesFor:themesFor,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-spot">
@@ -664,6 +695,11 @@ NG.spot = (() => {
       G.raf = requestAnimationFrame(loop);
     },
     progress(){ const m = G && G.m; return m && m.N ? m.found / m.N : 0; },
+    /* 결과 창에 덧붙이는 '오늘의 명화' 설명(core/engine.js openModal이 결과 창일 때만 붙임) */
+    resultNote(){
+      const m = G && G.id === 'spot' && G.m, p = m && m.master; if(!p) return '';
+      return `<div class="sp-note"><b>${esc(p.title)}</b><small>${esc(p.artist)} · ${esc(p.made)}</small><p>${esc(p.desc)}</p><small class="pl">${esc(p.place)}</small></div>`;
+    },
     lossText(){ const m = G.m; return (m.fail === 'miss' ? '기회를 다 썼어요. ' : '') + `차이 ${m.found}/${m.N}곳을 찾았어요.`; },
     score(){
       const m = G.m, sec = Math.max(0, Math.min(G.limit, m.sec || elapsed()));
@@ -673,6 +709,11 @@ NG.spot = (() => {
     },
     stars(){ const m = G.m, k = m.hints + m.misses; return k === 0 ? 3 : k <= 2 ? 2 : 1; },
     css:`
+.sp-note{margin:8px 0 10px; padding:10px 14px; border-radius:14px; background:#FFF8EA; border:2px solid #1A0F45; text-align:left; box-shadow:0 3px 0 rgba(26,15,69,.18)}
+.sp-note b{display:block; font-family:var(--disp); font-size:17px; color:#1A0F45}
+.sp-note small{display:block; font-size:13px; color:#6B5A8E; margin-top:1px}
+.sp-note p{margin:6px 0 4px; font-size:15px; line-height:1.5; color:#2A1B52}
+.sp-note small.pl{font-size:12px}
 body[data-mode="spot"]{background:
   radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.6), rgba(255,255,255,0) 70%),
   radial-gradient(circle at 20% 30%, rgba(255,255,255,.25) 0 3px, transparent 3.5px) 0 0/44px 44px,
