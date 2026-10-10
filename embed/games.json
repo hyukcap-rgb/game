@@ -280,6 +280,16 @@
       "file": "mountain.html",
       "bytes": 296993,
       "gzip": 96106
+    },
+    {
+      "id": "march",
+      "name": "행군대작전",
+      "version": "1.0.0",
+      "summary": "관문을 골라 병력을 키우고 적 부대·보스를 뚫는 행군 — 솔로(스테이지마다 새 기믹·3판마다 보스)와 라이벌 2분 대전",
+      "duel": true,
+      "file": "march.html",
+      "bytes": 312664,
+      "gzip": 103105
     }
   ],
   "retired": [
