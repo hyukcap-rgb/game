@@ -201,12 +201,15 @@ if(!process.env.GSROOM){
   await A.pg.evaluate(() => rmCreateSheet('gostop')); await w(400);
   const opts = await A.pg.evaluate(() => [...document.querySelectorAll('[data-x]')].map(b => b.textContent.trim() + (b.disabled ? '(막힘)' : '')));
   ok(opts.length === 5 && /1점 100P/.test(opts.join()), '방 만들기에 점당 금액 칸: ' + opts.join(' / '));
+  const sheet = await A.pg.evaluate(() => ({ diff:document.querySelectorAll('[data-d]').length, band:document.querySelectorAll('[data-b]').length, txt:document.querySelector('.rmmake').textContent }));
+  ok(!sheet.diff && !sheet.band && !/1위 \+|강자 보너스/.test(sheet.txt), '고스톱 방 만들기: 난이도·보상·레벨 칸 없음');
   await A.pg.evaluate(() => { document.querySelector('[data-x="2"]').click(); }); await w(200);
   await A.pg.evaluate(() => document.querySelector('#rcGo').click());
   const listed = await Bp.pg.waitForFunction(() => rmAds('gostop').length === 1 && rmAds('gostop')[0].x === 2, null, { timeout:10000 }).then(() => true).catch(() => false);
   ok(listed, 'B 방 목록에 점당 500P 방이 보임');
   await Bp.pg.evaluate(() => rmList('gostop')); await w(800);
   const row = await Bp.pg.evaluate(() => (document.querySelector('#rmRows .rmrow') || {}).textContent || '');
+  ok(!/1위 \+|Lv \d+~/.test(row), '목록 줄에 대전 포인트·레벨 제한 없음');
   ok(/점당 500P/.test(row) && /포인트 부족/.test(row), '목록 줄: 점당 금액 · 보유 5천P라 "포인트 부족" → ' + row.replace(/\s+/g, ' ').trim());
   const rid = await A.pg.evaluate(() => RM.cur.id);
   const err = await Bp.pg.evaluate(id => new Promise(res => rmJoin(id, { invited:true, onErr:res })), rid);

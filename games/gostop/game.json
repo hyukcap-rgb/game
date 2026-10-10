@@ -1,7 +1,7 @@
 {
   "id": "gostop",
   "name": "고스톱",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
   "js": [
     "gostop-cards.js",
