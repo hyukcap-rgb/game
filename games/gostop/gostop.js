@@ -63,7 +63,7 @@ NG.gostop = (() => {
     for(let r = 0; r < 60; r++){
       const rng = mulberry(seedFrom(seed + ':' + r));
       const ids = gsShuffle([...Array(NCARD).keys()], rng);
-      const S = { P:[0, 1].map(i => ({ hand:ids.slice(i * 10, i * 10 + 10), cap:[], go:0, goScore:0, shake:0, ppuk:0 })), floor:[], deck:ids.slice(28),
+      const S = { P:[0, 1].map(i => ({ hand:ids.slice(i * 10, i * 10 + 10), cap:[], go:0, goScore:0, shake:0, ppuk:0, nt:0, fp:0 })), floor:[], deck:ids.slice(28),
         turn:0, ppuk:{}, pendingGS:-1, over:false, result:null, dn:0, nAct:0 };
       /* 바닥 8장: 보너스패는 선(0번 자리)이 먹고 더미에서 채움 */
       for(const id of ids.slice(20, 28)){ if(C[id].bonus) S.P[0].cap.push(id); else S.floor.push(id); }
@@ -110,6 +110,7 @@ NG.gostop = (() => {
       return scenes;
     }
     me.hand.splice(hi, 1);
+    const first = !me.nt; me.nt = (me.nt || 0) + 1;   /* 이 사람의 첫 차례(보너스패는 세지 않음) → 첫뻑 */
     let played = null, pm = 0, pre = null, capped = false;
     if(isDummy(c)){ /* 빈 패: 뒤집기만 */ }
     else if(act.s === 2 && me.hand.filter(x => C[x] && C[x].m === C[c].m).length >= 2 && floorOf(S, C[c].m).length === 1){
@@ -147,7 +148,7 @@ NG.gostop = (() => {
         S.floor.push(f);
         if(!probe) scenes.push(snap(S, { flip:f, hi:[f] }));
         if(pm === 0){ take([played, f]); capped = true; labs.push('쪽!'); steal(1); }
-        else if(pm === 1){ S.ppuk[FM] = p; me.ppuk++; labs.push('뻑!'); }
+        else if(pm === 1){ S.ppuk[FM] = p; me.ppuk++; labs.push('뻑!'); if(first){ me.fp = 1; labs.push('첫뻑!'); } }
         else if(pm === 2){ take(floorOf(S, FM)); capped = true; labs.push('따닥!'); steal(1); }
         played = null;
       } else {
@@ -513,7 +514,23 @@ NG.gostop = (() => {
     let pv = prev;
     for(const sc of scenes){
       if(GS() !== g || G.over || g.epoch !== ep) return;
-      flipTo(sc, pv, 340);
+      const labs0 = sc.lab || [], eat = labs0.includes('뻑 먹기!') || labs0.includes('자뻑!'), hc = sc.hi && sc.hi[0];
+      /* 싼 패(뻑) 먹기: ① 낸 패가 묶인 세 장 위에 '탁' 붙고 → ② 네 장이 먹은 줄로 날아감 */
+      if(eat && hc != null && sc.flip == null && pv.h[p].includes(hc)){
+        const A = Object.assign({}, pv, { h:[pv.h[0].slice(), pv.h[1].slice()], f:pv.f.concat(hc), hi:[hc], lab:[] });
+        A.h[p] = A.h[p].filter(x => x !== hc);
+        flipTo(A, pv, 360);
+        setTimeout(() => X(() => { const el = document.querySelector(`#gsFloor [data-cid="${hc}"]`); if(el) GX.land(el, 3); }), 330);
+        X(() => document.querySelectorAll(`#gsFloor [data-cid]`).forEach(el => { const c0 = C[+el.dataset.cid]; if(c0 && C[hc] && c0.m === C[hc].m) el.classList.add('gs-pile'); }));
+        await wait(700);
+        if(GS() !== g || G.over || g.epoch !== ep) return;
+        pv = A;
+      }
+      /* 피 뺏기는 따로 한 박자 늦게: 먼저 먹은 패만 옮기고, 그다음 상대 줄 → 내 줄로 피가 날아감 */
+      const q = 1 - p, stolen = sc.c[p].filter(x => pv.c[q].includes(x));
+      let mid = sc;
+      if(stolen.length){ mid = Object.assign({}, sc, { c:[sc.c[0].slice(), sc.c[1].slice()] }); mid.c[p] = mid.c[p].filter(x => !stolen.includes(x)); mid.c[q] = mid.c[q].concat(stolen); }
+      flipTo(mid, pv, eat ? 620 : 340);
       const labs = sc.lab || [], lid = sc.flip != null ? sc.flip : sc.hi && sc.hi[0];
       const evs = EVMAP.filter(([l]) => labs.includes(l)).map(x => x[1]);
       const big = evs.includes('bomb') || evs.includes('ppukEat') || evs.includes('jappuk');
@@ -532,9 +549,16 @@ NG.gostop = (() => {
         fxBuzz(big ? [40, 30, 60] : [20, 30, 20]);
         w = evs[1] ? 1650 : evs[0] === 'bonus' ? 750 : 1150;
       }
-      const st = labs.find(l => /^피 /.test(l));
-      if(st){ const n = parseInt(st.slice(2), 10) || 1, at = w - 200; setTimeout(() => X(() => GX.event('steal', { who, n })), at); w += 400; }
+      if(eat) w = Math.max(w, 1250);
       await wait(w);
+      if(stolen.length){
+        if(GS() !== g || G.over || g.epoch !== ep) return;
+        flipTo(sc, mid, 760);
+        X(() => GX.event('steal', { who, n:stolen.length }));
+        X(() => stolen.forEach(id => { const el = document.querySelector(`#gsCap${p === g.me ? 'Me' : 'Op'} [data-cid="${id}"]`); if(el){ el.classList.add('gs-stl'); setTimeout(() => el.classList.remove('gs-stl'), 1500); } }));
+        sfx('gsCap');
+        await wait(950);
+      }
       pv = sc;
     }
     if(GS() !== g || G.over || g.epoch !== ep) return;
@@ -590,7 +614,7 @@ NG.gostop = (() => {
     g.rnd = mulberry(seedFrom(seedOf(g.gi) + ':ai:' + g.seat));
     g.k = 0; g.log = []; g.raw = []; g.own = []; g.src = []; g.busy = true; g.picking = false; g.stepT0 = Date.now() + 700;   /* 패 돌리는 동안은 대신 두기 금지 */
     g.began = true; g.inGame = true; g.ended = false; g.paid = false; g.res = null; g.phase = 'play'; g.epoch = (g.epoch || 0) + 1;
-    g.nxSent = false; clearInterval(g.nxIv);
+    g.nxSent = false; clearInterval(g.nxIv); g.fpPaid = [0, 0]; g.fpd = 0;
     $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     $('#gsBody').hidden = false; fit();
@@ -751,6 +775,7 @@ NG.gostop = (() => {
       await playScenes(prev, scenes, p, ep);
     }
     if(GS() !== g || G.over || g.epoch !== ep) return;
+    fpCheck();
     g.k = k + 1; g.busy = false;
     if(S.over) endGame(); else nextStep();
   }
@@ -767,7 +792,7 @@ NG.gostop = (() => {
       const raw = D(e); let x = raw; if(!valid(S, p, x)) x = autoAct(S, p);
       applyRaw(S, p, x); g.log[k] = x; g.raw[k] = raw; g.own[k] = mine; g.src[k] = e === my ? 'mine' : 'opp'; k++;
     }
-    g.k = k; g.busy = false; g.picking = false;
+    g.k = k; g.busy = false; g.picking = false; fpCheck();
     toast('연결이 늦어 상대와 판을 다시 맞췄어요');
     draw(liveView());
     if(S.over) endGame(); else nextStep();
@@ -858,10 +883,11 @@ NG.gostop = (() => {
     g.res = r;
     const win = r.w === g.me, draw0 = r.w < 0;
     const pay = settle() || { d:0, bonus:0, got:[], after:wallet().pt };
-    if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d; if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt - pay.d); }
+    if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d + (g.fpd || 0); if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt - pay.d); }
     g.lastW = r.w;
     draw(liveView());
     const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${g.room.name}</span><b>${pay.d > 0 ? '+' : ''}${fmtP(pay.d)}</b></div>` : '<div class="gs-pay"><span>연습 판</span><b>포인트 변화 없음</b></div>')
+      + (g.fpd ? `<div class="gs-pay ${g.fpd > 0 ? 'up' : 'down'} sm"><span>첫뻑 (판돈 ×${FP_X}, 판 중에 받음)</span><b>${g.fpd > 0 ? '+' : '−'}${fmtP(Math.abs(g.fpd))}</b></div>` : '')
       + (pay.bonus ? `<div class="gs-pay up sm"><span>솔로 새 판 첫 클리어</span><b>+${fmtP(pay.bonus)}</b></div>` : '')
       + pay.got.map(a => `<div class="gs-pay up sm"><span>업적 · ${a.name}</span><b>+${fmtP(a.pt)}</b></div>`).join('')
       + `<p class="gs-after">보유 포인트 <b>${fmtP(pay.after)}</b>${pay.after < ROOMS[1].min ? ' · 다음 판 전에 파산 구제를 받을 수 있어요' : ''}</p>`;
@@ -1058,6 +1084,31 @@ NG.gostop = (() => {
     const got = achieve(keys);
     return { d, bonus, got, after:wallet().pt };
   }
+  /* 첫뻑: 자기 첫 차례에 뻑을 싸면 판돈(점당)의 5배를 상대에게서 바로 받음(점당 100P → 500P). 연습 판은 표시만.
+     규칙 상태(S.P[i].fp)를 보고 한 번만 정산 → 다시 맞추기(rebuild)를 해도 두 번 주지 않음 */
+  const FP_X = 5;
+  function fpCheck(){
+    const g = GS(); if(!g || !g.S) return;
+    g.fpPaid = g.fpPaid || [0, 0];
+    for(const i of [0, 1]){
+      if(!g.S.P[i].fp || g.fpPaid[i]) continue;
+      g.fpPaid[i] = 1;
+      const room = g.room || ROOMS[0], amt = room.stake * FP_X, mine = i === g.me;
+      let d = 0;
+      if(amt){
+        const w = wallet();
+        d = mine ? Math.min(amt, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : Infinity) : -Math.min(amt, w.pt);
+        w.pt += d; saveW(w);
+        if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt - d);
+        g.fpd = (g.fpd || 0) + d;
+      }
+      banner(`첫뻑!${amt ? ' ' + (d >= 0 ? '+' : '−') + fmtP(Math.abs(d)) : ''}`, mine ? '' : 'bad');
+      sfx(mine ? 'gsWin' : 'gsBad'); fxBuzz(mine ? [30, 40, 30] : 60);
+      X(() => toast(mine ? (amt ? `첫뻑! 판돈의 ${FP_X}배 ${fmtP(d)}를 받았어요` : '첫뻑! (연습 판이라 포인트는 오가지 않아요)') : (amt ? `${esc(g.oppNick)}님 첫뻑 · ${fmtP(-d)}를 줬어요` : `${esc(g.oppNick)}님 첫뻑!`)));
+      faceFor(i, 'joy', 1800); faceFor(1 - i, 'sad', 1800);
+      if(g.S && g.phase === 'play') draw(liveView());
+    }
+  }
   /* 판 도중 나가면 기권 벌점(점당 × 10, 가진 만큼까지) */
   function quitPenalty(){
     const g = GS(); if(!g || !g.inGame || g.paid || !g.room || !g.room.stake) return;
@@ -1102,7 +1153,7 @@ NG.gostop = (() => {
     const tail = /-(\d+)$/.exec(String(id));
     const r = num(I.rd) || num(I.r) || num(o.round) || num(o.again) || (tail ? +tail[1] : 0) || 1;
     const host = typeof o.host === 'boolean' ? o.host : typeof I.host === 'boolean' ? I.host : null;
-    const k = typeof I.stake === 'number' ? Math.max(0, Math.min(4, I.stake | 0)) : 0;
+    const sv = typeof I.x === 'number' ? I.x : I.stake, k = typeof sv === 'number' ? Math.max(0, Math.min(4, sv | 0)) : 0;   /* 방장이 정한 점당 금액(roomOpt → info.x) */
     const name = typeof R === 'string' && /^fl-/.test(R) ? R.slice(0, 60) : ('fl-g-r-' + (String(id).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 28) || 'x') + '-' + r).slice(0, 50);
     return { id, r, host, k, name, room:o.info || R, nick:typeof o.nick === 'string' ? o.nick.slice(0, 12) : null, onFail:typeof o.onFail === 'function' ? o.onFail : null };
   }
@@ -1414,6 +1465,16 @@ NG.gostop = (() => {
     /* o = { pace, room, pl, host, seed, again }(공용 대전 v3). room이 있으면 사이트 방·한 판 더: 판 고르기·상대 찾기 없이 그 방 친구와 바로.
        19세 확인이 먼저(확인 전에는 판·도움말을 만들지 않음). G.duel.room에 받은 방 정보를 그대로 둔다 */
     duelRoom:true,   /* 사이트 대전 방(2명)에서 duelLaunch(o)로 시작할 수 있음 */
+    /* 대전 방 만들 때 방장이 고르는 칸(공용 roomOpt): 점당 금액. 방 목록·방 안에 보이고, 보유 포인트가 입장 기준보다 적으면 들어가기·준비가 막힘.
+       판이 시작되면 info.x로 넘어와 보유 포인트로 정산(이기면 최종 점수 × 점당, 상대 보유까지) */
+    roomOpt:{
+      label:'점당 금액',
+      def:1,
+      opts:() => ROOMS.map(r => ({ v:r.k, name:r.stake ? '1점 ' + fmtP(r.stake) : '연습 판', sub:r.stake ? fmtP(r.min) + ' 이상 보유' : '포인트가 오가지 않아요' })),
+      chip:v => { const r = ROOMS[v] || ROOMS[0]; return r.stake ? '점당 ' + fmtP(r.stake) : '연습 판'; },
+      can:v => { const r = ROOMS[v] || ROOMS[0], pt = wallet().pt; return pt >= r.min ? '' : `보유 ${fmtP(pt)} · ${fmtP(r.min)} 이상 있어야 들어가요`; },
+      note:() => '내 보유 ' + fmtP(wallet().pt)
+    },
     duelLaunch(o){ ageGate(() => {
       const live = duelLive(), link = live ? linkOf(o) : null;
       linkNext = link;
@@ -1458,6 +1519,7 @@ NG.gostop = (() => {
     }, GX.sounds || {}),
     gate:Object.assign({ gsSlap:40, gsPick:30, gsFlip:40, gsCap:60 }, GX.gate || {}),
     /* 점검·도구용(화면에는 안 씀) */
+    _fp:() => fpCheck(),   /* 점검 도구용: 첫뻑 정산 한 번 돌리기 */
     _rules:{ C, gsDeal, gsApply, gsGoStop, scoreOf, tally, aiPick, aiGo, cloneS, autoAct },
     _card:id => cardSvg(id), _back:BACK
   };

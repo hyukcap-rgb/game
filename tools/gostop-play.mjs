@@ -152,7 +152,7 @@ async function pair(){
   return [A, Bp];
 }
 const info = x => x.pg.evaluate(() => ({ seed:G.gs.seed0, h0:JSON.stringify(NG.gostop._rules.gsDeal(G.gs.seed0 + ':0').P), log:JSON.stringify(G.gs.log), ev:JSON.stringify(G.gs.ev), oev:JSON.stringify(G.gs.oev), over:G.over, phase:G.gs.phase, gi:G.gs.gi, me:G.gs.me, first:G.gs.first, seat:G.gs.seat, S:G.gs.S ? JSON.stringify(G.gs.S) : '', k:G.gs.k, bye:G.gs.bye, tot:G.gs.tot, r:G.duel && G.duel.r, why:G.duel && G.duel.why }));
-{
+if(!process.env.GSROOM){
   const [A, Bp] = await pair();
   if(SHOTS){ await w(900); await A.pg.screenshot({ path:path.join(SHOTS, 'gostop-sun.png') }); }
   const inPlay = await Promise.all([A, Bp].map(x => x.pg.waitForFunction(() => G.gs.phase === 'play', null, { timeout:30000 }).then(() => true).catch(() => false)));
@@ -192,8 +192,68 @@ const info = x => x.pg.evaluate(() => ({ seed:G.gs.seed0, h0:JSON.stringify(NG.g
   ok(!A.errs.length && !Bp.errs.length, '오류 없음 ' + [...A.errs, ...Bp.errs].join(' | '));
   await A.ctx.close(); await Bp.ctx.close();
 }
-/* ---- 5) 끊김: B가 판 도중에 닫아도 A 쪽에서 B 차례를 자동으로 대신 두며 끝까지 ---- */
+/* ---- 4b) 사이트 대전 방: 방장이 점당 금액을 정함 → 목록에 보임 · 포인트 모자라면 못 들어감 · 판은 그 점당으로 ---- */
 {
+  const A = await mk('RA'), Bp = await mk('RB');
+  for(const x of [A, Bp]) await x.pg.waitForFunction(() => ROOM_STATE === 'ok', null, { timeout:15000 });
+  await A.pg.evaluate(() => { const w = NG.gostop._pt.wallet(); w.pt = 50000; store.set('hp:gs:pt', w); });
+  await Bp.pg.evaluate(() => { const w = NG.gostop._pt.wallet(); w.pt = 5000; store.set('hp:gs:pt', w); });
+  await A.pg.evaluate(() => rmCreateSheet('gostop')); await w(400);
+  const opts = await A.pg.evaluate(() => [...document.querySelectorAll('[data-x]')].map(b => b.textContent.trim() + (b.disabled ? '(막힘)' : '')));
+  ok(opts.length === 5 && /1점 100P/.test(opts.join()), '방 만들기에 점당 금액 칸: ' + opts.join(' / '));
+  await A.pg.evaluate(() => { document.querySelector('[data-x="2"]').click(); }); await w(200);
+  await A.pg.evaluate(() => document.querySelector('#rcGo').click());
+  const listed = await Bp.pg.waitForFunction(() => rmAds('gostop').length === 1 && rmAds('gostop')[0].x === 2, null, { timeout:10000 }).then(() => true).catch(() => false);
+  ok(listed, 'B 방 목록에 점당 500P 방이 보임');
+  await Bp.pg.evaluate(() => rmList('gostop')); await w(800);
+  const row = await Bp.pg.evaluate(() => (document.querySelector('#rmRows .rmrow') || {}).textContent || '');
+  ok(/점당 500P/.test(row) && /포인트 부족/.test(row), '목록 줄: 점당 금액 · 보유 5천P라 "포인트 부족" → ' + row.replace(/\s+/g, ' ').trim());
+  const rid = await A.pg.evaluate(() => RM.cur.id);
+  const err = await Bp.pg.evaluate(id => new Promise(res => rmJoin(id, { invited:true, onErr:res })), rid);
+  ok(/있어야 들어가요/.test(String(err)), '코드로 들어가도 막힘 → ' + err);
+  await Bp.pg.evaluate(() => { closeModal(); const w = NG.gostop._pt.wallet(); w.pt = 20000; store.set('hp:gs:pt', w); });
+  await w(600);   /* 막혀서 나간 방 연결이 정리된 뒤 다시 */
+  await Bp.pg.evaluate(id => rmJoin(id, { invited:true }), rid);
+  ok(await Bp.pg.waitForFunction(() => RM.cur && RM.cur.x === 2, null, { timeout:10000 }).then(() => true).catch(() => false), '포인트를 채우면 들어감(방 정보 x=2)');
+  await Bp.pg.evaluate(() => rmReady(true));
+  await A.pg.waitForFunction(() => rmMembers(RM.cur).some(m => !m.me && m.rdy), null, { timeout:10000 }).catch(() => {});
+  await A.pg.evaluate(() => rmStartGame(false));
+  const st = await Promise.all([A, Bp].map(x => x.pg.waitForFunction(() => G && G.gs && G.gs.room && G.gs.began, null, { timeout:30000 }).then(() => x.pg.evaluate(() => G.gs.room.stake)).catch(() => -1)));
+  ok(st[0] === 500 && st[1] === 500, '두 기기 모두 점당 500P 판으로 시작: ' + st.join('/'));
+  if(!(st[0] === 500 && st[1] === 500)) for(const x of [A, Bp]) console.log('   진단', await x.pg.evaluate(() => JSON.stringify({ g:G && G.id, gs:G && G.gs && { ph:G.gs.phase, began:G.gs.began, room:G.gs.room, link:!!G.gs.link }, rm:RM.cur && { st:RM.cur.st, rd:RM.cur.rd, host:RM.cur.host }, modal:($('#modal')||{}).textContent && $('#modal').textContent.slice(0, 160), toast:($('#toast')||{}).textContent })));
+  ok(!A.errs.length && !Bp.errs.length, '오류 없음 ' + [...A.errs, ...Bp.errs].join(' | '));
+  await A.ctx.close(); await Bp.ctx.close();
+}
+/* ---- 4c) 첫뻑: 첫 차례에 뻑이면 점당 × 5를 바로 받음(규칙 상태 → 한 번만 정산) ---- */
+{
+  const x = await mk('fp');
+  const r = await x.pg.evaluate(() => {
+    const R = NG.gostop._rules, C = R.C;
+    /* 첫 차례에 뻑이 나는 판 찾기: 선(0번)이 손패 한 장을 내서 바닥 1장과 맞추고, 더미 맨 위도 같은 월 */
+    for(let i = 0; i < 4000; i++){
+      const S = R.gsDeal('fp:' + i); if(!S || S.over) continue;
+      const top = S.deck.find(d => !C[d].bonus); if(top == null || S.deck[0] !== top) continue;
+      const c = S.P[0].hand.find(h => C[h] && !C[h].bonus && C[h].m === C[top].m && S.floor.filter(f => C[f].m === C[h].m).length === 1 && S.P[0].hand.filter(z => C[z] && C[z].m === C[h].m).length === 1);
+      if(c == null) continue;
+      const T = R.cloneS(S); const sc = R.gsApply(T, 0, { c, a:-1, b:-1, s:0 });
+      const labs = sc.flatMap(z => z.lab || []);
+      const T2 = R.cloneS(S); T2.P[0].nt = 1; const sc2 = R.gsApply(T2, 0, { c, a:-1, b:-1, s:0 });
+      return { seed:i, fp:T.P[0].fp, labs, fp2:T2.P[0].fp, labs2:sc2.flatMap(z => z.lab || []) };
+    }
+    return null;
+  });
+  ok(r && r.fp === 1 && r.labs.includes('첫뻑!') && !r.fp2 && !r.labs2.includes('첫뻑!'), '첫 차례 뻑 = 첫뻑(두 번째 차례 뻑은 아님): ' + JSON.stringify(r && { labs:r.labs, labs2:r.labs2 }));
+  /* 정산: 점당 100P 판에서 내 첫뻑 → +500P, 한 번만 */
+  await x.pg.evaluate(() => startGame('gostop', null, { adv:2 })); await w(900);
+  await x.pg.evaluate(() => document.querySelector('#gsLobby [data-r="1"]').click());
+  await x.pg.waitForFunction(() => G.gs.phase === 'play' && G.gs.S, null, { timeout:15000 }).catch(() => {});
+  const pay = await x.pg.evaluate(() => { const g = G.gs, w0 = NG.gostop._pt.wallet().pt; g.S.P[g.me].fp = 1; NG.gostop._fp(); NG.gostop._fp(); return [NG.gostop._pt.wallet().pt - w0, g.fpd]; });
+  ok(pay[0] === 500 && pay[1] === 500, '점당 100P 판 첫뻑 정산 +500P(두 번 불러도 한 번): ' + pay.join('/'));
+  ok(!x.errs.length, '오류 없음 ' + x.errs.join(' | '));
+  await x.ctx.close();
+}
+/* ---- 5) 끊김: B가 판 도중에 닫아도 A 쪽에서 B 차례를 자동으로 대신 두며 끝까지 ---- */
+if(!process.env.GSROOM){
   const [A, Bp] = await pair();
   await Promise.all([A, Bp].map(x => x.pg.waitForFunction(() => G.gs.phase === 'play', null, { timeout:30000 }).catch(() => {})));
   for(let n = 0; n < 12; n++){ await step(A.pg, false); await step(Bp.pg, false); await w(300); }
