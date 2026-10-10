@@ -1,10 +1,10 @@
 {
   "id": "hidden",
   "name": "숨은그림 찾기",
-  "version": "1.2.1",
-  "summary": "그림책 장면 12곳 속에 숨은 물건을 찾아 누르는 집중력 게임",
+  "version": "2.0.0",
+  "summary": "세계 여행 그림책 장면 20곳 속 물건을 찾아 누르는 집중력 게임",
   "js": [
-    "hidden-art.js",
+    "hidden-photo.js",
     "hidden.js"
   ],
   "css": [],
