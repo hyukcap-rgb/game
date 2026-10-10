@@ -10,14 +10,27 @@ NG.wordchain = (() => {
 
   /* ===== 사전 ===== */
   const W = [], IDX = new Map();
-  const add = w => { if(w && !IDX.has(w)){ IDX.set(w, W.length); W.push(w); } };
+  const BLOCK = new Set((WC_DICT.block || '').split(' ').filter(Boolean));   /* 욕설·비하·차별어: 사전에 있어도 받지 않음 */
+  const add = w => { if(w && !IDX.has(w) && !BLOCK.has(w)){ IDX.set(w, W.length); W.push(w); } };
   WC_DICT.core.split(' ').sort().forEach(add);
   const NCORE = W.length;
   WC_DICT.extra.split(' ').sort().forEach(add);
   (WC_DICT.more || '').split(' ').sort().forEach(add);   /* 국어사전 명사 보강(사람이 넣으면 인정) */
+  const NBASE = W.length;   /* 여기까지가 컴퓨터·힌트가 고르는 말. 아래 표준국어대사전 낱말은 사람이 넣으면 인정만 한다 */
   const BYF = new Map(), BYL = new Map();   /* 첫 글자 → 낱말 번호들, 끝 글자 → 낱말 번호들(core가 먼저) */
   const push = (M, k, i) => { let a = M.get(k); if(!a) M.set(k, a = []); a.push(i); };
-  W.forEach((w, i) => { push(BYF, w[0], i); push(BYL, w[w.length - 1], i); });
+  const index = from => { for(let i = from; i < W.length; i++){ const w = W[i]; push(BYF, w[0], i); push(BYL, w[w.length - 1], i); } };
+  index(0);
+  /* 표준국어대사전 명사(wordchain-std.js, 앞글자 줄임 형식)는 처음 판을 만들거나 낱말을 검사할 때 한 번 풀어 넣는다
+     (사이트를 여는 순간엔 안 풀어서 첫 화면이 느려지지 않게). 사전이 바뀌면 규칙 표(TBL)도 다시 만든다 */
+  let stdOk = false;
+  function loadStd(){
+    if(stdOk) return; stdOk = true;
+    if(typeof WC_STD !== 'string') return;
+    const n0 = W.length, re = /(\d)([가-힣]*)/g; let prev = '', x;
+    while((x = re.exec(WC_STD))){ prev = prev.slice(0, +x[1]) + x[2]; add(prev); }
+    index(n0); TBL.clear();
+  }
 
   /* ===== 두음법칙: 끝 글자 → 이어도 되는 첫 글자들 ===== */
   const IY = [2, 6, 7, 12, 17, 20];   /* ㅑ ㅕ ㅖ ㅛ ㅠ ㅣ */
@@ -108,6 +121,7 @@ NG.wordchain = (() => {
   /* 넣은 낱말 검사: null이면 통과. kind: 'rule'(실수로 셈) | 'soft'(다시 입력) */
   function check(m, w){
     if(!w) return null;
+    loadStd();
     if(!isHan(w)) return { kind:'soft', t:'한글 낱말만 넣어요' };
     if(w.length < 2) return { kind:'soft', t:'한 글자 낱말은 안 돼요' };
     const last = lastW(m);
@@ -116,6 +130,7 @@ NG.wordchain = (() => {
     if(m.rule.long && w.length < 3) return { kind:'rule', t:'세 글자 이상만 돼요' };
     const b = m.rule.ban.find(c => w.includes(c)); if(b) return { kind:'rule', t:`금지 글자 ‘${b}’가 있어요` };
     if(m.used.has(w)) return { kind:'rule', t:'이미 쓴 낱말이에요' };
+    if(BLOCK.has(w)) return { kind:'soft', t:'쓸 수 없는 낱말이에요', dict:true };
     if(!IDX.has(w)) return { kind:'soft', t:'사전에 없어요', dict:true };
     return null;
   }
@@ -123,6 +138,8 @@ NG.wordchain = (() => {
 
   /* ===== AI: 같은 수(지금까지 이은 낱말) → 같은 응답. 씨앗 = 판 씨앗 + 낱말 기록 ===== */
   const histRng = (m, tag) => mulberry(seedFrom(m.seed + ':' + tag + ':' + m.chain.map(x => x.w).join(',')));
+  /* 컴퓨터·힌트가 고를 후보: core → 나머지 기본 사전 → (그래도 없으면) 국어사전 낱말 앞 60개 */
+  const tier = C => { const a = C.filter(i => i < NCORE); if(a.length) return a; const b = C.filter(i => i < NBASE); return b.length ? b : C.slice(0, 60); };
   const pickOf = (r, a) => a[Math.floor(r() * a.length)];
   /* 돌려줌: { i } 낱말 · { fail:true } 못 찾음(대전 AI가 가끔) · null 이을 낱말이 아예 없음(한방 당함)
      lvl 0 순함: 이어 받기 쉬운 낱말 · 1 보통: 아무 낱말(가끔 내게 한방 기회를 막음) · 2 영리함: 이어 받기 어려운 낱말 + 내게 한방 기회를 거의 안 줌 + 한방 15% · 3 한방: 한방 35% */
@@ -130,7 +147,7 @@ NG.wordchain = (() => {
   function aiPick(m, lvl, killP, failP){
     const r = histRng(m, 'ai'), C = cands(m, lastW(m));
     if(!C.length) return null;
-    const core = C.filter(i => i < NCORE), pool = core.length ? core : C, dead = tables(m.rule).nAll;
+    const pool = tier(C), dead = tables(m.rule).nAll;
     const sc = pool.map(i => { const F = followList(m, i); return { i, f:F.length, k:F.reduce((s, j) => s + (dead[j] === 0 ? 1 : 0), 0) }; });
     const kill = sc.filter(x => x.f === 0); let live = sc.filter(x => x.f > 0).sort((a, b) => b.f - a.f || a.i - b.i);
     if(failP && r() < failP + (live.length <= 3 ? .25 : 0)) return { fail:true };
@@ -148,7 +165,7 @@ NG.wordchain = (() => {
   /* 힌트·자동 풀기: 이을 수 있는 낱말 하나(되도록 core, 한방을 안 당하는 것) */
   function helpPick(m, tag, prefer){
     const C = cands(m, lastW(m)); if(!C.length) return null;
-    const core = C.filter(i => i < NCORE), pool = core.length ? core : C;
+    const pool = tier(C);
     const sc = pool.map(i => [i, follow(m, i)]);
     if(prefer === 'kill'){ const k = sc.find(x => x[1] === 0); if(k) return k[0]; }
     const live = sc.filter(x => x[1] > 0);
@@ -157,6 +174,7 @@ NG.wordchain = (() => {
 
   /* ===== 판 만들기(시작 낱말·황금/금지 글자): rng만 ===== */
   function setup(cfg, rng){
+    loadStd();
     const rule = { long:!!cfg.long, rev:!!cfg.rev, ban:[], gold:[], goldNeed:cfg.gold || 0, tight:!!cfg.tight, tick:cfg.tick || 0, shrink:!!cfg.shrink };
     if(cfg.ban) rule.ban = shuffle(BAN_POOL.slice(), rng).slice(0, cfg.ban);
     if(cfg.gold) rule.gold = shuffle(GOLD_POOL.filter(c => !rule.ban.includes(c)), rng).slice(0, 3);
