@@ -1,13 +1,11 @@
 /* 틀린그림 찾기 */
 /* ===== 틀린그림 찾기 (spot) · 하루퍼즐 리그 게임 모듈 =====
-   rng로 귀여운 장면(마을·공원·부엌·바닷가·우주)을 만들고, 똑같이 복제한 아래 그림에 N곳의 차이를 만든다.
-   차이 = 색 바꾸기 · 없애기 · 크기 · 자리 · 방향 · 작은 부분(창문·무늬·리본…). 차이끼리 겹치지 않고, 너무 작은 차이는 만들지 않는다.
-   그림 조각·테마는 spot-art.js(SPOT_ART). 모두 직접 그린 오리지널 SVG(굵은 외곽선 #1A0F45). */
+   저작권이 끝난 명화 40점(spot-masters.js의 SPOT_MASTERS, 그림 파일은 art/)으로 한 판을 만든다.
+   명화 한 장을 위 그림으로 놓고, 그 작품의 차이 조각 중 N곳만 얹은 것이 아래 그림. 고르지 않은 곳은 원본 그대로.
+   차이 조각·좌표는 tools/masterpiece/export.py가 만든다. 규칙·저작권: docs/23_명화_틀린그림_저작권.md */
 NG.spot = (() => {
-  const A = SPOT_ART, P = A.P, TH = A.TH, W = A.W, H = A.H, OL = A.OL;
-  /* 명화 틀린그림(2026-10-10): spot-masters.js(SPOT_MASTERS)에 그림이 있으면 직접 그린 장면 대신 명화 한 장 + 일부 차이 조각을 쓴다 */
+  const W = 320, H = 240, OL = '#1A0F45';   /* 판 좌표계(그림은 이 안에 비율을 지켜 놓는다) */
   const MS = (typeof SPOT_MASTERS !== 'undefined' && SPOT_MASTERS.list) || [];
-  const useMs = () => MS.length > 0;
   const msIds = () => MS.map(p => p.id);
   function artBase(){
     try{
@@ -16,106 +14,10 @@ NG.spot = (() => {
     }catch(_){ return 'games/spot/art/'; }
   }
   const SUBTLE_KINDS = ['색 바꾸기', '밝기 바꾸기'];
-  /* 테마 8개. 뒤 3개(교실·놀이터·옛 골목)는 2026-10-07 0시부터 오늘의 문제·연습·솔로에 섞인다(오늘 문제가 바뀌지 않게).
-     대전은 날짜와 상관없이 늘 8개(두 기기의 날짜가 달라도 같은 그림이 나오게) */
-  const THEMES = ['town', 'park', 'kitchen', 'beach', 'space', 'class', 'play', 'alley'];
-  const NEW_THEMES_FROM = '2026-10-07';
-  const themesFor = duel => duel || (typeof dayKey === 'function' ? dayKey() : NEW_THEMES_FROM) >= NEW_THEMES_FROM ? THEMES : THEMES.slice(0, 5);
   const TOL = 7;            /* 누른 곳이 차이 동그라미에서 이만큼(그림 단위)까지 벗어나도 찾은 것으로 */
   const MISS_PTS = 15, HINT_PTS = 40;
 
   /* ===== 판 만들기(rng만) ===== */
-  const boxOf = (o, s) => { const p = P[o.t], k = s == null ? o.s : s, hw = p.w * k / 2, hh = p.h * k / 2; return [o.x - hw, o.y - hh, o.x + hw, o.y + hh]; };
-  const over = (a, b, g) => a[0] < b[2] + g && b[0] < a[2] + g && a[1] < b[3] + g && b[1] < a[3] + g;
-  const inPic = (b, m = 3) => b[0] >= m && b[1] >= m && b[2] <= W - m && b[3] <= H - m;
-  const clone = o => ({ t:o.t, x:o.x, y:o.y, s:o.s, f:o.f, c:o.c.slice(), d:Object.assign({}, o.d), hide:o.hide });
-  function newObj(t, rng){
-    const p = P[t], d = {};
-    (p.det || []).forEach(k => { d[k] = rng() < .5; });
-    return { t, x:0, y:0, s:1, f:p.flip ? rng() < .5 : false, c:(p.pal || []).map(pl => pl[Math.floor(rng() * pl.length)]), d, hide:false };
-  }
-  /* 장면: 큰 조각부터 구역 안에 서로 겹치지 않게 놓는다(겹치지 않아야 없어진 조각·바뀐 색이 가려지지 않는다) */
-  function placeScene(theme, want, rng, tiles){
-    const T = TH[theme], bg = T.bg(rng), pool = [];
-    T.items.forEach(([t, z, n]) => { for(let i = 0; i < n; i++) pool.push([t, z]); });
-    shuffle(pool, rng);
-    pool.sort((a, b) => P[b[0]].w * P[b[0]].h - P[a[0]].w * P[a[0]].h);
-    const objs = [], boxes = bg.block.slice();
-    for(const [t, z] of pool){
-      if(objs.length >= want) break;
-      const p = P[t], [kind, y0, y1] = T.zones[z];
-      for(let k = 0; k < 30; k++){
-        const s = .9 + rng() * .3, hw = p.w * s / 2, hh = p.h * s / 2;
-        const x = hw + 4 + rng() * (W - 8 - 2 * hw);
-        let y;
-        if(kind === 'box'){ if(y1 - y0 < 2 * hh) break; y = y0 + hh + rng() * (y1 - y0 - 2 * hh); }
-        else y = y0 + rng() * (y1 - y0) - hh;
-        const b = [x - hw, y - hh, x + hw, y + hh];
-        if(!inPic(b) || boxes.some(q => over(b, q, 5))) continue;
-        if(tiles && ((b[0] < W / 2 + 3 && b[2] > W / 2 - 3) || (b[1] < H / 2 + 3 && b[3] > H / 2 - 3))) continue;   /* 조각 그림: 조각 경계에 걸치지 않게 */
-        const o = newObj(t, rng); o.x = x; o.y = y; o.s = s; objs.push(o); boxes.push(b); break;
-      }
-    }
-    objs.sort((a, b) => boxOf(a)[3] - boxOf(b)[3]);   /* 아래쪽(가까운) 조각을 나중에 그림 */
-    return { bg:bg.svg, block:bg.block, objs };
-  }
-  /* 차이 종류와 뽑힐 무게 */
-  const KW = { col:3, hide:2, size:1.4, move:1.2, flip:1.1, det:2.8 };
-  function kindsOf(o, opt){
-    const p = P[o.t], L = [];
-    if(p.pal && p.pal.some(pl => pl.length > 1)) L.push(['col', KW.col]);
-    if(!opt.subtle){ L.push(['hide', KW.hide], ['move', KW.move]); if(Math.min(p.w, p.h) * o.s >= 24) L.push(['size', KW.size]); }
-    if(p.flip && !opt.mirror) L.push(['flip', KW.flip]);   /* 거울 그림에서는 방향 바꾸기를 쓰지 않음(헷갈림) */
-    (p.det || []).forEach(k => L.push(['det:' + k, KW.det / Math.sqrt(p.det.length)]));
-    return L;
-  }
-  function mutate(o, kind, rng){
-    const m = clone(o), p = P[o.t];
-    if(kind === 'col'){
-      const slots = p.pal.map((pl, i) => pl.length > 1 ? i : -1).filter(i => i >= 0), i = slots[Math.floor(rng() * slots.length)];
-      const opts = p.pal[i].filter(c => c !== o.c[i]); m.c[i] = opts[Math.floor(rng() * opts.length)];
-    } else if(kind === 'hide') m.hide = true;
-    else if(kind === 'size'){ m.s = o.s * (rng() < .5 ? 1.38 : .66); m.y = o.y + p.h * (o.s - m.s) / 2; }   /* 바닥은 그대로 */
-    else if(kind === 'move') m.x = o.x + (p.w * o.s * .55 + 14) * (rng() < .5 ? -1 : 1);
-    else if(kind === 'flip') m.f = !o.f;
-    else { const k = kind.slice(4); m.d[k] = !o.d[k]; }
-    return m;
-  }
-  const kindBase = k => k.startsWith('det') ? 'det' : k;
-  function pickDiffs(sc, N, rng, opt){
-    const objs = sc.objs, B = objs.map(clone), boxes = objs.map(o => boxOf(o)), diffs = [], cnt = {};
-    /* 한 종류는 N의 40%까지. 거울+살금살금(색·작은 부분 두 종류뿐)은 60%까지(안 그러면 10곳을 못 채움 — 리믹스 90판) */
-    const cap = Math.max(2, Math.ceil(N * (opt.subtle && opt.mirror ? .6 : .4)));
-    const order = shuffle(objs.map((_, i) => i), rng);
-    for(const i of order){
-      if(diffs.length >= N) break;
-      const o = objs[i], p = P[o.t];
-      if(Math.min(p.w, p.h) * o.s < 19) continue;   /* 너무 작은 조각은 차이로 쓰지 않음 */
-      const ks = kindsOf(o, opt).map(([k, w]) => [k, Math.pow(rng(), 1 / w)]).sort((a, b) => b[1] - a[1]).map(a => a[0]);
-      for(const k of ks){
-        if((cnt[kindBase(k)] || 0) >= cap) continue;
-        const m = mutate(o, k, rng), b0 = boxes[i];
-        let reg = b0;
-        if(k === 'size' || k === 'move'){
-          const b1 = boxOf(m);
-          if(!inPic(b1)) continue;
-          if(boxes.some((q, j) => j !== i && over(b1, q, 3)) || sc.block.some(q => over(b1, q, 3))) continue;
-          reg = [Math.min(b0[0], b1[0]), Math.min(b0[1], b1[1]), Math.max(b0[2], b1[2]), Math.max(b0[3], b1[3])];
-        }
-        if(opt.tiles){   /* 조각 그림: 차이가 네 조각 중 한 조각 안에 들어가야 함 */
-          const qx = reg[0] >= W / 2 ? W / 2 : 0, qy = reg[1] >= H / 2 ? H / 2 : 0;
-          if(reg[0] < qx + 2 || reg[2] > qx + W / 2 - 2 || reg[1] < qy + 2 || reg[3] > qy + H / 2 - 2) continue;
-        }
-        const rw = reg[2] - reg[0], rh = reg[3] - reg[1];
-        const d = { i, kind:k, cx:(reg[0] + reg[2]) / 2, cy:(reg[1] + reg[3]) / 2, r:Math.max(16, Math.hypot(rw, rh) * .4 + 3), found:false };
-        if(diffs.some(e => Math.hypot(e.cx - d.cx, e.cy - d.cy) < e.r + d.r + 2)) continue;
-        B[i] = m; if(k === 'size' || k === 'move') boxes[i] = reg;
-        diffs.push(d); cnt[kindBase(k)] = (cnt[kindBase(k)] || 0) + 1; break;
-      }
-    }
-    return diffs.length >= N ? { B, diffs } : null;
-  }
-  /* 판 하나: 장면을 만들고 차이 N곳을 고른다. 못 고르면 장면을 새로 만든다(점검: 수천 씨앗에서 실패 0) */
   /* 명화 판: 그림 하나를 고르고(rng, 최근 본 그림 피하기), 그 그림의 차이 조각 중 N개만 위 그림에 얹는다(고르지 않은 곳은 원본 그대로) */
   function masterGen(cfg, rng, avoid){
     const ids = msIds(); let id = cfg.theme && ids.includes(cfg.theme) ? cfg.theme : null;
@@ -133,37 +35,18 @@ NG.spot = (() => {
     const bg = `<rect width="${W}" height="${H}" fill="${OL}"/><image href="${base + p.file}" x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${iw.toFixed(2)}" height="${ih.toFixed(2)}" preserveAspectRatio="none"/>`;
     return { theme:id, master:p, bg, A:[], B, diffs, ok:diffs.length === N, tries:1, urls };
   }
-  function gen(cfg, rng, list){
-    if(useMs()) return masterGen(cfg, rng, cfg.avoid);
-    const TL = list || themesFor(false), N = cfg.diffs, theme = cfg.theme || TL[Math.floor(rng() * TL.length)];
-    const opt = { mirror:!!cfg.mirror, tiles:!!cfg.tiles, subtle:!!cfg.subtle };
-    let last = null;
-    for(let t = 0; t < 40; t++){
-      const sc = placeScene(theme, N + 8, rng, opt.tiles);
-      if(sc.objs.length < N + 3){ last = last || sc; continue; }
-      const r = pickDiffs(sc, N, rng, opt);
-      if(r) return { theme, bg:sc.bg, A:sc.objs, B:r.B, diffs:r.diffs, ok:true, tries:t + 1 };
-      last = sc;
-    }
-    /* 끝내 못 만들면(점검에선 0건) 고를 수 있는 만큼만 */
-    for(let n = N - 1; n >= 1; n--){ const r = pickDiffs(last, n, rng, opt); if(r) return { theme, bg:last.bg, A:last.objs, B:r.B, diffs:r.diffs, ok:false, tries:40 }; }
-    return { theme, bg:last.bg, A:last.objs, B:last.objs.map(clone), diffs:[], ok:false, tries:40 };
-  }
-  function objSvg(o){
-    if(o.patch) return `<image href="${o.href}" x="${o.x.toFixed(2)}" y="${o.y.toFixed(2)}" width="${o.w.toFixed(2)}" height="${o.h.toFixed(2)}" preserveAspectRatio="none"/>`;
-    if(o.hide) return '';
-    const p = P[o.t];
-    return `<g transform="translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) scale(${(o.f ? -o.s : o.s).toFixed(3)} ${o.s.toFixed(3)}) translate(${-p.w / 2} ${-p.h / 2})">${p.draw(o)}</g>`;
+  const gen = (cfg, rng) => masterGen(cfg, rng, cfg.avoid);
+  function objSvg(o){   /* 아래 그림에 얹는 차이 조각(가장자리가 투명한 WebP) */
+    return `<image href="${o.href}" x="${o.x.toFixed(2)}" y="${o.y.toFixed(2)}" width="${o.w.toFixed(2)}" height="${o.h.toFixed(2)}" preserveAspectRatio="none"/>`;
   }
   const sceneSvg = (bg, objs) => bg + objs.map(objSvg).join('');
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
-    order:useMs() ? ['mirror', 'blink', 'secret'] : ['mirror', 'blink', 'tiles', 'secret'],   /* 명화 판에는 조각 그림 변주가 없다 */
+    order:['mirror', 'blink', 'secret'],
     info:{
       mirror:{ name:'거울 그림', desc:'아래 그림이 거울에 비친 것처럼 좌우가 뒤집혀 있어요. 왼쪽과 오른쪽을 바꿔 생각하며 찾아요.' },
       blink:{ name:'깜빡 커튼', desc:'두 그림이 번갈아 잠깐씩 커튼에 가려져요. 가려진 그림은 누를 수 없으니 보이는 동안 재빨리!' },
-      tiles:{ name:'조각 그림', desc:'아래 그림이 네 조각으로 잘려 자리가 뒤섞여 있어요. 조각 하나하나를 위 그림과 맞춰 보세요.' },
       secret:{ name:'몇 곳일까?', desc:'차이가 몇 곳인지 알려 주지 않아요. 다 찾으면 저절로 끝나요. 끝까지 꼼꼼히!' }
     },
     twists:['flash', 'bare', 'tight', 'subtle', 'more'],
@@ -175,7 +58,7 @@ NG.spot = (() => {
       more:{ name:'차이 잔치', desc:'차이가 평소보다 두 곳 더 많아요. 시간도 그만큼 더 줘요.' }
     }
   };
-  const RULE_TIP = { mirror:'아래는 거울 그림', blink:'가려지면 못 눌러요', tiles:'아래는 조각이 뒤섞였어요', secret:'몇 곳인지 비밀', flash:'시간이 짧아요', bare:'힌트 없음', tight:'두 번 빗나가면 끝', subtle:'색·무늬만 바뀌어요', more:'차이 +2곳' };
+  const RULE_TIP = { mirror:'아래는 거울 그림', blink:'가려지면 못 눌러요', secret:'몇 곳인지 비밀', flash:'시간이 짧아요', bare:'힌트 없음', tight:'두 번 빗나가면 끝', subtle:'색·무늬만 바뀌어요', more:'차이 +2곳' };
 
   /* ----- 솔로 난이도 표 -----
      차이 수 = 챕터 1은 LT.ch1[k−1], 챕터 2~는 LT.base[c] + LT.kOff[k] (+2 차이 잔치), 3~12곳.
@@ -186,41 +69,30 @@ NG.spot = (() => {
     kOff:[0, -1, 0, 0, 1, 2, -1, 0, 1, -1, 2],
     spp:[0, 22, 20, 19, 18, 17, 16],
     kTime:[0, 1.15, 1.05, 1.0, 1.0, 0.9, 1.1, 1.0, 1.0, 1.1, 0.9],
-    mjTime:{ mirror:1.15, blink:1.25, tiles:1.25, secret:1.1 },
+    mjTime:{ mirror:1.15, blink:1.25, secret:1.1 },
     twTime:{ flash:0.65, bare:1.1, tight:1.05, subtle:1.25 }
   };
   function stageCfg(n){
     const p = planOf('spot', n), c = p.c, k = p.k, mj = p.mj || [], tw = p.tw, has = x => mj.includes(x);
     let diffs = c === 1 ? LT.ch1[k - 1] : LT.base[Math.min(c, LT.base.length - 1)] + LT.kOff[k];
     if(tw === 'more') diffs += 2;
-    diffs = Math.max(3, Math.min(has('tiles') ? 8 : 12, diffs));   /* 조각 그림은 차이가 한 조각 안에 들어가야 해서 최대 8곳 */
+    diffs = Math.max(3, Math.min(12, diffs));
     let limit = diffs * LT.spp[Math.min(c, LT.spp.length - 1)] * LT.kTime[k];
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(40, Math.round(limit / 5) * 5);
-    const TL = useMs() ? msIds() : themesFor(false);
+    const TL = msIds();
     return { diffs, limit, hints:tw === 'bare' ? 0 : p.boss ? 2 : 3, lives:tw === 'tight' ? 2 : 0, theme:TL[(n - 1 + c) % TL.length],
-      mirror:has('mirror'), blink:has('blink'), tiles:has('tiles'), secret:has('secret'), subtle:tw === 'subtle',
+      mirror:has('mirror'), blink:has('blink'), secret:has('secret'), subtle:tw === 'subtle',
       boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
   }
 
   /* ===== 화면·조작 ===== */
   const S = () => G.m;
   const T = (fn, ms) => { const m = G.m, id = setTimeout(() => { m.timers.delete(id); if(G && G.m === m && !G.over) fn(); }, ms); m.timers.add(id); return id; };
-  const QX = [0, W / 2, 0, W / 2], QY = [0, 0, H / 2, H / 2];
-  const quadOf = (x, y) => (x >= W / 2 ? 1 : 0) + (y >= H / 2 ? 2 : 0);
-  /* 아래 그림: 화면 좌표 ↔ 원래 그림 좌표 (거울·조각 뒤섞기) — perm[화면 조각] = 원래 조각 */
-  function toSrcB(x, y){
-    const m = S(); if(m.mirror) x = W - x;
-    if(m.perm){ const qd = quadOf(x, y), qs = m.perm[qd]; x += QX[qs] - QX[qd]; y += QY[qs] - QY[qd]; }
-    return [x, y];
-  }
-  function toDispB(x, y){
-    const m = S();
-    if(m.perm){ const qs = quadOf(x, y), qd = m.perm.indexOf(qs); x += QX[qd] - QX[qs]; y += QY[qd] - QY[qs]; }
-    if(m.mirror) x = W - x;
-    return [x, y];
-  }
+  /* 아래 그림: 화면 좌표 ↔ 원래 그림 좌표 (거울) */
+  function toSrcB(x, y){ if(S().mirror) x = W - x; return [x, y]; }
+  function toDispB(x, y){ if(S().mirror) x = W - x; return [x, y]; }
   const picSvg = w => document.querySelector(`.ng-spot #sp${w} svg`);
   function scr(w, x, y){   /* 그림 좌표 → 화면(px) */
     const sv = picSvg(w); if(!sv) return { x:0, y:0 };
@@ -470,17 +342,14 @@ NG.spot = (() => {
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="위 그림(원래 그림)"><defs><clipPath id="${m.u}cA"><rect width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#${m.u}cA)">${sceneSvg(m.bg, m.A)}</g><g id="${m.u}MA"></g><g id="${m.u}FA"></g></svg>`;
   }
   function picB(m){
-    const u = m.u;
-    const clips = [0, 1, 2, 3].map(q => `<clipPath id="${u}q${q}"><rect x="${QX[q]}" y="${QY[q]}" width="${W / 2}" height="${H / 2}"/></clipPath>`).join('');
-    const inner = m.perm ? [0, 1, 2, 3].map(qd => { const qs = m.perm[qd]; return `<g transform="translate(${QX[qd] - QX[qs]} ${QY[qd] - QY[qs]})"><use href="#${u}B" clip-path="url(#${u}q${qs})"/></g>`; }).join('') : `<use href="#${u}B" clip-path="url(#${u}cB)"/>`;
-    const seams = m.perm ? `<path d="M${W / 2} 0V${H}M0 ${H / 2}H${W}" stroke="#fff" stroke-width="4"/><path d="M${W / 2} 0V${H}M0 ${H / 2}H${W}" stroke="${OL}" stroke-width="1.4" stroke-dasharray="6 4"/>` : '';
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath>${clips}<g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}${seams}<g id="${u}FB"></g></svg>`;
+    const u = m.u, inner = `<use href="#${u}B" clip-path="url(#${u}cB)"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath><g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}<g id="${u}FB"></g></svg>`;
   }
   let UID = 0;
   /* 대전 테마 고르기(rng만, 대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고, 최근 본 테마(duelAvoidKey → G.duel.avoid,
      빠른 대전은 방장 목록을 모두가 같이 씀) 2개를 빼고 고른다. 예전에 게임 안에서 세던 판 번호(DUEL_SEEN)·이 기기 기록(hp:spot:duelSeen)은 엔진으로 옮김 */
   function duelTheme(cfg, rng){
-    const ALL = useMs() ? msIds() : THEMES;
+    const ALL = msIds();
     const avoid = [].concat((G.duel && G.duel.avoid) || [], cfg.avoid || []).filter(t => ALL.includes(t)).slice(-2);
     const pool = ALL.filter(t => !avoid.includes(t)), L = pool.length ? pool : ALL;
     return L[Math.floor(rng() * L.length)];
@@ -565,10 +434,11 @@ NG.spot = (() => {
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 2.5h17A1.5 1.5 0 0 1 22 4v6a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 10V4a1.5 1.5 0 0 1 1.5-1.5zm0 10h17A1.5 1.5 0 0 1 22 14v6a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20v-6a1.5 1.5 0 0 1 1.5-1.5z" opacity=".5"/><circle cx="15" cy="17" r="3.6" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="15" cy="7" r="2.4"/></svg>',
     art(){
       const u = 'spotA' + Math.floor(performance.now() * 1000 % 1e6);
-      const mini = (x, y, alt) => `<g transform="translate(${x} ${y})"><rect width="64" height="50" rx="7" fill="#BFE8FF" stroke="#1A0F45" stroke-width="2.4"/><path d="M1.5 32h61v10.5a6 6 0 0 1-6 6H7.5a6 6 0 0 1-6-6z" fill="#94DB72"/>
-        <g transform="translate(14 13) scale(.48)">${P.house.draw({ c:['#FFE3B3', alt ? '#4B6CD9' : '#E8503A'], d:{ win:true, chim:!alt } })}</g>
-        ${alt ? '' : `<g transform="translate(46 4) scale(.4)">${P.sun.draw({ c:['#FFC93C'], d:{ face:true } })}</g>`}
-        <g transform="translate(46 30) scale(.42)">${P.flower.draw({ c:[alt ? '#B266FF' : '#FF5A5F'], d:{ leaf:true } })}</g>
+      /* 손으로 그린 간단한 액자 두 장(왼쪽=원래, 오른쪽=다른 곳이 있는 그림): 언덕·해·집 */
+      const mini = (x, y, alt) => `<g transform="translate(${x} ${y})"><rect width="64" height="50" rx="7" fill="#FDE9B8" stroke="#1A0F45" stroke-width="2.4"/>
+        <path d="M1.5 38c14-10 26-12 38-6s16 4 23-2v14a6 6 0 0 1-6 6H7.5a6 6 0 0 1-6-6z" fill="#7BBF7A"/>
+        ${alt ? '' : '<circle cx="48" cy="14" r="7" fill="#FFB020" stroke="#1A0F45" stroke-width="2"/>'}
+        <path d="M14 38V26l10-8 10 8v12z" fill="#FFF3E4" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/><path d="M11 27l13-11 13 11" fill="none" stroke="${alt ? '#4B6CD9' : '#E8503A'}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
         <rect width="64" height="50" rx="7" fill="none" stroke="#1A0F45" stroke-width="2.4"/></g>`;
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
         <linearGradient id="${u}1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E2FBF6"/><stop offset="1" stop-color="#8EE3D4"/></linearGradient></defs>
@@ -580,10 +450,10 @@ NG.spot = (() => {
         <path d="M76 44l4 4-4 4" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     },
     help:[
-      ['두 그림을 비교해요', '위 그림과 아래 그림은 거의 똑같지만 몇 곳이 달라요. 색이 바뀌거나, 없어지거나, 크기·자리·방향이 바뀌거나, 작은 무늬가 달라요.'],
+      ['두 그림을 비교해요', '유명한 명화 한 점이 위·아래 두 장으로 나와요. 아래 그림은 몇 곳이 살짝 달라요. 색이 바뀌거나, 어두워지거나, 모양이 뒤집히거나, 다른 곳의 조각으로 바뀌어 있어요.'],
       ['다른 곳을 눌러요', '위·아래 어느 그림을 눌러도 돼요. 찾으면 두 그림 모두에 동그라미가 그려져요. 제한 시간 안에 모두 찾으면 성공!'],
       ['마구 누르면 손해', '빗나간 곳을 누르면 점수가 ' + MISS_PTS + '점 깎이고 잠깐 누를 수 없어요. 연달아 빗나갈수록 더 오래 쉬어요. 💡힌트는 차이 근처를 알려 주지만 ' + HINT_PTS + '점이 깎여요.'],
-      ['솔로: 5판마다 새 규칙', '솔로에서는 거울 그림·깜빡 커튼·조각 그림·몇 곳일까 같은 새 규칙과 빠른 판·살금살금·차이 잔치 같은 변주가 5판마다 하나씩 나와요.']
+      ['솔로: 5판마다 새 규칙', '솔로에서는 거울 그림·깜빡 커튼·몇 곳일까 같은 새 규칙과 빠른 판·살금살금·차이 잔치 같은 변주가 5판마다 하나씩 나와요.']
     ],
     /* 도움말 v2(쉬운 화면): 그림 1장 + 3줄(감점 규칙을 글 속에 묻지 않게, S-SPOT-6) */
     howto:{
@@ -614,17 +484,15 @@ NG.spot = (() => {
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return `${useMs() ? (MS.find(x => x.id === c.theme) || MS[0]).title : TH[c.theme].name} · 차이 ${c.secret ? '?' : c.diffs}곳 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
+    stageDesc(n){ const c = stageCfg(n); return `${(MS.find(x => x.id === c.theme) || MS[0]).title} · 차이 ${c.secret ? '?' : c.diffs}곳 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `차이 ${c.diffs}곳 · ${mmss(c.limit)}`; },
     init(cfg, rng){
       for(let i = 0; i < (cfg.diffs || 0) * 7; i++) rng();   /* 같은 날 난이도마다 다른 장면이 나오게(차이 수로 rng를 조금 넘김) */
-      const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng, useMs() ? msIds() : THEMES) : gen(cfg, rng);
-      let perm = null;
-      if(cfg.tiles){ do{ perm = shuffle([0, 1, 2, 3], rng); }while(perm.some((q, i) => q === i)); }   /* 조각 그림: 제자리에 남는 조각 없이 */
+      const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng) : gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       g.diffs.forEach((d, i) => { d.i = i; d.own = null; });   /* 선점 대전 열쇠 'd' + i */
       G.m = { u:'spu' + (++UID) + '_', theme:g.theme, master:g.master || null, imgs:(g.urls || []).map(u => { try{ const im = new Image(); im.src = u; return im; }catch(_){ return null; } }), dealAt:Date.now(), bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
-        mirror:!!cfg.mirror, perm, blink:!!cfg.blink, secret:!!cfg.secret && !G.duel, cover:null,
+        mirror:!!cfg.mirror, blink:!!cfg.blink, secret:!!cfg.secret && !G.duel, cover:null,
         found:0, misses:0, hints:0, streak:0, coolUntil:0, hintLeft:cfg.hints == null ? 3 : cfg.hints,
         lives:G.duel ? 0 : cfg.lives || 0,   /* 기본은 기회 제한 없음(빗나가면 점수·쉬는 시간만). 외줄 타기만 기회 2번 */
         phase:'deal', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, rng, lastSec:-1, sec:0, fail:null, timers:new Set() };
@@ -659,7 +527,7 @@ NG.spot = (() => {
     },
     onDuelClaim(key, owner, info){ try{ claimSeen(key, owner, info || {}); }catch(_){} },
     duelKeys(){ const m = G && G.id === 'spot' && G.m; return m ? m.diffs.map(d => 'd' + d.i) : []; },
-    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _themes:THEMES, _useMs:useMs, _masters:MS, _themesFor:themesFor,
+    _gen:gen, _stage:stageCfg, _svg:sceneSvg, _masters:MS,
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-spot">

@@ -173,8 +173,10 @@ def main():
             if a.game: s = a.long / max(img.size); img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
             else: s = a.width / img.width; img = img.resize((a.width, round(img.height * s)), Image.LANCZOS)
             rng = random.Random(f'masterpiece:{no}'); base = np.asarray(img, dtype=np.float32)
-            for md in (15.0, 12.0, 10.0):   # 차이를 다 못 만들면 눈에 띄는 기준을 조금씩 낮춰 다시
-                try: mod, diffs = make_diffs(base, a.diffs, random.Random(f'masterpiece:{no}:{md}'), md, (.042, .060) if a.game else (.032, .052)); break
+            tries = [(15.0, 1.0), (12.0, 1.0), (12.0, .85), (10.0, .85), (10.0, .72)]   # 차이를 다 못 만들면 눈에 띄는 기준·크기를 조금씩 낮춰 다시
+            for md, kf in tries:
+                rf = tuple(x * kf for x in ((.042, .060) if a.game else (.032, .052)))
+                try: mod, diffs = make_diffs(base, a.diffs, random.Random(f'masterpiece:{no}:{md}:{kf}'), md, rf); break
                 except RuntimeError as e: err = e
             else: raise err
         except Exception as e:
