@@ -13,21 +13,61 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 UA = 'haru-puzzle-masterpiece/1.0 (educational spot-the-difference game; contact: hyukcap@gmail.com)'
 OK_LICENSE = re.compile(r'public domain|^pd\b|^pd-|cc0|cc ?zero', re.I)
 
+_last = [0.0]
 def http_get(url):
+    """위키미디어 이용 예절: 한 번에 하나씩, 3초 간격, 429(너무 빠름)면 기다렸다 다시."""
+    import time
     ctx = ssl.create_default_context()
     ca = os.environ.get('SSL_CERT_FILE') or '/root/.ccr/ca-bundle.crt'
     if os.path.exists(ca): ctx.load_verify_locations(ca)
     req = urllib.request.Request(url, headers={'User-Agent': UA})
-    return urllib.request.urlopen(req, context=ctx, timeout=60).read()
+    for k in range(7):
+        time.sleep(max(0, 3.0 - (time.time() - _last[0])))
+        try:
+            data = urllib.request.urlopen(req, context=ctx, timeout=90).read(); _last[0] = time.time(); return data
+        except urllib.error.HTTPError as e:
+            _last[0] = time.time()
+            if e.code in (429, 503) and k < 6: time.sleep(min(120.0, float(e.headers.get('Retry-After') or 15 * (k + 1)))); continue
+            raise
+        except urllib.error.URLError:   # 터널 연결 일시 실패 등
+            _last[0] = time.time()
+            if k < 6: time.sleep(10 * (k + 1)); continue
+            raise
 
 def strip(s): return re.sub(r'<[^>]+>', '', s or '').strip()
 
+BAD_WORDS = re.compile(r'detail|crop|frame|earth|copy|after |replica|reproduction|poster|stamp|sketch|study|lithograph|cartoon|parody|in situ|wall|museum interior', re.I)
+def rank(p, work):
+    t = p['title']; sc = 0
+    if 'Google Art Project' in t: sc += 5
+    if BAD_WORDS.search(t): sc -= 6
+    ii = (p.get('imageinfo') or [{}])[0]; sc += min(ii.get('width', 0) * ii.get('height', 0), 4e7) / 4e7 * 2
+    if abs(-p.get('index', 99)) < 3: sc += 1.5 - 0.5 * p.get('index', 0)
+    return sc
+
+_META = {}
+def prefetch(cat):
+    """카탈로그의 file들을 20개씩 한 번에 물어 요청 수를 줄인다(위키미디어 속도 제한 때문)."""
+    names = [w['file'] for w in cat if w.get('file')]
+    for i in range(0, len(names), 20):
+        q = urllib.parse.urlencode({'action': 'query', 'format': 'json', 'prop': 'imageinfo', 'iiprop': 'url|size|extmetadata', 'iiurlwidth': 1920,
+            'titles': '|'.join('File:' + n for n in names[i:i + 20])})
+        d = json.loads(http_get('https://commons.wikimedia.org/w/api.php?' + q))
+        norm = {x['to']: x['from'] for x in (d.get('query') or {}).get('normalized', [])}
+        for p in (d.get('query') or {}).get('pages', {}).values(): _META[p['title']] = p
+        for t, f in norm.items():
+            if t in _META: _META[f] = _META[t]
+
 def find_on_commons(work):
-    """Commons에서 작품 파일을 찾아 (이미지 주소, 출처 정보)를 돌려준다. 공공 영역이 아닌 후보는 거른다."""
-    q = urllib.parse.urlencode({'action': 'query', 'format': 'json', 'generator': 'search', 'gsrnamespace': 6,
-        'gsrlimit': 8, 'gsrsearch': work['search'] + ' filetype:bitmap', 'prop': 'imageinfo', 'iiprop': 'url|size|extmetadata', 'iiurlwidth': 2400})
-    data = json.loads(http_get('https://commons.wikimedia.org/w/api.php?' + q))
-    pages = sorted((data.get('query') or {}).get('pages', {}).values(), key=lambda p: p.get('index', 99))
+    """Commons에서 작품 파일을 찾아 (이미지 주소, 출처 정보)를 돌려준다. 공공 영역이 아닌 후보는 거른다. 카탈로그에 file이 있으면 그 파일을 쓴다."""
+    base = {'action': 'query', 'format': 'json', 'prop': 'imageinfo', 'iiprop': 'url|size|extmetadata', 'iiurlwidth': 1920}   # 위키미디어는 정해진 크기(1280·1920·3840 등)의 축소본만 만들어 준다
+    if work.get('file') and ('File:' + work['file']) in _META: data = {'query': {'pages': {'0': _META['File:' + work['file']]}}}
+    elif work.get('file'): data = None; q = urllib.parse.urlencode(dict(base, titles='File:' + work['file']))
+    else: data = None; q = urllib.parse.urlencode(dict(base, generator='search', gsrnamespace=6, gsrlimit=12, gsrsearch=work['search'] + ' filetype:bitmap'))
+    if data is None or not work.get('file') or ('File:' + work['file']) not in _META:
+        data = json.loads(http_get('https://commons.wikimedia.org/w/api.php?' + q))
+    pages = (data.get('query') or {}).get('pages', {}).values()
+    pages = sorted(pages, key=lambda p: -rank(p, work)) if not work.get('file') else list(pages)
     rejected = []
     for p in pages:
         ii = (p.get('imageinfo') or [{}])[0]; m = ii.get('extmetadata', {})
@@ -115,14 +155,20 @@ def main():
     ap.add_argument('--catalog', default=os.path.join(HERE, 'catalog.json')); a = ap.parse_args()
     cat = json.load(open(a.catalog, encoding='utf8')); only = {int(x) for x in a.only.split(',') if x}
     os.makedirs(a.out, exist_ok=True); answers = []; failed = []; masters = []
+    if not a.src: prefetch([w for w in cat if not only or w['no'] in only])
     for wk in cat:
         if only and wk['no'] not in only: continue
         no = wk['no']; src = os.path.join(a.src, f'{no:02d}.jpg') if a.src else ''
         try:
             if src and os.path.exists(src): img = Image.open(src); info = {'file': os.path.basename(src), 'license': '직접 제공(확인 필요)'}
             else:
-                url, info = find_on_commons(wk); open(os.path.join(a.out, f'{no:02d}_원본파일.jpg'), 'wb').write(http_get(url))
-                img = Image.open(os.path.join(a.out, f'{no:02d}_원본파일.jpg'))
+                cache = os.path.join(a.out, '_cache'); os.makedirs(cache, exist_ok=True); cp = os.path.join(cache, f'{no:02d}.jpg'); ci = cp + '.json'
+                if os.path.exists(cp) and os.path.getsize(cp) > 20000 and os.path.exists(ci): info = json.load(open(ci, encoding='utf8'))   # 이미 받은 것은 다시 받지 않는다
+                else:
+                    url, info = find_on_commons(wk); data = http_get(url)
+                    if len(data) < 20000: raise RuntimeError('내려받은 파일이 너무 작아요')
+                    open(cp, 'wb').write(data); json.dump(info, open(ci, 'w', encoding='utf8'), ensure_ascii=False)
+                img = Image.open(cp)
             img = img.convert('RGB')
             if a.game: s = a.long / max(img.size); img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
             else: s = a.width / img.width; img = img.resize((a.width, round(img.height * s)), Image.LANCZOS)
