@@ -47,12 +47,17 @@ NG.march = (() => {
   function loadImgs(){ if(IMG.soldier) return; for(const k in IMGF){ const im = new Image(); im.decoding = 'async'; im.src = BASE + IMGF[k]; IMG[k] = im; } }
   const ok = im => im && im.complete && im.naturalWidth > 0;
   let STRIP = null;
+  /* 돌바닥 띠(v1.0.1): 줄눈을 옅게(물빛 섞기), 먼 바닥용은 흐리게 → 움직일 때 눈부심·깜박임 줄임 */
   function getStrip(){
     if(STRIP) return STRIP; if(!ok(IMG.stone)) return null;
-    const s = document.createElement('canvas'); s.width = 1024; s.height = 256; const x = s.getContext('2d');
-    for(let i = 0; i < 4; i++) x.drawImage(IMG.stone, i * 256, 0, 256, 256);
-    x.fillStyle = 'rgba(255,240,210,.12)'; x.fillRect(0, 0, 1024, 256);
-    return STRIP = s;
+    const mk = (blur, wash) => {
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const x = cv.getContext('2d');
+      if(blur) x.filter = 'blur(' + blur + 'px)';
+      for(let i = -1; i < 5; i++) for(let j = -1; j < 2; j++) x.drawImage(IMG.stone, i * 256, j * 256, 256, 256);   /* 둘레까지 그려 흐림이 이음새 없이 반복되게 */
+      x.filter = 'none'; x.fillStyle = 'rgba(236,222,196,' + wash + ')'; x.fillRect(0, 0, 1024, 256);
+      return cv;
+    };
+    return STRIP = { near:mk(.6, .5), far:mk(3, .7) };
   }
 
   /* ---------- 관문 계산 ---------- */
@@ -375,21 +380,26 @@ NG.march = (() => {
     const z0 = Math.floor((run.z - 40) / 6) * 6, zEnd = run.z + 235, strip = getStrip();
     for(let zz = z0; zz < zEnd; zz += 6){
       const alt = (Math.round(zz / 6) % 2 + 2) % 2;
-      if(!strip) quad(-50, 50, zz, zz + 6.05, alt ? '#eadcc2' : '#e2d2b5');
-      quad(-58, -50, zz, zz + 6.05, alt ? '#cdb489' : '#bfa577');
-      quad(50, 58, zz, zz + 6.05, alt ? '#cdb489' : '#bfa577');
-      if(alt){ quad(-58, -54, zz + .5, zz + 5.5, '#e6d2a6'); quad(54, 58, zz + .5, zz + 5.5, '#e6d2a6'); }
+      if(!strip) quad(-50, 50, zz, zz + 6.05, alt ? '#e8d9bb' : '#e4d4b4');
+      quad(-58, -50, zz, zz + 6.05, alt ? '#c9b083' : '#c4ab7d');   /* 성벽: 띠 색 차이를 작게(깜박임 줄임) */
+      quad(50, 58, zz, zz + 6.05, alt ? '#c9b083' : '#c4ab7d');
+      if(alt){ quad(-58, -54, zz + .5, zz + 5.5, '#d2bd90'); quad(54, 58, zz + .5, zz + 5.5, '#d2bd90'); }
     }
     if(strip){
+      quad(-50, 50, run.z - 40, zEnd, '#e8d9bb');   /* 먼 곳은 무늬 없이 고른 모래색 */
       for(let Y = Math.floor(horizon); Y < h; Y += 2){
-        const s = (Y - horizon) / (armyY - horizon); if(s <= .03) continue;
+        const s = (Y - horizon) / (armyY - horizon); if(s <= .22) continue;
         const zz = run.z + F / s - F, hw = 50 * s * unit, v = Math.min(255, Math.floor(((zz * 10.24) % 256 + 256) % 256));
-        c.drawImage(strip, 0, v, 1024, 1, w / 2 - hw + shx, Y + shy, hw * 2, 2.6);
+        const x0 = w / 2 - hw + shx;
+        c.globalAlpha = Math.min(1, (s - .22) / .25);   /* 흐린 무늬가 먼저, 가까이 오면 또렷한 무늬가 서서히 겹쳐짐(경계선 없음) */
+        c.drawImage(strip.far, 0, v, 1024, 1, x0, Y + shy, hw * 2, 2.6);
+        if(s > .5){ c.globalAlpha = Math.min(1, (s - .5) / .35); c.drawImage(strip.near, 0, v, 1024, 1, x0, Y + shy, hw * 2, 2.6); }
       }
+      c.globalAlpha = 1;
       const a = P(-50, run.z - 30), b = P(-50, zEnd), a2 = P(50, run.z - 30), b2 = P(50, zEnd);
       if(a && b && a2 && b2){ c.strokeStyle = 'rgba(90,60,20,.28)'; c.lineWidth = 4; c.beginPath(); c.moveTo(a.X + 2, a.Y); c.lineTo(b.X + 1, b.Y); c.moveTo(a2.X - 2, a2.Y); c.lineTo(b2.X - 1, b2.Y); c.stroke(); }
     }
-    gr = c.createLinearGradient(0, horizon, 0, horizon + h * .12); gr.addColorStop(0, 'rgba(191,230,255,.95)'); gr.addColorStop(1, 'rgba(191,230,255,0)'); c.fillStyle = gr; c.fillRect(0, horizon - 2, w, h * .12);
+    gr = c.createLinearGradient(0, horizon, 0, horizon + h * .2); gr.addColorStop(0, 'rgba(191,230,255,.95)'); gr.addColorStop(1, 'rgba(191,230,255,0)'); c.fillStyle = gr; c.fillRect(0, horizon - 2, w, h * .2);
     for(const e of run.ents){
       if(e.t === 'puddle'){
         const p = P(e.x, e.z); if(!p) continue;
