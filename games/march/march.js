@@ -105,7 +105,7 @@ NG.march = (() => {
         if(isBossStage(d)){
           const kind = bossKindFor(d), hp = Math.round(KIND[kind].hpk * RULE.BOSS_HP * g.E + 80 + d * 15);
           g.items.push({ t:'boss', z:g.z + 30, x:0, kind, hp, max:hp, final:true, d, minion:Math.round(g.E * .22 + 4), sc:0, cd:1.6, ai:0, atk:null });
-        } else { const hn = Math.round(g.E * .9 + 8 + d); g.items.push({ t:'crowd', z:g.z + 10, x:0, n:hn, max:hn, horde:true }); g.items.push({ t:'finish', z:g.z + 40 }); }
+        } else { const hn = Math.round(g.E * .9 + 8 + d); g.items.push({ t:'crowd', z:g.z + 10, x:0, n:hn, max:hn, horde:true }); g.items.push({ t:'finish', z:g.z + 22 }); }   /* v1.9: 마지막 대군 바로 뒤 결승(빈 길 걷기 없앰) */
         g.ended = true; return;
       }
     } else if(g.z >= g.nextBoss){
@@ -247,6 +247,16 @@ NG.march = (() => {
         if(c.t === 'door') c.hp = c.max = Math.round(Math.min(c.hp, run.N * 1.3 + 30 + g.stage * 5));
         if(c.t === 'bar') c.v = c.max = Math.max(4, Math.round(Math.min(c.v, run.N * .45 + 4 + g.stage * .4)));
         if(c.t === 'barrel' && c.field && c.rw.k === 'men') c.rw.v = Math.max(1, Math.min(c.rw.v, Math.round(c.hp * .5)));
+        /* v1.9 양방향 맞춤: 병력이 불어나도 긴장감이 남게 — 적·성문·방벽·보스가 내 실제 병력에 맞춰 커짐(아래 한계) */
+        const st = g.stage, N = run.N;
+        if(c.t === 'crowd' && !c.pen){ const lo = N * (c.horde ? Math.min(.95, .6 + st * .012) : Math.min(.6, .25 + st * .015)); if(c.n < lo) c.n = c.max = Math.round(lo); }
+        if(c.t === 'door') c.hp = c.max = Math.round(Math.max(c.hp, N * .9));
+        if(c.t === 'bar') c.v = c.max = Math.round(Math.max(c.v, N * Math.min(.4, .15 + st * .01)));
+        if(c.t === 'boss'){ const full = KIND[c.kind].hpk * RULE.BOSS_HP * Math.max(N, 12) + 80 + c.d * 15; c.hp = c.max = Math.round(Math.max(c.hp, full * .3)); c.minion = Math.max(4, Math.round(N * .2 + 4)); }   /* 위 줄의 맞춤(≤ full)에 더해 최소 72% */
+        if(c.t === 'gate' && !c.grow) for(const o of c.ops){
+          if(o.op === '×' && N > 150){ o.op = '+'; o.v = Math.round(N * (o.v - 1) * .3); }   /* 큰 부대에 ×는 폭발 → 적당한 +로 */
+          if(o.op === '-') o.v = Math.max(o.v, Math.round(N * Math.min(.45, .15 + st * .008)));   /* 빨간 관문도 큰 부대에 아프게 */
+        }
       }
       run.ents.push(c);
     }
@@ -393,7 +403,7 @@ NG.march = (() => {
         else if(e.t === 'boss' && e.hp > 0) bossDmg(e, a.dmg);
         else if(e.t === 'gate' && !e.used){
           let s = a.side; if(e.moving && Math.floor(run.time / 1.5) % 2) s = 1 - s;
-          e.ops[s].v += Math.max(1, Math.round(a.dmg)); e.pulse = e.pulse || [0, 0]; e.pulse[a.side] = .15;
+          e.gr = e.gr || [0, 0]; if(e.gr[s] < 40 + (g.stage || 0) * 3){ e.gr[s]++; e.ops[s].v += 1; } e.pulse = e.pulse || [0, 0]; e.pulse[a.side] = .15;   /* v1.9: 한 발에 +1, 관문마다 최대 40+단계×3 */
         }
       }
     }
@@ -1054,9 +1064,9 @@ NG.march = (() => {
     const cnt = Math.ceil(me.N).toLocaleString('ko-KR');
     if(S.hudN !== cnt){ S.hudN = cnt; const el = $s('.mc-n'); el.textContent = cnt; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
     if(!S.battle && S.clock - (S.foeT || -1) > .2){ S.foeT = S.clock; const g = me.gen; let n = 0;   /* v1.7 남은 적(참고 영상의 해골 숫자) */
-      for(let i = me.idx; i < g.items.length; i++){ const q = g.items[i]; if(q.t === 'crowd') n += q.pen ? q.n : Math.min(q.n, me.N * 1.15 + 5 + g.stage); else if(q.t === 'boss') n += 1; }
+      for(let i = me.idx; i < g.items.length; i++){ const q = g.items[i]; if(q.t === 'crowd') n += q.n; else if(q.t === 'boss') n += 1; }
       for(const q of me.ents){ if(q.t === 'crowd' && q.n > 0) n += q.n; else if(q.t === 'boss' && q.hp > 0) n += 1; }
-      const el = $s('.mc-foe em'); const tx = Math.ceil(n).toLocaleString('ko-KR'); if(el && el.textContent !== tx) el.textContent = tx; }
+      if(S.foeN !== undefined) n = Math.min(n, S.foeN); S.foeN = n;   /* 늘 줄어들기만(앞으로 커지는 적 맞춤 때문에 올라가 보이지 않게) */ const el = $s('.mc-foe em'); const tx = Math.ceil(n).toLocaleString('ko-KR'); if(el && el.textContent !== tx) el.textContent = tx; }
     if(!S.battle){ const m = me.bossActive ? '보스전!' : Math.max(0, Math.round(S.endZ - me.z)) + ' m'; if(S.hudM !== m){ S.hudM = m; const el = $s('.mc-m'); if(el) el.textContent = m; } $s('.mc-road i').style.width = clamp(me.z / S.endZ * 100, 0, 100) + '%'; $s('.mc-road .mc-mk').style.left = clamp(me.z / S.endZ * 100, 0, 100) + '%'; }
     else {
       const rv = Math.ceil(S.rv.N).toLocaleString('ko-KR'), l = Math.max(0, S.left);
