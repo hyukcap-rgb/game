@@ -1,0 +1,2501 @@
+{
+  "game": "march",
+  "version": "plan-2026-10-10",
+  "doc": "docs/23_행군대작전_50레벨_기획.md",
+  "units": {
+    "speed": 24,
+    "roadHalfWidth": 50,
+    "xClamp": 44,
+    "arrowRange": {
+      "crowd": 58,
+      "crate": 70,
+      "tower": 72,
+      "boss": 85
+    },
+    "E": "기대 병력(생성기 값)",
+    "R": "부대 반지름 = 3×√min(N,120)×0.85+2",
+    "n": "레벨 번호"
+  },
+  "formulas": {
+    "start": "min(10, 1+⌊(n−1)/4⌋), 쉬어가기 +2",
+    "segments": "min(20, 10+⌊n/2⌋), 보스·쉬어가기 −3, 어려움 +1, 최소 9 (추격 12 · 버티기 6+60초 · 연전 14)",
+    "bossHp": "hpk × max(E,12) × 유형 계수(미니 0.75 · 중간 0.9 · 대장 1.0 · 최종 1.15) + 60 + 12n",
+    "bossCooldown": "max(1.0, 2.2 − 0.024n)초 (지금 max(1.1, 2.2−0.03n))",
+    "teleMul": "max(0.75, 1 − 0.005n) (분노 ×0.8 더)",
+    "dmgMul": "1 + 0.012n (지금 1+0.015n), 공격 하나 최대 60%, 한 순간 최대 70%",
+    "horde": "0.7E+6+n (21판부터 0.8E+6+n)",
+    "firstMeet": "새 기믹 첫 판: 나오는 빈도 60%, 피해 ×0.7"
+  },
+  "chapters": [
+    "새벽 들판",
+    "서리 고개",
+    "안개 늪",
+    "불꽃 협곡",
+    "구름 성채"
+  ],
+  "bosses": [
+    {
+      "id": "brute",
+      "name": "몽둥이 거인",
+      "existing": true,
+      "first": 3,
+      "look": "(있는 그림) 갈색 가죽옷 거인, 큰 나무 몽둥이",
+      "chroma": "(있음)",
+      "hpk": 6.5,
+      "attacks": [
+        {
+          "id": "slam",
+          "name": "내려찍기",
+          "tele": "circle",
+          "teleSec": 1.1,
+          "dmg": 0.32,
+          "dodge": "빨간 원(반지름 13+0.45R) 밖으로",
+          "fx": "흙먼지 고리 + 돌 파편 12개, 흔들림 0.55, 하양 번쩍"
+        },
+        {
+          "id": "rocks",
+          "name": "바위 던지기",
+          "tele": "multi",
+          "teleSec": 1,
+          "dmg": 0.15,
+          "dodge": "원 3~4개 사이 빈 곳",
+          "fx": "바위가 포물선으로 날아와 부서짐, 갈색 파편"
+        },
+        {
+          "id": "quake",
+          "name": "땅울림(새)",
+          "tele": "ring",
+          "teleSec": 1.2,
+          "dmg": 0.24,
+          "dodge": "고리(안 반지름 7+0.3R ~ 바깥 30) 안쪽에 가만히 있거나 30 밖으로 크게",
+          "fx": "황토색 이중 충격파 고리가 바깥으로 퍼짐, 땅 금 3줄, 흔들림 0.45"
+        }
+      ],
+      "rage": "공격 1.45배 빠르게, 예고 0.8배, 바위 +1, 내려찍기 직후 0.4초 뒤 땅울림 연타",
+      "phase2": null,
+      "fx": "예고 빨강 원 안쪽부터 차오름 · 흙색 먼지 · 하양 번쩍",
+      "prompt": null
+    },
+    {
+      "id": "knight",
+      "name": "방패 기사",
+      "existing": true,
+      "first": 5,
+      "look": "(있는 그림) 은색 갑옷, 큰 방패와 창",
+      "chroma": "(있음)",
+      "hpk": 5,
+      "attacks": [
+        {
+          "id": "line",
+          "name": "창 돌진",
+          "tele": "line",
+          "teleSec": 0.9,
+          "dmg": 0.36,
+          "dodge": "빨간 줄(폭 11+0.3R) 밖으로",
+          "fx": "은빛 돌진 잔상 + 불꽃 튐, 흔들림 0.5"
+        },
+        {
+          "id": "sweep",
+          "name": "회전 베기",
+          "tele": "gap",
+          "teleSec": 1.1,
+          "dmg": 0.28,
+          "dodge": "초록 틈(폭 11+0.45R)으로",
+          "fx": "은빛 반원 칼바람 궤적, 금속 불꽃"
+        },
+        {
+          "id": "boomer",
+          "name": "방패 부메랑(새)",
+          "tele": "side",
+          "teleSec": 0.9,
+          "dmg": 0.2,
+          "dodge": "먼저 빨개진 반대쪽에 서 있다가, 첫 타가 지나간 뒤 그쪽으로 건너감(두 번째 타는 0.6초 뒤 반대쪽)",
+          "fx": "회전하는 방패 잔상 원, 푸른 불꽃, 흔들림 0.35"
+        }
+      ],
+      "rage": "방패 시간 3초 → 2초(5.5초 중), 창 돌진이 24 떨어진 두 줄로(사이가 안전)",
+      "phase2": null,
+      "fx": "예고 은청색 테두리 · 금속 불꽃 · 하양-파랑 번쩍(#dfe9ff)",
+      "prompt": null
+    },
+    {
+      "id": "shaman",
+      "name": "주술사",
+      "existing": true,
+      "first": 10,
+      "look": "(있는 그림) 후드 쓴 주술사, 해골 없는 나무 지팡이",
+      "chroma": "(있음)",
+      "hpk": 3.6,
+      "attacks": [
+        {
+          "id": "bolts",
+          "name": "번개",
+          "tele": "multi",
+          "teleSec": 0.95,
+          "dmg": 0.12,
+          "dodge": "원 5~6개(반지름 8+0.2R) 사이",
+          "fx": "노란 번개 줄기 + 하양 번쩍, 흔들림 0.3"
+        },
+        {
+          "id": "summon",
+          "name": "졸개 소환",
+          "tele": "circle",
+          "teleSec": 0.35,
+          "dmg": 0,
+          "dodge": "졸개 2무리(0.22E+4) — 쏘거나 피함",
+          "fx": "보라 소환 고리 + 연기"
+        },
+        {
+          "id": "poison",
+          "name": "독 웅덩이",
+          "tele": "circle",
+          "teleSec": 0.6,
+          "dmg": 0.06,
+          "dodge": "발밑 웅덩이(4.2초, 초당 6%)에서 비킴",
+          "fx": "초록 독 거품·연기"
+        },
+        {
+          "id": "hex",
+          "name": "저주 고리(새)",
+          "tele": "ring",
+          "teleSec": 1.3,
+          "dmg": 0.2,
+          "dodge": "내 둘레 보라 고리(반지름 22)가 좁혀짐 — 닫히기 전에 22 넘게 빠져나감",
+          "fx": "보라 고리가 조여들며 룬 무늬, 닫힐 때 보라 폭발 연기, 흔들림 0.35"
+        }
+      ],
+      "rage": "번개 +1, 졸개 3무리, 저주 고리가 두 번 연속(두 번째는 바깥 고리)",
+      "phase2": null,
+      "fx": "예고 노랑(번개)·보라(저주) · 노랑 번쩍(#fff3a0)",
+      "prompt": null
+    },
+    {
+      "id": "dragon",
+      "name": "화염 용",
+      "existing": true,
+      "first": 35,
+      "look": "(있는 그림) 붉은 비늘 용",
+      "chroma": "(있음)",
+      "hpk": 5.6,
+      "attacks": [
+        {
+          "id": "fire",
+          "name": "한쪽 불길",
+          "tele": "side",
+          "teleSec": 1.3,
+          "dmg": 0.42,
+          "dodge": "붉게 표시된 반대쪽으로",
+          "fx": "길 반쪽을 덮는 불기둥, 불씨 30개, 흔들림 0.6, 주황 번쩍"
+        },
+        {
+          "id": "balls",
+          "name": "불덩이 비",
+          "tele": "multi",
+          "teleSec": 1,
+          "dmg": 0.15,
+          "dodge": "원 3~4개 사이(맞은 자리 2초 불바닥)",
+          "fx": "불덩이 낙하 + 주황 폭발 + 그을음"
+        },
+        {
+          "id": "gust",
+          "name": "날개 바람",
+          "tele": "side",
+          "teleSec": 0.6,
+          "dmg": 0.04,
+          "dodge": "밀려날 쪽(24)에 위험이 없게 미리 자리 잡기",
+          "fx": "하늘색 바람 줄기, 먼지"
+        },
+        {
+          "id": "sweep",
+          "name": "불숨 휩쓸기(새)",
+          "tele": "cone",
+          "teleSec": 1.4,
+          "dmg": 0.3,
+          "dodge": "부채꼴 불길이 한쪽 끝에서 반대쪽으로 1.2초 동안 쓸어감 — 불길이 지나간 뒤쪽으로 건너감",
+          "fx": "부채꼴 불길 + 열기 아지랑이, 주황→빨강, 흔들림 0.5"
+        }
+      ],
+      "rage": "(2페이즈로 대신)",
+      "phase2": "체력 50%: 하늘로 2.5초 날아오름(화살 안 맞음) — 그동안 불덩이 6개 연속 → 내려꽂기(줄, 0.8초, 34%) → 이후 공격 간격 0.8배",
+      "fx": "예고 주황-빨강 · 불씨·그을음 · 주황 번쩍(#ff8a3d)",
+      "prompt": null
+    },
+    {
+      "id": "ram",
+      "name": "눈보라 큰뿔",
+      "existing": false,
+      "first": 15,
+      "look": "코끼리만 한 산양. 흰 털 끝에 서리가 엉겨 있고, 얼음빛 하늘색 뿔이 양옆으로 크게 말림. 남색 해진 안장 천과 놋쇠 방울 세 개. 3/4 앞모습, 앞발 하나를 들고 머리를 숙여 들이받을 자세.",
+      "chroma": "green #00FF00",
+      "hpk": 5.2,
+      "attacks": [
+        {
+          "id": "charge",
+          "name": "뿔 돌진",
+          "tele": "track",
+          "teleSec": 1,
+          "dmg": 0.34,
+          "dodge": "노란 줄이 0.7초 나를 따라오다 빨강으로 멈추면(0.3초) 바로 옆으로",
+          "fx": "눈가루 돌진 잔상, 얼음 파편, 흔들림 0.55"
+        },
+        {
+          "id": "avalanche",
+          "name": "눈사태",
+          "tele": "gap",
+          "teleSec": 1.3,
+          "dmg": 0.3,
+          "dodge": "길 전체 눈 벽의 초록 틈(13+0.4R)으로",
+          "fx": "하얀 눈사태 벽이 밀려와 부서짐, 눈보라 입자 40개, 흔들림 0.6"
+        },
+        {
+          "id": "icicle",
+          "name": "고드름 비",
+          "tele": "multi",
+          "teleSec": 0.8,
+          "dmg": 0.1,
+          "dodge": "원 4개 사이 — 맞은 자리는 3초 얼음 바닥(미끄럼)",
+          "fx": "고드름 낙하 + 얼음 결정 깨짐"
+        },
+        {
+          "id": "snowball",
+          "name": "눈덩이 굴리기",
+          "tele": "track",
+          "teleSec": 1.2,
+          "dmg": 0.22,
+          "dodge": "큰 눈덩이(반지름 14)가 초당 8씩 나를 따라 굴러옴 — 쏴서 깨거나(체력 10+n) 크게 비킴",
+          "fx": "굴러오며 커지는 눈덩이, 깨질 때 눈가루 폭발"
+        }
+      ],
+      "rage": "뿔 돌진이 두 번 연속(두 번째는 0.6초 뒤 다시 조준), 눈사태 틈 0.8배",
+      "phase2": null,
+      "fx": "예고 얼음 하늘색 테두리 + 빨강 채움 · 눈가루·얼음 결정 · 번쩍 #e6fbff",
+      "prompt": "A colossal original mountain ram boss for a mobile marching game, white shaggy fur crusted with frost, huge curled ice-blue horns, a frayed indigo saddle cloth with three brass bells, three-quarter front view, head lowered ready to charge, stylized 3D cartoon render with soft lighting. Isolated on a perfectly flat solid pure green background (#00FF00)."
+    },
+    {
+      "id": "turtle",
+      "name": "빙산 거북",
+      "existing": false,
+      "first": 20,
+      "look": "집채만 한 거북. 등껍질이 들쭉날쭉한 옅은 하늘색 빙하 얼음 덩어리(안이 비치는 반투명), 피부는 짙은 청록, 눈은 물빛으로 빛남, 입에서 서리 김. 3/4 앞모습, 앞발로 땅을 짚고 고개를 내민 자세.",
+      "chroma": "magenta #FF00FF",
+      "hpk": 7,
+      "attacks": [
+        {
+          "id": "spikes",
+          "name": "얼음 가시 세 줄",
+          "tele": "line",
+          "teleSec": 1.1,
+          "dmg": 0.18,
+          "dodge": "세 줄(내 자리, ±24) 사이 틈에 서기",
+          "fx": "땅을 뚫고 솟는 얼음 가시 줄, 얼음 파편"
+        },
+        {
+          "id": "field",
+          "name": "가시밭",
+          "tele": "gap",
+          "teleSec": 1.2,
+          "dmg": 0.26,
+          "dodge": "초록 틈 2개 중 가까운 쪽",
+          "fx": "길 전체 얼음 가시 + 서리 안개, 흔들림 0.5"
+        },
+        {
+          "id": "breath",
+          "name": "서리 숨",
+          "tele": "cone",
+          "teleSec": 1.3,
+          "dmg": 0.22,
+          "dodge": "부채꼴 밖으로 — 맞으면 1.5초 옆 이동 0.4배(얼어붙음)",
+          "fx": "하늘색 서리 부채꼴, 병사 위 얼음 덮개"
+        }
+      ],
+      "rage": "(2페이즈로 대신)",
+      "phase2": "체력 50%: 껍질 속으로 숨어 굴러다님 — 왼·가운데·오른 줄을 0.4초 간격으로 차례로 굴러감(예고 번호 1-2-3, 각 0.8초, 28%). 구르는 동안 받는 피해 30%. 6초마다 2.5초 머리를 내밈(약점 시간, 받는 피해 150%)",
+      "fx": "예고 하늘색+빨강 · 얼음 결정·서리 안개·깨지는 파편 · 번쩍 #bff3ff, 흔들림 0.6",
+      "prompt": "A giant original tortoise boss whose shell is a jagged translucent pale-blue glacier of ice, deep teal scaly skin, glowing aqua eyes, frosty breath, three-quarter front view leaning forward on its front legs, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure magenta background (#FF00FF)."
+    },
+    {
+      "id": "toad",
+      "name": "늪 두꺼비 왕",
+      "existing": false,
+      "first": 25,
+      "look": "통통하게 부푼 이끼색 두꺼비. 등에 주황 반점과 혹, 크고 노란 눈, 머리에 꼬인 갈대로 엮은 작은 비뚤어진 왕관, 어깨에 연잎 망토. 3/4 앞모습, 배를 내밀고 입을 반쯤 벌림.",
+      "chroma": "magenta #FF00FF",
+      "hpk": 5.4,
+      "attacks": [
+        {
+          "id": "tongue",
+          "name": "혀 채찍",
+          "tele": "track",
+          "teleSec": 1.2,
+          "dmg": 0.12,
+          "dodge": "0.8초 따라오는 노란 줄이 멈추면 비킴 — 맞으면 길 가운데로 끌려감",
+          "fx": "분홍 혀 휘두름 + 점액 튐"
+        },
+        {
+          "id": "flop",
+          "name": "배치기",
+          "tele": "circle",
+          "teleSec": 1.3,
+          "dmg": 0.34,
+          "dodge": "큰 원(반지름 22) 밖으로 — 떨어진 자리에 4초 늪(초당 6%)",
+          "fx": "초록 점액 물보라 + 충격 고리, 흔들림 0.6"
+        },
+        {
+          "id": "bubbles",
+          "name": "독 방울",
+          "tele": "multi",
+          "teleSec": 1.6,
+          "dmg": 0.08,
+          "dodge": "방울 5개가 초당 6씩 나를 따라 떠옴 — 계속 움직이거나 쏴서 터뜨림",
+          "fx": "연두 방울이 터지며 독 연기"
+        },
+        {
+          "id": "tadpole",
+          "name": "올챙이 떼",
+          "tele": "circle",
+          "teleSec": 0.5,
+          "dmg": 0,
+          "dodge": "빠른 졸개 3무리(각 0.15E+3, 속도 1.5배) — 쏘기",
+          "fx": "물 튀김 + 작은 졸개 등장"
+        }
+      ],
+      "rage": "혀 채찍으로 가운데 끌어온 뒤 0.5초 만에 배치기(끌리면 바로 달아나야 함), 배치기 늪 2개",
+      "phase2": null,
+      "fx": "예고 연두+빨강 · 점액·거품·독 연기 · 번쩍 #b6ff7a, 흔들림 0.5",
+      "prompt": "A plump original swamp toad king boss, mossy green warty skin with orange spots, big yellow eyes, a tiny crooked crown woven from twisted reeds, a lily-pad cape over its shoulders, three-quarter front view with belly puffed out and mouth half open, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure magenta background (#FF00FF)."
+    },
+    {
+      "id": "twins",
+      "name": "그림자 쌍둥이",
+      "existing": false,
+      "first": 30,
+      "look": "날씬한 쌍둥이 결투가 둘(한 장에 나란히, 따로 잘라 쓰게 간격). 짙은 보라 후드 망토, 흰 가면. 왼쪽 \"달그림자\"는 가면에 청록 줄 하나·휘어진 은색 칼, 오른쪽 \"별그림자\"는 가면에 진홍 줄 하나·양손 던지는 단검. 둘 다 3/4 앞모습, 서로 등을 맞댄 듯 비스듬히.",
+      "chroma": "green #00FF00",
+      "hpk": 6,
+      "attacks": [
+        {
+          "id": "cross",
+          "name": "교차 베기",
+          "tele": "line",
+          "teleSec": 1,
+          "dmg": 0.25,
+          "dodge": "두 줄(x ±18)이 겹치지 않는 가운데나 가장자리",
+          "fx": "은빛 초승달 칼날 궤적 둘이 엇갈림"
+        },
+        {
+          "id": "fan",
+          "name": "단검 부채",
+          "tele": "cone",
+          "teleSec": 0.9,
+          "dmg": 0.18,
+          "dodge": "별그림자 쪽 부채꼴 밖으로",
+          "fx": "진홍 단검 잔상 7개, 작은 불꽃"
+        },
+        {
+          "id": "moon",
+          "name": "달 베기",
+          "tele": "gap",
+          "teleSec": 1.1,
+          "dmg": 0.28,
+          "dodge": "초록 틈 하나로",
+          "fx": "청록 반달 칼바람이 길을 가로지름, 흔들림 0.5"
+        },
+        {
+          "id": "swap",
+          "name": "그림자 바꾸기",
+          "tele": "side",
+          "teleSec": 0.6,
+          "dmg": 0,
+          "dodge": "둘이 자리를 바꾸고 하나가 3초 그림자(화살 안 맞음) — 다른 쪽 줄로 옮겨 쏘기",
+          "fx": "보라 연기 터짐 + 잔상"
+        }
+      ],
+      "rage": "몸 둘(x −22·+22), 체력 반반. 화살은 내 쪽 가까운 하나를 쏨 → 어느 쪽부터 잡을지가 판단. 하나가 쓰러지면 남은 쪽이 바로 분노(공격 간격 0.75배, 쓰러진 쪽 대표 공격까지 씀)",
+      "phase2": "하나가 쓰러진 뒤 = 외톨이 분노",
+      "fx": "예고 보라 테두리 + 빨강 · 그림자 연기·은빛 궤적·청록/진홍 불꽃 · 번쩍 #d7b8ff",
+      "prompt": "Two original masked shadow duelist twins standing side by side with clear space between them, slim figures in dark violet hooded cloaks and white masks, the left with a single teal stripe on the mask and a curved silver sword, the right with a single crimson stripe and twin throwing daggers, three-quarter front view, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure green background (#00FF00)."
+    },
+    {
+      "id": "golem",
+      "name": "용암 골렘",
+      "existing": false,
+      "first": 40,
+      "look": "검은 현무암 덩어리로 쌓은 거인, 틈마다 주황 용암이 빛나며 흐름, 가슴 한가운데 녹은 심장, 오른 주먹이 왼쪽보다 두 배 크고 흑요석이 박힘. 3/4 앞모습, 큰 주먹을 치켜든 자세. (2페이즈용 작은 골렘 2개 그림 따로)",
+      "chroma": "green #00FF00",
+      "hpk": 7.5,
+      "attacks": [
+        {
+          "id": "fist",
+          "name": "용암 주먹",
+          "tele": "circle",
+          "teleSec": 1.2,
+          "dmg": 0.32,
+          "dodge": "원(반지름 16+0.4R) 밖 — 맞은 자리 3초 용암(초당 8%)",
+          "fx": "용암 튐 + 현무암 파편, 흔들림 0.7, 주황 번쩍"
+        },
+        {
+          "id": "erupt",
+          "name": "분화 사슬",
+          "tele": "multi",
+          "teleSec": 0.9,
+          "dmg": 0.14,
+          "dodge": "구멍 6개가 왼→오(또는 반대)로 0.25초 간격 분출 — 반대쪽으로 달리거나 지나간 자리로",
+          "fx": "용암 기둥이 차례로 솟음, 불씨"
+        },
+        {
+          "id": "pillar",
+          "name": "현무암 벽",
+          "tele": "gap",
+          "teleSec": 1.2,
+          "dmg": 0.28,
+          "dodge": "떨어지는 기둥 벽의 초록 틈으로",
+          "fx": "검은 돌기둥 낙하 + 먼지, 흔들림 0.6"
+        }
+      ],
+      "rage": "(2페이즈로 대신)",
+      "phase2": "체력 50%: 둘로 갈라짐 — 작은 골렘 2마리(각 원래 최대 체력의 30%, 공격 1.3배 빠르게, 용암 주먹 반지름 12 + 분화 3개만, 번갈아 공격). 하나 쓰러지면 남은 쪽 1.2배 빨라짐. 둘 다 쓰러뜨리면 승리",
+      "fx": "예고 주황 테두리+빨강 · 용암·불씨·돌 파편·검은 연기 · 번쩍 #ff8a2a",
+      "prompt": "A hulking original lava golem boss built from black basalt blocks with glowing orange magma seams, a molten core glowing in its chest, the right fist twice as large and studded with obsidian, three-quarter front view raising the huge fist, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure green background (#00FF00)."
+    },
+    {
+      "id": "siege",
+      "name": "쇠바퀴 공성차",
+      "existing": false,
+      "first": 44,
+      "look": "바퀴 여섯 개(쇠테 두른 나무 바퀴) 달린 키 큰 나무 망루 수레, 앞뒤에 철판, 꼭대기에 작은 투석 팔, 뒤쪽에 굴뚝(증기), 빨간 제복의 적 병사 둘이 손잡이를 돌림. 도망가는 판이라 **뒤 3/4 모습**(뒤판·투석 팔이 보이게).",
+      "chroma": "green #00FF00",
+      "hpk": 4,
+      "attacks": [
+        {
+          "id": "lob",
+          "name": "뒤로 던지기",
+          "tele": "multi",
+          "teleSec": 1,
+          "dmg": 0.14,
+          "dodge": "원 3개 사이",
+          "fx": "돌덩이 포물선 + 나무 파편"
+        },
+        {
+          "id": "caltrop",
+          "name": "마름쇠 뿌리기",
+          "tele": "line",
+          "teleSec": 0.9,
+          "dmg": 0.06,
+          "dodge": "빨간 줄 밖 — 줄 자리에 3초 가시 띠(초당 6%)",
+          "fx": "쇳조각 반짝임 + 작은 불꽃"
+        },
+        {
+          "id": "keg",
+          "name": "화약통 굴리기",
+          "tele": "track",
+          "teleSec": 1.2,
+          "dmg": 0.2,
+          "dodge": "굴러오는 통 쏴서 터뜨리기(폭탄 수레 규칙)",
+          "fx": "통 폭발, 주황 불꽃 + 연기"
+        },
+        {
+          "id": "steam",
+          "name": "증기 뿜기",
+          "tele": "cone",
+          "teleSec": 0.8,
+          "dmg": 0.16,
+          "dodge": "부채꼴 밖 — 맞으면 1초 속도 0.5배(거리 벌어짐)",
+          "fx": "하얀 증기 구름"
+        }
+      ],
+      "rage": "체력 50%: 속도 27, 화약통 두 개씩",
+      "phase2": "추격전 판 방식(chase): 45초 안에 못 잡으면 도망 → 끝에서 대군 ×1.5",
+      "fx": "예고 빨강 · 나무 조각·쇠 불꽃·증기 · 번쩍 #ffd27a, 흔들림 0.45",
+      "prompt": "An original armored wooden siege wagon boss on six iron-rimmed wheels, a tall watchtower body plated with iron sheets, a small catapult arm on top and a smoking chimney at the back, two small red-uniformed enemy soldiers turning cranks, seen from a three-quarter rear view as it flees, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure green background (#00FF00)."
+    },
+    {
+      "id": "hawk",
+      "name": "폭풍 매 기수",
+      "existing": false,
+      "first": 45,
+      "look": "하늘색 판금 갑옷 기수가 타고 있는 거대한 매. 매는 짙은 회색 깃, 날개 끝이 하얗게 번개처럼 갈라져 빛남. 기수의 창끝은 갈라진 번개 모양. 3/4 앞모습, 날개를 활짝 펴고 내려꽂기 직전.",
+      "chroma": "magenta #FF00FF",
+      "hpk": 5,
+      "attacks": [
+        {
+          "id": "dive",
+          "name": "내려꽂기",
+          "tele": "track",
+          "teleSec": 1.2,
+          "dmg": 0.34,
+          "dodge": "0.8초 따라오는 줄이 멈추면(0.4초) 옆으로",
+          "fx": "번개 낙하 + 깃털 폭발, 흔들림 0.6, 하양 번쩍"
+        },
+        {
+          "id": "feather",
+          "name": "깃털 화살",
+          "tele": "cone",
+          "teleSec": 0.8,
+          "dmg": 0.16,
+          "dodge": "왼쪽 부채꼴 → 0.5초 뒤 오른쪽 부채꼴, 차례로 비키기",
+          "fx": "회색 깃털 화살 비"
+        },
+        {
+          "id": "twister",
+          "name": "회오리",
+          "tele": "track",
+          "teleSec": 1,
+          "dmg": 0.1,
+          "dodge": "회오리(반지름 10)가 2초 동안 초당 30으로 길을 가로지름 — 닿으면 20 밀려남",
+          "fx": "하늘색 회오리 + 먼지"
+        },
+        {
+          "id": "storm",
+          "name": "하늘 번개",
+          "tele": "multi",
+          "teleSec": 0.7,
+          "dmg": 0.12,
+          "dodge": "원 4개 × 3물결",
+          "fx": "하늘에서 번개 3줄기씩"
+        }
+      ],
+      "rage": "체력 75·50·25%마다 3초 하늘로(화살 안 맞음, 그동안 하늘 번개 3물결). 50% 아래 내려꽂기 두 번 연속",
+      "phase2": null,
+      "fx": "예고 하늘색+빨강 · 번개·깃털·바람 줄 · 번쩍 #cfe8ff, 흔들림 0.5",
+      "prompt": "An original storm hawk rider boss: a giant hawk with slate-gray feathers and wingtips crackling with white lightning, ridden by a knight in sky-blue plate armor holding a lance with a forked lightning tip, wings fully spread, three-quarter front view about to dive, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure magenta background (#FF00FF)."
+    },
+    {
+      "id": "warlord",
+      "name": "쇠구름 대장군",
+      "existing": false,
+      "first": 50,
+      "look": "키 큰 장군. 짙은 강철 판금에 금색 테두리, 구름 모양 금장식이 달린 뿔 투구, 진홍-주황 긴 깃발 망토, 두 손으로 드는 큰 미늘창. 3/4 앞모습, 창을 비스듬히 세우고 망토가 바람에 날림. (2페이즈용: 망토 벗고 갑옷 이음새가 금빛으로 빛나는 그림 따로)",
+      "chroma": "green #00FF00",
+      "hpk": 9,
+      "attacks": [
+        {
+          "id": "sweep",
+          "name": "미늘창 휩쓸기(1)",
+          "tele": "gap",
+          "teleSec": 1.1,
+          "dmg": 0.3,
+          "dodge": "초록 틈으로",
+          "fx": "금빛 반원 궤적"
+        },
+        {
+          "id": "banner",
+          "name": "깃발 호령 — 기병(1)",
+          "tele": "line",
+          "teleSec": 1,
+          "dmg": 0.15,
+          "dodge": "양옆 기병 줄 2개 밖(기병 돌격 규칙)",
+          "fx": "진홍 깃발 펄럭 + 기병 먼지"
+        },
+        {
+          "id": "barrage",
+          "name": "공성 명령(1)",
+          "tele": "multi",
+          "teleSec": 1.2,
+          "dmg": 0.12,
+          "dodge": "투석 원 5개 사이",
+          "fx": "돌덩이 낙하"
+        },
+        {
+          "id": "wall",
+          "name": "방패벽 소환(1)",
+          "tele": "side",
+          "teleSec": 0.8,
+          "dmg": 0,
+          "dodge": "10초마다 앞에 방패벽(규칙 그대로) — 벽이 있는 동안 보스 받는 피해 50%, 화약통 쏘기",
+          "fx": "방패병 줄 등장 먼지"
+        },
+        {
+          "id": "spin",
+          "name": "회전 미늘창(2)",
+          "tele": "ring",
+          "teleSec": 1,
+          "dmg": 0.3,
+          "dodge": "고리(안 7 ~ 바깥 30) 안에 가만히 또는 밖으로 크게",
+          "fx": "금빛 회전 충격파 고리, 흔들림 0.7"
+        },
+        {
+          "id": "lunge",
+          "name": "찌르기(2)",
+          "tele": "track",
+          "teleSec": 1,
+          "dmg": 0.36,
+          "dodge": "0.7초 따라오다 0.3초 멈추면 옆으로",
+          "fx": "금빛 찌르기 잔상 + 불꽃"
+        },
+        {
+          "id": "charge",
+          "name": "전군 돌격(2)",
+          "tele": "multi",
+          "teleSec": 1,
+          "dmg": 0.3,
+          "dodge": "내 자리 줄 → 0.4초 뒤 틈 공격(두 단계 연속 회피)",
+          "fx": "줄 + 반원, 진홍 번쩍"
+        }
+      ],
+      "rage": "체력 30%: 예고 0.8배",
+      "phase2": "체력 60%: 깃발 망토가 찢어짐 → 2페이즈(갑옷 금빛, 공격 간격 0.8배, 회전·찌르기·전군 돌격 + 번개 기둥 4초)",
+      "fx": "예고 금색 테두리 + 빨강 · 금빛 충격파·진홍 깃발 불꽃·강철 불꽃·먼지 · 번쩍 #ffd75a(1)/#ff4a3a(2), 흔들림 0.75",
+      "prompt": "An original towering warlord final boss in dark steel plate armor with gold trim, a horned helmet crowned with a gold cloud-shaped crest, a long crimson-orange banner cape, wielding a huge two-handed halberd held diagonally, cape billowing, three-quarter front view, stylized 3D cartoon game render. Isolated on a perfectly flat solid pure green background (#00FF00)."
+    }
+  ],
+  "gimmicks": [
+    {
+      "id": "open",
+      "name": "빠른 판단",
+      "existing": true,
+      "rule": "출발 2초 뒤 가운데 벽으로 길이 나뉨. 한쪽 = 숫자 상자 + +판 줄, 다른 쪽 = 빨간 대군. 벽 안에서는 못 건너감.",
+      "nums": "벽 z48, 상자 체력 2+시작병력+0.4n, 대군 22+6n+2×시작병력(제자리)",
+      "judge": "2초 안에 쏠 쪽 고르기",
+      "first": 1
+    },
+    {
+      "id": "gate",
+      "name": "관문 + −",
+      "existing": true,
+      "rule": "왼쪽·오른쪽 중 부대 가운데가 있는 쪽 적용. 파랑 = 좋은 것, 빨강 = 나쁜 것.",
+      "nums": "더하기 5~13 + 3n + 0.16E, 빼기 4~10 + 2.5n + 0.25E(최대 0.7E+2), 첫 관문은 둘 다 +",
+      "judge": "큰 쪽 고르기",
+      "first": 1
+    },
+    {
+      "id": "col",
+      "name": "+판 줄",
+      "existing": true,
+      "rule": "한 줄로 놓인 +판을 지날 때마다 +k.",
+      "nums": "5~10개, 간격 7, k = 1+⌊n/4⌋(갈림길 1+⌊n/3⌋)",
+      "judge": "줄에 맞춰 서기",
+      "first": 1
+    },
+    {
+      "id": "crowd",
+      "name": "적 부대",
+      "existing": true,
+      "rule": "60 안에 들어오면 다가옴. 닿으면 서로 줄어듦, 싸우는 동안 속도 30%.",
+      "nums": "E×0.5~0.95 + 2 + 0.6n, 교전 초당 5 + 0.7×min(내 병력, 적)",
+      "judge": "쏘며 피할지 부딪칠지",
+      "first": 1
+    },
+    {
+      "id": "crate",
+      "name": "숫자 상자",
+      "existing": true,
+      "rule": "정면으로 부딪히면 막힘. 쏘거나 밀어서 부숨.",
+      "nums": "체력 2+시작병력+0.4n(시작) · 4+0.45E+1.5n(갈림길), 밀기 병력×0.6/초",
+      "judge": "줄 맞춰 먼저 쏘기",
+      "first": 1
+    },
+    {
+      "id": "horde",
+      "name": "마지막 대군",
+      "existing": true,
+      "rule": "일반 판 끝 결승선 앞 큰 적 부대.",
+      "nums": "0.7E + 6 + n (21판부터 0.8E + 6 + n)",
+      "judge": "끝까지 병력 아끼기",
+      "first": 1
+    },
+    {
+      "id": "barrel",
+      "name": "보상 통",
+      "existing": true,
+      "rule": "쏴서 부수면 보상: 병사·석궁(공격)·연사.",
+      "nums": "체력 6+0.35E+2n, 병사 +(4+0.25E+n) 45% · 석궁 ×1.3(최대 ×3) 30% · 연사 ×1.25(최대 ×2.5) 25%",
+      "judge": "관문 대신 통을 노릴지",
+      "first": 2
+    },
+    {
+      "id": "split",
+      "name": "갈림길",
+      "existing": true,
+      "rule": "벽 한쪽 = 상자 + +판 줄, 다른 쪽 = 적 부대가 지키는 보상 통.",
+      "nums": "벽 길이 16+7×판 수, 지킴이 E×0.35~0.6 + 3 + n",
+      "judge": "확실한 병사 vs 보상 통",
+      "first": 2
+    },
+    {
+      "id": "mul",
+      "name": "곱셈 관문 × ÷",
+      "existing": true,
+      "rule": "×는 배로, ÷는 나눔(올림).",
+      "nums": "×2(75%)·×3, ÷2, 기대 병력 220 넘으면 × 안 나옴",
+      "judge": "+큰 수 vs ×2 계산",
+      "first": 4
+    },
+    {
+      "id": "saw",
+      "name": "회전 톱날",
+      "existing": true,
+      "rule": "좌우로 오가는 톱날에 닿으면 병사를 잃음.",
+      "nums": "반지름 6, 진폭 16~30, 속도 1.3~2.4, 9판부터 2개",
+      "judge": "틈 타이밍",
+      "first": 6
+    },
+    {
+      "id": "grow",
+      "name": "성장 관문",
+      "existing": true,
+      "rule": "마이너스 관문도 쏘면 1씩 올라감.",
+      "nums": "−(2~6+0.6n) / −(8~14+1.5n), 거리 62~4에서 사격",
+      "judge": "일찍 줄 서서 키우기",
+      "first": 7
+    },
+    {
+      "id": "tower",
+      "name": "적 궁수탑",
+      "existing": true,
+      "rule": "길가(±45) 탑이 병사를 저격. 쏴서 부숨.",
+      "nums": "체력 12+5n, 간격 max(0.45, 0.9−0.03n)초, 한 발 1+⌊n/6⌋명, 10판부터 양쪽",
+      "judge": "탑 쪽으로 붙어 먼저 부수기",
+      "first": 8
+    },
+    {
+      "id": "door",
+      "name": "성문",
+      "existing": true,
+      "rule": "길을 막은 문. 부숴야 지나감.",
+      "nums": "체력 1.2E + 30 + 5n",
+      "judge": "공격력 보상 미리 챙기기",
+      "first": 12
+    },
+    {
+      "id": "move",
+      "name": "움직이는 관문",
+      "existing": true,
+      "rule": "관문 숫자가 1.5초마다 좌우 자리를 바꿈.",
+      "nums": "주기 1.5초",
+      "judge": "지나는 순간 맞추기",
+      "first": 13
+    },
+    {
+      "id": "cage",
+      "name": "포로 우리",
+      "existing": false,
+      "rule": "길가 나무 우리를 쏴 부수면 갇힌 병사가 합류. 지나치면 사라짐.",
+      "nums": "체력 8+1.5n+0.15E, 합류 +(3+0.12E+0.5n), 우리 앞 적 부대 50% 확률(0.3E)",
+      "judge": "관문 줄 대신 우리 줄에 서서 쏠지",
+      "first": 9
+    },
+    {
+      "id": "ice",
+      "name": "얼음 길",
+      "existing": false,
+      "rule": "얼음 위에선 옆 이동이 미끄러짐 — 늦게 움직이고, 손을 떼도 더 감.",
+      "nums": "길이 96(4초), 옆 가속 ×0.35, 손 뗀 뒤 0.6초 더 미끄러짐",
+      "judge": "관문 1.5초 앞서 미리 움직이기",
+      "first": 11
+    },
+    {
+      "id": "wind",
+      "name": "옆바람",
+      "existing": false,
+      "rule": "바람 구역 안에서 한쪽으로 계속 밀림. 1초 전 깃발 화살표로 방향 표시.",
+      "nums": "길이 72(3초), 초당 12 밀림, 바람 안 화살 사거리 −15%",
+      "judge": "바람 반대로 버티며 관문 맞추기",
+      "first": 14
+    },
+    {
+      "id": "bridge",
+      "name": "좁은 다리",
+      "existing": false,
+      "rule": "길이 다리 폭으로 좁아짐. 다리 밖으로 나간 병사, 정원을 넘는 병사는 떨어짐.",
+      "nums": "폭 ±16, 길이 60(2.5초), 정원 30+2n명, 넘는 수의 35%/초 떨어짐, 가운데가 다리 밖이면 25%/초",
+      "judge": "다리 앞에서 병력 줄일지(÷) 버틸지",
+      "first": 16
+    },
+    {
+      "id": "rock",
+      "name": "낙석 절벽",
+      "existing": false,
+      "rule": "절벽 길에 돌이 떨어짐. 떨어질 자리에 빨간 원 예고.",
+      "nums": "길이 96, 1.2초마다 원 1~2개(반지름 9, 예고 0.9초) 10%(30판부터 12%), 4번째마다 큰 바위(반지름 14) 18%",
+      "judge": "원 사이로 지나며 관문 맞추기",
+      "first": 17
+    },
+    {
+      "id": "cannon",
+      "name": "아군 대포 수레",
+      "existing": false,
+      "rule": "길가 대포 수레에 닿으면 몇 초 동안 범위 포탄을 쏨.",
+      "nums": "수레 x ±30, 6초 동안 1.2초마다 포탄 반지름 10, 피해 25+2n(성문·보스 ×1.5)",
+      "judge": "대포 vs 반대쪽 좋은 관문",
+      "first": 18
+    },
+    {
+      "id": "spring",
+      "name": "회복 샘",
+      "existing": false,
+      "rule": "길가 샘 안에 있는 동안 잃은 병사가 돌아옴(그 판 최대 병력까지).",
+      "nums": "반지름 10, 길이 72, 초당 최대 병력의 4%(최대 3초 = 12%), 샘 쪽엔 좋은 관문 없음",
+      "judge": "회복 vs 관문",
+      "first": 19
+    },
+    {
+      "id": "fog",
+      "name": "안개",
+      "existing": false,
+      "rule": "관문 숫자·적 수가 가까이 와야 보임. 색은 조금 먼저 보임.",
+      "nums": "숫자 공개 거리 20(0.8초 전), 색 공개 거리 40, 적 수는 거리 25",
+      "judge": "색으로 먼저 자리 잡고 숫자로 확정",
+      "first": 21
+    },
+    {
+      "id": "bog",
+      "name": "독 늪",
+      "existing": false,
+      "rule": "길 폭 2/3을 덮는 늪. 안에서 병사가 줄고 느려짐. 늪 없는 쪽엔 나쁜 것이 있음.",
+      "nums": "길이 72, 초당 6% 잃음, 속도 ×0.7, 늪 없는 쪽에 − 관문 또는 궁수탑",
+      "judge": "늪 손해 vs 나쁜 관문 손해 계산",
+      "first": 22
+    },
+    {
+      "id": "mystery",
+      "name": "물음표 관문",
+      "existing": false,
+      "rule": "한쪽은 ?(가까이 가면 공개), 다른 쪽은 작은 + 확실.",
+      "nums": "? = ×2 35% · +0.3E 35% · ÷2 30%(씨앗으로 정함, 모두 같음), 반대쪽 +0.15E, 공개 거리 12",
+      "judge": "모험 vs 안전",
+      "first": 23
+    },
+    {
+      "id": "raft",
+      "name": "떠가는 뗏목",
+      "existing": false,
+      "rule": "강을 건널 땐 좌우로 떠다니는 뗏목 위에 있어야 함.",
+      "nums": "강 길이 96(4초), 뗏목 2~3개 폭 ±14, 진폭 20, 주기 3초, 물에 빠지면 초당 30%(첫 판 20%)",
+      "judge": "탈 뗏목 고르고 따라가기",
+      "first": 24
+    },
+    {
+      "id": "reverse",
+      "name": "뒤바뀜 안개",
+      "existing": false,
+      "rule": "보랏빛 안개 안에서는 좌우 조작이 반대.",
+      "nums": "길이 96(4초), 0.5초 전 보라 표시, 안에 관문 1개",
+      "judge": "반대로 끌어 관문 맞추기",
+      "first": 26
+    },
+    {
+      "id": "trap",
+      "name": "꺼지는 발판",
+      "existing": false,
+      "rule": "길이 세 칸 발판으로 나뉘고, 깜박인 칸이 꺼짐.",
+      "nums": "칸 x −32/0/+32(폭 ±14), 발판 줄 3~4개, 줄마다 1~2칸 0.8초 깜박이고 꺼짐, 꺼진 칸 위 병사 25%",
+      "judge": "안 깜박이는 칸으로 옮기기",
+      "first": 27
+    },
+    {
+      "id": "camp",
+      "name": "적 막사",
+      "existing": false,
+      "rule": "길가 막사가 적 부대를 계속 내보냄. 부수면 보상 통 하나.",
+      "nums": "체력 20+4n+0.3E, 거리 70부터 2초마다 적 부대(3+0.1E)",
+      "judge": "빨리 부술지 지나칠지",
+      "first": 28
+    },
+    {
+      "id": "hero",
+      "name": "깃발 대장 합류",
+      "existing": false,
+      "rule": "우리에 갇힌 아군 깃발 대장을 구하면 그 판 동안 함께 싸움.",
+      "nums": "우리 체력 15+2n, 합류 시 화살 피해 ×1.4, 보스·큰 공격 1번 대신 막음(피해 0)",
+      "judge": "관문 포기하고 대장 구하기",
+      "first": 29
+    },
+    {
+      "id": "night",
+      "name": "밤 행군 · 횃불",
+      "existing": false,
+      "rule": "밤엔 가까운 것만 보임. 길가 횃불을 지나면 잠깐 멀리 보임.",
+      "nums": "시야 60(약 2.5초 앞), 횃불(±40) 거리 10 안 → 8초 동안 시야 140",
+      "judge": "횃불 쪽으로 붙을지",
+      "first": 31
+    },
+    {
+      "id": "bomb",
+      "name": "굴러오는 폭탄 수레",
+      "existing": false,
+      "rule": "폭탄 수레가 길 따라 굴러옴. 쏴서 터뜨리면 근처 적이 다치고, 닿으면 내가 다침.",
+      "nums": "빨간 줄 예고 1.2초, 다가오는 속도 36, 체력 8+n, 폭발 반지름 14: 적에게 30+3n, 나에게 20%",
+      "judge": "줄 피하기 vs 적 옆에서 쏴 터뜨리기",
+      "first": 32
+    },
+    {
+      "id": "cavalry",
+      "name": "적 기병 돌격",
+      "existing": false,
+      "rule": "길가에서 기병 줄이 빨간 줄 예고 뒤 돌진.",
+      "nums": "예고 1.0초, 줄 폭 12, 기병 3~5기(각 체력 5+0.5n), 맞으면 max(4+0.4n명, 15%)",
+      "judge": "줄 밖으로 / 줄 맞춰 쏴서 끊기",
+      "first": 33
+    },
+    {
+      "id": "catapult",
+      "name": "적 투석기",
+      "existing": false,
+      "rule": "먼 앞쪽 투석기가 내가 갈 자리를 노려 돌을 던짐. 가까이 가면 쏴서 부술 수 있음.",
+      "nums": "앞 120에서 2.4초마다, 예상 위치에 원(반지름 12, 예고 1.2초) 14%, 체력 30+4n, 사거리 72",
+      "judge": "움직임을 바꿔 예측 빗나가게",
+      "first": 34
+    },
+    {
+      "id": "portcullis",
+      "name": "닫히는 쇠창살 문",
+      "existing": false,
+      "rule": "문 위 모래시계가 다 되면 문이 닫혀 단단한 성문이 됨.",
+      "nums": "닫히는 시각 = 처음 보인 거리÷24 + 1.2초, 닫히면 성문 체력 ×1.5",
+      "judge": "문 앞 싸움을 피해 제때 통과",
+      "first": 36
+    },
+    {
+      "id": "shieldwall",
+      "name": "적 방패벽 · 화약통",
+      "existing": false,
+      "rule": "길 전체를 막는 방패병 줄. 화살이 잘 안 먹힘. 벽 뒤 화약통을 쏘면 무너짐.",
+      "nums": "(0.6E+5+n)명, 화살 피해 25%, 맞붙으면 교전 ×0.6, 화약통 체력 6+n(벽 너머 사격 가능) → 벽 −60%",
+      "judge": "화약통 줄에 서서 먼저 쏘기",
+      "first": 37
+    },
+    {
+      "id": "drum",
+      "name": "북소리 깃대",
+      "existing": false,
+      "rule": "깃대 옆을 지나면 다음 관문 효과가 1.5배(좋은 것·나쁜 것 모두).",
+      "nums": "반지름 10, +·−는 1.5배, ×2→×3, ÷2→÷3, 다음 관문 위에 북 표시",
+      "judge": "다음 관문이 좋을 때만 북 치기",
+      "first": 38
+    },
+    {
+      "id": "triple",
+      "name": "세 겹 관문",
+      "existing": false,
+      "rule": "관문 세 개가 바짝 붙어 나옴. 세 번 연속 고르기.",
+      "nums": "간격 20(0.8초), 옆 한 칸 옮기기 약 0.5초",
+      "judge": "세 관문 합 계산해 길 정하기",
+      "first": 39
+    },
+    {
+      "id": "twin",
+      "name": "갈래 행군",
+      "existing": false,
+      "rule": "거울 문을 지나면 부대가 반씩 둘로 갈라져 거울처럼 움직임. 각자 관문·적을 만난 뒤 다시 합침.",
+      "nums": "6초(144) 동안 병력 반반, 위치 x / −x, 조작 하나",
+      "judge": "두 부대 모두 좋은 자리 찾기",
+      "first": 41
+    },
+    {
+      "id": "zap",
+      "name": "번개 기둥",
+      "existing": false,
+      "rule": "두 기둥 사이 전기 줄이 길 왼쪽 반·오른쪽 반을 번갈아 덮음. 기둥을 쏘면 꺼짐.",
+      "nums": "반쪽마다 1.6초씩 번갈아, 켜지기 0.5초 전 지지직 예고, 닿으면 25%, 기둥 체력 18+2n",
+      "judge": "켜지는 순서 읽고 건너기 / 쏴서 끄기",
+      "first": 42
+    },
+    {
+      "id": "portal",
+      "name": "구름 문(지름길)",
+      "existing": false,
+      "rule": "길가 구름 문에 들어가면 다음 구간 2개를 건너뜀(좋은 것·나쁜 것 모두). 문 앞을 적이 지킴.",
+      "nums": "건너뛰기 구간 2개, 문 지킴이 0.5E",
+      "judge": "지금 병력 지키기 vs 관문으로 키우기",
+      "first": 43
+    },
+    {
+      "id": "chase",
+      "name": "추격전(판 방식)",
+      "existing": false,
+      "rule": "보스가 도망침. 45초 안에 잡아야 함. 놓치면 끝에서 큰 대군.",
+      "nums": "보스 속도 26(나 24), 체력 10% 깎일 때마다 1초 멈춤, 거리 120 넘게 3초면 도망, 놓치면 대군 ×1.5",
+      "judge": "공격력 보상 먼저, 멈춤 노리기",
+      "first": 44
+    },
+    {
+      "id": "survive",
+      "name": "버티기(판 방식)",
+      "existing": false,
+      "rule": "성채 마당에서 60초 버티기. 왼쪽·가운데·오른쪽에서 적이 몰려옴.",
+      "nums": "8초마다 물결(0.4E 나눠 2~3갈래), 투석기·기병 섞임, 끝 남은 병력으로 별",
+      "judge": "물결 쪽 골라 쏘고 비키기",
+      "first": 46
+    },
+    {
+      "id": "rush",
+      "name": "보스 연전(판 방식)",
+      "existing": false,
+      "rule": "보스 두 마리를 차례로. 사이에 짧은 길과 회복 샘.",
+      "nums": "첫 보스 체력 ×0.6, 사이 구간 4개 + 회복 샘 1",
+      "judge": "첫 보스에서 병력 아끼기",
+      "first": 47
+    }
+  ],
+  "levels": [
+    {
+      "n": 1,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "시작",
+      "new": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde"
+      ],
+      "boss": null,
+      "start": 1,
+      "segments": 10,
+      "star": [
+        0.45,
+        0.75
+      ],
+      "goalFirstTry": 90,
+      "desc": "병사 1명. 2초 안에 상자 쪽을 골라 쏘고, 첫 관문(둘 다 +)으로 숨 돌린 뒤 대군까지."
+    },
+    {
+      "n": 2,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "익히기",
+      "new": [
+        "barrel",
+        "split"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "split"
+      ],
+      "boss": null,
+      "start": 1,
+      "segments": 11,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "갈림길에서 확실한 +판 줄 vs 적이 지키는 보상 통. 석궁 맛보기."
+    },
+    {
+      "n": 3,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "중간보스",
+      "new": [
+        "brute"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "barrel"
+      ],
+      "boss": "brute",
+      "start": 1,
+      "segments": 9,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 75,
+      "desc": "미니 보스(체력 0.75배). 원·바위·땅울림 세 가지 예고를 처음 봄.",
+      "bossHpType": 0.75
+    },
+    {
+      "n": 4,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "섞기",
+      "new": [
+        "mul"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "split",
+        "mul"
+      ],
+      "boss": null,
+      "start": 1,
+      "segments": 12,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "×2와 +큰 수 비교. 첫 ÷2 관문."
+    },
+    {
+      "n": 5,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "중간보스",
+      "new": [
+        "knight"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "barrel",
+        "mul"
+      ],
+      "boss": "knight",
+      "start": 2,
+      "segments": 9,
+      "star": [
+        0.3,
+        0.55
+      ],
+      "goalFirstTry": 55,
+      "desc": "방패 든 3초는 쏴도 소용없음 — 방패 내릴 때 몰아 쏘기.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 6,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "익히기",
+      "new": [
+        "saw"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "mul",
+        "saw"
+      ],
+      "boss": null,
+      "start": 2,
+      "segments": 13,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "톱날 틈 타이밍 + 갈림길."
+    },
+    {
+      "n": 7,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "섞기",
+      "new": [
+        "grow"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "saw",
+        "grow"
+      ],
+      "boss": null,
+      "start": 2,
+      "segments": 13,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "성장 관문을 쏴서 마이너스를 플러스로."
+    },
+    {
+      "n": 8,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "어려움",
+      "new": [
+        "tower"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "mul",
+        "saw",
+        "grow",
+        "tower"
+      ],
+      "boss": null,
+      "start": 2,
+      "segments": 15,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 60,
+      "desc": "궁수탑이 저격하는 동안 관문·톱날까지 — 챕터 1 시험."
+    },
+    {
+      "n": 9,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "쉬어가기",
+      "new": [
+        "cage"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "cage"
+      ],
+      "boss": null,
+      "start": 5,
+      "segments": 11,
+      "star": [
+        0.5,
+        0.8
+      ],
+      "goalFirstTry": 92,
+      "desc": "포로 우리를 쏴 동료를 구함. 병력 넉넉한 판."
+    },
+    {
+      "n": 10,
+      "chapter": 1,
+      "chapterName": "새벽 들판",
+      "type": "대장보스",
+      "new": [],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "barrel",
+        "split",
+        "mul",
+        "saw",
+        "tower"
+      ],
+      "boss": "shaman",
+      "start": 3,
+      "segments": 12,
+      "star": [
+        0.25,
+        0.5
+      ],
+      "goalFirstTry": 40,
+      "desc": "챕터 1 대장 주술사: 번개·졸개·독·저주 고리.",
+      "bossHpType": 1
+    },
+    {
+      "n": 11,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "시작",
+      "new": [
+        "ice"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "ice"
+      ],
+      "boss": null,
+      "start": 3,
+      "segments": 15,
+      "star": [
+        0.45,
+        0.75
+      ],
+      "goalFirstTry": 90,
+      "desc": "얼음 길: 미리 움직여야 관문에 닿음."
+    },
+    {
+      "n": 12,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "익히기",
+      "new": [
+        "door"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "ice",
+        "door"
+      ],
+      "boss": null,
+      "start": 3,
+      "segments": 16,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "성문 앞에 석궁을 챙겼는지가 승부."
+    },
+    {
+      "n": 13,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "익히기",
+      "new": [
+        "move"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "ice",
+        "move"
+      ],
+      "boss": null,
+      "start": 4,
+      "segments": 16,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "얼음 위 움직이는 관문 — 미끄럼 + 타이밍."
+    },
+    {
+      "n": 14,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "섞기",
+      "new": [
+        "wind"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "grow",
+        "door",
+        "wind"
+      ],
+      "boss": null,
+      "start": 4,
+      "segments": 17,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "옆바람 속에서 성장 관문 줄 서기."
+    },
+    {
+      "n": 15,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "중간보스",
+      "new": [
+        "ram"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "mul",
+        "ice",
+        "wind"
+      ],
+      "boss": "ram",
+      "start": 4,
+      "segments": 14,
+      "star": [
+        0.3,
+        0.55
+      ],
+      "goalFirstTry": 55,
+      "desc": "눈보라 큰뿔: 따라오는 줄(돌진)·틈(눈사태)·고드름·눈덩이.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 16,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "익히기",
+      "new": [
+        "bridge"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "tower",
+        "bridge"
+      ],
+      "boss": null,
+      "start": 4,
+      "segments": 18,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "좁은 다리: 정원 넘는 병사는 떨어짐."
+    },
+    {
+      "n": 17,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "섞기",
+      "new": [
+        "rock"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "move",
+        "bridge",
+        "rock"
+      ],
+      "boss": null,
+      "start": 5,
+      "segments": 18,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "낙석 원을 피하며 움직이는 관문 맞추기."
+    },
+    {
+      "n": 18,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "어려움",
+      "new": [
+        "cannon"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "saw",
+        "mul",
+        "door",
+        "wind",
+        "cannon"
+      ],
+      "boss": null,
+      "start": 5,
+      "segments": 20,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 60,
+      "desc": "대포 수레로 성문을 단숨에 — 대신 반대쪽 관문을 포기."
+    },
+    {
+      "n": 19,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "쉬어가기",
+      "new": [
+        "spring"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "cage",
+        "spring"
+      ],
+      "boss": null,
+      "start": 7,
+      "segments": 16,
+      "star": [
+        0.5,
+        0.8
+      ],
+      "goalFirstTry": 92,
+      "desc": "온천 회복 샘 소개. 포로도 구하는 느긋한 판."
+    },
+    {
+      "n": 20,
+      "chapter": 2,
+      "chapterName": "서리 고개",
+      "type": "대장보스",
+      "new": [
+        "turtle"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "mul",
+        "tower",
+        "ice",
+        "rock"
+      ],
+      "boss": "turtle",
+      "start": 5,
+      "segments": 17,
+      "star": [
+        0.25,
+        0.5
+      ],
+      "goalFirstTry": 40,
+      "desc": "빙산 거북 2페이즈: 50%에 껍질 회전, 머리 내밀 때 몰아 쏘기.",
+      "bossHpType": 1
+    },
+    {
+      "n": 21,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "시작",
+      "new": [
+        "fog"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "fog"
+      ],
+      "boss": null,
+      "start": 6,
+      "segments": 20,
+      "star": [
+        0.45,
+        0.75
+      ],
+      "goalFirstTry": 90,
+      "desc": "안개: 색으로 먼저 자리, 숫자는 0.8초 전."
+    },
+    {
+      "n": 22,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "익히기",
+      "new": [
+        "bog"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "grow",
+        "bog"
+      ],
+      "boss": null,
+      "start": 6,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "독 늪 손해 vs 나쁜 관문 손해 계산."
+    },
+    {
+      "n": 23,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "익히기",
+      "new": [
+        "mystery"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "fog",
+        "mystery"
+      ],
+      "boss": null,
+      "start": 6,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "물음표 관문: 모험할지 작은 + 로 갈지."
+    },
+    {
+      "n": 24,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "섞기",
+      "new": [
+        "raft"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "tower",
+        "bog",
+        "raft"
+      ],
+      "boss": null,
+      "start": 6,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "뗏목을 타고 강 건너기 + 늪 + 궁수탑."
+    },
+    {
+      "n": 25,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "중간보스",
+      "new": [
+        "toad"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "barrel",
+        "saw",
+        "fog",
+        "bog"
+      ],
+      "boss": "toad",
+      "start": 7,
+      "segments": 17,
+      "star": [
+        0.3,
+        0.55
+      ],
+      "goalFirstTry": 55,
+      "desc": "늪 두꺼비 왕: 혀에 끌려가면 바로 배치기가 옴.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 26,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "익히기",
+      "new": [
+        "reverse"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "move",
+        "reverse"
+      ],
+      "boss": null,
+      "start": 7,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "뒤바뀜 안개: 반대로 끌어서 관문 맞추기."
+    },
+    {
+      "n": 27,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "섞기",
+      "new": [
+        "trap"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "cage",
+        "reverse",
+        "trap"
+      ],
+      "boss": null,
+      "start": 7,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "꺼지는 발판 + 포로 우리."
+    },
+    {
+      "n": 28,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "어려움",
+      "new": [
+        "camp"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "door",
+        "fog",
+        "raft",
+        "camp"
+      ],
+      "boss": null,
+      "start": 7,
+      "segments": 21,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 60,
+      "desc": "적 막사가 졸개를 쏟아 냄 — 빨리 부수기 vs 지나치기."
+    },
+    {
+      "n": 29,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "쉬어가기",
+      "new": [
+        "hero"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "spring",
+        "hero"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 17,
+      "star": [
+        0.5,
+        0.8
+      ],
+      "goalFirstTry": 92,
+      "desc": "깃발 대장 합류: 큰 공격 한 번을 막아 줌."
+    },
+    {
+      "n": 30,
+      "chapter": 3,
+      "chapterName": "안개 늪",
+      "type": "대장보스",
+      "new": [
+        "twins"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "tower",
+        "fog",
+        "mystery",
+        "trap"
+      ],
+      "boss": "twins",
+      "start": 8,
+      "segments": 17,
+      "star": [
+        0.25,
+        0.5
+      ],
+      "goalFirstTry": 40,
+      "desc": "그림자 쌍둥이: 어느 쪽부터 잡을지. 하나 잡으면 남은 쪽 분노.",
+      "bossHpType": 1
+    },
+    {
+      "n": 31,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "시작",
+      "new": [
+        "night"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "split",
+        "night"
+      ],
+      "boss": null,
+      "start": 8,
+      "segments": 20,
+      "star": [
+        0.45,
+        0.75
+      ],
+      "goalFirstTry": 90,
+      "desc": "밤 행군: 횃불 쪽으로 붙어 시야 넓히기."
+    },
+    {
+      "n": 32,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "익히기",
+      "new": [
+        "bomb"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "saw",
+        "bomb"
+      ],
+      "boss": null,
+      "start": 8,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "폭탄 수레를 적 옆에서 쏴 터뜨리기."
+    },
+    {
+      "n": 33,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "익히기",
+      "new": [
+        "cavalry"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "grow",
+        "bridge",
+        "cavalry"
+      ],
+      "boss": null,
+      "start": 9,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "기병 줄 피하기 — 다리 위라 피할 곳이 좁음."
+    },
+    {
+      "n": 34,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "섞기",
+      "new": [
+        "catapult"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "door",
+        "cannon",
+        "night",
+        "catapult"
+      ],
+      "boss": null,
+      "start": 9,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "투석기 예측을 비틀며 대포 수레로 반격."
+    },
+    {
+      "n": 35,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "중간보스",
+      "new": [],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "mul",
+        "wind",
+        "bomb",
+        "cavalry"
+      ],
+      "boss": "dragon",
+      "start": 9,
+      "segments": 17,
+      "star": [
+        0.3,
+        0.55
+      ],
+      "goalFirstTry": 55,
+      "desc": "화염 용 귀환(강화): 불숨 휩쓸기 + 50%에 하늘로.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 36,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "익히기",
+      "new": [
+        "portcullis"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "split",
+        "camp",
+        "portcullis"
+      ],
+      "boss": null,
+      "start": 9,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "쇠창살이 닫히기 전에 — 막사 졸개와 싸우면 늦음."
+    },
+    {
+      "n": 37,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "섞기",
+      "new": [
+        "shieldwall"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "tower",
+        "mystery",
+        "bomb",
+        "shieldwall"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "방패벽은 화약통으로. 폭탄 수레도 벽에 쓸 수 있음."
+    },
+    {
+      "n": 38,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "어려움",
+      "new": [
+        "drum"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "rock",
+        "night",
+        "catapult",
+        "drum"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 21,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 60,
+      "desc": "북소리 1.5배를 ×에 쓸지 — 밤이라 다음 관문이 늦게 보임."
+    },
+    {
+      "n": 39,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "쉬어가기",
+      "new": [
+        "triple"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "spring",
+        "drum",
+        "triple"
+      ],
+      "boss": null,
+      "start": 12,
+      "segments": 17,
+      "star": [
+        0.5,
+        0.8
+      ],
+      "goalFirstTry": 92,
+      "desc": "세 겹 관문 계산 퍼즐. 회복 샘 있음."
+    },
+    {
+      "n": 40,
+      "chapter": 4,
+      "chapterName": "불꽃 협곡",
+      "type": "대장보스",
+      "new": [
+        "golem"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "mul",
+        "cavalry",
+        "catapult",
+        "shieldwall"
+      ],
+      "boss": "golem",
+      "start": 10,
+      "segments": 17,
+      "star": [
+        0.25,
+        0.5
+      ],
+      "goalFirstTry": 40,
+      "desc": "용암 골렘: 50%에 둘로 갈라짐.",
+      "bossHpType": 1
+    },
+    {
+      "n": 41,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "시작",
+      "new": [
+        "twin"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "mul",
+        "twin"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 20,
+      "star": [
+        0.45,
+        0.75
+      ],
+      "goalFirstTry": 90,
+      "desc": "갈래 행군: 거울처럼 움직이는 두 부대."
+    },
+    {
+      "n": 42,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "익히기",
+      "new": [
+        "zap"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "barrel",
+        "twin",
+        "zap"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "번개 기둥: 반쪽씩 번갈아 켜짐, 쏘면 꺼짐."
+    },
+    {
+      "n": 43,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "익히기",
+      "new": [
+        "portal"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "wind",
+        "bridge",
+        "zap",
+        "portal"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 20,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "구름 문 지름길: 바람·다리 구간을 건너뛸지."
+    },
+    {
+      "n": 44,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "섞기",
+      "new": [
+        "chase",
+        "siege"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "bomb",
+        "cavalry",
+        "chase"
+      ],
+      "boss": "siege",
+      "start": 10,
+      "segments": 12,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 70,
+      "desc": "추격전: 도망치는 쇠바퀴 공성차를 45초 안에.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 45,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "중간보스",
+      "new": [
+        "hawk"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "fog",
+        "trap",
+        "drum",
+        "zap"
+      ],
+      "boss": "hawk",
+      "start": 10,
+      "segments": 17,
+      "star": [
+        0.3,
+        0.55
+      ],
+      "goalFirstTry": 55,
+      "desc": "폭풍 매 기수: 하늘에 오른 3초는 피하기만.",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 46,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "익히기",
+      "new": [
+        "survive"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "cavalry",
+        "catapult",
+        "shieldwall",
+        "survive"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 6,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 85,
+      "desc": "버티기 60초: 세 방향 물결."
+    },
+    {
+      "n": 47,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "섞기",
+      "new": [
+        "rush"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "tower",
+        "mystery",
+        "raft",
+        "spring",
+        "rush"
+      ],
+      "boss": "brute",
+      "start": 10,
+      "segments": 14,
+      "star": [
+        0.4,
+        0.7
+      ],
+      "goalFirstTry": 80,
+      "desc": "보스 연전: 몽둥이 거인(분노로 시작) → 방패 기사.",
+      "boss2": "knight",
+      "bossHpType": 0.9
+    },
+    {
+      "n": 48,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "어려움",
+      "new": [],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "saw",
+        "grow",
+        "bog",
+        "night",
+        "twin",
+        "portal"
+      ],
+      "boss": null,
+      "start": 10,
+      "segments": 21,
+      "star": [
+        0.35,
+        0.6
+      ],
+      "goalFirstTry": 60,
+      "desc": "리믹스 시험: 밤 + 갈래 행군 + 늪 + 지름길."
+    },
+    {
+      "n": 49,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "쉬어가기",
+      "new": [],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "horde",
+        "cage",
+        "cannon",
+        "hero",
+        "triple"
+      ],
+      "boss": null,
+      "start": 12,
+      "segments": 17,
+      "star": [
+        0.5,
+        0.8
+      ],
+      "goalFirstTry": 92,
+      "desc": "최종전 전 정비: 대장·대포·포로로 병력 모으기."
+    },
+    {
+      "n": 50,
+      "chapter": 5,
+      "chapterName": "구름 성채",
+      "type": "대장보스",
+      "new": [
+        "warlord"
+      ],
+      "gimmicks": [
+        "open",
+        "gate",
+        "col",
+        "crowd",
+        "crate",
+        "shieldwall",
+        "cavalry",
+        "drum",
+        "fog",
+        "zap"
+      ],
+      "boss": "warlord",
+      "start": 10,
+      "segments": 17,
+      "star": [
+        0.2,
+        0.45
+      ],
+      "goalFirstTry": 35,
+      "desc": "쇠구름 대장군 2페이즈: 60%에 망토가 찢어지고 전군 돌격.",
+      "bossHpType": 1.15
+    }
+  ]
+}
