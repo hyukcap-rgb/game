@@ -6,7 +6,7 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:27, BOSS_WALK:7, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
+    SPEED:27, BOSS_RUSH:14, CROWD_RUSH:22, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
@@ -229,6 +229,7 @@ NG.march = (() => {
     if(text) addFx(run, { k:'txt', x:run.x, z:run.z + 2, text:'−' + Math.max(1, Math.round(k)), col:'#ff5a4f', life:1 });
   }
   function bossDmg(e, a){ if(e.kind === 'knight' && e.shield) a *= .15; e.hp -= a; e.hitT = .12; }
+  let SND_I = 0;
   const snd = k => fx(() => { if(S && S.mine) sfx(k); });
 
   function step(run, dt){
@@ -258,9 +259,12 @@ NG.march = (() => {
     for(const e of run.ents){
       if(e.t === 'crowd' && e.n > 0){
         const dz = e.z - run.z;
-        if(!e.pen && dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -15 * dt, 15 * dt); e.z -= 12 * dt; }   /* v1.3: 더 빨리 달려듦 */
-        const er = crowdR(e.n);
-        if(Math.abs(e.z - run.z) < R * .5 + er * .5 + 2 && Math.abs(run.x - e.x) < R + er - 2){
+        const er = crowdR(e.n), meet = (R * .5 + er * .5) * .5, xHit = Math.abs(run.x - e.x) < R + er - 2;
+        /* v1.6: 적이 나에게 달려듦 — 60 안에 들어오면 초당 22로 돌격(내 부대는 거의 멈춤) */
+        if(!e.pen && dz < 60 && dz > -3){ e.x += clamp(run.x - e.x, -18 * dt, 18 * dt); e.z -= RULE.CROWD_RUSH * dt; if(dz > 0) creep = Math.min(creep, RULE.SPEED * .3); }
+        /* v1.6: 겹쳐서 그냥 지나가지 않게 — 줄이 맞으면 한쪽이 전멸할 때까지 맞붙음 */
+        if(xHit && dz > -meet - 1){ haltZ = Math.min(haltZ, e.z - meet); if(e.z < run.z + meet) e.z = run.z + meet; }
+        if(Math.abs(e.z - run.z) < R * .5 + er * .5 + 2 && xHit){
           fighting = true;
           const k = Math.min((5 + .7 * Math.min(run.N, e.n)) * dt, e.n, run.N);
           e.n -= k; hurt(run, k, false); run.kills += k;
@@ -282,11 +286,17 @@ NG.march = (() => {
         const hz = e.z - 3 - R * .5; haltZ = Math.min(haltZ, hz);
         if(run.z >= hz - .05){ e.hp -= run.N * .6 * dt; e.hitT = .08; }
       } else if(e.t === 'boss' && e.hp > 0){
-        const sd = e.kind === 'shaman' ? 30 : 13, hz = e.z - sd - R * .5; haltZ = Math.min(haltZ, hz);
-        e.walk = run.z < hz - .5;
-        if(e.z - run.z < 85) creep = Math.min(creep, RULE.BOSS_WALK);
+        /* v1.6: 보스가 나에게 달려듦 — 100 안이면 내 부대는 멈추고(제자리), 보스가 초당 16으로 걸어와 붙음(공격 준비 중엔 천천히) */
+        const sd = e.kind === 'shaman' ? 30 : 13, stopZ = run.z + sd + R * .5;
+        haltZ = Math.min(haltZ, e.z - sd - R * .5);
+        /* 보스 앞에 아직 안 지난 관문·줄·통이 남았으면 부대는 계속 나아가 그것부터 지남(보스는 계속 다가옴) */
+        const pend = run.ents.some(q => q !== e && q.z > run.z && q.z < e.z && ((q.t === 'gate' && !q.used) || (q.t === 'col' && q.got.filter(Boolean).length < q.n) || ((q.t === 'crate' || q.t === 'barrel' || q.t === 'door') && q.hp > 0) || (q.t === 'bar' && !q.used)));
+        if(e.z - run.z < 100){
+          if(!pend) creep = 0;
+          if(e.z > stopZ + .05){ e.z = Math.max(stopZ, e.z - RULE.BOSS_RUSH * dt * (e.atk && !e.atk.hit ? .3 : 1)); e.walk = true; } else { e.z = Math.max(e.z, stopZ); e.walk = false; }
+        } else e.walk = false;
         if(e.z - run.z < 95){ run.bossActive = e; if(run.lastBoss !== e.id){ run.lastBoss = e.id; if(run.isMe) bossIntro(e); } }
-        if(run.z >= hz - .05 && e.kind !== 'shaman') bossDmg(e, run.N * .25 * dt);
+        if(e.z <= stopZ + .1 && e.kind !== 'shaman') bossDmg(e, run.N * .25 * dt);
         if(e.z - run.z < 75) bossAI(run, e, dt, R);
       } else if(e.t === 'saw'){
         e.x = e.x0 + Math.sin(run.time * e.sp + e.ph) * e.amp; e.rot = (e.rot || 0) + dt * 14;
@@ -356,12 +366,14 @@ NG.march = (() => {
         const dist = Math.hypot(txx - sx, tz - sz);
         run.arrows.push({ sx, sz, tx:txx, tz, tg, side, t:0, dur:Math.max(.12, dist / 150), dmg:per });
         if(run.hfx.length < 40) run.hfx.push({ k:'mz', x:sx, z:sz + 1.5, t:0, life:.12 });   /* 시위 섬광(보이기만) */
+        if(run.isMe) snd(run.dmgMul >= 1.3 ? 'mcShotX' : 'mcShot');
       }
     }
     for(const a of run.arrows){
       a.t += dt;
       if(a.t >= a.dur && !a.hit){
         a.hit = 1; const e = a.tg;
+        if(run.isMe) snd(e.t === 'boss' || e.t === 'door' || e.t === 'bar' ? 'mcHitBig' : e.t === 'crowd' ? 'mcHitMan' : 'mcHit');
         if(run.hfx.length < 40) fx(() => {   /* v1.5 타격 이펙트(보이기만): 별빛 폭발 4프레임 + 나무 파편 */
           const wood = e.t === 'crate' || e.t === 'barrel' || e.t === 'door' || e.t === 'tower', big = e.t === 'boss' || e.t === 'door' || e.t === 'bar';
           const hx = e.t === 'crowd' || e.t === 'crate' || e.t === 'barrel' || e.t === 'tower' ? e.x + (S.vr() - .5) * 4 : a.tx + (S.vr() - .5) * 3;
@@ -1008,7 +1020,7 @@ NG.march = (() => {
     const me = S.me, root = S.root; if(!root) return;
     const cnt = Math.ceil(me.N).toLocaleString('ko-KR');
     if(S.hudN !== cnt){ S.hudN = cnt; const el = $s('.mc-n'); el.textContent = cnt; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
-    if(!S.battle){ const m = Math.max(0, Math.round(S.endZ - me.z)) + ' m'; if(S.hudM !== m){ S.hudM = m; const el = $s('.mc-m'); if(el) el.textContent = m; } $s('.mc-road i').style.width = clamp(me.z / S.endZ * 100, 0, 100) + '%'; $s('.mc-road .mc-mk').style.left = clamp(me.z / S.endZ * 100, 0, 100) + '%'; }
+    if(!S.battle){ const m = me.bossActive ? '보스전!' : Math.max(0, Math.round(S.endZ - me.z)) + ' m'; if(S.hudM !== m){ S.hudM = m; const el = $s('.mc-m'); if(el) el.textContent = m; } $s('.mc-road i').style.width = clamp(me.z / S.endZ * 100, 0, 100) + '%'; $s('.mc-road .mc-mk').style.left = clamp(me.z / S.endZ * 100, 0, 100) + '%'; }
     else {
       const rv = Math.ceil(S.rv.N).toLocaleString('ko-KR'), l = Math.max(0, S.left);
       $s('.mc-vme').textContent = cnt; $s('.mc-vrv').textContent = rv;
@@ -1234,9 +1246,15 @@ NG.march = (() => {
       mcBoss(){ [0, -3, -7].forEach((d, i) => aTone({ f:m2f(57 + d), type:'square', t:i * .12, d:.18, v:.06 })); },
       mcBossDown(){ [0, 4, 7, 12].forEach((d, i) => aMarimba(m2f(72 + d), { t:i * .06, v:.12 })); },
       mcWin(){ [0, 4, 7, 12].forEach((d, i) => aMarimba(m2f(79 + d), { t:i * .05, v:.1 })); },
-      mcLose(){ aTone({ f:300, f2:120, type:'triangle', d:.6, v:.08 }); }
+      mcLose(){ aTone({ f:300, f2:120, type:'triangle', d:.6, v:.08 }); },
+      /* v1.6 화살 소리(효과팀): 시위 튕김 + 바람 가르는 소리 / 맞는 소리는 대상마다 다르게 */
+      mcShot(){ const j = (SND_I = (SND_I + 1) % 5) * 24; aTone({ f:560 + j, f2:170, type:'triangle', d:.07, v:.05 }); aNoise({ ft:'bandpass', f:1800, f2:5200, q:1.2, d:.07, v:.035 }); },
+      mcShotX(){ const j = (SND_I = (SND_I + 1) % 5) * 20; aTone({ f:420 + j, f2:110, type:'sawtooth', lp:1800, d:.09, v:.05 }); aNoise({ ft:'bandpass', f:1200, f2:4200, q:1, d:.1, v:.05 }); aTone({ f:1300, f2:900, d:.05, v:.02 }); },
+      mcHit(){ aThump({ f:260, f2:110, d:.06, v:.1 }); aNoise({ ft:'bandpass', f:1600, q:2.5, d:.035, v:.06 }); },
+      mcHitMan(){ aThump({ f:200, f2:90, d:.05, v:.07 }); aNoise({ ft:'highpass', f:3000, d:.025, v:.035 }); },
+      mcHitBig(){ aThump({ f:150, f2:48, d:.14, v:.16 }); aNoise({ ft:'lowpass', f:1400, f2:300, d:.1, v:.08 }); aTone({ f:1500, f2:1000, d:.05, v:.025 }); }
     },
-    gate:{ mcPlus:60, mcClash:120, mcUp:80 },
+    gate:{ mcPlus:60, mcClash:120, mcUp:80, mcShot:85, mcShotX:85, mcHit:70, mcHitMan:90, mcHitBig:95 },
     _rules:{ RULE, applyOp, newGen, extendGen, isBossStage },   /* 점검용 */
     /* 점검용: 그리지 않고 스테이지 n을 라이벌 AI로 끝까지 돌려 결과를 봄(난이도 확인) */
     _sim(n, seed){
