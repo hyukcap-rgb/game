@@ -76,6 +76,8 @@ NG.tgostop = (() => {
       for(const id of ids.slice(20, 28)){ if(C[id].bonus) S.P[0].cap.push(id); else S.floor.push(id); }
       while(S.floor.length < 8 && S.deck.length){ const d = S.deck.shift(); if(C[d].bonus) S.P[0].cap.push(d); else S.floor.push(d); }
       if(Object.values(monthCount(S.floor)).some(v => v >= 4)) continue;   /* 바닥에 같은 월 4장 → 다시 섞기 */
+      /* 처음 바닥에 같은 월 3장 = 뻑(주인 없음 -1): 나중에 4번째로 먹는 사람이 상대 피 1장(자뻑 아님) */
+      { const mc = monthCount(S.floor); for(const m in mc) if(mc[m] === 3) S.ppuk[m] = -1; }
       /* 손패에 보너스패가 있어도 그대로(내면 먹고 한 장 더 받음) */
       for(const p of [0, 1]){
         const mc = monthCount(S.P[p].hand), m4 = Object.keys(mc).find(k => mc[k] >= 4);
@@ -1208,13 +1210,13 @@ NG.tgostop = (() => {
     const g = GS(); g.phase = 'search'; g.mmT0 = Date.now(); searchUI();
     const room = ROOM; if(!room){ switchAI(); return; }
     g.dt = Date.now();
-    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:2 }).catch(() => {});
+    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:3 }).catch(() => {});
     const check = () => {
       if(GS() !== g || G.over || (g.phase !== 'search' && g.phase !== 'nobody')) return;
       let ps; try{ ps = room.peers(); }catch(_){ return; }
       const me = ps.find(p => p.sameTab); if(!me) return;
       g.myPeer = me.peer;
-      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 2;   /* dv:2 = 연속 판·자동 진행 기록 방식이 같은 판끼리만 */
+      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 3;   /* dv:3 = 같은 규칙·기록 방식끼리만(v3: 처음 바닥 3장 뻑) */
       const claim = ps.find(p => !p.sameTab && ok(p) && p.presence.du === 'play' && p.presence.dp === me.peer);
       if(claim){ match(claim); return; }
       const list = ps.filter(p => ok(p) && p.presence.du === 'wait' && typeof p.presence.dt === 'number')
@@ -1446,7 +1448,7 @@ NG.tgostop = (() => {
     help:[
       ['같은 숫자끼리 먹어요', '트럼프 A~Q가 화투 1~12월이에요. 내 패 한 장을 내고 더미에서 한 장을 뒤집어요. 바닥에 같은 숫자(왼쪽 위)가 있으면 둘 다 가져와요. 카드 아래 띠가 종류예요(광·홍단·청단·초단·띠·열끗·쌍피, 띠가 없으면 피). K 4장은 보너스패. 손패를 한 번 누르면 바로 내요.'],
       ['7점 나면 고? 스톱?', '광 3장 3점(비광 끼면 2점)·4장 4점·5장 15점 · 열끗 5장 1점(고도리 5점) · 띠 5장 1점(홍단·청단·초단 3점) · 피 10장 1점. 7점이 나면 스톱해서 이기거나, 고를 불러 점수를 더 키워요(1고 +1, 2고 +2, 3고부터 2배씩). 고를 했는데 상대가 먼저 나면 고박!'],
-      ['뻑·쪽·따닥·쓸', '첫 차례 뻑 = 첫뻑(점당 ×5), 두 번째 차례도 뻑 = 연뻑(×10), 세 번째까지 뻑 = 3연뻑(×15 받고 바로 승리). 뻑: 낸 패와 뒤집은 패가 바닥 패와 같은 월이면 세 장이 바닥에 묶여요(나중에 먹으면 피 1장, 내 뻑이면 2장). 쪽·따닥·쓸을 하면 상대 피 1장을 가져와요. 흔들기·폭탄은 점수 2배, 3뻑·총통은 바로 승리.'],
+      ['뻑·쪽·따닥·쓸', '첫 차례 뻑 = 첫뻑(점당 ×5), 두 번째 차례도 뻑 = 연뻑(×10), 세 번째까지 뻑 = 3연뻑(×15 받고 바로 승리). 뻑: 낸 패와 뒤집은 패가 바닥 패와 같은 월이면 세 장이 바닥에 묶여요(나중에 먹으면 피 1장, 내 뻑이면 2장). 처음 바닥에 같은 월 3장이 깔려 있어도 뻑이에요. 쪽·따닥·쓸을 하면 상대 피 1장을 가져와요. 흔들기·폭탄은 점수 2배, 3뻑·총통은 바로 승리.'],
       ['박과 배수', '피박(상대 피 1~5장)·광박(상대 광 0장)·고박·멍따(열끗 7장+)는 점수 ×2. 둘 다 못 내고 패가 떨어지면 나가리(무승부). 19세 이상 · 돈이나 상품은 걸 수 없어요.']
     ],
     chapters:['동네 사랑방', '시장 골목', '장터 한마당', '명절 큰집', '고수의 방'],
