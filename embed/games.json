@@ -290,6 +290,26 @@
       "file": "march.html",
       "bytes": 329062,
       "gzip": 108839
+    },
+    {
+      "id": "jigsaw",
+      "name": "명화 퍼즐",
+      "version": "1.0.0",
+      "summary": "섞인 명화 조각을 3×3·4×4·5×5로 맞추는 공간지각 퍼즐",
+      "duel": true,
+      "file": "jigsaw.html",
+      "bytes": 291784,
+      "gzip": 94965
+    },
+    {
+      "id": "tidy",
+      "name": "착착 정리",
+      "version": "1.0.0",
+      "summary": "서랍·책상·냉장고 칸에 모양이 다른 물건을 돌려 가며 빈틈없이 채우는 정리 퍼즐 — 차가운 칸·깨지는 물건·무거운 물건 규칙",
+      "duel": true,
+      "file": "tidy.html",
+      "bytes": 299009,
+      "gzip": 97874
     }
   ],
   "retired": [
