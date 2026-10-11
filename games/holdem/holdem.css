@@ -1,0 +1,12 @@
+/* 로열 홀덤 입구: 홀덤 화면을 사이트 위에 꽉 차게 */
+body.hd-full { overflow: hidden; }
+.hd-wrap { position: fixed; inset: 0; z-index: 900; background: #07090f; }
+.hd-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.hd-load { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #f4f1ea; background: radial-gradient(120% 70% at 50% 0%, #182238, #07090f 60%); transition: opacity .3s; }
+.hd-load.done { opacity: 0; pointer-events: none; }
+.hd-load b { font-size: 16px; }
+.hd-load .b2 { margin-top: 8px; }
+.hd19 { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 4px solid #D7263D; color: #1A0F45; font-weight: 900; font-size: 18px; }
+.hd19.sm { width: 22px; height: 22px; border-width: 2px; font-size: 11px; vertical-align: middle; margin-left: 4px; }
+.hd-mgate { text-align: center; }
+.hd-mgate .hd19 { margin-bottom: 6px; }

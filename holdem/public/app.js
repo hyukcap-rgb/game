@@ -12,6 +12,10 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 무시 */ } },
   };
+  // 하루퍼즐 사이트 안(iframe)에 붙였을 때: ?embed=1&start=solo|friends|daily&name=닉네임
+  const Q0 = new URLSearchParams(location.search);
+  const EMBED = Q0.get('embed') === '1' && window.parent !== window;
+  function toParent(type) { try { window.parent.postMessage({ holdem: type }, '*'); } catch (e) { /* 무시 */ } }
   const profile = {
     name: store.get('rh_name', ''),
     avatar: store.get('rh_avatar', 5),
@@ -826,7 +830,7 @@
     if (current && current.leave) current.leave();
     if (Online.active) Online.leave();
     current = null;
-    history.replaceState(null, '', '/');
+    history.replaceState(null, '', location.pathname + (EMBED ? '?embed=1' : ''));
     show('home');
     loadDailyInfo();
   }
@@ -937,6 +941,19 @@
   $('#soundBtn').onclick = () => { Sound.on = !Sound.on; store.set('rh_sound', Sound.on); syncSoundBtn(); };
   syncSoundBtn();
   window.addEventListener('resize', () => { if (R.v) R.layout(R.v); });
+
+  // 하루퍼즐 안에서 열렸을 때
+  if (EMBED) {
+    $('#homeBack').hidden = false;
+    $('#homeBack').onclick = () => toParent('exit');
+    const nm = (Q0.get('name') || '').trim().slice(0, 10);
+    if (nm && !profile.name) { profile.name = nm; store.set('rh_name', nm); $('#nick').value = nm; }
+    const st = Q0.get('start');
+    if (st === 'solo') setTimeout(startSolo, 50);
+    else if (st === 'friends') setTimeout(startFriends, 50);
+    else if (st === 'daily') setTimeout(startDaily, 50);
+    toParent('ready');
+  }
 
   // 초대 링크로 들어온 경우
   const params = new URLSearchParams(location.search);
