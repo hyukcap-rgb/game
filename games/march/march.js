@@ -46,7 +46,7 @@ NG.march = (() => {
   try{ if(/\/embed\/[^/]*$/.test(location.pathname)) BASE = '../games/march/img/'; }catch(_){}
   const IMGF = { soldier:'soldier.webp', enemy:'enemy.webp', brute:'brute.webp', knight:'knight.webp', shaman:'shaman.webp', dragon:'dragon.webp',
     tower:'tower.webp', stone:'stone.jpg', gateB:'gateB.webp', gateR:'gateR.webp', door:'door.webp', saw:'saw.webp',
-    barrel:'barrel.webp', crate:'crate.webp', spike:'spike.webp', xbow:'xbow.webp', rock:'rock.webp', horizon:'horizon.jpg', water:'water.jpg' };
+    barrel:'barrel.webp', crate:'crate.webp', spike:'spike.webp', arrow:'arrow.webp', fxHit:'fx_hit.jpg', fxWood:'fx_wood.webp', xbow:'xbow.webp', rock:'rock.webp', horizon:'horizon.jpg', water:'water.jpg' };
   const IMG = {};
   function loadImgs(){ if(IMG.soldier) return; for(const k in IMGF){ const im = new Image(); im.decoding = 'async'; im.src = BASE + IMGF[k]; IMG[k] = im; } }
   const ok = im => im && im.complete && im.naturalWidth > 0;
@@ -217,7 +217,7 @@ NG.march = (() => {
   let UID = 0;
   function newRun(gen, n, isMe, rng){
     return { gen, idx:0, ents:[], arrows:[], earrows:[], fx:[], z:0, prevZ:0, x:0, tx:0, N:n, peak:n, time:0, rng,
-      dead:false, done:false, win:false, deathTime:null, isMe, fireT:0, ai:{}, bossActive:null, halted:false, shake:0, kills:0, bossKills:0, lastBoss:null, dmgMul:1, rateMul:1 };
+      dead:false, done:false, win:false, deathTime:null, isMe, fireT:0, ai:{}, hfx:[], bossActive:null, halted:false, shake:0, kills:0, bossKills:0, lastBoss:null, dmgMul:1, rateMul:1 };
   }
   const armyR = n => 3 * Math.sqrt(Math.min(Math.max(n, 1), 120)) * .85 + 2;
   const crowdR = n => 2.9 * Math.sqrt(Math.min(Math.max(n, 1), 90)) * .85 + 2;
@@ -355,12 +355,20 @@ NG.march = (() => {
         else if(tg.t === 'boss') txx = (rr() - .5) * 8;
         const dist = Math.hypot(txx - sx, tz - sz);
         run.arrows.push({ sx, sz, tx:txx, tz, tg, side, t:0, dur:Math.max(.12, dist / 150), dmg:per });
+        if(run.hfx.length < 40) run.hfx.push({ k:'mz', x:sx, z:sz + 1.5, t:0, life:.12 });   /* 시위 섬광(보이기만) */
       }
     }
     for(const a of run.arrows){
       a.t += dt;
       if(a.t >= a.dur && !a.hit){
         a.hit = 1; const e = a.tg;
+        if(run.hfx.length < 40) fx(() => {   /* v1.5 타격 이펙트(보이기만): 별빛 폭발 4프레임 + 나무 파편 */
+          const wood = e.t === 'crate' || e.t === 'barrel' || e.t === 'door' || e.t === 'tower', big = e.t === 'boss' || e.t === 'door' || e.t === 'bar';
+          const hx = e.t === 'crowd' || e.t === 'crate' || e.t === 'barrel' || e.t === 'tower' ? e.x + (S.vr() - .5) * 4 : a.tx + (S.vr() - .5) * 3;
+          const up = e.t === 'boss' ? 26 + S.vr() * 16 : e.t === 'door' ? 8 + S.vr() * 6 : e.t === 'crate' || e.t === 'barrel' ? 5 + S.vr() * 4 : e.t === 'tower' ? 14 : e.t === 'bar' ? 5 : 3;
+          run.hfx.push({ k:'hit', x:hx, z:(e.z || a.tz) - .5, up, big, t:0, life:big ? .34 : .26, gold:run.dmgMul >= 1.3 });
+          if(wood && S.vr() < .55) run.hfx.push({ k:'wood', x:hx, z:(e.z || a.tz) - 1, up, t:0, life:.42, rot:S.vr() * 6, sp:(S.vr() - .5) * 8 });
+        });
         if(e.t === 'crowd' && e.n > 0){ const k = Math.min(e.n, a.dmg); e.n -= k; run.kills += k; }
         else if((e.t === 'tower' || e.t === 'crate' || e.t === 'barrel') && e.hp > 0){ e.hp -= a.dmg; e.hitT = .1; }
         else if(e.t === 'door' && e.hp > 0){ e.hp -= a.dmg; e.hitT = .08; }
@@ -388,6 +396,7 @@ NG.march = (() => {
       if(e.pulse){ e.pulse[0] = Math.max(0, e.pulse[0] - dt); e.pulse[1] = Math.max(0, e.pulse[1] - dt); }
     }
     run.ents = run.ents.filter(e => !e.gone && !(e.t === 'puddle' && e.life <= 0) && e.z > run.z - 45);
+    for(const f of run.hfx) f.t += dt; run.hfx = run.hfx.filter(f => f.t < f.life);
     for(const f of run.fx) f.t += dt;
     run.fx = run.fx.filter(f => f.t < f.life);
     run.shake = Math.max(0, run.shake - dt);
@@ -620,18 +629,12 @@ NG.march = (() => {
       });
     }
     c.lineCap = 'round';
-    for(const a of run.arrows){
-      const k = a.t / a.dur, x = a.sx + (a.tx - a.sx) * k, z = a.sz + (a.tz - a.sz) * k, arc = Math.sin(k * Math.PI) * 6, k2 = Math.max(0, k - .12);
-      const p = P(x, z), q = P(a.sx + (a.tx - a.sx) * k2, a.sz + (a.tz - a.sz) * k2);
-      if(!p || !q) continue;
-      c.strokeStyle = 'rgba(190,230,255,.7)'; c.lineWidth = Math.max(1, 2.4 * p.s);
-      c.beginPath(); c.moveTo(q.X, q.Y - arc * q.s * unit * .8); c.lineTo(p.X, p.Y - arc * p.s * unit * .8); c.stroke();
-      c.fillStyle = '#5a3a20'; c.beginPath(); c.arc(p.X, p.Y - arc * p.s * unit * .8, Math.max(1, 1.6 * p.s), 0, 7); c.fill();
-    }
+    drawArrows(c, P, unit, run, mini);
     for(const a of run.earrows){
       const k = a.t / a.dur, p = P(a.x0 + (run.x - a.x0) * k, a.z0 + (run.z - a.z0) * k); if(!p) continue;
       c.fillStyle = '#ff3b30'; c.beginPath(); c.arc(p.X, p.Y - 5 * p.s * unit * Math.sin(k * Math.PI), Math.max(1.5, 2.2 * p.s), 0, 7); c.fill();
     }
+    drawHits(c, P, unit, run, mini);
     for(const f of run.fx){
       const p = P(f.x, f.z); if(!p) continue; const k = f.t / f.life;
       if(f.k === 'txt'){
@@ -670,6 +673,64 @@ NG.march = (() => {
     }
     if(!mini && run.isMe && S.flash && S.flash.t < .28){ c.globalAlpha = S.flash.a * (1 - S.flash.t / .28); c.fillStyle = S.flash.col; c.fillRect(0, 0, w, h); c.globalAlpha = 1; }
   }
+  /* ---------- v1.5 화살·타격 이펙트(효과팀·디자인팀, Figma 그림) ----------
+     화살 = 진짜 화살 그림 + 빛나는 꼬리(가산 혼합). 색: 기본 하늘빛 · 석궁(공격력) 금빛 · 연사 청록.
+     맞으면 별빛 폭발 4프레임(fx_hit) + 상자·통·성문·탑은 나무 파편(fx_wood). 보스·성문·방벽은 크게. */
+  function arrowCol(run){ return run.dmgMul >= 1.3 ? [255, 206, 74] : run.rateMul >= 1.25 ? [96, 232, 255] : [200, 236, 255]; }
+  function drawArrows(c, P, unit, run, mini){
+    if(!run.arrows.length) return;
+    const col = arrowCol(run), cs = col.join(','), im = IMG.arrow, has = ok(im), gold = run.dmgMul >= 1.3;
+    if(!mini){ c.strokeStyle = 'rgba(30,45,80,.22)'; for(const a of run.arrows){   /* 0) 밝은 바닥에서도 보이게 옅은 어두운 테두리 */
+      const k = a.t / a.dur, k2 = Math.max(0, k - .3); const p = P(a.sx + (a.tx - a.sx) * k, a.sz + (a.tz - a.sz) * k), q = P(a.sx + (a.tx - a.sx) * k2, a.sz + (a.tz - a.sz) * k2); if(!p || !q) continue;
+      p.Y -= Math.sin(k * Math.PI) * 6 * p.s * unit * .8; q.Y -= Math.sin(k2 * Math.PI) * 6 * q.s * unit * .8;
+      c.lineWidth = Math.max(2.5, 2 * p.s * unit); c.beginPath(); c.moveTo((q.X + p.X) / 2, (q.Y + p.Y) / 2); c.lineTo(p.X, p.Y); c.stroke(); } }
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for(const a of run.arrows){   /* 1) 빛나는 꼬리(가산) */
+      const k = a.t / a.dur, k2 = Math.max(0, k - .3), arc = 6;
+      const pt = kk => { const q = P(a.sx + (a.tx - a.sx) * kk, a.sz + (a.tz - a.sz) * kk); if(q) q.Y -= Math.sin(kk * Math.PI) * arc * q.s * unit * .8; return q; };
+      const p = pt(k), q = pt(k2); if(!p || !q) continue;
+      const g = c.createLinearGradient(q.X, q.Y, p.X, p.Y); g.addColorStop(0, 'rgba(' + cs + ',0)'); g.addColorStop(1, 'rgba(' + cs + ',.85)');
+      c.strokeStyle = g; c.lineWidth = Math.max(1.5, (gold ? 1.5 : 1.15) * p.s * unit); c.beginPath(); c.moveTo(q.X, q.Y); c.lineTo(p.X, p.Y); c.stroke();
+      if(!mini){ c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = Math.max(.8, .4 * p.s * unit); c.beginPath(); c.moveTo((q.X + p.X) / 2, (q.Y + p.Y) / 2); c.lineTo(p.X, p.Y); c.stroke(); }
+      a._p = p; a._ang = Math.atan2(p.Y - q.Y, p.X - q.X);
+    }
+    c.restore();
+    for(const a of run.arrows){   /* 2) 화살 그림(머리 = 지금 위치) */
+      const p = a._p; if(!p) continue; a._p = null;
+      const L = Math.max(mini ? 5 : 10, (gold ? 10.5 : 9) * p.s * unit), H = has ? L * im.naturalHeight / im.naturalWidth : 2;
+      c.save(); c.translate(p.X, p.Y); c.rotate(a._ang);
+      if(has) c.drawImage(im, -L, -H / 2, L, H); else { c.fillStyle = '#5a3a20'; c.fillRect(-L, -1, L, 2); }
+      c.restore();
+    }
+  }
+  function drawHits(c, P, unit, run, mini){
+    if(!run.hfx.length) return;
+    const sheet = IMG.fxHit, wood = IMG.fxWood, col = arrowCol(run).join(',');
+    c.save();
+    for(const f of run.hfx){
+      const p = P(f.x, f.z); if(!p) continue; const k = f.t / f.life, Y = p.Y - (f.up || 0) * p.s * unit;
+      if(f.k === 'mz'){
+        if(mini) continue; c.globalCompositeOperation = 'lighter'; const r = 4.5 * p.s * unit * (1 + k);
+        const g = c.createRadialGradient(p.X, Y, 0, p.X, Y, r); g.addColorStop(0, 'rgba(255,255,255,' + (.8 * (1 - k)).toFixed(2) + ')'); g.addColorStop(.4, 'rgba(' + col + ',' + (.5 * (1 - k)).toFixed(2) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)');
+        c.fillStyle = g; c.beginPath(); c.arc(p.X, Y, r, 0, 7); c.fill();
+      } else if(f.k === 'hit'){
+        const fr = Math.min(3, Math.floor(k * 4)), sz = (f.big ? 30 : 17) * p.s * unit * (mini ? .7 : 1) * (.85 + k * .35);
+        c.globalCompositeOperation = 'lighter'; c.globalAlpha = 1 - k * .3;
+        if(ok(sheet)) c.drawImage(sheet, fr * 160, 0, 160, 160, p.X - sz / 2, Y - sz / 2, sz, sz);
+        else { c.fillStyle = 'rgba(255,220,120,' + (1 - k) + ')'; c.beginPath(); c.arc(p.X, Y, sz * .25, 0, 7); c.fill(); }
+        if(f.gold && fr < 2 && !mini){ c.globalAlpha = .5 * (1 - k); c.fillStyle = 'rgb(255,206,74)'; c.beginPath(); c.arc(p.X, Y, sz * .22, 0, 7); c.fill(); }
+        c.globalAlpha = 1;
+      } else if(f.k === 'wood'){
+        if(mini || !ok(wood)) continue; c.globalCompositeOperation = 'source-over';
+        const sz = 13 * p.s * unit * (.55 + k * .7); c.globalAlpha = Math.min(1, 1.6 * (1 - k));
+        c.save(); c.translate(p.X + f.sp * k * p.s * unit, Y - k * 4 * p.s * unit); c.rotate(f.rot + k * 1.5); c.drawImage(wood, -sz / 2, -sz / 2, sz, sz * wood.naturalHeight / wood.naturalWidth); c.restore();
+        c.globalAlpha = 1;
+      }
+    }
+    c.restore();
+  }
+  /* 맞은 순간 밝게: ctx.filter는 아이폰 사파리에서 안 먹으므로 같은 그림을 가산 혼합으로 한 번 더 */
+  function glowDraw(c, im, x, y, w, h, a){ c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a; c.drawImage(im, x, y, w, h); c.restore(); }
   /* 칸막이 벽(보이기): 바닥 위로 솟은 돌벽 */
   function drawWall(c, P, unit, e, run){
     const z1 = Math.max(e.z, run.z - 30), z2 = e.z + e.len; if(z2 < z1) return;
@@ -777,8 +838,8 @@ NG.march = (() => {
       const p = P(e.x, e.z), im = IMG[e.t]; if(!p || !ok(im)) return;
       const bw = (e.t === 'crate' ? 15 : e.field ? 17 : 14) * p.s * unit, bh = bw * im.naturalHeight / im.naturalWidth;
       c.fillStyle = 'rgba(40,30,10,.2)'; c.beginPath(); c.ellipse(p.X, p.Y, bw * .55, bw * .16, 0, 0, 7); c.fill();
-      c.save(); if(e.hitT){ c.translate((S.vr() - .5) * 3, 0); c.filter = 'brightness(1.5)'; }
-      c.drawImage(im, p.X - bw / 2, p.Y - bh, bw, bh); c.filter = 'none'; c.restore();
+      c.save(); if(e.hitT) c.translate((S.vr() - .5) * 3, 0);
+      c.drawImage(im, p.X - bw / 2, p.Y - bh, bw, bh); if(e.hitT) glowDraw(c, im, p.X - bw / 2, p.Y - bh, bw, bh, .45); c.restore();
       const fs = Math.max(12, bw * (e.t === 'crate' ? .3 : .26)), lx = e.t === 'crate' ? p.X - bw * .03 : p.X + bw * .22, ly = p.Y - bh * (e.t === 'crate' ? .38 : .42);
       c.font = fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; strokeText(c, String(Math.ceil(e.hp)), lx, ly, '#16233d', '#fff', fs * .12); c.textBaseline = 'alphabetic';
       if(e.t === 'barrel' && !mini){   /* 위에 보상 표시 */
@@ -801,14 +862,14 @@ NG.march = (() => {
     } else if(e.t === 'tower' && e.hp > 0){
       const p = P(e.x, e.z); if(!p) return;
       const th = 26 * p.s * unit, tw = ok(IMG.tower) ? th * IMG.tower.naturalWidth / IMG.tower.naturalHeight : th * .6;
-      if(ok(IMG.tower)){ if(e.hitT) c.filter = 'brightness(1.8)'; c.drawImage(IMG.tower, p.X - tw / 2, p.Y - th, tw, th); c.filter = 'none'; }
+      if(ok(IMG.tower)){ c.drawImage(IMG.tower, p.X - tw / 2, p.Y - th, tw, th); if(e.hitT) glowDraw(c, IMG.tower, p.X - tw / 2, p.Y - th, tw, th, .5); }
       else { c.fillStyle = '#b9a27a'; c.fillRect(p.X - tw / 2, p.Y - th, tw, th); }
       hpBar(c, p.X, p.Y - th - 8, tw * .9, e.hp / e.max, '#ff5a4f');
     } else if(e.t === 'door' && e.hp > 0){
       const a = P(-52, e.z), b = P(52, e.z); if(!a || !b) return;
       const bw = (b.X - a.X) / 2, cx = (a.X + b.X) / 2;
       const dh = ok(IMG.door) ? bw * IMG.door.naturalHeight / IMG.door.naturalWidth : 16 * a.s * unit;
-      if(ok(IMG.door)){ if(e.hitT) c.filter = 'brightness(1.5)'; c.drawImage(IMG.door, a.X, a.Y - dh, bw, dh); c.drawImage(IMG.door, a.X + bw, a.Y - dh, bw, dh); c.filter = 'none'; }
+      if(ok(IMG.door)){ c.drawImage(IMG.door, a.X, a.Y - dh, bw, dh); c.drawImage(IMG.door, a.X + bw, a.Y - dh, bw, dh); if(e.hitT){ glowDraw(c, IMG.door, a.X, a.Y - dh, bw, dh, .35); glowDraw(c, IMG.door, a.X + bw, a.Y - dh, bw, dh, .35); } }
       else { c.fillStyle = '#a8743f'; c.fillRect(a.X, a.Y - dh, b.X - a.X, dh); }
       hpBar(c, cx, a.Y - dh - 12, bw, e.hp / e.max, '#ffc83d');
       if(!mini){ const fs = Math.max(13, dh * .18); c.font = fs + 'px ' + FONT; c.textAlign = 'center'; strokeText(c, '성문 ' + Math.ceil(e.hp), cx, a.Y - dh * .5, '#fff', '#16233d', fs * .2); }
@@ -830,7 +891,7 @@ NG.march = (() => {
       const a = P(e.x - e.w / 2, e.z), b = P(e.x + e.w / 2, e.z), q = P(e.x, e.z + e.len); if(!a || !b || !q) return;
       const im = IMG.spike, W = b.X - a.X, top = q.Y, H = a.Y - top;
       c.fillStyle = 'rgba(70,40,20,.25)'; c.beginPath(); c.ellipse((a.X + b.X) / 2, a.Y - H * .45, W * .55, H * .55, 0, 0, 7); c.fill();
-      if(ok(im)){ const ih = W * im.naturalHeight / im.naturalWidth; c.save(); if(e.hitT) c.filter = 'brightness(1.3)'; c.drawImage(im, a.X - W * .05, a.Y - Math.max(ih, H + ih * .35), W * 1.1, Math.max(ih, H + ih * .35)); c.restore(); }
+      if(ok(im)){ const ih = W * im.naturalHeight / im.naturalWidth; c.drawImage(im, a.X - W * .05, a.Y - Math.max(ih, H + ih * .35), W * 1.1, Math.max(ih, H + ih * .35)); }
       else { c.fillStyle = '#8a5a2b'; c.fillRect(a.X, top, W, H); }
     } else if(e.t === 'boss' && e.hp > 0){
       drawBoss(c, P, unit, e, clock);
@@ -855,9 +916,8 @@ NG.march = (() => {
     if(e.rage){ const g = c.createRadialGradient(X, Y - h * .5, 0, X, Y - h * .5, h * .75); g.addColorStop(0, 'rgba(255,60,30,.35)'); g.addColorStop(1, 'rgba(255,60,30,0)'); c.fillStyle = g; c.beginPath(); c.arc(X, Y - h * .5, h * .75, 0, 7); c.fill(); }
     const w = ok(im) ? h * im.naturalWidth / im.naturalHeight : h * .8;
     c.save(); c.translate(X, Y - lift); c.rotate(rot); c.scale(1 / sq, sq);
-    if(e.hitT > 0) c.filter = 'brightness(1.9)';
-    if(ok(im)) c.drawImage(im, -w / 2, -h, w, h); else { c.fillStyle = '#c9673a'; c.fillRect(-w / 2, -h, w, h); }
-    c.filter = 'none'; c.restore();
+    if(ok(im)){ c.drawImage(im, -w / 2, -h, w, h); if(e.hitT > 0) glowDraw(c, im, -w / 2, -h, w, h, .55); } else { c.fillStyle = '#c9673a'; c.fillRect(-w / 2, -h, w, h); }
+    c.restore();
     if(e.kind === 'knight' && e.shield){
       const gl = .25 + .1 * Math.sin(clock * 8);
       c.fillStyle = 'rgba(120,180,255,' + gl.toFixed(2) + ')'; c.beginPath(); c.ellipse(X, Y - h * .5, w * .62, h * .62, 0, 0, 7); c.fill();
