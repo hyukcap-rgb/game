@@ -11,16 +11,25 @@ NG.tidy = (() => {
   const $ = s => document.querySelector(s);
   /* 물건 색 10가지 */
   const PAL = ['#FF7A59', '#FFC93C', '#5BCB8B', '#5FB8F2', '#B28CFF', '#FF8FC0', '#F2A65A', '#7ADAD0', '#C6D95A', '#E8685F'];
+  /* 물건 이름 → 그림 파일(games/tidy/img/<이름>.webp, Figma AI로 만든 오리지널 스티커 그림) */
+  const ICON = { 우유:'milk', 주스:'juice', 치즈:'cheese', 달걀:'egg', 컵:'mug', 접시:'plate', 꽃병:'vase', 화분:'plant', 책:'books', 냄비:'pot', 상자:'crate', 쌀:'rice',
+    양말:'socks', 수건:'towel', 모자:'beanie', 필통:'pencil', 빵:'bread', 잼:'jam', 꿀:'honey', 소스:'ketchup', 차:'tea', 셔츠:'shirt', 바지:'pants', 가방:'bag', 신발:'shoe',
+    라면:'ramen', 통조림:'can', 과자:'cookie', 설탕:'sugar', 공책:'notebook', 가위:'scissors', 풀:'glue', 시계:'clock' };
+  let BASE = 'games/tidy/img/';
+  try{ if(/\/embed\/[^/]*$/.test(location.pathname)) BASE = '../games/tidy/img/'; }catch(_){}
+  const imgSrc = k => BASE + k + '.webp';
+  let PRE = null;
+  function preload(){ if(PRE) return; PRE = {}; try{ Object.values(ICON).forEach(k => { const im = new Image(); im.decoding = 'async'; im.src = imgSrc(k); PRE[k] = im; }); }catch(_){} }
   const NAMES = {
-    drawer:['양말', '수건', '모자', '장갑', '손수건', '메모', '리본', '단추', '열쇠', '지갑'],
-    desk:['공책', '필통', '자', '풀', '가위', '책', '클립', '편지', '달력', '시계'],
-    fridge:['잼', '빵', '꿀', '차', '소스', '김', '쌈', '반찬', '밥', '떡'],
-    closet:['셔츠', '바지', '치마', '티', '가방', '벨트', '신발', '스카프'],
-    pantry:['쌀', '밀가루', '설탕', '소금', '라면', '통조림', '과자', '견과']
+    drawer:['양말', '수건', '모자', '필통'],
+    desk:['공책', '필통', '가위', '풀', '시계'],
+    fridge:['잼', '꿀', '소스', '차', '빵'],
+    closet:['셔츠', '바지', '가방', '신발', '모자', '양말'],
+    pantry:['라면', '통조림', '과자', '설탕', '빵']
   };
-  const COLD = ['우유', '주스', '치즈', '달걀', '두부', '햄', '요거트', '버터'];
-  const FRAG = ['컵', '접시', '유리', '꽃병', '화분', '액자'];
-  const HEAVY = ['책', '상자', '냄비', '쌀', '벽돌', '항아리'];
+  const COLD = ['우유', '주스', '치즈', '달걀'];
+  const FRAG = ['컵', '접시', '꽃병', '화분'];
+  const HEAVY = ['책', '냄비', '상자', '쌀'];
   const PLACE = { drawer:'서랍', desk:'책상', fridge:'냉장고', closet:'옷장', pantry:'찬장' };
   const WOOD = { drawer:['#E9C48A', '#C99A5B'], desk:['#D9B282', '#B58654'], fridge:['#EAF4FA', '#BFD5E3'], closet:['#D7B48C', '#B08A5E'], pantry:['#E2C18F', '#BE9760'] };
 
@@ -177,23 +186,24 @@ NG.tidy = (() => {
   function placedCount(m){ return m.pos.filter(Boolean).length; }
 
   /* ----- 그림 ----- */
-  function snow(x, y, s, col){ return `<g stroke="${col}" stroke-width="${s * .22}" stroke-linecap="round"><path d="M${x - s} ${y}H${x + s}M${x} ${y - s}V${y + s}M${x - s * .7} ${y - s * .7}L${x + s * .7} ${y + s * .7}M${x - s * .7} ${y + s * .7}L${x + s * .7} ${y - s * .7}"/></g>`; }
-  function itemMark(it, x, y, s){     /* 칸 안에 들어가는 작은 표시: 눈꽃·금·추 */
-    let o = '';
-    if(it.cold) o += snow(x, y, s * .26, '#FFFFFF');
-    if(it.fragile) o += `<path d="M${x - s * .18} ${y - s * .3}l${s * .12} ${s * .2}l${-s * .1} ${s * .14}l${s * .14} ${s * .2}" fill="none" stroke="${OL}" stroke-width="${s * .07}" stroke-linecap="round" stroke-linejoin="round"/>`;
-    if(it.heavy) o += `<path d="M${x - s * .22} ${y + s * .22}l${s * .09} ${-s * .36}h${s * .26}l${s * .09} ${s * .36}z" fill="${OL}"/><circle cx="${x}" cy="${y - s * .22}" r="${s * .07}" fill="none" stroke="${OL}" stroke-width="${s * .05}"/>`;
-    return o;
+  const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (h, t, to) => { const c = hx(h), d = to === 'k' ? [58, 36, 18] : [255, 255, 255]; return '#' + c.map((v, i) => Math.round(v + (d[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+  function snow(x, y, s, col, w){ return `<g stroke="${col}" stroke-width="${w || s * .22}" stroke-linecap="round"><path d="M${x - s} ${y}H${x + s}M${x} ${y - s}V${y + s}M${x - s * .7} ${y - s * .7}L${x + s * .7} ${y + s * .7}M${x - s * .7} ${y + s * .7}L${x + s * .7} ${y - s * .7}"/></g>`; }
+  /* 규칙 표시 알약(눈꽃·금·추): 그림 칸 오른쪽 위 모서리에 */
+  function badge(it, x, y, r){
+    const k = it.cold ? 'c' : it.fragile ? 'f' : it.heavy ? 'h' : ''; if(!k) return '';
+    let g = '';
+    if(k === 'c') g = snow(x, y, r * .55, '#2E86C1', r * .2);
+    else if(k === 'f') g = `<path d="M${x - r * .3} ${y - r * .6}l${r * .38} ${r * .55}l${-r * .3} ${r * .35}l${r * .4} ${r * .55}" fill="none" stroke="#C0392B" stroke-width="${r * .22}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    else g = `<path d="M${x - r * .5} ${y + r * .5}l${r * .2} ${-r * .85}h${r * .6}l${r * .2} ${r * .85}z" fill="${OL}"/><circle cx="${x}" cy="${y - r * .5}" r="${r * .17}" fill="none" stroke="${OL}" stroke-width="${r * .13}"/>`;
+    return `<circle cx="${x}" cy="${y + 3}" r="${r}" fill="${OL}" opacity=".3"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="${OL}" stroke-width="5"/>${g}`;
   }
-  /* 물건 하나(칸 목록, 100단위 칸): 같은 물건 칸끼리는 선 없이 이어지고 바깥 변만 굵은 선 */
-  function pieceSvg(it, cells, lab, fs, sel){
-    const set = new Set(cells.map(([r, c]) => r + ',' + c), 0), col = PAL[it.col];
-    let o = '';
-    cells.forEach(([r, c]) => { o += `<rect x="${c * 100}" y="${r * 100}" width="100" height="100" fill="${col}"/>`; });
-    cells.forEach(([r, c]) => {
-      const x = c * 100, y = r * 100;
-      o += `<rect x="${x + 12}" y="${y + 10}" width="76" height="22" rx="10" fill="#fff" opacity=".28"/>`;
-    });
+  /* 물건 하나(칸 목록, 100단위 칸): 위는 밝고 아래는 짙은 입체 몸통 + 칸마다 둥근 타일 + 바깥 굵은 선 + 그림 */
+  function pieceSvg(it, cells, o){
+    o = o || {};
+    const col = PAL[it.col], set = new Set(cells.map(([r, c]) => r + ',' + c)), pre = (o.tray ? 't' : 'b') + it.id;
+    const r0 = Math.min(...cells.map(x => x[0])), r1 = Math.max(...cells.map(x => x[0])) + 1;
+    const rects = cells.map(([r, c]) => `<rect x="${c * 100}" y="${r * 100}" width="100" height="100"/>`).join('');
     let e = '';
     cells.forEach(([r, c]) => {
       const x = c * 100, y = r * 100;
@@ -202,38 +212,48 @@ NG.tidy = (() => {
       if(!set.has(r + ',' + (c - 1))) e += `M${x} ${y}v100`;
       if(!set.has(r + ',' + (c + 1))) e += `M${x + 100} ${y}v100`;
     });
-    o += `<path d="${e}" fill="none" stroke="${sel ? '#FFFFFF' : OL}" stroke-width="${sel ? 11 : 8}" stroke-linecap="round"/>`;
-    if(sel) o += `<path d="${e}" fill="none" stroke="${OL}" stroke-width="4" stroke-linecap="round"/>`;
-    const a = cells[0];
-    let mx = 0, my = 0; cells.forEach(([r, c]) => { mx += c; my += r; });
-    const ax = a[1] * 100 + 50, ay = a[0] * 100 + 50;
-    o += itemMark(it, ax + (lab ? 0 : 0), lab ? ay - 22 : ay, 100);
-    if(lab) o += `<text x="${ax}" y="${ay + 34}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${OL}" stroke="#fff" stroke-width="${fs * .2}" paint-order="stroke" font-family="var(--disp),sans-serif">${it.nm}</text>`;
-    return o;
+    let o2 = `<defs><linearGradient id="g${pre}" gradientUnits="userSpaceOnUse" x1="0" y1="${r0 * 100}" x2="0" y2="${r1 * 100}"><stop offset="0" stop-color="${mix(col, .45)}"/><stop offset=".5" stop-color="${col}"/><stop offset="1" stop-color="${mix(col, .25, 'k')}"/></linearGradient><clipPath id="c${pre}">${rects}</clipPath></defs>`;
+    if(!o.tray) o2 += `<g fill="${OL}" opacity=".28" transform="translate(0 9)">${rects}</g>`;
+    o2 += `<g clip-path="url(#c${pre})"><rect x="-10" y="${r0 * 100 - 10}" width="${(Math.max(...cells.map(x => x[1])) + 1) * 100 + 20}" height="${(r1 - r0) * 100 + 20}" fill="url(#g${pre})"/>`;
+    cells.forEach(([r, c]) => {
+      const x = c * 100, y = r * 100;
+      o2 += `<rect x="${x + 7}" y="${y + 7}" width="86" height="86" rx="16" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="3.5"/><path d="M${x + 18} ${y + 20}q4-9 16-9h22" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="7" stroke-linecap="round"/>`;
+    });
+    o2 += `</g><path d="${e}" fill="none" stroke="${o.sel ? '#FFFFFF' : OL}" stroke-width="${o.sel ? 13 : 9}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if(o.sel) o2 += `<path d="${e}" fill="none" stroke="${OL}" stroke-width="4" stroke-linecap="round"/>`;
+    /* 그림은 물건 가운데에 가까운 칸에 */
+    let mx = 0, my = 0; cells.forEach(([r, c]) => { mx += c; my += r; }); mx /= cells.length; my /= cells.length;
+    const ic = cells.slice().sort((a, b) => Math.hypot(a[0] - my, a[1] - mx) - Math.hypot(b[0] - my, b[1] - mx))[0];
+    const k = ICON[it.nm], ix = ic[1] * 100, iy = ic[0] * 100;
+    if(k) o2 += `<image href="${imgSrc(k)}" x="${ix + 6}" y="${iy + 8}" width="88" height="88" preserveAspectRatio="xMidYMid meet"/>`;
+    o2 += badge(it, o.tray ? ix + 80 : ix + 78, o.tray ? iy + 20 : iy + 22, o.tray ? 20 : 18);
+    return `<title>${it.nm}</title>` + o2;
   }
   function boardSvg(m){
-    const P = m.P, W = P.C * 100, H = P.R * 100, w = WOOD[m.cfg.place] || WOOD.drawer, fs = Math.max(26, Math.min(36, 1300 / (m.cs || 48)));
-    let o = `<rect width="${W}" height="${H}" fill="${w[1]}"/>`;
+    const P = m.P, W = P.C * 100, H = P.R * 100, w = WOOD[m.cfg.place] || WOOD.drawer;
+    let o = `<defs><linearGradient id="tdW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(w[1], .2, 'k')}"/><stop offset="1" stop-color="${w[1]}"/></linearGradient>
+      <linearGradient id="tdE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(w[0], .12, 'k')}"/><stop offset=".25" stop-color="${w[0]}"/><stop offset="1" stop-color="${mix(w[0], .12)}"/></linearGradient>
+      <linearGradient id="tdI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ED6F2"/><stop offset=".25" stop-color="#C9EBFB"/><stop offset="1" stop-color="#E4F6FF"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#tdW)"/>`;
     for(let i = 0; i < P.N; i++){
       const r = Math.floor(i / P.C), c = i % P.C, x = c * 100, y = r * 100, cd = P.cold.has(i);
       if(P.blocked.includes(i)){
-        o += `<rect x="${x}" y="${y}" width="100" height="100" fill="#8D8D99"/><path d="M${x + 14} ${y + 14}L${x + 86} ${y + 86}M${x + 86} ${y + 14}L${x + 14} ${y + 86}" stroke="#5E5E6B" stroke-width="8" stroke-linecap="round"/><rect x="${x + 4}" y="${y + 4}" width="92" height="92" fill="none" stroke="${OL}" stroke-width="6"/>`;
+        o += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="12" fill="#6F6A7A" stroke="#4A4555" stroke-width="3"/><image href="${imgSrc('crate')}" x="${x + 8}" y="${y + 8}" width="84" height="84" style="filter:grayscale(1) brightness(.85)" opacity=".92"/>`;
       } else {
-        o += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="12" fill="${cd ? '#BFE6FA' : w[0]}" stroke="${cd ? '#6FB6DA' : '#8A6236'}" stroke-width="3"/>`;
-        if(cd) o += snow(x + 50, y + 50, 22, '#8CCBE8');
+        o += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="14" fill="url(#${cd ? 'tdI' : 'tdE'})" stroke="${cd ? '#6FB6DA' : mix(w[1], .35, 'k')}" stroke-width="3"/><path d="M${x + 14} ${y + 15}q4-8 14-8h20" fill="none" stroke="#fff" stroke-opacity="${cd ? .85 : .55}" stroke-width="5" stroke-linecap="round"/>`;
+        if(cd) o += snow(x + 50, y + 54, 20, '#8CCBE8', 5);
       }
     }
-    if(m.cfg.heavy) o += `<path d="M0 ${(P.R - 2) * 100}H${W}" stroke="${OL}" stroke-width="5" stroke-dasharray="14 10" opacity=".7"/>`;
+    if(m.cfg.heavy) o += `<path d="M0 ${(P.R - 2) * 100}H${W}" stroke="${OL}" stroke-width="6" stroke-dasharray="16 11" opacity=".75" stroke-linecap="round"/>`;
     m.P.items.forEach((it, id) => {
       const idx = m.pos[id]; if(!idx) return;
       const cells = idx.map(i => [Math.floor(i / P.C), i % P.C]);
-      o += `<g class="td-it" data-id="${id}">${pieceSvg(it, cells, true, fs, false)}</g>`;
+      o += `<g class="td-it${m.just === id ? ' td-new' : ''}" data-id="${id}">${pieceSvg(it, cells)}</g>`;
     });
     return o;
   }
   function traySvg(it, cs, sel){
     const sh = shapeOf(it), w = Math.max(...sh.map(x => x[1])) + 1, h = Math.max(...sh.map(x => x[0])) + 1;
-    return `<svg viewBox="-8 -8 ${w * 100 + 16} ${h * 100 + 16}" width="${w * cs + 6}" height="${h * cs + 6}" aria-hidden="true">${pieceSvg(it, sh, false, 0, sel)}</svg>`;
+    return `<svg viewBox="-10 -10 ${w * 100 + 20} ${h * 100 + 28}" width="${w * cs + 4}" height="${h * cs + 6}" aria-hidden="true">${pieceSvg(it, sh, { sel, tray:true })}</svg>`;
   }
 
   /* ----- 화면 ----- */
@@ -250,7 +270,7 @@ NG.tidy = (() => {
     const g = $('#tdDyn'); if(g) g.innerHTML = boardSvg(m);
     const tr = $('#tdTray');
     if(tr){
-      const cs = Math.max(18, Math.min(28, Math.floor(m.cs * .42)));
+      const cs = Math.max(22, Math.min(34, Math.floor(m.cs * .52)));
       const rest = m.P.items.filter(it => !m.pos[it.id]);
       tr.innerHTML = rest.length ? rest.map(it => `<button class="td-tb${m.sel === it.id ? ' on' : ''}" data-id="${it.id}" aria-label="${it.nm}${it.cold ? ' 차가운 물건' : ''}${it.fragile ? ' 깨지는 물건' : ''}${it.heavy ? ' 무거운 물건' : ''}">${traySvg(it, cs, m.sel === it.id)}</button>`).join('') : '<span class="td-empty">다 정리했어요!</span>';
     }
@@ -296,7 +316,7 @@ NG.tidy = (() => {
     T(() => { if(m.phase === 'play') msg(playMsg()); }, 1500);
   }
   function placeNow(it, idx){
-    const m = S(); putAt(m, it, idx); m.sel = -1; m.moves++;
+    const m = S(); putAt(m, it, idx); m.sel = -1; m.moves++; m.just = it.id; T(() => { if(m.just === it.id) m.just = -1; }, 500);
     sfx('tdPut', { n:placedCount(m) }); paint();
     try{ const b = $('#tdBoard'), r = b.getBoundingClientRect(), P = m.P, c = idx[0], x = r.left + (c % P.C + .5) * r.width / P.C, y = r.top + (Math.floor(c / P.C) + .5) * r.height / P.R;
       if(!FXR.reduce) fxEmit(x, y, { quantity:6, speed:{ min:40, max:120 }, lifespan:{ min:250, max:500 }, kind:'star', tint:[PAL[it.col], '#FFFFFF'], scale:{ start:1, end:0 }, alpha:{ start:1, end:0 } }); }catch(_){}
@@ -394,8 +414,8 @@ NG.tidy = (() => {
       const u = 'tdA' + Math.floor(performance.now() * 1000 % 1e6);
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9C9"/><stop offset="1" stop-color="#F6C48A"/></linearGradient></defs>
         <rect width="160" height="100" fill="url(#${u})"/>${demoBoard(u, 30, 12, 19, 0, DEMO.flat())}
-        <path d="M30 12h95v76H30z" fill="none"/>
-        <circle cx="140" cy="88" r="5" fill="#fff" opacity=".5"/></svg>`;
+        <image href="${imgSrc('milk')}" x="32" y="14" width="34" height="34"/><image href="${imgSrc('books')}" x="68" y="12" width="34" height="34"/>
+        <image href="${imgSrc('socks')}" x="68" y="46" width="34" height="34"/><image href="${imgSrc('jam')}" x="106" y="50" width="30" height="30"/><image href="${imgSrc('egg')}" x="32" y="50" width="34" height="34"/></svg>`;
     },
     help:[
       ['물건을 골라 칸에 놓아요', '아래 물건을 누르고, 칸을 누르면 그 자리에 놓여요. 놓인 물건을 누르면 다시 집을 수 있어요.'],
@@ -423,7 +443,7 @@ NG.tidy = (() => {
       if(!G.adv){ if(cfg.holes) tips.push(RULE_TIP.hole); if(cfg.cold) tips.push(RULE_TIP.cold); }
       G.m = { P, cfg, at:new Array(P.N).fill(-1), pos:new Array(n).fill(null), sel:-1, moves:0, fails:0, hints:0, turns:0, turnMax:cfg.turnCap ? n + 3 : 0,
         hintLeft:cfg.hints == null ? 2 : cfg.hints, phase:'play', boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, lastSec:-1, sec:0, cs:48, timers:new Set() };
-      G.limit = cfg.limit;
+      G.limit = cfg.limit; preload();
       const m = G.m;
       G.cleanup = () => { m.timers.forEach(clearTimeout); m.timers.clear(); if(m.onResize) removeEventListener('resize', m.onResize); if(G && G.raf) cancelAnimationFrame(G.raf); };
       /* 테스트·도구용: 정답대로 하나씩 놓아 끝까지 */
@@ -495,10 +515,13 @@ body[data-mode="tidy"]{background:
 .ng-tidy .td-msg.td-win b{font-size:24px; color:#FFE27A}
 @keyframes tidy-in{from{transform:scale(.6); opacity:0}}
 .ng-tidy .td-wrap{margin:2px -6px 0; display:flex; justify-content:center}
-.ng-tidy .td-frame{padding:8px; border-radius:18px; background:#8A5A2B; border:3px solid #3A2412; box-shadow:inset 0 2px 0 rgba(255,255,255,.22), 0 5px 0 #3A2412, 0 14px 22px rgba(90,50,10,.28)}
+.ng-tidy .td-frame{padding:9px; border-radius:20px; background:linear-gradient(180deg,#B9803F,#8A5A2B 55%,#74481F); border:3px solid #3A2412; box-shadow:inset 0 2px 0 rgba(255,255,255,.22), 0 5px 0 #3A2412, 0 14px 22px rgba(90,50,10,.28)}
 .ng-tidy .td-board{position:relative; touch-action:manipulation; border-radius:10px; overflow:hidden; box-shadow:inset 0 0 0 2.5px #3A2412; cursor:pointer}
 .ng-tidy .td-board svg{display:block; width:100%; height:100%}
 .ng-tidy .td-board.cleared{animation:tidy-cheer .6s cubic-bezier(.2,1.6,.4,1)}
+.ng-tidy .td-it.td-new{transform-box:fill-box; transform-origin:center; animation:tidy-drop .38s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tidy-drop{from{transform:translateY(-14px) scale(1.08); opacity:.6}}
+.ng-tidy .td-board image{pointer-events:none}
 @keyframes tidy-cheer{40%{scale:1.03}}
 .ng-tidy .td-tray{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; width:100%; min-height:72px; margin:14px 0 0; padding:10px; border-radius:16px; background:rgba(255,255,255,.55); border:2.5px dashed #B58654}
 .ng-tidy .td-tb{appearance:none; border:2.5px solid transparent; background:rgba(255,255,255,.7); border-radius:12px; padding:5px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; cursor:pointer}
@@ -513,7 +536,7 @@ body[data-mode="tidy"]{background:
 .ng-tidy .td-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-tidy .td-ctl .tool .cnt{font-style:normal} .ng-tidy .td-ctl .tool .cnt:empty{display:none}
 @media (max-width:370px){ .ng-tidy .td-ctl .tool{font-size:14px; gap:3px} .ng-tidy .td-msg b{font-size:17px} }
-@media (prefers-reduced-motion: reduce){ .ng-tidy .td-board.cleared, .ng-tidy .td-msg.td-pop, .ng-tidy .td-msg.td-win{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-tidy .td-it.td-new, .ng-tidy .td-board.cleared, .ng-tidy .td-msg.td-pop, .ng-tidy .td-msg.td-win{animation:none} }
 `,
     sounds:{
       tdPick(){ aTone({ f:560, f2:700, type:'triangle', d:.06, v:.05 }); },
