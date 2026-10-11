@@ -369,7 +369,7 @@ NG.march = (() => {
         if(run.hfx.length < 40) run.hfx.push({ k:'mz', x:sx, z:sz + 1.5, t:0, life:.12 });   /* 시위 섬광(보이기만) */
         if(run.isMe) snd(run.dmgMul >= 1.3 ? 'mcShotX' : 'mcShot');
         /* v1.7 화살비(참고 영상): 병력이 많으면 같은 표적으로 날아가는 '보이기만 하는' 화살을 더 그림(피해 없음, S.vr) */
-        const gn = Math.min(5, Math.floor(run.N / 45));
+        const gn = Math.min(S.lowQ ? 2 : 5, Math.floor(run.N / 45));
         for(let gi = 0; gi < gn && run.arrows.length < 70; gi++){ const gx = run.x + (S.vr() - .5) * R * 1.8, gz = run.z + (S.vr() - .4) * R * .8; run.arrows.push({ ghost:1, sx:gx, sz:gz, tx:txx + (S.vr() - .5) * 6, tz:tz + (S.vr() - .5) * 3, tg, side, t:0, dur:Math.max(.12, Math.hypot(txx - gx, tz - gz) / 150) * (.9 + S.vr() * .25), dmg:0 }); }
       }
     }
@@ -556,10 +556,33 @@ NG.march = (() => {
 
   /* ---------- 그리기 ---------- */
   const SUN = []; for(let i = 0; i < 130; i++){ const a = i * 2.39996, r = Math.sqrt(i); SUN.push([Math.cos(a) * r, Math.sin(a) * r * .8]); }
+  const SUN_ORD = SUN.map((_, i) => i).sort((a, b) => SUN[b][1] - SUN[a][1]);   /* 먼 줄부터 그리는 순서(매 프레임 정렬 안 함) */
+  const textW = (t, sz) => { let w = 0; for(const ch of String(t)) w += ch.charCodeAt(0) > 0x3000 ? sz * .95 : sz * .6; return w; };   /* 글자 폭 어림(measureText 대신) */
   const FONT = '"Black Han Sans","Jua",sans-serif';
   function roundRect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function hpBar(c, X, Y, w, frac, col){ c.fillStyle = 'rgba(22,35,61,.75)'; roundRect(c, X - w / 2, Y, w, 6, 3); c.fill(); c.fillStyle = col; roundRect(c, X - w / 2 + 1, Y + 1, Math.max(0, (w - 2) * frac), 4, 2); c.fill(); }
-  function strokeText(c, t, x, y, fill, stroke, lw){ c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = stroke; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); }
+  /* v1.8 성능: 테두리 글자는 매 프레임 새로 그리면 무거움(프로파일 1위) → 글자·크기(2px 단위)·색별로 한 번만 작은 그림으로 만들어 두고 붙임 */
+  const TXC = new Map();
+  function strokeTextRaw(c, t, x, y, fill, stroke, lw){ c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = stroke; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); }
+  function strokeText(c, t, x, y, fill, stroke, lw){
+    t = String(t); const m = /^(?:\S+ )*?(\d+(?:\.\d+)?)px (.+)$/.exec(c.font);
+    if(!m || !t) return strokeTextRaw(c, t, x, y, fill, stroke, lw);
+    const fs = +m[1], q = Math.max(8, Math.round(fs / 2) * 2), k = fs / q, lq = lw / k, dpr = Math.min(2, (S && S.DPR) || 1);
+    const key = t + '|' + q + '|' + fill + '|' + stroke + '|' + Math.round(lq * 2) + '|' + dpr + '|' + m[2];
+    let e = TXC.get(key);
+    if(!e){
+      if(TXC.size > 400) TXC.clear();
+      const cv = document.createElement('canvas'), x2 = cv.getContext('2d'); x2.font = q + 'px ' + m[2];
+      const pad = Math.ceil(lq / 2 + 2), w = Math.ceil(x2.measureText(t).width + pad * 2), h = Math.ceil(q * 1.3 + pad * 2);
+      cv.width = Math.max(1, Math.ceil(w * dpr)); cv.height = Math.max(1, Math.ceil(h * dpr));
+      x2.scale(dpr, dpr); x2.font = q + 'px ' + m[2]; x2.textAlign = 'center'; x2.textBaseline = 'middle';
+      strokeTextRaw(x2, t, w / 2, h / 2, fill, stroke, lq);
+      e = { cv, w, h }; TXC.set(key, e);
+    }
+    const W = e.w * k, H = e.h * k, al = c.textAlign, cy = c.textBaseline === 'middle' ? y : y - fs * .36;
+    const cx = al === 'left' || al === 'start' ? x + W / 2 - (lq / 2 + 2) * k : al === 'right' || al === 'end' ? x - W / 2 + (lq / 2 + 2) * k : x;
+    c.drawImage(e.cv, cx - W / 2, cy - H / 2, W, H);
+  }
 
   /* 고정 배경(바다·수평선 요새·바닥·성벽·안개): 크기가 바뀌거나 그림이 다 오면 한 번만 다시 그림 */
   function drawBg(c, w, h, mini){
@@ -659,7 +682,7 @@ NG.march = (() => {
         if(mini && !f.big) continue;
         const sz = (f.huge ? 44 : f.big ? 30 : 20) * (mini ? .45 : 1);
         c.font = sz + 'px ' + FONT; c.textAlign = 'center'; c.globalAlpha = 1 - k * k;
-        const tw2 = c.measureText(f.text).width / 2 + 6, tx2 = clamp(p.X, tw2, w - tw2);   /* 화면 밖으로 잘리지 않게 */
+        const tw2 = textW(f.text, sz) / 2 + 6, tx2 = clamp(p.X, tw2, w - tw2);   /* 화면 밖으로 잘리지 않게 */
         strokeText(c, f.text, tx2, p.Y - 24 * p.s - k * 40 * (mini ? .4 : 1), f.col, '#16233d', sz * .18); c.globalAlpha = 1;
       } else if(f.k === 'ring'){
         c.strokeStyle = f.col; c.globalAlpha = 1 - k; c.lineWidth = 3;
@@ -811,15 +834,13 @@ NG.march = (() => {
     c.fillStyle = red ? '#a92723' : '#1a4ea8'; c.beginPath(); c.arc(X, Y - sz * 2.4 - bob, sz * .7, 0, 7); c.fill();
   }
   function drawArmy(c, P, unit, x, z, N, red, clock, mini){
-    const n = Math.min(Math.ceil(N), mini ? 45 : 120); if(n <= 0) return;
-    const sp = red ? 2.6 * .85 : 2.55 * .85, pts = [];
-    for(let i = 0; i < n; i++){ const s = SUN[i]; pts.push([x + s[0] * sp, z + s[1] * sp, i]); }
-    pts.sort((a, b) => b[1] - a[1]);
-    for(const q of pts){ const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.35 * p.s * unit, red, mini ? 0 : red ? Math.abs(Math.sin(clock * 10 + q[2])) * 2.2 * p.s : Math.abs(Math.sin(clock * 3 + q[2] * .7)) * .5 * p.s); }
+    const lq = S && S.lowQ, n = Math.min(Math.ceil(N), mini ? (lq ? 28 : 45) : (lq ? 75 : 120)); if(n <= 0) return;
+    const sp = red ? 2.6 * .85 : 2.55 * .85;
+    for(const i of SUN_ORD){ if(i >= n) continue; const q = [x + SUN[i][0] * sp, z + SUN[i][1] * sp, i]; const p = P(q[0], q[1]); if(!p) continue; soldier(c, p.X, p.Y, 2.35 * p.s * unit, red, mini ? 0 : red ? Math.abs(Math.sin(clock * 10 + q[2])) * 2.2 * p.s : Math.abs(Math.sin(clock * 3 + q[2] * .7)) * .5 * p.s); }
     const top = P(x, z + (red ? crowdR(N) : armyR(N)) * .75); if(!top) return;
     const label = String(Math.ceil(N)), fs = mini ? 11 : Math.max(14, 22 * top.s);
     c.font = fs + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const tw = c.measureText(label).width + fs * .9, ty = top.Y - 8.6 * top.s * unit - fs * .4;
+    const tw = textW(label, fs) + fs * .9, ty = top.Y - 8.6 * top.s * unit - fs * .4;
     c.fillStyle = red ? '#a92723' : '#1a4ea8'; roundRect(c, top.X - tw / 2, ty - fs * .65, tw, fs * 1.3, fs * .65); c.fill();
     c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke();
     c.fillStyle = '#fff'; c.fillText(label, top.X, ty + 1); c.textBaseline = 'alphabetic';
@@ -873,7 +894,7 @@ NG.march = (() => {
           for(let i = 0; i < n; i++){ const ox = (i - (n - 1) / 2) * sw * .62, bob = Math.sin(clock * 5 + i * 1.7 + e.z) * 1.2; c.drawImage(IMG.soldier, p.X + ox - sw / 2, p.Y - bh - sh * .78 + bob - (i % 2) * 2, sw, sh); }
           if(!e.field || e.z - run.z < 40){ const f2 = Math.max(11, bw * .22); c.font = f2 + 'px ' + FONT; c.textAlign = 'center'; strokeText(c, '+' + e.rw.v, p.X, p.Y - bh - sh * .85, '#ffd84a', '#16233d', f2 * .2); }
         }
-        else if(e.rw.k === 'men'){ const f2 = Math.max(13, bw * .3); c.font = f2 + 'px ' + FONT; strokeText(c, '+' + e.rw.v, p.X, ty, '#ffd84a', '#16233d', f2 * .2); if(ok(IMG.soldier)){ const sh = f2 * 1.3, sw = sh * IMG.soldier.naturalWidth / IMG.soldier.naturalHeight; c.drawImage(IMG.soldier, p.X + c.measureText('+' + e.rw.v).width / 2 + 2, ty - sh * .85, sw, sh); } }
+        else if(e.rw.k === 'men'){ const f2 = Math.max(13, bw * .3); c.font = f2 + 'px ' + FONT; strokeText(c, '+' + e.rw.v, p.X, ty, '#ffd84a', '#16233d', f2 * .2); if(ok(IMG.soldier)){ const sh = f2 * 1.3, sw = sh * IMG.soldier.naturalWidth / IMG.soldier.naturalHeight; c.drawImage(IMG.soldier, p.X + textW('+' + e.rw.v, f2) / 2 + 2, ty - sh * .85, sw, sh); } }
         else if(ok(IMG.xbow)){ const hh = w2 * IMG.xbow.naturalHeight / IMG.xbow.naturalWidth, bob = Math.sin(clock * 4) * 2; c.drawImage(IMG.xbow, p.X - w2 / 2, ty - hh + bob, w2, hh); const f3 = Math.max(12, bw * .2); c.font = f3 + 'px ' + FONT; strokeText(c, e.rw.k === 'bow' ? '공격 ×' + e.rw.v : '연사 ×' + e.rw.v, p.X, ty - hh - 2, '#ffd84a', '#16233d', f3 * .2); }
       }
     } else if(e.t === 'saw'){
@@ -997,7 +1018,7 @@ NG.march = (() => {
     S.end = E;
     snd(win ? 'mcWin' : 'mcLose');
     fx(() => { const el = $s('.mc-end'); if(el){ el.querySelector('b').textContent = win === null ? '무승부' : win ? (S.battle ? '승리!' : '클리어!') : '전멸!'; el.querySelector('small').textContent = why || ''; el.className = 'mc-end ' + (win ? 'win' : 'lose'); const sv = el.querySelector('.mc-sv'); if(sv){ sv.hidden = !win; sv.querySelector('em').textContent = '× ' + Math.ceil(S.me.N).toLocaleString('ko-KR'); } el.hidden = false; } });
-    const g = G; setTimeout(() => { if(G === g && !g.over) finish(!!win); }, win ? 1300 : 1900);   /* v1.3: 끝 연출을 보여 준 뒤 결과 창(갑자기 꺼진 듯한 느낌 방지) */
+    const g = G; setTimeout(() => { if(G === g && !g.over) finish(!!win); }, win ? 1100 : 1500);   /* v1.3: 끝 연출을 보여 준 뒤 결과 창(갑자기 꺼진 듯한 느낌 방지) */
   }
   function checkEnd(){
     const me = S.me;
@@ -1083,7 +1104,7 @@ NG.march = (() => {
     const nc = S.root.querySelector('.mc-new');
     const card = solo ? (NEWS[S.stage] ? ['NEW · 스테이지 ' + S.stage, NEWS[S.stage][0], NEWS[S.stage][1]] : isBossStage(S.stage) ? ['스테이지 ' + S.stage, '보스 ' + KIND[bossKindFor(S.stage)].name, '지금까지 나온 기믹이 모두 섞여 나와요. 병력을 지켜 보스까지!'] : null)
       : ['대전 · 2분', 'VS ' + S.rvName, '먼저 전멸하면 패배! 2:00까지 둘 다 살면 남은 병력이 많은 쪽이 이겨요.'];
-    if(card){ nc.querySelector('.mc-tag').textContent = card[0]; nc.querySelector('b').textContent = card[1]; nc.querySelector('p').textContent = card[2]; nc.hidden = false; S.hold = solo ? 2.6 : 2; }
+    if(card){ nc.querySelector('.mc-tag').textContent = card[0]; nc.querySelector('b').textContent = card[1]; nc.querySelector('p').textContent = card[2]; nc.hidden = false; S.hold = solo ? 1.8 : 1.6; }
     const skip = () => { if(S.hold > 0){ S.hold = 0; nc.hidden = true; } };
     nc.addEventListener('pointerdown', skip);
     if(!solo){ S.root.querySelector('.mc-rvn').textContent = S.rvName; S.root.querySelector('.mc-mtag').textContent = S.rvName; S.mcv = S.root.querySelector('.mc-mini canvas'); S.mctx = S.mcv.getContext('2d'); }
@@ -1117,7 +1138,7 @@ NG.march = (() => {
       let dt = dt0; if(S.hitstop > 0){ S.hitstop -= dt0; dt = dt0 * .15; }   /* 큰 타격 순간 잠깐 느려짐 */
       if(S.flash) S.flash.t += dt0;
       /* 무거우면 스스로 줄임: 프레임이 계속 느리면 그림 해상도(DPR)를 낮춤 */
-      if(raw > 0 && raw < .5){ S.fAvg = S.fAvg ? S.fAvg * .95 + raw * .05 : raw; if(S.fAvg > .03 && S.DPR > 1 && S.clock - (S.dprAt || 0) > 1.5){ S.dprCap = Math.max(1, S.DPR - .5); S.dprAt = S.clock; S.fAvg = .02; size(); } }
+      if(raw > 0 && raw < .5){ S.fAvg = S.fAvg ? S.fAvg * .95 + raw * .05 : raw; if(S.fAvg > .03 && S.clock - (S.dprAt || 0) > 1.5){ if(S.DPR > 1){ S.dprCap = Math.max(1, S.DPR - .5); size(); } else S.lowQ = 1; S.dprAt = S.clock; S.fAvg = .02; } }   /* 그래도 느리면 병사 그림 수·화살비를 줄임(lowQ) */
       try{
         if(S.hold <= 0 && !nc.hidden) nc.hidden = true;
         if(S.hold > 0){ if(!g.paused){ S.hold -= dt; hud(); } }
