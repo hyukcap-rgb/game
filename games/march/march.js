@@ -6,7 +6,7 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:27, BOSS_RUSH:14, CROWD_RUSH:22, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
+    SPEED:30, BOSS_RUSH:14, CROWD_RUSH:22, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
