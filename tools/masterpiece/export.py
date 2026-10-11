@@ -145,7 +145,7 @@ def main():
                     open(cp, 'wb').write(data); json.dump(info, open(ci, 'w', encoding='utf8'), ensure_ascii=False)
                 img = Image.open(cp)
             img = img.convert('RGB')
-            if a.game: s = a.long / max(img.size); img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
+            if a.game or a.sheet: s = a.long / max(img.size); img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
             else: s = a.width / img.width; img = img.resize((a.width, round(img.height * s)), Image.LANCZOS)
             base = np.asarray(img, dtype=np.uint8)
             if a.sheet: sheet(base, no, a, edits); continue
