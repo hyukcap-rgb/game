@@ -6,7 +6,7 @@
 NG.march = (() => {
   const ID = 'march';
   const RULE = {
-    SPEED:24, BOSS_WALK:5, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
+    SPEED:27, BOSS_WALK:7, BOSS_HP:1.3, BATTLE_TIME:120, BATTLE_START:1, ARROW_RANGE:58, BOSS_EVERY:3, AIM:12,
     STAR_SOLO:[.4, .7], STAR_BOSS:[.3, .55]   /* 남은 병력 ÷ 최대 병력: ★★ · ★★★ */
   };
   const NEWS = {
@@ -490,13 +490,12 @@ NG.march = (() => {
   function hpBar(c, X, Y, w, frac, col){ c.fillStyle = 'rgba(22,35,61,.75)'; roundRect(c, X - w / 2, Y, w, 6, 3); c.fill(); c.fillStyle = col; roundRect(c, X - w / 2 + 1, Y + 1, Math.max(0, (w - 2) * frac), 4, 2); c.fill(); }
   function strokeText(c, t, x, y, fill, stroke, lw){ c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = stroke; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); }
 
-  function render(c, w, h, run, mini, clock){
-    const F = 55, unit = Math.min(w / 108, 6.2), horizon = h * (mini ? .06 : .17), armyY = h * (mini ? .8 : .76);
-    let shx = 0, shy = 0;
-    if(run.shake > 0 && !mini){ shx = (S.vr() - .5) * 10 * run.shake; shy = (S.vr() - .5) * 10 * run.shake; }
-    const P = (x, z) => { const d = z - run.z; if(d < -F + 6) return null; const s = F / (F + d); return { X:w / 2 + x * s * unit + shx, Y:horizon + (armyY - horizon) * s + shy, s }; };
+  /* 고정 배경(바다·수평선 요새·바닥·성벽·안개): 크기가 바뀌거나 그림이 다 오면 한 번만 다시 그림 */
+  function drawBg(c, w, h, mini){
     /* v1.3 배경: 바다 무늬(고정) + 수평선 너머 적 요새(Figma) */
-    let gr;
+    let gr; const run = { z:0 }, shx = 0, shy = 0;
+    const F = 55, unit = Math.min(w / 108, 6.2), horizon = h * (mini ? .06 : .17), armyY = h * (mini ? .8 : .76);
+    const P = (x, z) => { const d = z - run.z; if(d < -F + 6) return null; const s = F / (F + d); return { X:w / 2 + x * s * unit, Y:horizon + (armyY - horizon) * s, s }; };
     const wp = waterPat(c);
     if(wp){ c.fillStyle = wp; c.fillRect(0, 0, w, h); }
     else { gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#bfe6ff'); gr.addColorStop(.12, '#5aa9ec'); gr.addColorStop(1, '#2f7fd6'); c.fillStyle = gr; c.fillRect(0, 0, w, h); }
@@ -527,6 +526,27 @@ NG.march = (() => {
       if(a && b && a2 && b2){ c.strokeStyle = 'rgba(90,60,20,.28)'; c.lineWidth = 4; c.beginPath(); c.moveTo(a.X + 2, a.Y); c.lineTo(b.X + 1, b.Y); c.moveTo(a2.X - 2, a2.Y); c.lineTo(b2.X - 1, b2.Y); c.stroke(); }
     }
     gr = c.createLinearGradient(0, horizon, 0, horizon + h * .2); gr.addColorStop(0, 'rgba(191,230,255,.95)'); gr.addColorStop(1, 'rgba(191,230,255,0)'); c.fillStyle = gr; c.fillRect(0, horizon - 2, w, h * .2);
+  }
+  const BGC = {};
+  function bgLayer(w, h, mini){
+    try{
+      const dpr = (S && S.DPR) || 1, key = w + 'x' + h + ':' + dpr + ':' + ok(IMG.stone) + ok(IMG.water) + ok(IMG.horizon), slot = mini ? 'm' : 'M';
+      let b = BGC[slot]; if(b && b.key === key) return b.cv;
+      const cv = (b && b.cv) || document.createElement('canvas'); cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); drawBg(x, w, h, mini);
+      BGC[slot] = { key, cv }; return cv;
+    }catch(_){ return null; }
+  }
+  function render(c, w, h, run, mini, clock){
+    const F = 55, unit = Math.min(w / 108, 6.2), horizon = h * (mini ? .06 : .17), armyY = h * (mini ? .8 : .76);
+    let shx = 0, shy = 0;
+    if(run.shake > 0 && !mini){ shx = (S.vr() - .5) * 10 * run.shake; shy = (S.vr() - .5) * 10 * run.shake; }
+    const P = (x, z) => { const d = z - run.z; if(d < -F + 6) return null; const s = F / (F + d); return { X:w / 2 + x * s * unit + shx, Y:horizon + (armyY - horizon) * s + shy, s }; };
+    const quad = (x1, x2, z1, z2, col) => { const a = P(x1, z1), b = P(x2, z1), cc = P(x2, z2), d = P(x1, z2); if(!a || !b || !cc || !d) return; c.fillStyle = col; c.beginPath(); c.moveTo(a.X, a.Y); c.lineTo(b.X, b.Y); c.lineTo(cc.X, cc.Y); c.lineTo(d.X, d.Y); c.closePath(); c.fill(); };
+    /* v1.3.1 성능: 바다·수평선·바닥·성벽은 화면에 고정 → 한 번만 그려 둔 그림(bgLayer)을 붙인다(흔들릴 땐 통째로 밀기) */
+    const bg = bgLayer(w, h, mini);
+    if(shx || shy){ c.fillStyle = '#9fd4f7'; c.fillRect(0, 0, w, h); }
+    if(bg) c.drawImage(bg, shx, shy, w, h); else drawBg(c, w, h, mini);
     for(const e of run.ents){
       if(e.t === 'puddle'){
         const p = P(e.x, e.z); if(!p) continue;
@@ -910,7 +930,7 @@ NG.march = (() => {
       const top = S.root.getBoundingClientRect().top + (window.scrollY || 0);
       const h = Math.max(440, window.innerHeight - top - 6);
       S.root.style.height = h + 'px';
-      S.DPR = Math.min(2, window.devicePixelRatio || 1); S.W = S.root.clientWidth; S.H = h;
+      S.DPR = Math.min(S.dprCap || 2, window.devicePixelRatio || 1); S.W = S.root.clientWidth; S.H = h;
       cv.width = Math.round(S.W * S.DPR); cv.height = Math.round(S.H * S.DPR);
       if(S.mcv){ S.mcv.width = Math.round(96 * S.DPR); S.mcv.height = Math.round(150 * S.DPR); }
     };
@@ -930,16 +950,22 @@ NG.march = (() => {
     const g = G;
     const loop = now => {
       if(G !== g) return;
-      const dt0 = Math.min(.05, (now - (S.lt || now)) / 1000); S.lt = now; S.clock += dt0;
+      /* v1.3.1: 느린 폰에서도 시간이 제대로 흐르게 — 한 프레임 최대 0.1초까지 인정하고 0.034초씩 나눠 계산(예전엔 0.05초에서 잘려 슬로모션) */
+      const raw = (now - (S.lt || now)) / 1000, dt0 = Math.min(.1, raw); S.lt = now; S.clock += dt0;
       let dt = dt0; if(S.hitstop > 0){ S.hitstop -= dt0; dt = dt0 * .15; }   /* 큰 타격 순간 잠깐 느려짐 */
       if(S.flash) S.flash.t += dt0;
+      /* 무거우면 스스로 줄임: 프레임이 계속 느리면 그림 해상도(DPR)를 낮춤 */
+      if(raw > 0 && raw < .5){ S.fAvg = S.fAvg ? S.fAvg * .95 + raw * .05 : raw; if(S.fAvg > .03 && S.DPR > 1 && S.clock - (S.dprAt || 0) > 1.5){ S.dprCap = Math.max(1, S.DPR - .5); S.dprAt = S.clock; S.fAvg = .02; size(); } }
       try{
         if(S.hold <= 0 && !nc.hidden) nc.hidden = true;
         if(S.hold > 0){ if(!g.paused){ S.hold -= dt; hud(); } }
         else if(!g.over && !g.paused && !S.end){
-          step(S.me, dt);
-          if(S.rv){ S.mine = false; step(S.rv, dt); S.mine = true; if(!S.me.dead && !S.rv.dead) S.left -= dt; }
-          checkEnd();
+          const n = Math.max(1, Math.ceil(dt / .034)), sd = dt / n;
+          for(let i = 0; i < n && !S.end; i++){
+            step(S.me, sd);
+            if(S.rv){ S.mine = false; step(S.rv, sd); S.mine = true; if(!S.me.dead && !S.rv.dead) S.left -= sd; }
+            checkEnd();
+          }
           hud();
         }
         ctx.setTransform(S.DPR, 0, 0, S.DPR, 0, 0);
