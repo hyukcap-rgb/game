@@ -701,6 +701,15 @@ body.big .rppast{font-size:18px} body.big .rprow .rpm b{font-size:19px} body.big
 .rmcap{display:flex; gap:7px; flex-wrap:wrap}
 .rmcap button{width:80px; height:44px; border-radius:14px; font-family:var(--disp); font-size:16px; color:var(--ink); background:#FFF8EA; border:2.5px solid var(--paper-line)}
 .rmcap button.on{border-color:var(--outline2); background:#FFF0C2; box-shadow:0 3px 0 var(--outline2); transform:translateY(-2px)}
+/* 게임이 정하는 방 칸(roomOpt, 예: 고스톱 점당 금액) */
+.rmxs{display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:7px}
+.rmxo{min-height:52px; padding:6px 6px; border-radius:14px; background:#FFF8EA; border:2.5px solid var(--paper-line); color:var(--ink); text-align:center}
+.rmxo b{display:block; font-family:var(--disp); font-weight:400; font-size:16px}
+.rmxo small{display:block; font-size:13px; color:var(--ink2, #6A5884); margin-top:2px}
+.rmxo.on{border-color:var(--outline2); background:#FFF0C2; box-shadow:0 3px 0 var(--outline2); transform:translateY(-2px)}
+.rmxo:disabled{opacity:.45}
+.rmxn{font-size:13px; font-weight:700; color:#B5490F}
+.dchip.rmx{background:#FFE9A8; color:#7A3E00; border-color:#E5A93A}
 .rmcapn{margin:6px 0 0; font-size:13px; font-weight:700; color:#C77700}
 /* 방 안: 방 코드 · 자리 줄(56px) · 바닥 버튼 */
 .modal.rmm{padding-bottom:0}

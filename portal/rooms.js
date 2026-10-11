@@ -33,6 +33,12 @@ function rmPtsTxt(d, n){
   return Array.from({ length:n }, (_, i) => `${i + 1}위 +${duelPtsAt(n, i + 1, d)}`).join(' · ');
 }
 const rmChip = d => `<span class="dchip ${d}">${RM_DNAME[d] || '보통'}</span>`;
+/* 게임이 정하는 방 선택 칸(게임 정의 roomOpt, 예: 고스톱 점당 금액). 방장이 고른 값 x가 방 광고·방장 presence·판 정보(info.x)로 간다 */
+const rmRO = g => (NG[g] && NG[g].roomOpt) || null;
+/* 게임 정의 duelNoPts: 대전 포인트·난이도 보상·레벨 제한이 없는 게임(예: 고스톱) → 방 화면에서 난이도·보상·레벨 칸을 숨기고 누구나 들어옴 */
+const rmNoPts = g => !!(NG[g] && NG[g].duelNoPts);
+const rmXChip = (g, x) => { const R = rmRO(g); if(!R || x == null) return ''; try{ return `<span class="dchip rmx">${escH(R.chip(x))}</span>`; }catch(_){ return ''; } };
+const rmXWhy = (g, x) => { const R = rmRO(g); if(!R || !R.can || x == null) return ''; try{ return R.can(x) || ''; }catch(_){ return ''; } };
 function rmUid(){ let u = store.get('hp:uid', ''); if(!u){ u = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); store.set('hp:uid', u); } return u; }
 const rmHash = code => code ? 'f' + (seedFrom('fr:' + code) >>> 0).toString(36) : '';
 const rmVisible = () => store.get('hp:fronline', true) !== false;
@@ -52,7 +58,7 @@ function lbWant(){
     u:rmUid(), mn:myNick(), ml:rmLv(),
     fh:rmVisible() && frCode() ? rmHash(frCode()) : null,
     ps:rmPlaying() ? 'p:' + G.id : c ? 'r:' + c.g : 'h',
-    rm:c && c.host && !c.closed ? { i:c.id, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, n:Math.max(1, c.ord.length), c:c.cap, s:c.st === 'w' ? 'w' : 'p', t:c.t } : null,
+    rm:c && c.host && !c.closed ? { i:c.id, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, n:Math.max(1, c.ord.length), c:c.cap, s:c.st === 'w' ? 'w' : 'p', t:c.t, x:c.x ?? null } : null,
     iv:RM.inv.length ? RM.inv.map(x => ({ h:x.h, r:x.r, g:x.g, d:x.d, t:x.t })) : null
   };
 }
@@ -103,13 +109,13 @@ function rmNewCode(){ let s = ''; for(let i = 0; i < 6; i++) s += RM_CODE_A[Math
 function rmMyPres(){ return { nk:myNick(), lv:rmLv(), u:rmUid() }; }
 function rmHostPub(c, extra){
   if(!c || !c.host) return;
-  c.nr.presence(Object.assign({ h:1, hv:c.hv, g:c.g, d:c.d, b:c.b, pv:c.pv ? 1 : 0, cap:c.cap, st:c.st, rd:c.rd, kick:c.kick.slice(-30), ord:c.ord.slice(0, 5), pl:c.pl || [], av:c.av || [], ca:c.ca || null }, extra || {})).catch(() => {});
+  c.nr.presence(Object.assign({ h:1, hv:c.hv, g:c.g, d:c.d, x:c.x ?? null, b:c.b, pv:c.pv ? 1 : 0, cap:c.cap, st:c.st, rd:c.rd, kick:c.kick.slice(-30), ord:c.ord.slice(0, 5), pl:c.pl || [], av:c.av || [], ca:c.ca || null }, extra || {})).catch(() => {});
 }
 async function rmCreate(o){
   if(RM.cur){ toast('이미 대전 방에 있어요'); rmOpen(); return false; }
   if(!duelLive()){ toast('지금은 실시간 연결이 안 돼요. 빠른 대전(컴퓨터)으로 겨뤄 보세요'); return false; }
   const L = rmLv(), id = rmNewCode(), mx = rmMax(o.g), me = rmUid();
-  const c = { id, g:o.g, d:rmCanD(o.d, L) ? o.d : 'normal', b:o.band === 'near' ? [Math.max(1, L - RM_BAND), L + RM_BAND] : null, pv:!!o.pv, cap:Math.max(2, Math.min(mx, +o.cap || mx)),
+  const c = { id, g:o.g, x:rmRO(o.g) && o.x != null ? o.x : null, d:rmCanD(o.d, L) ? o.d : 'normal', b:o.band === 'near' ? [Math.max(1, L - RM_BAND), L + RM_BAND] : null, pv:!!o.pv, cap:Math.max(2, Math.min(mx, +o.cap || mx)),
     host:true, hv:1, st:'w', rd:0, kick:[], ord:[me], pl:[], av:[], t:Date.now(), lastInv:{}, rdy:true, rv:0, rest:0, joinAt:Date.now() };
   let nr; try{ nr = await ROOM.join(rmRelay(id)); }catch(_){ toast('방을 만들지 못했어요. 잠시 뒤 다시 해 주세요'); return false; }
   c.nr = nr; RM.cur = c; duelFreeReset(id);
@@ -132,18 +138,19 @@ async function rmJoin(id, o = {}){
     try{ nr = await ROOM.join(rmRelay(id)); }catch(_2){ return err('방에 들어가지 못했어요'); }
   }
   const me = rmUid();
-  nr.presence(Object.assign(rmMyPres(), { rdy:0, rv:0, iv:o.invited ? 1 : 0 })).catch(() => {});
+  nr.presence(Object.assign(rmMyPres(), { rdy:0, rv:0, bye:0, iv:o.invited ? 1 : 0 })).catch(() => {});   /* bye:0 — 막혀서 나갔다 다시 들어올 때 지난 '나감' 표시가 남지 않게 */
   const t0 = Date.now();
   const host = await new Promise(res => { const iv = setInterval(() => { let h = null; try{ h = rmBestHost(nr.peers().filter(p => !p.sameTab)); }catch(_){} if(h || Date.now() - t0 > 4000){ clearInterval(iv); res(h); } }, 150); });
   const out = msg => { try{ nr.presence({ bye:1 }).catch(() => {}); }catch(_){} setTimeout(() => { try{ nr.leave(); }catch(_){} }, 100); err(msg); };
   if(!host) return out('그런 방이 없어요. 코드를 다시 봐 주세요');
   const H = host.presence, L = rmLv(), cap = Math.max(2, Math.min(5, +H.cap || 2)), ord = Array.isArray(H.ord) ? H.ord : [];
   if((H.kick || []).includes(me)) return out('이 방에서 내보내져서 들어갈 수 없어요');
-  if(!o.invited && H.b && (L < H.b[0] || L > H.b[1])) return out(`Lv ${H.b[0]}~${H.b[1]}만 들어갈 수 있는 방이에요`);
+  if(!o.invited && H.b && !rmNoPts(H.g) && (L < H.b[0] || L > H.b[1])) return out(`Lv ${H.b[0]}~${H.b[1]}만 들어갈 수 있는 방이에요`);
   if(!GAMES[H.g] || !rmOk(H.g)) return out('지금은 들어갈 수 없는 방이에요');
   if(H.st && H.st !== 'w' && !ord.includes(me)) return out('지금 대전 중이에요. 판이 끝나면 다시 눌러 주세요');
   if(ord.length >= cap && !ord.includes(me)) return out('방이 꽉 찼어요');
-  const c = RM.cur = { id, g:H.g, d:RM_DIFF.includes(H.d) ? H.d : 'normal', b:H.b || null, pv:!!H.pv, cap, host:false, hv:+H.hv || 0, st:H.st || 'w', rd:+H.rd || 0, kick:(H.kick || []).slice(), ord:ord.slice(), pl:[], av:[],
+  { const why = rmXWhy(H.g, H.x); if(why) return out(why); }
+  const c = RM.cur = { id, g:H.g, x:H.x ?? null, d:RM_DIFF.includes(H.d) ? H.d : 'normal', b:H.b || null, pv:!!H.pv, cap, host:false, hv:+H.hv || 0, st:H.st || 'w', rd:+H.rd || 0, kick:(H.kick || []).slice(), ord:ord.slice(), pl:[], av:[],
     t:Date.now(), nr, joinAt:Date.now(), hostSeen:Date.now(), hostU:H.u, hostNk:String(H.nk || '방장'), rdy:false, rv:0, rest:0, invited:!!o.invited, lastInv:{} };
   duelFreeReset(id);
   c.un = nr.onPeers(() => rmSync(), () => rmLost());
@@ -215,7 +222,7 @@ function rmSync(){
       c.hostLost = 0; c.hostSeen = now; c.hostU = H.u; c.hostNk = String(H.nk || '방장'); c.hostPeer = h.peer;
       if((H.kick || []).includes(me)){ rmLeave('방장이 방에서 내보냈어요'); return; }
       c.kick = (H.kick || []).slice(); c.ord = Array.isArray(H.ord) ? H.ord.slice(0, 5) : c.ord; c.hv = +H.hv || 0;
-      c.cap = Math.max(2, Math.min(5, +H.cap || 2)); c.g = H.g || c.g; c.d = RM_DIFF.includes(H.d) ? H.d : c.d; c.b = H.b || null; c.pv = !!H.pv;
+      c.cap = Math.max(2, Math.min(5, +H.cap || 2)); c.g = H.g || c.g; c.x = H.x ?? null; c.d = RM_DIFF.includes(H.d) ? H.d : c.d; c.b = H.b || null; c.pv = !!H.pv;
       if(!c.ord.includes(me) && now - c.joinAt > 2500 && c.ord.length >= c.cap){ rmLeave('방이 꽉 찼어요'); return; }
       c.st = H.st || 'w'; c.ca = typeof H.ca === 'number' ? H.ca : null;
       if((H.st === 'go' || H.st === 'p') && +H.rd > c.rd){
@@ -264,6 +271,7 @@ function rmAutoCheck(c){
 function rmReady(on){
   const c = RM.cur; if(!c) return;
   if(on && !HOST.canDuel({ again:true, room:c.id })) return;
+  if(on){ const why = rmXWhy(c.g, c.x); if(why){ toast(why); return; } }
   c.rdy = !!on; c.rv = 0; c.nr.presence({ rdy:on ? 1 : 0, rv:0 }).catch(() => {});
   sfx(on ? 'flLock' : 'toggle'); rmRefreshViews();
 }
@@ -287,7 +295,7 @@ function rmBegin(rd, pl, av){
   c.nr.presence({ rdy:0, rv:0 }).catch(() => {});
   const lvs = {}; mem.forEach(m => { if(pl.includes(m.u)) lvs[m.me ? myNick() : m.nk] = m.lv; });
   const name = 'fl-d3-r-' + c.id.toLowerCase() + '-' + rd;
-  const room = { id:c.id, g:c.g, d:c.d, host:c.host, lvs, code:c.pv ? c.id : null, n:pl.length, rd };
+  const room = { id:c.id, g:c.g, d:c.d, x:c.x ?? null, host:c.host, lvs, code:c.pv ? c.id : null, n:pl.length, rd };
   const fail = why => {
     c.dh = null;
     if(c.host){ c.st = 'w'; rmHostPub(c); }
@@ -466,10 +474,10 @@ function rmList(g){
   const pt = d => mx > 2 ? `<b class="num">1위 ${duelTopTxt(d, mx)}</b><small>꼴찌 +${DUEL_LAST[d]}</small>` : `<b class="num">승 +${RM_PTS[d].w}</b><small>무 +${RM_PTS[d].d} · 패 +${RM_PTS[d].l}</small>`;
   openModal(`<div class="rmlist" id="rmList" style="--gc:${GCOL[g][1]}"><button class="mx" id="rlX" aria-label="닫기">✕</button>
     <div class="rmhead"><span class="g-art">${ART[g]()}</span><div><p class="kick">대전 방 · ${mx > 2 ? `2~${mx}명` : '1:1'}</p><h3>${GAMES[g].name}</h3></div></div>
-    <div class="rmpts">${RM_DIFF.map(d => `<div class="rmpt ${d}${rmCanD(d, L) ? '' : ' lock'}">${rmChip(d)}${d === rec ? '<em>추천</em>' : ''}${pt(d)}${rmCanD(d, L) ? '' : `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>`}</div>`).join('')}</div>
-    <div class="fchips rmf" role="group" aria-label="난이도로 거르기">${['all', ...RM_DIFF].map(f => `<button data-rf="${f}" class="${RM.listF === f ? 'on' : ''}">${f === 'all' ? '전체' : RM_DNAME[f]}</button>`).join('')}</div>
+    ${rmNoPts(g) ? `<p class="rmme">${escH((NG[g].duelNoPtsNote && NG[g].duelNoPtsNote()) || '대전 포인트가 없는 게임이에요')}</p>` : `<div class="rmpts">${RM_DIFF.map(d => `<div class="rmpt ${d}${rmCanD(d, L) ? '' : ' lock'}">${rmChip(d)}${d === rec ? '<em>추천</em>' : ''}${pt(d)}${rmCanD(d, L) ? '' : `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>`}</div>`).join('')}</div>
+    <div class="fchips rmf" role="group" aria-label="난이도로 거르기">${['all', ...RM_DIFF].map(f => `<button data-rf="${f}" class="${RM.listF === f ? 'on' : ''}">${f === 'all' ? '전체' : RM_DNAME[f]}</button>`).join('')}</div>`}
     <div class="rmrows" id="rmRows"></div>
-    <p class="rmme">내 레벨 Lv ${L} · 첫 판 ${ic('heart')}1 · 같은 방 3판 무료 · 방에서는 사람끼리만 붙어요</p>
+    <p class="rmme">${rmNoPts(g) ? '' : `내 레벨 Lv ${L} · `}첫 판 ${ic('heart')}1 · 같은 방 3판 무료 · 방에서는 사람끼리만 붙어요</p>
     <div class="mbtns"><button class="b2" id="rlQuick">빠른 대전 ${costTag()}</button><button class="b1" id="rlMake">${RM.cur ? '내 방으로' : '방 만들기'}</button></div></div>`);
   $('#rlX').onclick = () => { RM.listG = ''; closeModal(); };
   $('#rlQuick').onclick = () => { if(RM.cur){ toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'); return; } RM.listG = ''; closeModal(); gateThen(g, () => duelStart(g)); };
@@ -481,17 +489,17 @@ function rmListRender(){
   const box = $('#rmRows'), g = RM.listG; if(!box || !g) return;
   if(!duelLive()){ box.innerHTML = `<p class="rmempty">지금은 실시간 연결이 안 돼요.<br>빠른 대전을 누르면 컴퓨터와 겨뤄요.</p>`; return; }
   const L = rmLv(), fhs = new Set([...FR.friends].filter(f => f.code).map(f => rmHash(f.code)));
-  let rs = rmAds(g).filter(r => RM.listF === 'all' || r.d === RM.listF);
-  const can = r => rmOpenAd(r) && (!r.b || (L >= r.b[0] && L <= r.b[1])) && !(RM.cur && RM.cur.id === r.i);
+  let rs = rmAds(g).filter(r => rmNoPts(g) || RM.listF === 'all' || r.d === RM.listF);
+  const can = r => rmOpenAd(r) && (rmNoPts(g) || !r.b || (L >= r.b[0] && L <= r.b[1])) && !(RM.cur && RM.cur.id === r.i) && !rmXWhy(g, r.x);
   rs.sort((a, b) => (can(b) - can(a)) || (fhs.has(b.fh) - fhs.has(a.fh)) || (Math.abs(a.lv - L) - Math.abs(b.lv - L)) || (a.t - b.t));
-  const sig = JSON.stringify(rs.map(r => [r.i, r.n, r.c, r.s, r.d, r.nk, r.lv])) + L + RM.listF;
+  const sig = JSON.stringify(rs.map(r => [r.i, r.n, r.c, r.s, r.d, r.nk, r.lv, r.x, rmXWhy(g, r.x)])) + L + RM.listF;
   if(box.dataset.sig === sig) return; box.dataset.sig = sig;
   if(!rs.length){ box.innerHTML = `<p class="rmempty">${RM.listF === 'all' ? '아직 열린 방이 없어요.' : RM_DNAME[RM.listF] + ' 방이 없어요.'}<br><b>방 만들기</b>로 첫 방을 열어 보세요.</p>`; return; }
   box.innerHTML = rs.map(r => {
-    const ok = can(r), fr = fhs.has(r.fh), full = r.n >= r.c, why = r.s !== 'w' ? '대전 중' : full ? '꽉 참' : r.b && (L < r.b[0] || L > r.b[1]) ? `Lv ${r.b[0]}~${r.b[1]}만` : '';
+    const ok = can(r), fr = fhs.has(r.fh), full = r.n >= r.c, why = r.s !== 'w' ? '대전 중' : full ? '꽉 참' : !rmNoPts(g) && r.b && (L < r.b[0] || L > r.b[1]) ? `Lv ${r.b[0]}~${r.b[1]}만` : rmXWhy(g, r.x) ? '포인트 부족' : '';
     const stc = r.s !== 'w' ? '<em class="rmstc off">대전 중</em>' : full ? '<em class="rmstc off">꽉 찼어요</em>' : '<em class="rmstc">기다리는 중</em>';
     return `<div class="rmrow${ok ? '' : ' off'}${fr ? ' fr' : ''}"><span class="frav">${rivalAv({ name:r.nk })}</span>
-      <span class="rmrn"><b>${escH(r.nk)} <em class="lvt">Lv ${r.lv}</em>${fr ? '<em class="frt">친구</em>' : ''}</b><small>${rmChip(r.d)}<span class="gp">1위 +${duelPtsAt(r.c, 1, r.d)}</span> · ${r.b ? `Lv ${r.b[0]}~${r.b[1]}` : '누구나'}</small></span>
+      <span class="rmrn"><b>${escH(r.nk)} ${rmNoPts(g) ? '' : `<em class="lvt">Lv ${r.lv}</em>`}${fr ? '<em class="frt">친구</em>' : ''}</b><small>${rmXChip(g, r.x)}${rmNoPts(g) ? '' : `${rmChip(r.d)}<span class="gp">1위 +${duelPtsAt(r.c, 1, r.d)}</span> · ${r.b ? `Lv ${r.b[0]}~${r.b[1]}` : '누구나'}`}</small></span>
       <span class="rmn"><b class="num">${r.n}/${r.c}</b>${stc}</span><button class="btn small ${ok ? 'primary' : 'secondary'}" data-rj="${r.i}" ${ok ? '' : 'disabled'}>${ok ? '들어가기' : why}</button></div>`;
   }).join('');
   box.querySelectorAll('[data-rj]').forEach(b => b.onclick = () => { RM.listG = ''; rmJoin(b.dataset.rj, { invited:false }); });
@@ -501,26 +509,33 @@ function rmListRender(){
 function rmCreateSheet(g, o = {}){
   if(RM.cur){ rmOpen(); return; }
   const L = rmLv(), mx = rmMax(g); let d = rmCanD(o.d || rmRec(L), L) ? (o.d || rmRec(L)) : 'normal', band = o.band || 'near', pv = o.friend ? true : !!o.pv, cap = Math.max(2, Math.min(mx, +o.cap || mx));
+  /* 게임이 정하는 칸(roomOpt): 기본값을 못 고르면(보유 포인트 부족 등) 고를 수 있는 것 중 가장 큰 값 */
+  const RO = rmRO(g), xs = RO ? (typeof RO.opts === 'function' ? RO.opts() : RO.opts || []) : [];
+  let x = RO ? (o.x != null ? o.x : RO.def) : null;
+  if(RO && rmXWhy(g, x)){ const ok = xs.filter(v => !rmXWhy(g, v.v)); x = ok.length ? ok[ok.length - 1].v : (xs[0] ? xs[0].v : null); }
   const draw = () => {
     openModal(`<div class="rmmake" style="--gc:${GCOL[g][1]}"><p class="kick">${o.friend ? escH(o.friend.nick) + '님과 같이 하기' : o.qr ? '방 QR로 초대' : '방 만들기'}</p><h3>${GAMES[g].name}</h3>
-      <p class="rmlb">난이도 · 1위 보상</p>
-      <div class="rmdiffs">${RM_DIFF.map(x => { const lk = !rmCanD(x, L); return `<button class="rmd ${x}${x === d ? ' on' : ''}${lk ? ' lock' : ''}" data-d="${x}" ${lk ? 'disabled' : ''}>${rmChip(x)}${x === rmRec(L) ? '<em>추천</em>' : ''}<b class="num">1위 +${duelPtsAt(cap, 1, x)}</b><small>${cap > 2 ? `꼴찌 +${DUEL_LAST[x]}` : `무 +${RM_PTS[x].d}<br>패 +${RM_PTS[x].l}`}</small>${lk ? `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>` : ''}</button>`; }).join('')}</div>
+      ${RO ? `<p class="rmlb">${escH(RO.label || '방 설정')}${RO.note ? ` <small class="rmxn">${escH(RO.note())}</small>` : ''}</p>
+      <div class="rmxs" role="group" aria-label="${escH(RO.label || '방 설정')}">${xs.map(v => { const why = rmXWhy(g, v.v); return `<button class="rmxo${v.v === x ? ' on' : ''}" data-x="${v.v}" ${why ? 'disabled' : ''} aria-pressed="${v.v === x}"><b>${escH(v.name)}</b><small>${escH(why ? '포인트 부족' : v.sub || '')}</small></button>`; }).join('')}</div>` : ''}
+      ${rmNoPts(g) ? '' : `<p class="rmlb">난이도 · 1위 보상</p>
+      <div class="rmdiffs">${RM_DIFF.map(x => { const lk = !rmCanD(x, L); return `<button class="rmd ${x}${x === d ? ' on' : ''}${lk ? ' lock' : ''}" data-d="${x}" ${lk ? 'disabled' : ''}>${rmChip(x)}${x === rmRec(L) ? '<em>추천</em>' : ''}<b class="num">1위 +${duelPtsAt(cap, 1, x)}</b><small>${cap > 2 ? `꼴찌 +${DUEL_LAST[x]}` : `무 +${RM_PTS[x].d}<br>패 +${RM_PTS[x].l}`}</small>${lk ? `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>` : ''}</button>`; }).join('')}</div>`}
       <p class="rmlb">정원</p>
       ${mx > 2 ? `<div class="rmcap" role="group" aria-label="정원">${Array.from({ length:mx - 1 }, (_, i) => i + 2).map(n => `<button data-cap="${n}" class="${n === cap ? 'on' : ''}" aria-pressed="${n === cap}">${n}명</button>`).join('')}</div>
         <p class="rmcapn">${cap}명이 모이면 1위 +${duelPtsAt(cap, 1, d)} · 꼴찌도 +${DUEL_LAST[d]}</p>` : '<p class="rmcapn">이 게임은 2명이 붙어요</p>'}
-      ${o.friend ? '' : `<p class="rmlb">누가 들어오나</p>
-      <div class="seg"><button data-b="near" class="${band === 'near' ? 'on' : ''}">내 레벨 근처<small>Lv ${Math.max(1, L - RM_BAND)}~${L + RM_BAND}</small></button><button data-b="all" class="${band === 'all' ? 'on' : ''}">누구나<small>레벨 상관없이</small></button></div>
+      ${o.friend ? '' : `${rmNoPts(g) ? '' : `<p class="rmlb">누가 들어오나</p>
+      <div class="seg"><button data-b="near" class="${band === 'near' ? 'on' : ''}">내 레벨 근처<small>Lv ${Math.max(1, L - RM_BAND)}~${L + RM_BAND}</small></button><button data-b="all" class="${band === 'all' ? 'on' : ''}">누구나<small>레벨 상관없이</small></button></div>`}
       <label class="rmpv"><input type="checkbox" id="rmPv" ${pv ? 'checked' : ''}><span><b>비공개 방</b><small>목록에 안 보이고 초대·링크·방 코드로만 들어와요</small></span></label>`}
-      <p class="rmme">강자 보너스: 나보다 ${RM_BAND}레벨 이상 높은 사람보다 높은 순위면 +${RM_BONUS}<br>첫 판 ${ic('heart')}1 · 같은 방 2~4판째 무료</p>
+      <p class="rmme">${rmNoPts(g) ? '' : `강자 보너스: 나보다 ${RM_BAND}레벨 이상 높은 사람보다 높은 순위면 +${RM_BONUS}<br>`}첫 판 ${ic('heart')}1 · 같은 방 2~4판째 무료</p>
       <div class="mbtns"><button class="b2" id="rcBack">뒤로</button><button class="b1" id="rcGo">${o.friend ? '방 만들고 초대하기' : o.qr ? '방 만들고 QR 보기' : '방 만들기'}</button></div></div>`);
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { d = b.dataset.d; sfx('toggle'); draw(); });
+    document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { x = isNaN(+b.dataset.x) ? b.dataset.x : +b.dataset.x; sfx('toggle'); draw(); });
     document.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { cap = +b.dataset.cap; sfx('toggle'); draw(); });
     document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { band = b.dataset.b; draw(); });
     const pc = $('#rmPv'); if(pc) pc.onchange = () => { pv = pc.checked; };
     $('#rcBack').onclick = () => o.back ? o.back() : rmList(g);
     $('#rcGo').onclick = async () => {
       $('#rcGo').disabled = true;
-      const c = await rmCreate({ g, d, cap, band:o.friend ? 'all' : band, pv:o.friend ? true : pv });
+      const c = await rmCreate({ g, d:rmNoPts(g) ? 'normal' : d, x, cap, band:o.friend || rmNoPts(g) ? 'all' : band, pv:o.friend ? true : pv });
       if(!c){ const b = $('#rcGo'); if(b) b.disabled = false; return; }
       if(o.friend) rmInviteFriend(o.friend);
       if(o.qr) rmQrSheet(); else rmOpen();
@@ -577,7 +592,7 @@ function rmRoomRender(force){
   const rdyN = mem.filter(m => m.rdy || (m.host && c.host && m.me)).length;
   const cd = c.ca ? Math.max(0, Math.ceil((c.ca - netNow()) / 1000)) : 0;
   const playing = c.st !== 'w', inPl = (c.pl || []).includes(rmUid());
-  const sig = JSON.stringify([c.st, c.cap, c.host, c.rdy, cd, c.d, c.pv, mem.map(m => [m.u, m.nk, m.lv, m.rdy, m.rv, m.host]), Object.keys(c.lastInv).length]);
+  const sig = JSON.stringify([c.st, c.cap, c.host, c.rdy, cd, c.d, c.x, c.pv, mem.map(m => [m.u, m.nk, m.lv, m.rdy, m.rv, m.host]), Object.keys(c.lastInv).length]);
   if(!force && box.dataset.sig === sig) return; box.dataset.sig = sig;
   const tag = m => {
     if(playing && (c.pl || []).includes(m.u)) return '<span class="rdytag play">대전 중</span>';
@@ -589,7 +604,7 @@ function rmRoomRender(force){
   };
   const seatRow = m => { const S = rmSeatOf(m, me.seat);
     return `<div class="rmseat2${m.rdy ? ' rdy' : ''}${m.me ? ' me' : ''}">${duelShapeSvg(S.shape, S.col, 20)}<span class="frav">${m.me ? avatar({ me:true }) : rivalAv({ name:m.nk })}</span>
-      <span class="rmsn"><b>${m.me ? '나' : escH(m.nk)}${m.host ? RM_CROWN : ''}</b><small>Lv ${m.lv}${m.host ? ' · 방장' : ''}</small></span>${tag(m)}
+      <span class="rmsn"><b>${m.me ? '나' : escH(m.nk)}${m.host ? RM_CROWN : ''}</b><small>${rmNoPts(c.g) ? (m.host ? '방장' : '') : `Lv ${m.lv}${m.host ? ' · 방장' : ''}`}</small></span>${tag(m)}
       ${c.host && !m.me && c.st === 'w' ? `<button class="rmkick" data-kick="${m.u}" aria-label="${escH(m.nk)} 내보내기">내보내기</button>` : ''}</div>`; };
   const empty = i => { const S = DUEL_SEAT[i % 5];
     return `<div class="rmseat2 empty"><span class="rmeshape" style="--sc:${S.col}"></span><span class="frav"><i class="rmedot"></i></span><span class="rmsn"><b>빈자리</b><small>${c.pv ? '초대한 친구·방 코드로' : '방 목록에 보여요'}</small></span>
@@ -606,8 +621,8 @@ function rmRoomRender(force){
   const main = c.host ? `<button class="b1" id="rmGo" ${canGo ? '' : 'disabled'}>시작 · ${goN}명${cost}</button>`
     : `<button class="b1${c.rdy ? ' on' : ''}" id="rmRdy" ${playing ? 'disabled' : ''}>${c.rdy ? '준비 취소' : '준비' + cost}</button>`;
   box.innerHTML = `<button class="mx" id="rmX" aria-label="방 창 접기">—</button>
-    <p class="kick">대전 방${c.pv ? ' · 비공개' : ''}${c.b ? ` · Lv ${c.b[0]}~${c.b[1]}` : ''}</p><h3>${GAMES[c.g].name}</h3>
-    <div class="rmtags">${rmChip(c.d)}<span class="gp">${Math.max(2, n) > 2 ? `지금 ${n}명: ` : ''}${rmPtsTxt(c.d, Math.max(2, n))}</span></div>
+    <p class="kick">대전 방${c.pv ? ' · 비공개' : ''}${c.b && !rmNoPts(c.g) ? ` · Lv ${c.b[0]}~${c.b[1]}` : ''}</p><h3>${GAMES[c.g].name}</h3>
+    <div class="rmtags">${rmXChip(c.g, c.x)}${rmNoPts(c.g) ? '' : `${rmChip(c.d)}<span class="gp">${Math.max(2, n) > 2 ? `지금 ${n}명: ` : ''}${rmPtsTxt(c.d, Math.max(2, n))}</span>`}</div>
     ${c.pv ? `<div class="rmcode"><span>방 코드</span><b class="num">${rmCodeFmt(c.id)}</b><button class="btn small secondary" id="rmCopy">코드 복사</button></div>` : ''}
     <div class="rmseats2">${seats}</div>
     <p class="rmst">${status}</p>

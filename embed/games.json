@@ -104,12 +104,12 @@
     {
       "id": "gostop",
       "name": "고스톱",
-      "version": "1.8.1",
+      "version": "1.9.1",
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 1188245,
-      "gzip": 720250
+      "bytes": 1191241,
+      "gzip": 721382
     },
     {
       "id": "crossword",
@@ -124,12 +124,12 @@
     {
       "id": "hidden",
       "name": "숨은그림 찾기",
-      "version": "1.2.1",
-      "summary": "그림책 장면 12곳 속에 숨은 물건을 찾아 누르는 집중력 게임",
+      "version": "2.0.0",
+      "summary": "세계 여행 그림책 장면 20곳 속 물건을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "hidden.html",
-      "bytes": 405633,
-      "gzip": 136047
+      "bytes": 324356,
+      "gzip": 107430
     },
     {
       "id": "spot",
@@ -154,12 +154,12 @@
     {
       "id": "wordchain",
       "name": "끝말잇기",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — 컴퓨터와 잇기, 끝내기 낱말, 2~5명 돌아가며 잇기 대전",
       "duel": true,
       "file": "wordchain.html",
-      "bytes": 403253,
-      "gzip": 191752
+      "bytes": 840687,
+      "gzip": 646691
     },
     {
       "id": "mines",
@@ -280,6 +280,16 @@
       "file": "mountain.html",
       "bytes": 297240,
       "gzip": 96165
+    },
+    {
+      "id": "march",
+      "name": "행군대작전",
+      "version": "1.3.0",
+      "summary": "병사 1명으로 출발해 갈림길·숫자 상자·보상 통을 지나 병력을 키우고, 예고 공격을 피하며 보스를 쓰러뜨리는 행군 — 솔로(새 기믹·3판마다 보스)와 라이벌 2분 대전",
+      "duel": true,
+      "file": "march.html",
+      "bytes": 329062,
+      "gzip": 108839
     }
   ],
   "retired": [

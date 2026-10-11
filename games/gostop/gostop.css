@@ -415,3 +415,10 @@ body.gs-full{overflow:hidden}
 .gs-auto{font-size:26px; letter-spacing:-.6px}
 .gs-sunp small, .gs-nx span, .gs-eno, .gs-pay.sm, .gs-askb button small, .gs-askb button.card small{font-size:26px}
 .gs-sun{font-size:25px}
+
+/* ===== v1.9: 싼 패 먹기·피 뺏기 패 이동 ===== */
+.gsb .gs-c.fl.gs-pile svg{filter:drop-shadow(0 0 14px #FFC93C) drop-shadow(0 0 4px #fff) drop-shadow(0 4px 3px rgba(10,4,40,.45))}
+.gsb .gs-c.gs-stl{z-index:70 !important}
+.gsb .gs-c.gs-stl svg{filter:drop-shadow(0 0 10px #FF4D79) drop-shadow(0 0 3px #fff)}
+.gsb .gs-c.gs-stl::after{content:''; position:absolute; inset:-5px; border-radius:10px; border:4px solid #FF4D79; animation:gs-stl 1.4s ease-out forwards; pointer-events:none}
+@keyframes gs-stl{0%{opacity:1; transform:scale(1.25)} 60%{opacity:1; transform:scale(1)} 100%{opacity:0}}

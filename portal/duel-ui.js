@@ -214,7 +214,9 @@ function portalDuelResult(r, a, b, res){
   const room = D.room || null, inRoom = !!(room && RM.cur && RM.cur.id === room.id);
   if(room) rmAfterDuel();
   const diff = room && RM_DIFF.includes(G.lv) ? G.lv : 'normal';
-  const P = duelReward(R, diff, room);
+  /* 게임 정의 duelNoPts: 사이트 대전 포인트·연승·등급 없이 그 게임만의 것으로 겨룸(예: 고스톱 = 보유 포인트) */
+  const noPts = !!(NG[id] && NG[id].duelNoPts);
+  const P = noPts ? { base:0, bonus:0, fire:0, half:false, pts:0, each:null, streak:0, first:R.rank === 1 && !R.tie, tierUp:-1 } : duelReward(R, diff, room);
   const d = dayState(), firstToday = !d.att;
   d.duel += P.pts; d['d' + r] = (d['d' + r] || 0) + 1; d.att = true; saveDay(d);
   const RC = duelRec(), x = RC[id] || { w:0, d:0, l:0 }; x[r]++; RC[id] = x; store.set('hp:duelRec', RC);
@@ -229,10 +231,10 @@ function portalDuelResult(r, a, b, res){
     ${me.txt ? `<p class="dz-mine">${escH(me.txt)}</p>` : ''}
     ${R.why ? `<p class="dz-why">${R.why}</p>` : ''}
     ${duelRowsHtml(R, P.each)}${typeof duelResX === 'function' ? duelResX() : ''}
-    <div class="dz-pts"><small>받은 포인트${room ? ' · ' + (RM_DNAME[diff] || '보통') : ''}</small><b class="num" id="bigScore">+0</b><p>${brk}</p>
+    ${noPts ? `<div class="dz-pts"><p>${escH((NG[id].duelNoPtsNote && NG[id].duelNoPtsNote()) || '대전 포인트가 없는 게임이에요')}</p></div>` : `<div class="dz-pts"><small>받은 포인트${room ? ' · ' + (RM_DNAME[diff] || '보통') : ''}</small><b class="num" id="bigScore">+0</b><p>${brk}</p>
       ${P.half ? `<p class="dz-half">${ic('help')}오늘 같은 친구들과 많이 해서 포인트 절반이에요</p>` : ''}
       ${P.tierUp >= 0 ? `<p class="dz-tier">${duelShield(P.tierUp, 22)} 이번 주 '${DUEL_TIERS[P.tierUp].n}' 등급이 됐어요!</p>` : ''}
-      ${firstToday ? `<p class="dz-att">${attPillHtml().replace(/<[^>]+>/g, '').trim()}</p>` : ''}</div>
+      ${firstToday ? `<p class="dz-att">${attPillHtml().replace(/<[^>]+>/g, '').trim()}</p>` : ''}</div>`}
     <p class="dz-again" id="dzAgain" aria-live="polite"></p>
     ${duelContinueHtml()}
     ${RPX ? `<div class="rb-links dz-rp"><button id="dzRp">${ic('play')}이 판 다시 풀기</button><i aria-hidden="true">·</i><button id="dzSend">${ic('share')}친구에게 보내기</button></div>` : ''}
@@ -254,7 +256,7 @@ function portalDuelResult(r, a, b, res){
     show();
     if(r1){ fxConfetti(); sfx('fanfare'); } else if(R.tie) sfx('result'); else sfx('lose');
     const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800, pts = P.pts;
-    const stepN = t => { if(!el.isConnected) return; const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
+    const stepN = t => { if(!el || !el.isConnected) return; const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
       if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else { el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };
     requestAnimationFrame(stepN);
     try{ toyMood($('#modal .dz-rows li.me'), r1 ? 'joy' : R.tie ? 'wow' : 'sad'); }catch(_){}   /* 1위 기쁨 · 그 밖 아쉬움(회색 금지) */
