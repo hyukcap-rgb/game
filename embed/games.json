@@ -294,12 +294,12 @@
     {
       "id": "jigsaw",
       "name": "명화 퍼즐",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "summary": "섞인 명화 조각을 3×3·4×4·5×5로 맞추는 공간지각 퍼즐",
       "duel": true,
       "file": "jigsaw.html",
-      "bytes": 291537,
-      "gzip": 94906
+      "bytes": 297234,
+      "gzip": 99650
     },
     {
       "id": "tidy",
