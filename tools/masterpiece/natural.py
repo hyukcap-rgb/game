@@ -132,7 +132,7 @@ def run_edits(base, specs, sam, strict=True):
                     for d in diffs:
                         if math.hypot(cx - d['cx'], cy - d['cy']) < r + d['r'] + L * .02: raise RuntimeError(f'다른 차이와 너무 가까워요({d["note"]})')
                     delta = float(np.abs(res.astype(np.float32) - out.astype(np.float32)).mean(2)[ch > 0].mean())
-                if delta < 12: raise RuntimeError(f'바뀐 정도가 약해요(d{delta:.1f}) — 눈에 잘 안 띄어요')
+                    if delta < 12: raise RuntimeError(f'바뀐 정도가 약해요(d{delta:.1f}) — 눈에 잘 안 띄어요')
                     side = int(max(bw, bh) + 20); side += side % 2; Xa, Ya = int(round(cx)) - side // 2, int(round(cy)) - side // 2
                     al = _feather(ch, 2, 1.5); patch = np.zeros((side, side, 4), np.uint8)
                     xa, ya, xb, yb = max(Xa, 0), max(Ya, 0), min(Xa + side, w), min(Ya + side, h)
