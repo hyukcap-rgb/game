@@ -386,7 +386,14 @@ function duelReplayStart(x){
   startGame(x.g, x.lv, { seed:x.seed, cfg, replay:Object.assign({}, x, { kind:'duel' }) });
 }
 
-function openModal(html){ if(!$('#veil').classList.contains('on')) sfx('open'); const m = $('#modal'); m.className = 'modal'; m.style.removeProperty('--gc'); m.innerHTML = html; $('#veil').classList.add('on'); document.body.classList.add('modal-open'); m.scrollTop = 0; }
+/* 결과 창(버튼 줄 .rbtns가 있는 창)이고 게임 정의에 resultNote()가 있으면 버튼 줄 앞에 그 글을 덧붙인다(예: 틀린그림의 명화 설명) */
+function resultNoteInto(html){
+  try{
+    const f = G && G.over && NG[G.id] && NG[G.id].resultNote; if(!f || html.indexOf('<div class="rbtns">') < 0) return html;
+    const n = f(); return n ? html.replace('<div class="rbtns">', () => n + '<div class="rbtns">') : html;
+  }catch(_){ return html; }
+}
+function openModal(html){ if(!$('#veil').classList.contains('on')) sfx('open'); const m = $('#modal'); m.className = 'modal'; m.style.removeProperty('--gc'); m.innerHTML = resultNoteInto(html); $('#veil').classList.add('on'); document.body.classList.add('modal-open'); m.scrollTop = 0; }
 function closeModal(){ $('#veil').classList.remove('on'); document.body.classList.remove('modal-open'); }
 
 /* ===== 결과 창 버튼(공용 위계, UI 검수 2026-10-04) =====
