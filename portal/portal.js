@@ -1,5 +1,5 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
-registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','tidy']);   /* 사이트에 보일 게임과 순서 */
+registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','jigsaw','tidy']);   /* 사이트에 보일 게임과 순서 */
 const ADULT = ['gostop'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
 const isAdult = id => !!(NG[id] && NG[id].adult) || ADULT.includes(id);
 /* ===== 가상 숫자 스위치 (2026-10-04 UI 검수 결론) =====
@@ -215,9 +215,9 @@ Object.defineProperty(globalThis, 'DAILY_N', { configurable:true, get:() => subj
    · 성적표: 같은 문제를 푼 사람 중 등수로 과목마다 수·우·미·양·가 (서버 전까지는 분포 가정)
    · 출석은 점수가 아니라 선물(연속 3·7·14·30…일 하트)과 휴식권으로만 */
 /* '전략' = 숫자 합치기 + 오목 묘수풀이(결정 220). 'tower'(숲 지킴이, 삭제됨)는 지난 날짜 뽑기를 그대로 두려고 목록 맨 앞에 이름만 남긴다(SUBJ_UNTIL) */
-const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread']], ['전략', ['tower','merge','omok']], ['추리', ['fleet','match']], ['순발', ['flag','mole','twin','arrow','rps']]];   /* '순발'(6번째 과목)은 2026-10-07부터(결정 231). 그 전 날짜는 5과목 그대로 */
+const SUBJ = [['논리', ['fox','nono']], ['집중', ['sudoku','memory']], ['공간', ['ball','block','link','thread','jigsaw']], ['전략', ['tower','merge','omok']], ['추리', ['fleet','match']], ['순발', ['flag','mole','twin','arrow','rps']]];   /* '순발'(6번째 과목)은 2026-10-07부터(결정 231). 그 전 날짜는 5과목 그대로 */
 /* 과목에 새로 들어온 게임은 이 날짜부터 시험지에 나온다(그 전 날짜의 시험지는 그대로 → 이미 푼 사람과 같은 문제) */
-const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06', omok:'2026-10-07', flag:'2026-10-07', mole:'2026-10-07', twin:'2026-10-07', arrow:'2026-10-07', rps:'2026-10-07' };
+const SUBJ_FROM = { link:'2026-10-04', thread:'2026-10-06', omok:'2026-10-07', flag:'2026-10-07', mole:'2026-10-07', twin:'2026-10-07', arrow:'2026-10-07', rps:'2026-10-07', jigsaw:'2026-10-11' };
 /* 과목에서 빠진 게임은 이 날짜 전까지만 뽑기에 들어간다(지난 날짜 시험지가 바뀌지 않게). 적용일 다음 날 0시부터 빠짐 */
 const SUBJ_UNTIL = { tower:'2026-10-07' };
 /* 은퇴한 게임: 코드는 없고 지난 기록 표시용 이름만 */
