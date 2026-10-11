@@ -230,6 +230,7 @@ NG.march = (() => {
   }
   function bossDmg(e, a){ if(e.kind === 'knight' && e.shield) a *= .15; e.hp -= a; e.hitT = .12; }
   let SND_I = 0;
+  const LAYER = ['#ff5a4f', '#ff9a3c', '#ffd23f', '#7bd85a', '#3fc9c9', '#5a8dff', '#a46bff', '#ff6bd0', '#f4f4f4'];
   const snd = k => fx(() => { if(S && S.mine) sfx(k); });
 
   function step(run, dt){
@@ -367,12 +368,16 @@ NG.march = (() => {
         run.arrows.push({ sx, sz, tx:txx, tz, tg, side, t:0, dur:Math.max(.12, dist / 150), dmg:per });
         if(run.hfx.length < 40) run.hfx.push({ k:'mz', x:sx, z:sz + 1.5, t:0, life:.12 });   /* 시위 섬광(보이기만) */
         if(run.isMe) snd(run.dmgMul >= 1.3 ? 'mcShotX' : 'mcShot');
+        /* v1.7 화살비(참고 영상): 병력이 많으면 같은 표적으로 날아가는 '보이기만 하는' 화살을 더 그림(피해 없음, S.vr) */
+        const gn = Math.min(5, Math.floor(run.N / 45));
+        for(let gi = 0; gi < gn && run.arrows.length < 70; gi++){ const gx = run.x + (S.vr() - .5) * R * 1.8, gz = run.z + (S.vr() - .4) * R * .8; run.arrows.push({ ghost:1, sx:gx, sz:gz, tx:txx + (S.vr() - .5) * 6, tz:tz + (S.vr() - .5) * 3, tg, side, t:0, dur:Math.max(.12, Math.hypot(txx - gx, tz - gz) / 150) * (.9 + S.vr() * .25), dmg:0 }); }
       }
     }
     for(const a of run.arrows){
       a.t += dt;
       if(a.t >= a.dur && !a.hit){
         a.hit = 1; const e = a.tg;
+        if(a.ghost){ if(S.vr() < .2 && run.hfx.length < 40) run.hfx.push({ k:'hit', x:a.tx, z:(e.z || a.tz) - .5, up:e.t === 'boss' ? 26 + S.vr() * 16 : 4, t:0, life:.24 }); continue; }
         if(run.isMe) snd(e.t === 'boss' || e.t === 'door' || e.t === 'bar' ? 'mcHitBig' : e.t === 'crowd' ? 'mcHitMan' : 'mcHit');
         if(run.hfx.length < 40) fx(() => {   /* v1.5 타격 이펙트(보이기만): 별빛 폭발 4프레임 + 나무 파편 */
           const wood = e.t === 'crate' || e.t === 'barrel' || e.t === 'door' || e.t === 'tower', big = e.t === 'boss' || e.t === 'door' || e.t === 'bar';
@@ -418,7 +423,8 @@ NG.march = (() => {
   function reward(run, e){
     const w = e.rw || { k:'men', v:5 };
     if(w.k === 'men'){ run.N += w.v; addFx(run, { k:'txt', x:e.x, z:e.z + 4, text:'+' + w.v + ' 병사', col:'#ffd84a', life:1.3, big:1 }); }
-    else if(w.k === 'bow'){ run.dmgMul = Math.min(3, run.dmgMul * w.v); addFx(run, { k:'ico', x:e.x, z:e.z + 4, life:1.3 }); addFx(run, { k:'txt', x:e.x, z:e.z + 6, text:'석궁! 공격력 ×' + run.dmgMul.toFixed(1), col:'#ffd84a', life:1.4, big:1 }); }
+    if(w.k !== 'men') run.hfx.push({ k:'aura', x:run.x, z:run.z, t:0, life:1, col:w.k === 'bow' ? '255,206,74' : '96,232,255' });
+    if(w.k === 'men'){} else if(w.k === 'bow'){ run.dmgMul = Math.min(3, run.dmgMul * w.v); addFx(run, { k:'ico', x:e.x, z:e.z + 4, life:1.3 }); addFx(run, { k:'txt', x:e.x, z:e.z + 6, text:'석궁! 공격력 ×' + run.dmgMul.toFixed(1), col:'#ffd84a', life:1.4, big:1 }); }
     else { run.rateMul = Math.min(2.5, run.rateMul * w.v); addFx(run, { k:'ico', x:e.x, z:e.z + 4, life:1.3 }); addFx(run, { k:'txt', x:e.x, z:e.z + 6, text:'연사! ×' + run.rateMul.toFixed(1), col:'#9fe0ff', life:1.4, big:1 }); }
   }
   /* 화살은 부대 앞쪽(좌우 aim 안)으로만 — 줄을 맞춰야 상자·통·탑을 쏨. 보스·성문은 어디서나 */
@@ -732,6 +738,12 @@ NG.march = (() => {
         else { c.fillStyle = 'rgba(255,220,120,' + (1 - k) + ')'; c.beginPath(); c.arc(p.X, Y, sz * .25, 0, 7); c.fill(); }
         if(f.gold && fr < 2 && !mini){ c.globalAlpha = .5 * (1 - k); c.fillStyle = 'rgb(255,206,74)'; c.beginPath(); c.arc(p.X, Y, sz * .22, 0, 7); c.fill(); }
         c.globalAlpha = 1;
+      } else if(f.k === 'aura'){   /* 강화 받을 때 부대를 감싸는 빛 고리 */
+        const pa = P(run.x, run.z); if(!pa) continue; const R0 = armyR(run.N) * pa.s * unit * 1.5 * (1 + k * .5);
+        c.globalCompositeOperation = 'lighter'; c.globalAlpha = (1 - k) * .9; c.lineWidth = 6 * (1 - k) + 2; c.strokeStyle = 'rgb(' + f.col + ')';
+        c.beginPath(); c.ellipse(pa.X, pa.Y - 4, R0, R0 * .45, 0, 0, 7); c.stroke();
+        const g = c.createRadialGradient(pa.X, pa.Y - 4, 0, pa.X, pa.Y - 4, R0); g.addColorStop(0, 'rgba(' + f.col + ',0)'); g.addColorStop(.75, 'rgba(' + f.col + ',.12)'); g.addColorStop(1, 'rgba(' + f.col + ',0)'); c.fillStyle = g; c.beginPath(); c.ellipse(pa.X, pa.Y - 4, R0, R0 * .45, 0, 0, 7); c.fill();
+        c.globalAlpha = 1;
       } else if(f.k === 'wood'){
         if(mini || !ok(wood)) continue; c.globalCompositeOperation = 'source-over';
         const sz = 13 * p.s * unit * (.55 + k * .7); c.globalAlpha = Math.min(1, 1.6 * (1 - k));
@@ -984,7 +996,7 @@ NG.march = (() => {
     }
     S.end = E;
     snd(win ? 'mcWin' : 'mcLose');
-    fx(() => { const el = $s('.mc-end'); if(el){ el.querySelector('b').textContent = win === null ? '무승부' : win ? (S.battle ? '승리!' : '클리어!') : '전멸!'; el.querySelector('small').textContent = why || ''; el.className = 'mc-end ' + (win ? 'win' : 'lose'); el.hidden = false; } });
+    fx(() => { const el = $s('.mc-end'); if(el){ el.querySelector('b').textContent = win === null ? '무승부' : win ? (S.battle ? '승리!' : '클리어!') : '전멸!'; el.querySelector('small').textContent = why || ''; el.className = 'mc-end ' + (win ? 'win' : 'lose'); const sv = el.querySelector('.mc-sv'); if(sv){ sv.hidden = !win; sv.querySelector('em').textContent = '× ' + Math.ceil(S.me.N).toLocaleString('ko-KR'); } el.hidden = false; } });
     const g = G; setTimeout(() => { if(G === g && !g.over) finish(!!win); }, win ? 1300 : 1900);   /* v1.3: 끝 연출을 보여 준 뒤 결과 창(갑자기 꺼진 듯한 느낌 방지) */
   }
   function checkEnd(){
@@ -1020,6 +1032,10 @@ NG.march = (() => {
     const me = S.me, root = S.root; if(!root) return;
     const cnt = Math.ceil(me.N).toLocaleString('ko-KR');
     if(S.hudN !== cnt){ S.hudN = cnt; const el = $s('.mc-n'); el.textContent = cnt; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    if(!S.battle && S.clock - (S.foeT || -1) > .2){ S.foeT = S.clock; const g = me.gen; let n = 0;   /* v1.7 남은 적(참고 영상의 해골 숫자) */
+      for(let i = me.idx; i < g.items.length; i++){ const q = g.items[i]; if(q.t === 'crowd') n += q.pen ? q.n : Math.min(q.n, me.N * 1.15 + 5 + g.stage); else if(q.t === 'boss') n += 1; }
+      for(const q of me.ents){ if(q.t === 'crowd' && q.n > 0) n += q.n; else if(q.t === 'boss' && q.hp > 0) n += 1; }
+      const el = $s('.mc-foe em'); const tx = Math.ceil(n).toLocaleString('ko-KR'); if(el && el.textContent !== tx) el.textContent = tx; }
     if(!S.battle){ const m = me.bossActive ? '보스전!' : Math.max(0, Math.round(S.endZ - me.z)) + ' m'; if(S.hudM !== m){ S.hudM = m; const el = $s('.mc-m'); if(el) el.textContent = m; } $s('.mc-road i').style.width = clamp(me.z / S.endZ * 100, 0, 100) + '%'; $s('.mc-road .mc-mk').style.left = clamp(me.z / S.endZ * 100, 0, 100) + '%'; }
     else {
       const rv = Math.ceil(S.rv.N).toLocaleString('ko-KR'), l = Math.max(0, S.left);
@@ -1035,8 +1051,12 @@ NG.march = (() => {
       bb.hidden = false;
       const im = bb.querySelector('img'), src = BASE + IMGF[b.kind]; if(im.dataset.k !== b.kind){ im.src = src; im.dataset.k = b.kind; }
       bb.querySelector('.mc-bn').textContent = KIND[b.kind].name + (b.kind === 'knight' && b.shield ? ' · 방패!' : '') + (b.kind === 'dragon' && b.phase === 'tele' ? ' · 불길 경고!' : '');
-      bb.querySelector('.mc-bp').textContent = Math.ceil(b.hp / b.max * 100) + '%';
-      bb.querySelector('.mc-bt i').style.width = (b.hp / b.max * 100) + '%';
+      /* v1.7 겹 체력 막대(참고 영상 '2,000 ×8'): 250마다 한 겹, 겹마다 색이 바뀌고 남은 겹 수 표시 */
+      const L = clamp(Math.ceil(b.max / 250), 1, 9), per = b.max / L, k = Math.max(1, Math.ceil(b.hp / per)), fr = clamp((b.hp - (k - 1) * per) / per, 0, 1);
+      bb.querySelector('.mc-bp').textContent = Math.ceil(Math.max(0, b.hp)).toLocaleString('ko-KR') + (L > 1 ? ' ×' + k : '');
+      const bt = bb.querySelector('.mc-bt'), bi = bt.querySelector('i');
+      bi.style.width = (fr * 100) + '%';
+      if(!b.shield){ bi.style.background = LAYER[(k - 1) % LAYER.length]; bt.style.background = k > 1 ? LAYER[(k - 2) % LAYER.length] : '#3a1f22'; } else { bi.style.background = ''; bt.style.background = ''; }
       bb.classList.toggle('mc-sh', !!b.shield);
     } else bb.hidden = true;
   }
@@ -1048,14 +1068,14 @@ NG.march = (() => {
       <div class="mc-top">
         <div class="mc-col"><div class="mc-plate"><img class="mc-ic" src="${BASE}soldier.webp" alt=""><div class="mc-cnt"><small>병력</small><b class="mc-n">0</b></div></div>
         <div class="mc-buff" hidden><img src="${BASE}xbow.webp" alt=""><span></span></div></div>
-        ${solo ? `<div class="mc-road" aria-label="결승까지 진행"><i></i><span class="mc-mk"></span><span class="mc-fl">${isBossStage(S.stage) ? '보스' : '결승'}</span><b class="mc-m"></b></div>`
+        ${solo ? `<div class="mc-road" aria-label="결승까지 진행"><i></i><span class="mc-mk"></span><span class="mc-fl">${isBossStage(S.stage) ? '보스' : '결승'}</span><b class="mc-m"></b><span class="mc-foe" aria-label="남은 적"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="#ff8a80" d="M12 2C6.9 2 3 5.6 3 10.3c0 2.6 1.2 4.5 3 5.6V19a1 1 0 0 0 1 1h2v-2h2v2h2v-2h2v2h2a1 1 0 0 0 1-1v-3.1c1.8-1.1 3-3 3-5.6C21 5.6 17.1 2 12 2zm-3.5 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg><em></em></span></div>`
         : `<div class="mc-vs"><div class="mc-side me"><small>나</small><b class="mc-vme">0</b></div><div class="mc-tm">2:00</div><div class="mc-side rv"><small class="mc-rvn"></small><b class="mc-vrv">0</b></div><div class="mc-tug"><i></i></div></div>`}
       </div>
       <div class="mc-boss" hidden><img alt=""><div class="mc-bw"><div class="mc-bh"><span class="mc-bn"></span><span class="mc-bp"></span></div><div class="mc-bt"><i></i></div></div></div>
       ${solo ? '' : `<div class="mc-mini"><canvas aria-label="라이벌 화면"></canvas><span class="mc-mtag"></span></div>`}
       <div class="mc-bi" hidden><img alt=""><div><small>보스 등장!</small><b></b></div></div>
       <div class="mc-hint">좌우로 끌어서 부대 이동</div>
-      <div class="mc-end" hidden><b></b><small></small></div>
+      <div class="mc-end" hidden><b></b><span class="mc-sv" hidden><img src="${BASE}soldier.webp" alt=""><em></em></span><small></small></div>
       <div class="mc-new" hidden><span class="mc-tag"></span><b></b><p></p><small>눌러서 바로 시작</small></div>
     </div>`;
     S.root = st.querySelector('.mcw');
@@ -1140,7 +1160,12 @@ NG.march = (() => {
 .mcw .mc-n.pop{animation:mcPop .28s ease-out}
 @keyframes mcPop{0%{transform:scale(1.35)} 100%{transform:scale(1)}}
 .mcw .mc-road{position:relative; flex:1; align-self:center; height:16px; border-radius:99px; background:#d9c08f; box-shadow:inset 0 2px 0 rgba(0,0,0,.18), 0 0 0 2px #fff6, 0 3px 0 rgba(22,35,61,.35); margin-right:34px}
-.mcw .mc-m{position:absolute; left:50%; top:100%; transform:translate(-50%, 5px); font:14px/1 "Black Han Sans","Jua",sans-serif; color:#fff; background:rgba(22,35,61,.78); padding:3px 9px 4px; border-radius:99px; white-space:nowrap; letter-spacing:.3px; box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.mcw .mc-m{position:absolute; left:50%; top:100%; transform:translate(calc(-100% - 4px), 5px); font:14px/1 "Black Han Sans","Jua",sans-serif; color:#fff; background:rgba(22,35,61,.78); padding:3px 9px 4px; border-radius:99px; white-space:nowrap; letter-spacing:.3px; box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.mcw .mc-foe{position:absolute; left:calc(50% + 4px); top:100%; transform:translateY(5px); white-space:nowrap; display:flex; align-items:center; gap:3px; font:14px/1 "Black Han Sans","Jua",sans-serif; color:#fff; background:rgba(122,20,16,.82); padding:3px 9px 4px 6px; border-radius:99px; box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.mcw .mc-foe em{font-style:normal}
+.mcw .mc-sv{display:flex; align-items:center; gap:6px; padding:4px 14px 4px 6px; border-radius:99px; background:linear-gradient(#2f7be8, #1a4ea8); box-shadow:0 0 0 3px #ffc83d, 0 4px 0 rgba(0,0,0,.3); animation:mcSlamEnd .5s .15s both cubic-bezier(.2, 1.6, .4, 1)}
+.mcw .mc-sv img{width:30px; height:30px; object-fit:contain}
+.mcw .mc-sv em{font:normal 26px/1 "Black Han Sans","Jua",sans-serif; color:#fff; -webkit-text-stroke:4px #16233d; paint-order:stroke fill}
 .mcw .mc-road i{position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:repeating-linear-gradient(-45deg, #ffc83d 0 8px, #ffd86b 8px 16px); width:0}
 .mcw .mc-mk{position:absolute; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; background:var(--mc-blue); box-shadow:0 0 0 3px #fff, 0 2px 0 3px rgba(22,35,61,.4)}
 .mcw .mc-fl{position:absolute; right:-36px; top:50%; transform:translateY(-50%); font-family:var(--heavy); font-size:13px; color:#fff; background:var(--mc-red); padding:2px 7px; border-radius:8px; box-shadow:0 2px 0 #a92723}
