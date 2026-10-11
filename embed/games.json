@@ -324,12 +324,12 @@
     {
       "id": "holdem",
       "name": "로열 홀덤",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "summary": "텍사스 홀덤 노리밋(19세 이상) — 독립 서비스 로열 홀덤을 사이트 안에서 열어요: AI 대결 · 친구 대전 · 오늘의 토너먼트",
       "duel": true,
       "file": "holdem.html",
-      "bytes": 276602,
-      "gzip": 87982
+      "bytes": 276686,
+      "gzip": 88031
     }
   ],
   "retired": [

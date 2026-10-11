@@ -50,7 +50,9 @@ NG.holdem = (() => {
     modes:['solo', 'duel'],
     age:19,
     noSend:true,
-    cardNote:() => 'AI 대결 · 친구 대전 · 오늘의 토너먼트',
+    cardNote:() => '칩은 홀덤 안에서만 써요',
+    /* 입구형 게임(사이트 공용 목록): 챕터·별·판 고르기 없이 버튼 하나, 하트 없음 */
+    entry:{ tag:'AI · 친구 · 토너먼트', solo:'AI 대결 열기', duel:'친구 대전 열기', free:true },
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-2.6 3.2-6 5.4-6 8.6A3.4 3.4 0 0 0 11 14.5l-1.2 4.5h4.4L13 14.5a3.4 3.4 0 0 0 5-2.9C18 8.4 14.6 6.2 12 3z"/></svg>',
     art(){
       const u = 'hdA' + (++SVG_UID);
@@ -75,7 +77,7 @@ NG.holdem = (() => {
     levelDesc:() => 'AI 5명과 한 테이블',
     stage:() => ({ limit:0 }),
     stageDesc:() => 'AI 대결 · 친구 대전 · 오늘의 토너먼트',
-    init(cfg, rng, lv){ G.hold = { start:G.duel ? 'friends' : 'solo' }; },
+    init(cfg, rng, lv){ G.hold = { start:G.duel ? 'friends' : 'solo' }; store.set('hp:help:' + ID, 1); },   /* 사이트 도움말 창은 안 띄움(홀덤 안에 족보·규칙이 있고, 창이 홀덤 뒤에 가려짐) */
     render,
     titleExtra:() => ' <span class="hd19 sm">19</span>',
     progress:() => 0,
