@@ -1,0 +1,12 @@
+{
+  "id": "jigsaw",
+  "name": "명화 퍼즐",
+  "version": "1.0.0",
+  "summary": "섞인 명화 조각을 3×3·4×4·5×5로 맞추는 공간지각 퍼즐",
+  "js": [
+    "jigsaw.js"
+  ],
+  "css": [],
+  "duel": true,
+  "order": 31
+}
