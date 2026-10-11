@@ -93,7 +93,10 @@ def build_diffs(base, no, edits, minimum):
     import natural
     specs = edits.get(str(no)) or []
     if len(specs) < minimum: raise RuntimeError(f'edits.json에 이 작품 편집이 {len(specs)}개뿐이에요(최소 {minimum})')
-    ensure_models(); out, diffs, _ = natural.run_edits(base, specs, _sam[0], strict=True); return out, diffs
+    ensure_models(); out, diffs, problems = natural.run_edits(base, specs, _sam[0], strict=False)
+    for p in problems: print(f'  [뺌] {no:02d} {p[:120]}', file=sys.stderr)   # 안 되는 편집은 빼고, 남은 게 최소 개수 이상이면 쓴다
+    if len(diffs) < minimum: raise RuntimeError(f'성공한 편집이 {len(diffs)}개뿐이에요(최소 {minimum})')
+    return out, diffs
 
 def sheet(base, no, a, edits):
     """검수용: 편집마다 '전(SAM 마스크 후보 3개 윤곽: 초록=0·노랑=1·하늘=2번, 빨강=쓴 것) | 후'를 번호·메모와 함께 한 장에 그린다. 실패한 편집은 이유를 적는다."""
