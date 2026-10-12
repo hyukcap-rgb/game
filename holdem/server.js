@@ -631,7 +631,17 @@ app.post('/admin/api/settings', adminAuth, (req, res) => {
   if (b.welcomeChips != null) S.welcomeChips = num(b.welcomeChips, 0, 1e8);
   if (b.buyIn != null) S.buyIn = num(b.buyIn, 1000, 1e8);
   if (b.minBuyIn != null) S.minBuyIn = num(b.minBuyIn, 200, S.buyIn);
-  if (b.autoApprove != null) S.autoApprove = !!b.autoApprove;
+  if (b.autoApprove != null) {
+    const was = S.autoApprove; S.autoApprove = !!b.autoApprove;
+    if (S.autoApprove && !was) {   // 켜는 순간 기다리던 가입·입장도 한꺼번에 승인
+      for (const a of Object.values(db.accounts)) if (a.status === 'pending') {
+        a.status = 'active'; a.approvedAt = now();
+        if (S.welcomeChips > 0) addMoney(a, S.welcomeChips, 'welcome', '가입 지급(자동 승인)', 'admin');
+        pushMe(a.id);
+      }
+      for (const u of users.values()) if (u.req) approveEntry(u, true);
+    }
+  }
   if (b.testPin != null) { const t = String(b.testPin).trim(); if (t && !/^\d{4,6}$/.test(t)) return res.status(400).json({ error: '테스트 PIN은 숫자 4~6자리(비우면 끔)' }); S.testPin = t; }
   save();
   res.json({ ok: true, settings: S });
