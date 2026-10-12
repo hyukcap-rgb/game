@@ -138,7 +138,7 @@ def main():
         if only and wk['no'] not in only: continue
         no = wk['no']; src = os.path.join(a.src, f'{no:02d}.jpg') if a.src else ''
         try:
-            if src and os.path.exists(src): img = Image.open(src); info = {'file': os.path.basename(src), 'license': '직접 제공(확인 필요)'}
+            if src and os.path.exists(src): img = Image.open(src); info = {'file': os.path.basename(src), 'license': wk.get('license', '직접 제공(확인 필요)'), 'page': wk.get('source', '')}
             else:
                 cache = os.path.join(a.out, '_cache'); os.makedirs(cache, exist_ok=True); cp = os.path.join(cache, f'{no:02d}.jpg'); ci = cp + '.json'
                 if os.path.exists(cp) and os.path.getsize(cp) > 20000 and os.path.exists(ci): info = json.load(open(ci, encoding='utf8'))   # 이미 받은 것은 다시 받지 않는다
