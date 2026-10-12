@@ -144,7 +144,7 @@ class Room {
     const g = this.game;
     if (this.mode === 'daily') {
       const me = g.players[0];
-      if (g.handNo >= DAILY_HANDS || me.stack <= 0) return this.finishDaily();
+      if (g.handNo >= DAILY_HANDS || me.stack <= 0 || g.players.filter((p) => p.stack > 0).length < 2) return this.finishDaily();   // 봇이 모두 탈락해도 끝냄
     } else {
       const alive = g.players.filter((p) => p.stack > 0);
       const humansAlive = alive.filter((p) => !p.isBot && this.members.some((m) => m.pid === p.id));

@@ -192,13 +192,18 @@
       this.result = null;
       this.runout = false;
       for (const p of this.players) {
-        p.hole = []; p.bet = 0; p.total = 0; p.acted = false; p.lastAction = null; p.raises = 0;
+        p.hole = []; p.bet = 0; p.total = 0; p.acted = false; p.actedAt = 0; p.lastAction = null; p.raises = 0;
         p.inHand = eligible(p); p.folded = !p.inHand; p.allIn = false; p.won = 0; p.shown = false;
       }
       this.dealer = this.nextIdx(this.dealer, (p) => p.inHand);
       const headsUp = seated.length === 2;
       this.sbIdx = headsUp ? this.dealer : this.nextIdx(this.dealer, (p) => p.inHand);
       this.bbIdx = this.nextIdx(this.sbIdx, (p) => p.inHand);
+      // 헤즈업으로 바뀌는 핸드에서 같은 사람이 BB를 두 번 연속 내지 않게 버튼을 넘김(TDA)
+      if (headsUp && this.lastBB != null && this.players[this.bbIdx].id === this.lastBB) {
+        const t = this.bbIdx; this.bbIdx = this.sbIdx; this.sbIdx = t; this.dealer = t;
+      }
+      this.lastBB = this.players[this.bbIdx].id;
       this.post(this.sbIdx, this.sb, 'SB');
       this.post(this.bbIdx, this.bb, 'BB');
       this.currentBet = this.bb;
@@ -232,15 +237,16 @@
       if (live.length === 1) return this.finishUncontested(live[0]);
       const actors = live.filter((p) => !p.allIn);
       const pending = actors.filter((p) => this.needsToAct(p));
-      const done = pending.length === 0 || (actors.length === 1 && actors[0].bet >= this.currentBet && !this.anyoneBehind(actors[0]));
+      // 행동할 수 있는 사람이 하나뿐이면, 다른 사람(올인)들의 최대 베팅 이상이면 더 할 일 없음(짧은 BB 올인 등)
+      const maxOther = actors.length === 1 ? Math.max(0, ...live.filter((p) => p !== actors[0]).map((p) => p.bet)) : 0;
+      const done = pending.length === 0 || (actors.length === 1 && actors[0].bet >= maxOther);
       if (done) return this.endRound();
       this.toAct = this.nextIdx(this.toAct, (p) => this.needsToAct(p));
     }
-    anyoneBehind() { return false; }
 
     endRound() {
       for (const p of this.players) {
-        p.bet = 0; p.acted = false; p.raises = 0;
+        p.bet = 0; p.acted = false; p.actedAt = 0; p.raises = 0;
         if (p.lastAction && !p.folded && !p.allIn) p.lastAction = null;
       }
       this.currentBet = 0;
@@ -281,7 +287,9 @@
       const maxTo = p.bet + p.stack;
       let minTo = this.currentBet + this.minRaise;
       const others = this.players.some((o) => o !== p && this.canAct(o));
-      const canRaise = others && maxTo > this.currentBet;
+      // 이미 행동한 사람은, 그 뒤로 완전한 레이즈(최소 레이즈 이상)가 있었을 때만 다시 레이즈 가능(TDA)
+      const reopened = !p.acted || this.currentBet - p.actedAt >= this.minRaise;
+      const canRaise = others && maxTo > this.currentBet && reopened;
       if (minTo > maxTo) minTo = maxTo;
       return {
         toCall, canCheck: toCall === 0, canRaise, minTo, maxTo,
@@ -293,6 +301,7 @@
       if (this.stage === 'done' || this.runout || this.toAct < 0) return false;
       const p = this.players[this.toAct];
       if (!p || p.id !== id) return false;
+      if (!['fold', 'check', 'call', 'raise', 'allin'].includes(type)) return false;   // 정해진 행동만
       const L = this.legal();
       const put = (a) => { a = Math.min(a, p.stack); p.stack -= a; p.bet += a; p.total += a; if (p.stack === 0) p.allIn = true; };
       let label = type;
@@ -319,9 +328,11 @@
             const wasBet = this.currentBet === 0;
             put(to - p.bet);
             const size = to - this.currentBet;
-            if (size >= this.minRaise) this.minRaise = size;
+            const full = size >= this.minRaise;
+            if (full) this.minRaise = size;
             this.currentBet = to;
-            for (const o of this.players) if (o !== p && this.canAct(o)) o.acted = false;
+            // 완전한 레이즈만 다른 사람의 행동을 다시 엶. 부족한 올인은 콜/폴드만 받으면 됨(베팅이 모자라 차례는 돌아옴)
+            if (full) for (const o of this.players) if (o !== p && this.canAct(o)) o.acted = false;
             p.raises++;
             label = wasBet ? 'bet' : 'raise';
           }
@@ -329,6 +340,7 @@
       }
       if (p.allIn && label !== 'fold') label = 'allin';
       p.acted = true;
+      p.actedAt = this.currentBet;
       p.lastAction = { type: label, amount: p.bet };
       this.actionSeq++;
       this.advance();
