@@ -827,3 +827,11 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 .qrbox svg{width:100%; height:auto; display:block}
 .rmqr-s{margin:10px 0 4px; font-size:15px; line-height:1.45; color:var(--ink)}
 .rmqr-s small{font-size:13px; color:var(--sub)}
+
+/* 즐겨찾기 별(솔로·대전 목록 공통): 그림 왼쪽 위 모서리, 누르면 맨 위로 */
+.acard, .duelrow{position:relative}
+.favb{position:absolute; top:-4px; left:-4px; z-index:4; width:36px; height:36px; padding:0; display:grid; place-items:center; border:0; background:none; cursor:pointer}
+.favb svg{width:26px; height:26px; fill:rgba(255,255,255,.92); stroke:var(--outline, #1A0F45); stroke-width:2; stroke-linejoin:round; filter:drop-shadow(0 1px 0 rgba(0,0,0,.25)); transition:transform .15s}
+.favb.on svg{fill:#FFC21A}
+.favb:active svg{transform:scale(.85)}
+.acard.fav, .duelrow.fav{box-shadow:0 0 0 2.5px #FFC21A, 0 3px 0 rgba(0,0,0,.08)}
