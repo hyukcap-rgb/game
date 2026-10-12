@@ -539,7 +539,7 @@ async function sharedTest3(g){
   ok(bm.mis===1&&bm.st===1,`빗나감 = 실수 1번(대전 막대에도 ${bm.st})`);
   await w(1200);
   await L[1].pg.screenshot({path:`${SHOT}/shared-${g}-play.png`});
-  /* (4) 나머지: A 2·3, B 4 (숨은그림 6개면 A3·B1·C1·남은 1 → 승부 남 → 끝) / 틀린그림은 C 5·6까지 → 다 차지 → 끝 */
+  /* (4) 나머지: A 2·3, B 4, C 5·6 (숨은그림은 2026-10-12부터 물건 6 + 양이 = 7개 → 다 차지 → 끝, A3·C3·B1이고 A가 먼저 → 1·3·2) / 틀린그림은 C 5·6까지 → 다 차지 → 끝 */
   for(const [who,i] of [[0,2],[0,3],[1,4],[2,5],[2,6]]){
     const over=await L[0].pg.evaluate(()=>G.over); if(over) break;
     await L[who].pg.evaluate(([c,i])=>{ if(!G.over) NG[G.id][c.tap](i); },[C,i]); await w(700);
@@ -548,7 +548,7 @@ async function sharedTest3(g){
   const rk=await ranksOf(L), why=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.res.why))), cl=await bodyClean(L);
   const myRank=await Promise.all(L.map(x=>x.pg.evaluate(()=>G.duel.res.rank)));
   const want=g==='hidden'?[1,3,2]:[1,3,2];
-  ok(res&&rk.every(x=>x===rk[0])&&myRank.join()===want.join()&&cl.every(Boolean)&&why.every(t=>g==='hidden'?/먼저 차지해서/.test(t):/모두 찾아서/.test(t)),
+  ok(res&&rk.every(x=>x===rk[0])&&myRank.join()===want.join()&&cl.every(Boolean)&&why.every(t=>g==='hidden'?/먼저 차지해서|모두 찾아서/.test(t):/모두 찾아서/.test(t)),
     `${g} 끝: 순위 모두 같음=${rk.every(x=>x===rk[0])} · A·B·C = ${myRank} (기대 ${want}) · 이유 "${why[1]}" · '실패'·'진행 0%' 없음=${cl}`+(rk.every(x=>x===rk[0])?'':' '+rk.join(' / ')));
   await L[1].pg.screenshot({path:`${SHOT}/shared-${g}-result.png`});
   ok(!errsOf(L).length,'오류 없음 '+errsOf(L).join(' | ')); await closeAll(L);

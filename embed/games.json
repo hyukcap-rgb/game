@@ -124,12 +124,12 @@
     {
       "id": "hidden",
       "name": "숨은그림 찾기",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "summary": "세계 여행 그림책 장면 20곳 속 물건을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "hidden.html",
-      "bytes": 327473,
-      "gzip": 108685
+      "bytes": 327562,
+      "gzip": 108796
     },
     {
       "id": "spot",

@@ -16,11 +16,12 @@ NG.hidden = (() => {
   /* ----- 그림책 사진 장면 20곳(hidden-photo.js) — 찾을 물건은 그림 속에 원래 있는 물건(장면마다 12개 중 몇 개) ----- */
   const PH = window.HIDDEN_PHOTO, SCN = PH.SC.map(s => s.key);
   const sceneOf = k => PH.SC.find(s => s.key === k) || PH.SC[0];
-  /* 양이: 세계를 여행하는 아기 양(메인 캐릭터). 모든 모드의 장면에 한 마리가 숨어 있고, 목록 맨 앞 칸이 양이 */
+  /* 양이: 세계를 여행하는 아기 고양이(메인 캐릭터 = 사이트 공용 3D 회색 줄무늬 고양이 toyImg('cat')). 모든 모드의 장면에 한 마리가 숨어 있고, 목록 맨 앞 칸이 양이.
+     양이는 물건과 따로 하나 더 찾는다(물건 cfg.items개 + 양이 1, 2026-10-12) */
   const YK = 'yangi', YANG = { id:YK, name:'양이', i:-1, scene:null };
   const objOf = k => k === YK ? YANG : PH.OBJ[k] || { name:'물건', i:0, scene:SCN[0] };
   const nmOf = k => objOf(k).name;
-  /* 목록 아이콘 = 그 물건을 그림에서 잘라 낸 칸(아이콘 판 4×3). 그림자 목록이면 까맣게. 양이는 양이 그림판의 얼굴 칸(5번째) */
+  /* 목록 아이콘 = 그 물건을 그림에서 잘라 낸 칸(아이콘 판 4×3). 그림자 목록이면 까맣게. 양이는 양이 그림판의 얼굴 칸(5번째 = 공용 고양이 얼굴) */
   const iconSvg = (k, shadow) => { if(k === YK) return `<i class="hd-ph yg${shadow ? ' sh' : ''}" style="background-image:url('${PH.yang()}')"></i>`; const o = objOf(k); return `<i class="hd-ph${shadow ? ' sh' : ''}" style="background-image:url('${PH.icons(o.scene)}');background-position:${r1((o.i % 4) * 100 / 3)}% ${Math.floor(o.i / 4) * 50}%"></i>`; };
   /* 양이 그림(장면 좌표, 발 가운데가 (x, y+h/2)). 그림판 칸 336×400 중 pose(0~3) 칸만 보이게 중첩 svg로 자른다 */
   const YW = 336, YH = 400;
@@ -84,7 +85,7 @@ NG.hidden = (() => {
     let items = c === 1 ? LT.ch1[k - 1] : LT.base[cc] + LT.kOff[k];
     if(tw === 'tiny') items += 2;
     items = Math.max(5, Math.min(12, items));
-    let limit = items * LT.spp[cc] * LT.kTime[k];
+    let limit = (items + 1) * LT.spp[cc] * LT.kTime[k];   /* 양이 몫 +1(양이는 물건과 따로 하나 더) */
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(45, Math.round(limit / 5) * 5);
@@ -98,8 +99,8 @@ NG.hidden = (() => {
   function pickScene(rng, avoid){ const ok = SCN.filter(k => !(avoid || []).includes(k)), a = ok.length ? ok : SCN; return a[Math.floor(rng() * a.length)]; }
   function gen3(cfg, rng, key){
     const sc = sceneOf(key || cfg.scene || pickScene(rng, cfg.avoid));
-    const n = Math.max(1, Math.min(sc.objs.length + 1, cfg.items || 8));
-    const pick = shuffle(sc.objs.slice(), rng).slice(0, n - 1);   /* 양이 1 + 그림 속 물건 n−1 = 모두 n개(물건 수·시간 그대로) */
+    const no = Math.max(1, Math.min(sc.objs.length, cfg.items || 8)), n = no + 1;
+    const pick = shuffle(sc.objs.slice(), rng).slice(0, no);   /* 그림 속 물건 cfg.items개 + 양이 1 = 모두 n개(양이는 따로 하나 더, 시간도 한 개 몫 더) */
     const u = 'hd' + Math.floor(rng() * 1e6);
     /* 양이: 목록 맨 앞(물건 0번). 그림은 거울 묶음 안에 원래 자리(bx)로 그려 거울이면 같이 뒤집히고, 판정 자리 x도 뒤집는다 */
     const yg = placeYang(rng, sc, cfg);
@@ -501,7 +502,7 @@ NG.hidden = (() => {
       const vx = r1(Math.max(0, Math.min(W - 168, o.x - 60))), vy = r1(Math.max(0, Math.min(H - 100, o.y - 50)));
       const pic = `<svg viewBox="${vx} ${vy} 168 100" style="display:block;width:100%;max-width:300px;margin:4px 0 8px;border-radius:12px;border:2px solid #1A0F45" aria-hidden="true">${photoSvg(sc.key, 'hdH')}<circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#fff" stroke-width="7"/><circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#FF2E7E" stroke-width="3.6"/></svg>`;
       return [
-        ['여행 중인 양이 찾기', pic + '장면 어딘가에 여행 중인 양이가 숨어 있어요. 양이와 아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미!'],
+        ['여행 중인 양이 찾기', pic + '장면 어딘가에 여행 중인 고양이 양이가 숨어 있어요. 양이와 아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미!'],
         ['크게 보기', '두 손가락으로 벌리거나 돋보기 단추로 12배까지 크게 볼 수 있어요.'],
         ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 조금 줄고 잠깐 못 눌러요. 막히면 💡힌트!']
       ];
@@ -511,14 +512,15 @@ NG.hidden = (() => {
     starRule:'★ 클리어 · ★★ 힌트 1번·실수 4번 이하 · ★★★ 힌트 없이 실수 1번 이하',
     levels:{
       /* 새 장면: tone = 물건과 바탕의 명도 차(쉬움 25~35%, 그 밖 15~25%), minR = 최소 반지름(화면 28px, 쉬움 32px), rot = 기울기(어려움만 ±25°) */
-      easy:{ items:7, size:1.02, dens:90, limit:120, hints:3, tone:[.25, .35], rot:0, minR:16, busy:-.5, ink:.1 },
-      normal:{ items:9, size:.9, dens:120, limit:150, hints:3, tone:[.17, .25], rot:0, minR:14, busy:0, ink:.25 },
-      hard:{ items:11, size:.8, dens:150, limit:180, hints:3, tone:[.15, .2], rot:25, minR:14, busy:.5, ink:.35 }
+      /* items = 물건 수(양이는 따로 +1), limit = 물건 + 양이 몫(2026-10-12: 120·150·180 → 135·165·195) */
+      easy:{ items:7, size:1.02, dens:90, limit:135, hints:3, tone:[.25, .35], rot:0, minR:16, busy:-.5, ink:.1 },
+      normal:{ items:9, size:.9, dens:120, limit:165, hints:3, tone:[.17, .25], rot:0, minR:14, busy:0, ink:.25 },
+      hard:{ items:11, size:.8, dens:150, limit:195, hints:3, tone:[.15, .2], rot:25, minR:14, busy:.5, ink:.35 }
     },
     concepts:CONC,
     stage(n){ return stageCfg(n); },
-    stageDesc(n){ const c = stageCfg(n); return `${sceneOf(c.scene).name} · 물건 ${c.items}개 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
-    levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `물건 ${c.items}개 · ${mmss(c.limit)}`; },
+    stageDesc(n){ const c = stageCfg(n); return `${sceneOf(c.scene).name} · 물건 ${c.items}개 + 양이 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
+    levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `물건 ${c.items}개 + 양이 · ${mmss(c.limit)}`; },
     init(cfg, rng){
       /* 모든 모드가 그림책 사진 장면 20곳(2026-10-10부터, 예전 그림 장면은 모두 지움). 대전은 최근 본 장면을 피해 고른다 */
       const sc = gen3(cfg, rng, G.duel ? pickScene(rng, duelAvoid(cfg)) : (cfg.scene || pickScene(rng, cfg.avoid)));
@@ -570,8 +572,8 @@ NG.hidden = (() => {
             <g transform="scale(.5)"><circle r="15" fill="#E6F6FF" fill-opacity=".35" stroke="#1A0F45" stroke-width="4"/><path d="M11 11l13 13" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M11 11l13 13" stroke="#F08A24" stroke-width="3.4" stroke-linecap="round"/></g></g>
         </svg>`;
       },
-      lines:['장면 어딘가에 여행 중인 양이가 숨어 있어요', '양이와 아래 물건을 찾아 눌러요', '아무 데나 누르면 잠깐 못 눌러요'],
-      more:[['여행 중인 양이', '하얀 털에 빨간 배낭을 멘 아기 양 양이가 장면 어딘가에 숨어 있어요. 목록 맨 앞의 양이도 찾아야 해요. 찾으면 양이가 폴짝!'],
+      lines:['여행 중인 고양이 양이가 숨어 있어요', '양이와 아래 물건을 찾아 눌러요', '아무 데나 누르면 잠깐 못 눌러요'],
+      more:[['여행 중인 양이', '이마에 줄무늬 세 개, 노란 배낭을 멘 회색 고양이 양이가 장면 어딘가에 숨어 있어요. 목록 맨 앞의 양이도 물건과 따로 하나 더 찾아야 해요. 찾으면 양이가 폴짝!'],
         ['그림 속 물건 찾기', '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미가 그려져요.'],
         ['크게 보기', '두 손가락으로 벌리거나 오른쪽 아래 돋보기 단추로 12배까지 크게 볼 수 있어요(×2·×4·×8·×12). 크게 본 채로 끌면 옮겨 가요.'],
         ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 15점 줄고 잠깐 못 눌러요(대전은 1.5초). 막히면 💡힌트(−40점)!'],
@@ -668,7 +670,7 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-yang .j{transform-box:fill-box; transform-origin:50% 100%}
 .ng-hidden .hd-yang.hop .j{animation:hidden-hop .75s cubic-bezier(.3,.7,.4,1)}
 @keyframes hidden-hop{0%{transform:none} 18%{transform:translateY(0) scale(1.08,.9)} 45%{transform:translateY(-22%) scale(.95,1.06)} 70%{transform:translateY(0) scale(1.06,.93)} 85%{transform:translateY(-6%)} 100%{transform:none}}
-.ng-hidden .hd-ph.yg{background-size:auto 100%; background-position:right center}
+.ng-hidden .hd-ph.yg{background-size:auto 119.05%; background-position:right center}   /* 정사각 칸에 얼굴 칸(336 폭)만 보이게: 높이 400 중 336만 */
 .ng-hidden .hd-mark circle{stroke-dasharray:220; stroke-dashoffset:220; animation:hidden-draw .35s ease-out forwards}
 .ng-hidden .hd-mark .p{animation:hidden-ring .45s cubic-bezier(.2,1.6,.4,1)}
 @keyframes hidden-ring{from{transform:scale(1.7); opacity:.2}}
@@ -760,7 +762,7 @@ body[data-mode="hidden"]{background:
 })();
 
 /* 대전: 같은 장면(같은 씨앗)에서 누가 먼저 다 찾나. AI 상대의 평균 시간·성공률(duelPace), 상대에게 보내는 진행 수치(duelStat) */
-/* 대전 v3 선점(docs/21 WP6 3번): 2~5명이 같은 장면에서 물건 6개를 먼저 누른 사람이 차지, 90초(느긋하게 180초), 많이 차지한 순
+/* 대전 v3 선점(docs/21 WP6 3번): 2~5명이 같은 장면에서 물건 6개 + 양이 = 7개를 먼저 누른 사람이 차지, 105초(느긋하게 210초), 많이 차지한 순
    (같으면 실수 적은 순 → 마지막 차지가 이른 순, 엔진 기본). 컴퓨터 상대는 계단마다 남은 물건 하나를 차지(평균 약 13초 간격) */
 Object.assign(NG.hidden, {
   duelKind:'shared', duelMax:5, duelPace:[75, 1],
@@ -768,11 +770,11 @@ Object.assign(NG.hidden, {
   duelStat:{ unit:'개', get:() => ({ v:G.h.found, t:G.h.items.length, mis:G.h.misses }) },
   duelCfg(o){
     const d = o && ['easy', 'normal', 'hard'].includes(o.diff) ? o.diff : 'normal';
-    return Object.assign({}, NG.hidden.levels[d], { items:6, limit:90, hints:1, avoid:(o && o.avoid) || [] });
+    return Object.assign({}, NG.hidden.levels[d], { items:6, limit:105, hints:1, avoid:(o && o.avoid) || [] });
   },
   duelAi(rng, o){
-    const lim = (o && o.cfg && o.cfg.limit) || 90, slow = o && o.pace === 's' ? 1.5 : 1;
-    const T = Math.min(lim * .95, 4.5 + 5 * 13 * (0.8 + rng() * 0.45) * slow);
+    const lim = (o && o.cfg && o.cfg.limit) || 105, slow = o && o.pace === 's' ? 1.5 : 1;
+    const T = Math.min(lim * .95, 4.5 + 6 * 13 * (0.8 + rng() * 0.45) * slow);
     return { ok:true, T, sc:0, fail:1 };
   },
   duelAvoidKey:() => (G && G.id === 'hidden' && G.h && G.h.sc && G.h.sc.v2 ? G.h.sc.key : null)
