@@ -16,12 +16,26 @@ NG.hidden = (() => {
   /* ----- 그림책 사진 장면 20곳(hidden-photo.js) — 찾을 물건은 그림 속에 원래 있는 물건(장면마다 12개 중 몇 개) ----- */
   const PH = window.HIDDEN_PHOTO, SCN = PH.SC.map(s => s.key);
   const sceneOf = k => PH.SC.find(s => s.key === k) || PH.SC[0];
-  const objOf = k => PH.OBJ[k] || { name:'물건', i:0, scene:SCN[0] };
+  /* 양이: 세계를 여행하는 아기 양(메인 캐릭터). 모든 모드의 장면에 한 마리가 숨어 있고, 목록 맨 앞 칸이 양이 */
+  const YK = 'yangi', YANG = { id:YK, name:'양이', i:-1, scene:null };
+  const objOf = k => k === YK ? YANG : PH.OBJ[k] || { name:'물건', i:0, scene:SCN[0] };
   const nmOf = k => objOf(k).name;
-  /* 목록 아이콘 = 그 물건을 그림에서 잘라 낸 칸(아이콘 판 4×3). 그림자 목록이면 까맣게 */
-  const iconSvg = (k, shadow) => { const o = objOf(k); return `<i class="hd-ph${shadow ? ' sh' : ''}" style="background-image:url('${PH.icons(o.scene)}');background-position:${r1((o.i % 4) * 100 / 3)}% ${Math.floor(o.i / 4) * 50}%"></i>`; };
+  /* 목록 아이콘 = 그 물건을 그림에서 잘라 낸 칸(아이콘 판 4×3). 그림자 목록이면 까맣게. 양이는 양이 그림판의 얼굴 칸(5번째) */
+  const iconSvg = (k, shadow) => { if(k === YK) return `<i class="hd-ph yg${shadow ? ' sh' : ''}" style="background-image:url('${PH.yang()}')"></i>`; const o = objOf(k); return `<i class="hd-ph${shadow ? ' sh' : ''}" style="background-image:url('${PH.icons(o.scene)}');background-position:${r1((o.i % 4) * 100 / 3)}% ${Math.floor(o.i / 4) * 50}%"></i>`; };
+  /* 양이 그림(장면 좌표, 발 가운데가 (x, y+h/2)). 그림판 칸 336×400 중 pose(0~3) 칸만 보이게 중첩 svg로 자른다 */
+  const YW = 336, YH = 400;
+  const yangSvg = (y, filt) => { const h = r1(y.r * 2.5), w = r1(h * YW / YH);
+    return `<g class="hd-yang" transform="translate(${r1(y.bx)} ${r1(y.y)})"><g class="j"><svg x="${r1(-w / 2)}" y="${r1(-h * .56)}" width="${w}" height="${h}" viewBox="${y.pose * YW} 0 ${YW} ${YH}" preserveAspectRatio="xMidYMid meet" overflow="hidden"${filt ? ` filter="${filt}"` : ''}><g${y.flip ? ` transform="translate(${y.pose * YW * 2 + YW} 0) scale(-1 1)"` : ''}><image href="${PH.yang()}" width="${YW * 5}" height="${YH}"/></g></svg></g></g>`; };
+  /* 양이 자리: 장면 물건 12개와 겹치지 않고, 가장자리·위쪽 알림 자리·오른쪽 아래 확대 단추 자리를 피함(rng만) */
+  function placeYang(rng, sc, cfg){
+    const r = r1(cfg.items <= 7 && !cfg.hard ? R(rng, 10, 11.5) : R(rng, 8.5, 10.5)), pose = Math.floor(rng() * 4), flip = rng() < .5;
+    const free = (x, y) => x > 26 && x < W - 26 && y > 52 && y < H - 30 && !(x > W - 86 && y > H - 150) && sc.objs.every(o => Math.hypot(o.x - x, o.y - y) > o.r + r * 1.25 + 8);
+    let x = W / 2, y = H / 2;
+    for(let t = 0; t < 400; t++){ const px = R(rng, 26, W - 26), py = R(rng, 52, H - 30); if(free(px, py)){ x = px; y = py; break; } }
+    return { r, pose, flip, bx:x, y };
+  }
   /* 장면 그림(장면 좌표 360×480). 거울 장면은 좌우를 뒤집고, 흑백 사진은 색을 뺀다 */
-  const photoSvg = (key, u, mirror, gray) => `${gray ? `<defs><filter id="${u}g"><feColorMatrix type="saturate" values="0"/></filter></defs>` : ''}<g${mirror ? ` transform="translate(${W} 0) scale(-1 1)"` : ''}><image href="${PH.src(key)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"${gray ? ` filter="url(#${u}g)"` : ''}/></g>`;
+  const photoSvg = (key, u, mirror, gray, yang) => `${gray ? `<defs><filter id="${u}g"><feColorMatrix type="saturate" values="0"/></filter></defs>` : ''}<g${mirror ? ` transform="translate(${W} 0) scale(-1 1)"` : ''}><image class="hd-img" href="${PH.src(key)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"${gray ? ` filter="url(#${u}g)"` : ''}/>${yang ? yangSvg(yang, gray ? `url(#${u}g)` : '') : ''}</g>`;
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const LIGHT_R = 66;   /* 손전등 반지름(장면 단위) */
   const CONC = {
@@ -84,13 +98,16 @@ NG.hidden = (() => {
   function pickScene(rng, avoid){ const ok = SCN.filter(k => !(avoid || []).includes(k)), a = ok.length ? ok : SCN; return a[Math.floor(rng() * a.length)]; }
   function gen3(cfg, rng, key){
     const sc = sceneOf(key || cfg.scene || pickScene(rng, cfg.avoid));
-    const n = Math.max(1, Math.min(sc.objs.length, cfg.items || 8));
-    const pick = shuffle(sc.objs.slice(), rng).slice(0, n);
-    const list = pick.map(o => ({ k:o.id, need:1, got:0 }));
-    const items = pick.map((o, li) => ({ i:li, li, k:o.id, x:cfg.mirror ? W - o.x : o.x, y:o.y, r:o.r, s:1, rot:0, F:'#FFE27A', A:'#FFE27A', K:INK }));
+    const n = Math.max(1, Math.min(sc.objs.length + 1, cfg.items || 8));
+    const pick = shuffle(sc.objs.slice(), rng).slice(0, n - 1);   /* 양이 1 + 그림 속 물건 n−1 = 모두 n개(물건 수·시간 그대로) */
     const u = 'hd' + Math.floor(rng() * 1e6);
+    /* 양이: 목록 맨 앞(물건 0번). 그림은 거울 묶음 안에 원래 자리(bx)로 그려 거울이면 같이 뒤집히고, 판정 자리 x도 뒤집는다 */
+    const yg = placeYang(rng, sc, cfg);
+    const all = [{ id:YK, x:yg.bx, y:yg.y, r:yg.r }].concat(pick);
+    const list = all.map(o => ({ k:o.id, need:1, got:0 }));
+    const items = all.map((o, li) => ({ i:li, li, k:o.id, x:cfg.mirror ? W - o.x : o.x, y:o.y, r:o.r, s:1, rot:0, F:'#FFE27A', A:'#FFE27A', K:INK, yang:o.id === YK }));
     const ok = items.length === n && items.every(o => o.x - o.r >= -2 && o.x + o.r <= W + 2 && o.y - o.r >= -2 && o.y + o.r <= H + 2);
-    return { key:sc.key, tk:sc.key, T:{ name:sc.name, k:INK }, bg:photoSvg(sc.key, u, !!cfg.mirror, !!cfg.gray), top:'', items, list, ok, v2:true, photo:true };
+    return { key:sc.key, tk:sc.key, T:{ name:sc.name, k:INK }, bg:photoSvg(sc.key, u, !!cfg.mirror, !!cfg.gray, yg), top:'', items, list, ok, v2:true, photo:true, yang:yg };
   }
   /* 대전에서 같은 그림이 다시 나오지 않게(대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고,
      최근 본 장면 3개(duelAvoidKey로 엔진이 저장 → G.duel.avoid, 빠른 대전은 방장 목록을 모두가 같이 씀)를 피해 고른다.
@@ -153,8 +170,12 @@ NG.hidden = (() => {
     svg.setAttribute('viewBox', `${r1(v.cx - vw / 2)} ${r1(v.cy - vh / 2)} ${r1(vw)} ${r1(vh)}`);
     const zi = $('#hdZin'), zo = $('#hdZout'); if(zi) zi.disabled = v.z >= ZMAX - .01; if(zo) zo.disabled = v.z <= 1.01;
     const w = $('#hdWrap'); if(w) w.classList.toggle('zoomed', v.z > 1.01);
+    /* 확대하면 동그라미·✕ 선이 같이 굵어지지 않게(화면 기준 굵기 비슷하게) — 보이기만 */
+    svg.style.setProperty('--zs', r1(Math.max(1 / v.z, .12) * 1000) / 1000);
+    const lv = $('#hdZlv'); if(lv){ const t = v.z > 1.01 ? '×' + (v.z < 9.95 ? (Math.round(v.z * 10) / 10).toString() : Math.round(v.z)) : ''; if(lv.textContent !== t) lv.textContent = t; lv.hidden = !t; }
   }
-  const ZMAX = 3;
+  const ZMAX = 12;   /* 2026-10-12 사용자 지시: 3배 → 12배(4배 더) */
+  const ZSTEP = [1, 2, 4, 8, 12];   /* 돋보기 +/− 단추 단계 */
   function zoomBy(f, cx, cy){
     const m = S(), v = m.view, z = Math.max(1, Math.min(ZMAX, v.z * f));
     if(cx != null){ /* 손가락 사이(또는 누른 곳)를 기준으로 확대 */ v.cx = cx + (v.cx - cx) * v.z / z; v.cy = cy + (v.cy - cy) * v.z / z; }
@@ -171,7 +192,7 @@ NG.hidden = (() => {
 
   /* 누르기 판정: 아직 못 찾은 물건 중 가까운 것. 판정 반지름 = 물건 반지름 + 화면 14px(작은 물건도 관대하게) */
   function hitAt(x, y, all){   /* all: 이미 찾은(선점 대전에서는 누가 차지한) 물건도 판정 → 남의 것을 눌러도 빗나감이 아님 */
-    const m = S(), t = elapsed(), tol = Math.max(14 / pxPerUnit(), 5);
+    const m = S(), t = elapsed(), tol = Math.max(14 / pxPerUnit(), .8);   /* 화면 14px(12배 확대에서도 화면 기준) */
     let best = null, bd = 1e9;
     for(const o of m.items){
       if(m.got.has(o.i) && !all) continue;
@@ -198,18 +219,21 @@ NG.hidden = (() => {
     mk.setAttribute('class', 'hd-mark'); mk.dataset.i = o.i;
     const [px, py] = posOf(o, elapsed());
     mk.setAttribute('transform', `translate(${r1(px)} ${r1(py)})`);
-    mk.innerHTML = `<g class="p"><circle r="${r1(o.r + 8)}" class="o"/><circle r="${r1(o.r + 8)}" class="c"/></g>`;
+    mk.innerHTML = `<g class="p"><circle r="${r1(o.r + 8 / Math.min(3, m.view.z))}" class="o"/><circle r="${r1(o.r + 8 / Math.min(3, m.view.z))}" class="c"/></g>`;
     const ml = $('#hdMarks'); if(ml) ml.appendChild(mk);
     const ig = document.querySelector(`.ng-hidden .hd-it[data-i="${o.i}"]`); if(ig) ig.classList.add('got');
     drawList(); hud();
     try{ const q = screenOf(px, py); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', o.F], 12, { speed:220, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); fxRing(q.x, q.y, '#FFE27A', 56, .5, 7); fxRing(q.x, q.y, '#FFFFFF', 34, .35, 4);
       const ch = document.querySelector(`.ng-hidden .hd-chip[data-li="${o.li}"]`); if(ch) fxPunch(ch, 1.12); }catch(_){}
     sfx('hdFind', { n:Math.min(8, m.combo - 1) }); fxBuzz(12);
+    if(o.yang) yangHop();
     if(m.combo >= 3) try{ fxCombo(m.combo); }catch(_){}
     clearHint();
     if(m.found >= totalOf(m)){ win(); return; }
     if(m.phase === 'play') msg(L.got >= L.need ? `<b>${nmOf(L.k)}</b><span>찾았어요! 남은 물건 ${totalOf(m) - m.found}개</span>` : `<b>${nmOf(L.k)}</b><span>${L.need - L.got}개 더 있어요</span>`, 'hd-pop');
   }
+  /* 양이를 찾으면 작게 폴짝(보이기만, 판 상태와 상관없음) */
+  function yangHop(){ try{ const g = document.querySelector('.ng-hidden .hd-yang'); if(g){ g.classList.remove('hop'); void g.getBoundingClientRect(); g.classList.add('hop'); } }catch(_){} }
   function miss(x, y){
     const m = S();
     m.misses++; m.streak++; m.combo = 0;
@@ -249,7 +273,8 @@ NG.hidden = (() => {
     /* 물건 바로 위가 아니라 "근처"를 밝힌다 */
     const a = m.hr() * Math.PI * 2, d = m.hr() * o.r * .9, hx = px + Math.cos(a) * d, hy = py + Math.sin(a) * d;
     const g = document.createElementNS(SVGNS, 'g'); g.id = 'hdHintRing'; g.setAttribute('class', 'hd-hint'); g.setAttribute('transform', `translate(${r1(hx)} ${r1(hy)})`);
-    g.innerHTML = `<circle r="${r1(o.r * 2.6)}" class="f"/><circle r="${r1(o.r * 2.6)}" class="c"/>`;
+    const hrr = r1(Math.min(o.r * 2.6, Math.max(o.r * 1.4, W / m.view.z * .38)));   /* 크게 확대했을 때 밝힘이 화면을 다 덮지 않게 */
+    g.innerHTML = `<circle r="${hrr}" class="f"/><circle r="${hrr}" class="c"/>`;
     const ml = $('#hdMarks'); if(ml) ml.appendChild(g);
     T_(() => { if(g.parentNode) g.remove(); }, 2600);
     const v = m.view, vw = W / v.z, vh = H / v.z;
@@ -323,6 +348,7 @@ NG.hidden = (() => {
     const P = plOf(owner) || { pid:owner, col:'#8A8FA8', shape:'circle', nick:'상대', me:false };
     ownMark(o, P, owner === me);
     claimTag(o, P);
+    if(o.yang) yangHop();
     const left = m.items.length - Object.keys(m.own).length;
     if(owner === me){
       m.streak = 0; m.combo++; m.found++; clearHint();
@@ -452,9 +478,9 @@ NG.hidden = (() => {
     svg.onpointerup = up; svg.onpointercancel = up;
     svg.onwheel = e => { if(m.night) return; e.preventDefault(); const c = scenePt(e.clientX, e.clientY); zoomBy(e.deltaY < 0 ? 1.25 : 1 / 1.25, c && c[0], c && c[1]); };
     const zi = $('#hdZin'), zo = $('#hdZout');
-    if(zi) zi.onclick = () => { zoomBy(1.6); sfx('hdZoom'); zoomTipOff(); };
+    if(zi) zi.onclick = () => { const z = ZSTEP.find(s => s > m.view.z + .05) || ZMAX; zoomBy(z / m.view.z); sfx('hdZoom'); zoomTipOff(); };
     const hl = $('#hdList'); if(hl) hl.onscroll = listFade;
-    if(zo) zo.onclick = () => { if(m.view.z < 1.7) { m.view.z = 1; applyView(); } else zoomBy(1 / 1.6); sfx('hdZoom', { out:1 }); };
+    if(zo) zo.onclick = () => { const z = ZSTEP.slice().reverse().find(s => s < m.view.z - .05) || 1; zoomBy(z / m.view.z); sfx('hdZoom', { out:1 }); };
     const h = $('#hdHint'); if(h) h.onclick = useHint;
   }
 
@@ -462,12 +488,12 @@ NG.hidden = (() => {
     name:'숨은그림 찾기', abil:'집중력', col:['#FFD6A5', '#F08A24', '#9A4A08'], time:'약 2분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.5a7.5 7.5 0 0 1 6.1 11.9l5 5a1.5 1.5 0 0 1-2.1 2.1l-5-5A7.5 7.5 0 1 1 10 2.5zm0 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/><path d="M10 7.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L7.1 9.3l2-.3z"/></svg>',
     art(){
-      /* 썸네일: 파리 장면 한 부분 + 찾은 동그라미 + 돋보기 */
-      const sc = sceneOf('paris'), o = sc.objs.find(x => x.name === '판토마임') || sc.objs[0];
-      const vx = r1(Math.max(0, Math.min(W - 128, o.x - 50))), vy = r1(Math.max(0, Math.min(H - 80, o.y - 40)));
-      return `<svg viewBox="${vx} ${vy} 128 80" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${photoSvg(sc.key, 'hdA')}
-        <circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#fff" stroke-width="5"/><circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#FF2E7E" stroke-width="2.6"/>
-        <g transform="translate(${r1(vx + 98)} ${r1(vy + 26)}) scale(.7)"><circle r="20" fill="#E6F6FF" fill-opacity=".45" stroke="#1A0F45" stroke-width="4.5"/><path d="M14 14l15 15" stroke="#1A0F45" stroke-width="8" stroke-linecap="round"/><path d="M14 14l15 15" stroke="#F08A24" stroke-width="4" stroke-linecap="round"/><path d="M-10-7a12 12 0 0 1 9-7" stroke="#fff" stroke-width="3.4" stroke-linecap="round" fill="none"/></g></svg>`;
+      /* 썸네일(2026-10-12): 파리 장면 그림을 칸 가득(img/thumb.webp 480×300, 양이가 들어 있음) + 양이를 찾은 동그라미 + 돋보기.
+         예전엔 360×480 장면 일부를 viewBox로 잘라 써서 작은 칸에서 복잡했다 → 썸네일 전용 그림을 viewBox 0 0 160 100 전체에 깐다 */
+      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="100" fill="#F08A24"/>
+        <image href="${PH.thumb()}" x="0" y="0" width="160" height="100" preserveAspectRatio="xMidYMid slice"/>
+        <circle cx="90" cy="55" r="23" fill="none" stroke="#fff" stroke-width="5.5"/><circle cx="90" cy="55" r="23" fill="none" stroke="#FF2E7E" stroke-width="3"/>
+        <g transform="translate(122 72) rotate(-10) scale(.62)"><circle r="20" fill="#E6F6FF" fill-opacity=".45" stroke="#1A0F45" stroke-width="5"/><path d="M14 14l15 15" stroke="#1A0F45" stroke-width="9" stroke-linecap="round"/><path d="M14 14l15 15" stroke="#F08A24" stroke-width="4.5" stroke-linecap="round"/><path d="M-10-7a12 12 0 0 1 9-7" stroke="#fff" stroke-width="3.6" stroke-linecap="round" fill="none"/></g></svg>`;
     },
     /* 도움말: 그림 1장 + 3줄(쉬운 말) */
     get help(){
@@ -475,8 +501,8 @@ NG.hidden = (() => {
       const vx = r1(Math.max(0, Math.min(W - 168, o.x - 60))), vy = r1(Math.max(0, Math.min(H - 100, o.y - 50)));
       const pic = `<svg viewBox="${vx} ${vy} 168 100" style="display:block;width:100%;max-width:300px;margin:4px 0 8px;border-radius:12px;border:2px solid #1A0F45" aria-hidden="true">${photoSvg(sc.key, 'hdH')}<circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#fff" stroke-width="7"/><circle cx="${o.x}" cy="${o.y}" r="${r1(o.r + 4)}" fill="none" stroke="#FF2E7E" stroke-width="3.6"/></svg>`;
       return [
-        ['그림 속 물건 찾기', pic + '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미!'],
-        ['크게 보기', '두 손가락으로 벌리거나 돋보기 단추로 크게 볼 수 있어요.'],
+        ['여행 중인 양이 찾기', pic + '장면 어딘가에 여행 중인 양이가 숨어 있어요. 양이와 아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미!'],
+        ['크게 보기', '두 손가락으로 벌리거나 돋보기 단추로 12배까지 크게 볼 수 있어요.'],
         ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 조금 줄고 잠깐 못 눌러요. 막히면 💡힌트!']
       ];
     },
@@ -544,9 +570,10 @@ NG.hidden = (() => {
             <g transform="scale(.5)"><circle r="15" fill="#E6F6FF" fill-opacity=".35" stroke="#1A0F45" stroke-width="4"/><path d="M11 11l13 13" stroke="#1A0F45" stroke-width="7" stroke-linecap="round"/><path d="M11 11l13 13" stroke="#F08A24" stroke-width="3.4" stroke-linecap="round"/></g></g>
         </svg>`;
       },
-      lines:['아래 물건을 그림에서 찾아 눌러요', '두 손가락으로 크게 볼 수 있어요', '아무 데나 누르면 잠깐 못 눌러요'],
-      more:[['그림 속 물건 찾기', '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미가 그려져요.'],
-        ['크게 보기', '두 손가락으로 벌리거나 오른쪽 아래 돋보기 단추로 크게 볼 수 있어요. 크게 본 채로 끌면 옮겨 가요.'],
+      lines:['장면 어딘가에 여행 중인 양이가 숨어 있어요', '양이와 아래 물건을 찾아 눌러요', '아무 데나 누르면 잠깐 못 눌러요'],
+      more:[['여행 중인 양이', '하얀 털에 빨간 배낭을 멘 아기 양 양이가 장면 어딘가에 숨어 있어요. 목록 맨 앞의 양이도 찾아야 해요. 찾으면 양이가 폴짝!'],
+        ['그림 속 물건 찾기', '아래 목록의 물건을 그림에서 찾아 눌러요. 찾으면 동그라미가 그려져요.'],
+        ['크게 보기', '두 손가락으로 벌리거나 오른쪽 아래 돋보기 단추로 12배까지 크게 볼 수 있어요(×2·×4·×8·×12). 크게 본 채로 끌면 옮겨 가요.'],
         ['아무 데나 누르면 잠깐 멈춤', '빗나가면 점수가 15점 줄고 잠깐 못 눌러요(대전은 1.5초). 막히면 💡힌트(−40점)!'],
         ['대전: 먼저 누르면 내 것', '여럿이 같은 그림을 봐요. 먼저 누른 사람이 그 물건을 차지하고, 그 사람 색 테두리가 그려져요. 많이 차지한 사람이 1등!']]
     },
@@ -557,6 +584,7 @@ NG.hidden = (() => {
       }
       return false;
     },
+    _hit(x, y){ return hitAt(x, y); }, _applyViewForTest(){ applyView(); },
     _gen:gen3, _gen2:gen3, _stage:stageCfg, _items:PH.OBJ, _themes:{}, _scenes:SCN,
     render(st){
       const m = S(), sc = m.sc;
@@ -578,6 +606,7 @@ NG.hidden = (() => {
             <g class="hd-bg">${sc.bg}</g><g class="hd-items">${items}</g><g class="hd-top">${sc.top}</g>${night}<g id="hdMarks"></g>
           </svg>
           <div class="hd-zoom"${m.night ? ' hidden' : ''}><button id="hdZin" aria-label="확대">${ICO.zin}</button><button id="hdZout" aria-label="축소" disabled>${ICO.zout}</button></div>
+          <div class="hd-zlv" id="hdZlv" aria-live="polite" hidden></div>
           <div class="hd-cool" id="hdCool" aria-hidden="true"><b>잠깐!</b><i><s id="hdCoolBar"></s></i></div>
         </div>
         <div class="hd-list" id="hdList" role="list" aria-label="찾을 물건"></div>
@@ -632,8 +661,14 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-wrap.zoomed .hd-svg{cursor:grab}
 .ng-hidden .hd-it.got{opacity:1}
 .ng-hidden .hd-mark circle{fill:none}
-.ng-hidden .hd-mark .o{stroke:#fff; stroke-width:9}
-.ng-hidden .hd-mark .c{stroke:#FF2E7E; stroke-width:4.6}
+.ng-hidden .hd-svg{--zs:1}
+.ng-hidden .hd-mark .o{stroke:#fff; stroke-width:calc(9px * var(--zs))}
+.ng-hidden .hd-mark .c{stroke:#FF2E7E; stroke-width:calc(4.6px * var(--zs))}
+.ng-hidden .hd-yang{pointer-events:none}
+.ng-hidden .hd-yang .j{transform-box:fill-box; transform-origin:50% 100%}
+.ng-hidden .hd-yang.hop .j{animation:hidden-hop .75s cubic-bezier(.3,.7,.4,1)}
+@keyframes hidden-hop{0%{transform:none} 18%{transform:translateY(0) scale(1.08,.9)} 45%{transform:translateY(-22%) scale(.95,1.06)} 70%{transform:translateY(0) scale(1.06,.93)} 85%{transform:translateY(-6%)} 100%{transform:none}}
+.ng-hidden .hd-ph.yg{background-size:auto 100%; background-position:right center}
 .ng-hidden .hd-mark circle{stroke-dasharray:220; stroke-dashoffset:220; animation:hidden-draw .35s ease-out forwards}
 .ng-hidden .hd-mark .p{animation:hidden-ring .45s cubic-bezier(.2,1.6,.4,1)}
 @keyframes hidden-ring{from{transform:scale(1.7); opacity:.2}}
@@ -641,9 +676,9 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-mark.miss .o{stroke-dasharray:none; stroke-dashoffset:0; animation:none}
 @keyframes hidden-draw{to{stroke-dashoffset:0}}
 .ng-hidden .hd-own path{fill:none; stroke-linejoin:round; stroke-dasharray:none; stroke-dashoffset:0}
-.ng-hidden .hd-own .k{stroke:#1A0F45; stroke-width:11}
-.ng-hidden .hd-own .o{stroke:#fff; stroke-width:8.6}
-.ng-hidden .hd-own .c{stroke-width:4.6}
+.ng-hidden .hd-own .k{stroke:#1A0F45; stroke-width:calc(11px * var(--zs))}
+.ng-hidden .hd-own .o{stroke:#fff; stroke-width:calc(8.6px * var(--zs))}
+.ng-hidden .hd-own .c{stroke-width:calc(4.6px * var(--zs))}
 .ng-hidden .hd-own.tent .c{stroke-dasharray:7 5}
 .ng-hidden .hd-own.tent .k, .ng-hidden .hd-own.tent .o{opacity:.55}
 .ng-hidden .hd-tag{pointer-events:none; animation:hidden-tag 1.2s ease-out forwards}
@@ -659,13 +694,16 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-x{animation:hidden-fade .65s ease-in forwards}
 @keyframes hidden-fade{0%,60%{opacity:1} 100%{opacity:0}}
 .ng-hidden .hd-hint .f{fill:#FFE27A; fill-opacity:.28}
-.ng-hidden .hd-hint .c{fill:none; stroke:#FFD23F; stroke-width:4; stroke-dasharray:8 6}
+.ng-hidden .hd-hint .c{fill:none; stroke:#FFD23F; stroke-width:calc(4px * var(--zs)); stroke-dasharray:calc(8px * var(--zs)) calc(6px * var(--zs))}
 .ng-hidden .hd-hint{animation:hidden-hint 2.6s ease-in-out forwards}
 @keyframes hidden-hint{0%{opacity:0} 12%{opacity:1} 30%{opacity:.6} 45%{opacity:1} 80%{opacity:1} 100%{opacity:0}}
 .ng-hidden .hd-night{transition:opacity .6s}
 .ng-hidden .hd-night.off{opacity:0}
 .ng-hidden .hd-zoom{position:absolute; right:8px; bottom:8px; display:flex; flex-direction:column; gap:7px}
 .ng-hidden .hd-zoom[hidden]{display:none}
+.ng-hidden .hd-zlv{position:absolute; right:12px; bottom:136px; min-width:44px; padding:3px 7px; border-radius:99px; background:rgba(26,15,69,.82); color:#fff; font-family:var(--heavy); font-size:14px; line-height:1.15; text-align:center; pointer-events:none; font-variant-numeric:tabular-nums}
+.ng-hidden .hd-zlv[hidden]{display:none}
+.ng-hidden .hd-img{image-rendering:auto}
 .ng-hidden .hd-zoom button{width:56px; height:56px; padding:9px; border-radius:50%; border:2.5px solid #1A0F45; background:rgba(255,255,255,.92); box-shadow:0 3px 0 #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-hidden .hd-zoom button svg{width:100%; height:100%; display:block}
 .ng-hidden .hd-zoom button:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
@@ -705,7 +743,7 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-chipr.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-hidden .hd-chipr.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
 @media (max-width:370px){ .ng-hidden .hd-msg b{font-size:18px} .ng-hidden .hd-chipr{font-size:13px; padding:4px 7px} }
-@media (prefers-reduced-motion: reduce){ .ng-hidden .hd-mark circle{animation:none; stroke-dashoffset:0} .ng-hidden .hd-wrap.in, .ng-hidden .hd-chip.cur{animation:none} }
+@media (prefers-reduced-motion: reduce){ .ng-hidden .hd-yang.hop .j{animation:none} .ng-hidden .hd-mark circle{animation:none; stroke-dashoffset:0} .ng-hidden .hd-wrap.in, .ng-hidden .hd-chip.cur{animation:none} }
 `,
     sounds:{
       hdFind(o){ const n = Math.min(8, o.n || 0); aBell({ f:penta(n + 4, 72), t:0, d:.6, v:.09, idx:1.4, rev:.35 }); aBell({ f:penta(n + 6, 72), t:.08, d:.7, v:.07, idx:1.2, rev:.4 }); if(n >= 2) aSparkle({ root:84 + Math.min(7, n), n:4, t:.12, v:.03 }); },

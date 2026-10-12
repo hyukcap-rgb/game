@@ -10,5 +10,8 @@ window.HIDDEN_PHOTO = (() => {
   let base = 'games/hidden/img/';
   try{ if(/\/embed\/[^/]*$/.test(location.pathname)) base = '../games/hidden/img/'; }catch(_){}
   const src = key => base + key + '.webp', icons = key => base + 'icons_' + key + '.webp';
-  return { SC, OBJ, src, icons, W:360, H:480 };
+  /* 양이(메인 캐릭터, 여행하는 아기 양): img/yangi.webp = 칸 5개(336×400) — 0 손 흔들기 · 1 앉기 · 2 걸으며 뒤돌아보기 · 3 고개 갸웃 · 4 얼굴(목록 아이콘)
+     썸네일: img/thumb.webp(480×300, 파리 장면 + 양이) */
+  const yang = () => base + 'yangi.webp', thumb = () => base + 'thumb.webp';
+  return { SC, OBJ, src, icons, yang, thumb, W:360, H:480 };
 })();
