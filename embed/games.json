@@ -134,12 +134,12 @@
     {
       "id": "spot",
       "name": "틀린그림 찾기",
-      "version": "1.7.0",
+      "version": "1.8.0",
       "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "spot.html",
-      "bytes": 350961,
-      "gzip": 116906
+      "bytes": 358121,
+      "gzip": 119311
     },
     {
       "id": "chosung",
