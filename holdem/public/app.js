@@ -162,7 +162,9 @@
       const p = this.slotPos(v, seat);
       if (p[1] > 80) return [66, 78];
       if (p[0] === 50) return [60, p[1] + 7];
-      return this.lerp(p, CENTER, 0.3).map((x, i) => (i === 1 ? x - 4 : x));
+      // 버튼 주인의 카드 바로 아래에 붙여서, 옆자리(SB) 것으로 보이지 않게
+      if (p[1] > 48) return [p[0], p[1] + 10.5];   // 아래쪽 옆자리는 보드 카드와 겹치지 않게 칩 숫자 바로 아래
+      return [p[0] + (p[0] <= 50 ? 9.5 : -9.5), p[1] + 5];
     },
     tablePt(pct) {
       const r = $('#table').getBoundingClientRect();

@@ -185,7 +185,7 @@ input { font: inherit; }
 .seat .say::after { content: ''; position: absolute; left: 50%; bottom: -2.2cqw; transform: translateX(-50%); border: 1.6cqw solid transparent; border-top-color: #1d2130; }
 @keyframes say { 0% { transform: translateX(-50%) scale(.3); opacity: 0; } 10% { transform: translateX(-50%) scale(1.08); opacity: 1; } 18% { transform: translateX(-50%) scale(1); } 85% { opacity: 1; } 100% { transform: translateX(-50%) translateY(-2cqw); opacity: 0; } }
 
-.dealer-btn { position: absolute; width: 5.6cqw; height: 5.6cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9d4c7); color: #222; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 3.2cqw; display: grid; place-items: center; box-shadow: 0 .6cqw 1cqw rgba(0, 0, 0, .6); transform: translate(-50%, -50%); transition: left .6s cubic-bezier(.4, 1.4, .5, 1), top .6s cubic-bezier(.4, 1.4, .5, 1); z-index: 3; opacity: 0; }
+.dealer-btn { position: absolute; width: 5.6cqw; height: 5.6cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9d4c7); color: #222; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 3.2cqw; display: grid; place-items: center; box-shadow: 0 .6cqw 1cqw rgba(0, 0, 0, .6); transform: translate(-50%, -50%); transition: left .6s cubic-bezier(.4, 1.4, .5, 1), top .6s cubic-bezier(.4, 1.4, .5, 1); z-index: 6; opacity: 0; }
 .dealer-btn.show { opacity: 1; }
 
 /* 베팅 칩 */
