@@ -111,6 +111,53 @@ t('uncalled bet returned', () => {
   assert(g.players[1].stack >= 4700);
 });
 
+
+// 심판 점검(2026-10-12)에서 나온 규칙
+t('incomplete all-in raise does not reopen raising', () => {
+  const g = mkGame([5000, 5000, 1200]);
+  g.startHand();                       // D0 SB1 BB2, p0 먼저
+  g.act('p0', 'call'); g.act('p1', 'call'); g.act('p2', 'check');
+  assert.strictEqual(g.stage, 'flop');
+  g.act('p1', 'raise', 1000);          // 벳 1000
+  g.act('p2', 'allin');                // 1100 올인(+100, 부족)
+  g.act('p0', 'call');
+  const L = g.legal();
+  assert.strictEqual(g.players[g.toAct].id, 'p1');
+  assert.strictEqual(L.toCall, 100);
+  assert.strictEqual(L.canRaise, false);
+  assert.strictEqual(g.act('p1', 'raise', 3000), true); // 레이즈 요청은 콜로 처리
+  assert.strictEqual(g.players[1].total, 1200); // 프리플롭 100 + 플롭 1100(콜)
+});
+t('full raise reopens', () => {
+  const g = mkGame([5000, 5000, 5000]);
+  g.startHand();
+  g.act('p0', 'raise', 300); g.act('p1', 'raise', 900); g.act('p2', 'fold');
+  assert.strictEqual(g.legal().canRaise, true);
+});
+t('unknown action rejected', () => {
+  const g = mkGame([1000, 1000, 1000]);
+  g.startHand();
+  assert.strictEqual(g.act('p0', 'bet', 999), false);
+  assert.strictEqual(g.toAct, 0);
+});
+t('no back-to-back BB when going heads-up', () => {
+  const g = mkGame([1000, 1000, 1000]);
+  g.startHand();                       // D0 SB1 BB2
+  assert.strictEqual(g.bbIdx, 2);
+  g.act('p0', 'fold'); g.act('p1', 'fold');
+  g.players[0].stack = 0;              // 버튼 탈락
+  g.startHand();
+  assert.notStrictEqual(g.players[g.bbIdx].id, 'p2');
+  assert.strictEqual(g.sbIdx, g.dealer);
+});
+t('short BB all-in heads-up: SB already covers', () => {
+  const g = mkGame([1000, 30]);
+  g.startHand();                       // p0 딜러=SB 50, p1 BB 올인 30
+  assert.strictEqual(g.stage === 'done' || g.runout, true);
+  while (g.stage !== 'done') g.runoutStep();
+  assert.strictEqual(g.players[0].stack + g.players[1].stack, 1030);
+});
+
 // 봇끼리 대량 시뮬레이션: 칩 보존 + 무한루프 없음
 t('bot simulation', () => {
   const styles = Object.keys(H.BOT_STYLES);

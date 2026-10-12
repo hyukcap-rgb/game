@@ -656,6 +656,7 @@
       this.update();
     }
     update() {
+      if (current !== this || this.over) { clearTimeout(this.timer); return; }   // 다른 게임으로 바뀌었으면 멈춤
       const v = this.g.view('me');
       R.render(v);
       hud('AI 대결', v);
@@ -747,11 +748,18 @@
   };
   Net.on('welcome', (m) => {
     profile.token = m.token; store.set('rh_token', m.token);
-    R.myId = m.pid;
+    Online.pid = m.pid;
+    if (current === Online) R.myId = m.pid;
     if (Online.pendingJoin) { Net.send({ t: 'join', code: Online.pendingJoin }); Online.pendingJoin = null; }
   });
   Net.on('error', (m) => toast(m.msg));
+  // 한 화면에는 한 게임만: AI 대결(로컬)이 돌고 있으면 서버 방 소식은 받지 않고 그 방에서 나감
+  // (예전에는 재접속한 방의 화면과 AI 대결 화면이 번갈아 그려져 콜/체크·올인 금액이 엉뚱하게 보였음)
+  const otherGame = () => current && current !== Online && !current.over;
   Net.on('room', (m) => {
+    if (otherGame()) { Net.send({ t: 'leave' }); return; }
+    current = Online;
+    R.myId = Online.pid;
     Online.room = m; Online.active = true; Online.mode = m.mode;
     Actions.ctrl = Online;
     if (m.status === 'lobby') {
@@ -763,7 +771,8 @@
     if (m.status !== 'over' && $('#modal').dataset.kind === 'over') { closeModal(); $('#modal').dataset.kind = ''; }
   });
   Net.on('state', (m) => {
-    if (!Online.active) return;
+    if (!Online.active || current !== Online) return;
+    R.myId = Online.pid;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
     if (Online.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);
@@ -838,6 +847,7 @@
   function startSolo() {
     myName();
     if (current && current.leave) current.leave();
+    if (Online.active) Online.leave();   // 서버 방에 남아 있으면 나감(한 번에 한 게임)
     current = new Solo();
     current.start();
   }
