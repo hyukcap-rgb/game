@@ -245,6 +245,15 @@
     }
 
     endRound() {
+      // 아무도 따라오지 않은 베팅(최고 베팅 - 두 번째 베팅)은 라운드가 끝날 때 바로 돌려줌(실제 딜러처럼)
+      const bets = this.players.map((p) => p.bet).sort((a, b) => b - a);
+      const extra = bets[0] - (bets[1] || 0);
+      if (extra > 0) {
+        const top = this.players.find((p) => p.bet === bets[0]);
+        top.bet -= extra; top.total -= extra; top.stack += extra;
+        if (top.allIn && top.stack > 0) top.allIn = false;
+        if (top.lastAction) top.lastAction = Object.assign({}, top.lastAction, { returned: extra });
+      }
       for (const p of this.players) {
         p.bet = 0; p.acted = false; p.actedAt = 0; p.raises = 0;
         if (p.lastAction && !p.folded && !p.allIn) p.lastAction = null;
@@ -369,13 +378,39 @@
         let amount = 0;
         for (const p of contrib) amount += Math.max(0, Math.min(p.total, L) - Math.min(p.total, prev));
         const eligible = live.filter((p) => p.total >= L);
-        if (amount > 0) pots.push({ amount, eligible });
+        if (amount > 0) pots.push({ amount, eligible, level: L });
         prev = L;
       }
       const assigned = pots.reduce((s, x) => s + x.amount, 0);
       const leftover = this.potTotal() - assigned;
       if (leftover > 0 && pots.length) pots[pots.length - 1].amount += leftover;
       return pots;
+    }
+
+    // 그 높이(level)에서 올인한 사람(같은 높이면 딜러 왼쪽부터 첫 사람)
+    potOwner(level, col) {
+      col = col || ((p) => p.total);
+      const c = this.seatOrder(this.live().filter((p) => p.allIn && col(p) === level));
+      return c.length ? c[0].id : null;
+    }
+
+    // 화면용 팟 나누기: 이미 가운데로 모인 칩만, 올인한 사람이 이길 수 있는 만큼은 그 사람 근처(at), 나머지는 가운데(at=null, 맨 끝)
+    viewPots() {
+      const col = (p) => p.total - (this.stage === 'done' ? 0 : p.bet);
+      const live = this.live();
+      const caps = [...new Set(live.filter((p) => p.allIn && (p.bet === 0 || this.stage === 'done')).map(col))].sort((a, b) => a - b);
+      const out = [];
+      let prev = 0;
+      const slice = (lo, hi) => this.players.reduce((s, p) => s + Math.max(0, Math.min(col(p), hi) - Math.min(col(p), lo)), 0);
+      for (const L of caps) {
+        const amount = slice(prev, L);
+        if (amount > 0) out.push({ amount, at: this.potOwner(L, col) });
+        prev = L;
+      }
+      const rest = slice(prev, Infinity);
+      if (rest > 0 || !out.length) out.push({ amount: rest, at: null });
+      else out[out.length - 1].at = null;   // 남은 게 없으면 마지막 팟이 가운데
+      return out;
     }
 
     // 딜러 왼쪽부터 순서 (홀수 칩 배분용)
@@ -400,7 +435,10 @@
       }
       const pots = this.buildPots();
       const out = [];
-      for (const pot of pots) {
+      // 가운데 팟 = 마지막 다툼 팟. 그 아래 팟은 그 높이에서 올인한 사람 근처에 놓임(화면 연출용)
+      let centerIdx = -1;
+      pots.forEach((pot, i) => { if (pot.eligible.length > 1) centerIdx = i; });
+      for (const [pi, pot] of pots.entries()) {
         let bestScore = -1;
         for (const p of pot.eligible) bestScore = Math.max(bestScore, evals.get(p).ev.score);
         const winners = this.seatOrder(pot.eligible.filter((p) => evals.get(p).ev.score === bestScore));
@@ -415,6 +453,7 @@
           amount: pot.amount, winners: winners.map((w) => w.id),
           handName: evals.get(winners[0]).name,
           refund: pot.eligible.length === 1,
+          at: pi < centerIdx ? this.potOwner(pot.level) : null,
         });
       }
       const hands = {};
@@ -443,7 +482,7 @@
       const toActP = this.toAct >= 0 ? this.players[this.toAct] : null;
       return {
         stage: this.stage, handNo: this.handNo, hk: this.seed + ':' + this.handNo, board: this.board.slice(),
-        pot: this.potTotal() - streetBets, potTotal: this.potTotal(),
+        pot: this.potTotal() - streetBets, potTotal: this.potTotal(), pots: this.viewPots(),
         currentBet: this.currentBet, dealer: this.dealer, sbIdx: this.sbIdx, bbIdx: this.bbIdx,
         toAct: this.toAct, sb: this.sb, bb: this.bb, runout: this.runout, actionSeq: this.actionSeq,
         myHand,

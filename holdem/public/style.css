@@ -90,6 +90,11 @@ input { font: inherit; }
 
 .pot { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, .55); border: 1px solid rgba(242, 195, 91, .35); padding: .8cqw 3.2cqw .8cqw 1.2cqw; border-radius: 99px; display: flex; align-items: center; gap: 1.6cqw; font-family: 'Oswald', sans-serif; font-size: 4.4cqw; color: var(--gold); opacity: 0; transition: opacity .3s; z-index: 3; }
 .pot.show { opacity: 1; }
+#sidePots { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.side-pot { font-size: 3.6cqw; padding: .6cqw 2.4cqw .6cqw 1cqw; opacity: 1; transition: left .55s cubic-bezier(.3, 1.3, .5, 1), top .55s cubic-bezier(.3, 1.3, .5, 1), opacity .3s; }
+.side-pot .pot-chip { width: 3.8cqw; height: 3.8cqw; }
+.side-pot small { font-family: 'Noto Sans KR', sans-serif; font-size: 2.4cqw; color: #f5e3b0; opacity: .85; margin-right: .4cqw; }
+.side-pot.gone { opacity: 0; }
 .pot-chip, .chip { width: 4.6cqw; height: 4.6cqw; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #fff 0 22%, transparent 23%), repeating-conic-gradient(var(--c, #e0384d) 0 30deg, #fff 30deg 45deg); box-shadow: 0 0 0 .5cqw var(--c, #e0384d), 0 .6cqw .8cqw rgba(0, 0, 0, .5); display: inline-block; flex: none; }
 .pot-chip { --c: #d4a017; }
 

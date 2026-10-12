@@ -139,7 +139,7 @@
 
     reset() {
       this.v = null; this.prev = null; this.seatEls = []; this.betEls = [];
-      $('#seats').innerHTML = ''; $('#bets').innerHTML = ''; $('#fx').innerHTML = '';
+      $('#seats').innerHTML = ''; $('#bets').innerHTML = ''; $('#fx').innerHTML = ''; $('#sidePots').innerHTML = ''; this._sideHk = null;
       $('#board').innerHTML = '<div class="slot"></div>'.repeat(5);
       $('#banner').className = 'banner'; $('#pot').classList.remove('show');
       $('#myHand').classList.remove('show'); $('#dealerBtn').classList.remove('show');
@@ -366,8 +366,18 @@
           this.flyChip(from, center(b), CHIP_COLORS[i % CHIP_COLORS.length], () => {});
           Sound.chip(0.05);
         } else if (amt < before && before > 0) {
-          // 베팅 → 팟
-          this.flyChip(center(b), potPt, CHIP_COLORS[i % CHIP_COLORS.length]);
+          // 베팅 → 팟 (아무도 따라오지 않은 만큼은 본인에게 돌아감)
+          const ret = p.lastAction && p.lastAction.returned;
+          if (ret && this._retKey !== v.hk + ':' + i + ':' + v.stage) {
+            this._retKey = v.hk + ':' + i + ':' + v.stage;
+            this.flyChip(center(b), center(this.seatEls[i].querySelector('.ava')), CHIP_COLORS[i % CHIP_COLORS.length]);
+            const pt = this.slotPos(v, i);
+            const f = document.createElement('div');
+            f.className = 'float-num'; f.textContent = '반환 +' + fmt(ret);
+            f.style.left = pt[0] + '%'; f.style.top = pt[1] + 3 + '%';
+            $('#fx').appendChild(f); setTimeout(() => f.remove(), 2000);
+          }
+          if (before - (ret || 0) > 0 || !ret) this.flyChip(center(b), potPt, CHIP_COLORS[i % CHIP_COLORS.length]);
           Sound.chip(0.1);
         }
         if (newHand && prev) {
@@ -394,10 +404,45 @@
       setTimeout(() => { c.remove(); if (done) done(); }, 860 + (delay || 0));
     },
 
+    // 올인한 사람이 이길 수 있는 팟은 그 사람 근처, 나머지는 가운데에 계속 모임
+    sidePotPos(v, id) {
+      const i = v.players.findIndex((p) => p.id === id);
+      if (i < 0) return [50, 46];
+      if (this.slotPos(v, i)[1] > 80) return [25, 76];   // 내 자리: 카드·족보 글자 왼쪽
+      return this.betPos(v, i);
+    },
     renderPot(v) {
-      const amt = v.stage === 'done' ? v.potTotal : v.pot;
-      $('#potAmt').textContent = fmt(amt);
-      $('#pot').classList.toggle('show', amt > 0 && !(v.result && this._potGone === v.hk));
+      const pots = v.pots || [{ amount: v.stage === 'done' ? v.potTotal : v.pot, at: null }];
+      const gone = !!(v.result && this._potGone === v.hk);
+      const side = pots.filter((p) => p.at);
+      const centerAmt = pots.filter((p) => !p.at).reduce((s, p) => s + p.amount, 0);
+      $('#potAmt').textContent = fmt(centerAmt);
+      $('#pot').classList.toggle('show', centerAmt > 0 && !gone);
+      // 옆 팟
+      const box = $('#sidePots');
+      if (this._sideHk !== v.hk) { box.innerHTML = ''; this._sideHk = v.hk; }
+      const keep = new Set();
+      side.forEach((p, k) => {
+        const key = p.at;
+        keep.add(key);
+        let el = box.querySelector(`[data-at="${CSS.escape(key)}"]`);
+        const [x, y] = this.sidePotPos(v, p.at);
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'pot side-pot'; el.dataset.at = key;
+          el.innerHTML = '<span class="pot-chip"></span><small></small><b></b>';
+          el.style.left = '50%'; el.style.top = '46%';   // 가운데에서 그 사람 쪽으로 밀려 나감
+          box.appendChild(el);
+          const from = this.tablePt([50, 46]), to = this.tablePt([x, y]);
+          for (let c = 0; c < 4; c++) this.flyChip(from, to, '#d4a017', null, c * 70);
+          Sound.chip(0.05);
+          requestAnimationFrame(() => requestAnimationFrame(() => { el.style.left = x + '%'; el.style.top = y + '%'; }));
+        } else { el.style.left = x + '%'; el.style.top = y + '%'; }
+        el.querySelector('small').textContent = k === 0 ? '메인' : '사이드';
+        el.querySelector('b').textContent = fmt(p.amount);
+        el.classList.toggle('gone', gone);
+      });
+      box.querySelectorAll('.side-pot').forEach((el) => { if (!keep.has(el.dataset.at)) el.remove(); });
     },
 
     renderDealer(v) {
@@ -447,16 +492,17 @@
       setTimeout(() => {
         if (this.v.hk !== hand) return;
         res.pots.forEach((pot, pi) => {
+          const from = pot.at ? this.tablePt(this.sidePotPos(v, pot.at)) : potPt;
           pot.winners.forEach((w, wi) => {
             const si = v.players.findIndex((p) => p.id === w);
             if (si < 0) return;
             const to = center(this.seatEls[si].querySelector('.ava'));
-            for (let k = 0; k < 5; k++) this.flyChip(potPt, to, '#d4a017', null, k * 60 + pi * 120 + wi * 40);
+            for (let k = 0; k < 5; k++) this.flyChip(from, to, '#d4a017', null, k * 60 + pi * 120 + wi * 40);
           });
         });
         Sound.chip(); Sound.chip(0.12); Sound.chip(0.24);
         this._potGone = hand;
-        setTimeout(() => $('#pot').classList.remove('show'), 400);
+        setTimeout(() => { $('#pot').classList.remove('show'); $$('#sidePots .side-pot').forEach((el) => el.classList.add('gone')); }, 400);
         v.players.forEach((p, i) => {
           if (p.won > 0) {
             const pt = this.slotPos(v, i);
