@@ -59,7 +59,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 let db;
 try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (e) { db = null; }
 db = Object.assign({ seq: 1, accounts: {}, sessions: {}, logs: [], daily: {}, settings: {} }, db || {});
-db.settings = Object.assign({ welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false }, db.settings);
+db.settings = Object.assign({ welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false, testPin: '1234' }, db.settings);
 let saveT = null;
 function save() {
   clearTimeout(saveT);
@@ -491,6 +491,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
 app.get('/healthz', (req, res) => res.send('ok'));
+app.get('/api/config', (req, res) => res.json({ testPin: db.settings.testPin || '' }));
 app.get('/api/daily', (req, res) => {
   const acctId = db.sessions[String(req.query.token || '')];
   res.json(dailyInfo(acctId));
@@ -631,6 +632,7 @@ app.post('/admin/api/settings', adminAuth, (req, res) => {
   if (b.buyIn != null) S.buyIn = num(b.buyIn, 1000, 1e8);
   if (b.minBuyIn != null) S.minBuyIn = num(b.minBuyIn, 200, S.buyIn);
   if (b.autoApprove != null) S.autoApprove = !!b.autoApprove;
+  if (b.testPin != null) { const t = String(b.testPin).trim(); if (t && !/^\d{4,6}$/.test(t)) return res.status(400).json({ error: '테스트 PIN은 숫자 4~6자리(비우면 끔)' }); S.testPin = t; }
   save();
   res.json({ ok: true, settings: S });
 });
@@ -660,6 +662,16 @@ wss.on('connection', (ws) => {
 });
 
 const loginFails = new Map(); // 이름 → { n, until }
+function createAccount(ws, name, pin, avatar) {
+  const salt = rid(12);
+  const a = { id: db.seq++, name, nameKey: nameKey(name), salt, pinHash: hashPin(pin, salt), avatar: Math.max(0, Math.min(AVATARS - 1, avatar | 0)),
+    status: db.settings.autoApprove ? 'active' : 'pending', balance: 0, inPlay: 0, createdAt: now(), lastSeen: now() };
+  db.accounts[a.id] = a;
+  log(a, 'signup', 0, '가입 신청');
+  if (a.status === 'active' && db.settings.welcomeChips > 0) { a.balance += db.settings.welcomeChips; log(a, 'welcome', db.settings.welcomeChips, '가입 지급(자동 승인)'); }
+  const token = rid(24); db.sessions[token] = a.id; save();
+  attach(ws, a, token);
+}
 function attach(ws, acct, token) {
   const u = userOf(acct);
   if (u.ws && u.ws !== ws) { sendWs(u.ws, { t: 'kicked', msg: '다른 곳에서 접속했어요' }); try { u.ws.close(); } catch (e) { /* */ } }
@@ -679,8 +691,8 @@ function handle(ws, m) {
     case 'hello': {
       const id = db.sessions[String(m.token || '')];
       const a = id && db.accounts[id];
-      if (!a) return sendWs(ws, { t: 'auth', reason: m.token ? 'expired' : '' });
-      if (a.status === 'blocked') return sendWs(ws, { t: 'auth', reason: 'blocked' });
+      if (!a) return sendWs(ws, { t: 'auth', reason: m.token ? 'expired' : '', testPin: db.settings.testPin || '' });
+      if (a.status === 'blocked') return sendWs(ws, { t: 'auth', reason: 'blocked', testPin: db.settings.testPin || '' });
       attach(ws, a);
       return;
     }
@@ -689,22 +701,24 @@ function handle(ws, m) {
       if (name.length < 1) return sendWs(ws, { t: 'authError', msg: '닉네임을 입력해 주세요' });
       if (!/^\d{4,6}$/.test(pin)) return sendWs(ws, { t: 'authError', msg: 'PIN은 숫자 4~6자리예요' });
       if (findByName(name)) return sendWs(ws, { t: 'authError', msg: '이미 있는 닉네임이에요' });
-      const salt = rid(12);
-      const a = { id: db.seq++, name, nameKey: nameKey(name), salt, pinHash: hashPin(pin, salt), avatar: Math.max(0, Math.min(AVATARS - 1, m.avatar | 0)),
-        status: db.settings.autoApprove ? 'active' : 'pending', balance: 0, inPlay: 0, createdAt: now(), lastSeen: now() };
-      db.accounts[a.id] = a;
-      log(a, 'signup', 0, '가입 신청');
-      if (a.status === 'active' && db.settings.welcomeChips > 0) { a.balance += db.settings.welcomeChips; log(a, 'welcome', db.settings.welcomeChips, '가입 지급(자동 승인)'); }
-      const token = rid(24); db.sessions[token] = a.id; save();
-      attach(ws, a, token);
-      return;
+      return createAccount(ws, name, pin, m.avatar);
     }
     case 'login': {
-      const name = cleanName(m.name), key = nameKey(name);
+      const name = cleanName(m.name), key = nameKey(name), pin = String(m.pin || '');
+      const T = db.settings.testPin;
+      // 테스트 기간: 테스트 PIN이면 누구든 들어옴(없는 닉네임이면 바로 가입 신청)
+      if (T && pin === T && name.length >= 1) {
+        const a0 = findByName(name);
+        if (!a0) return createAccount(ws, name, pin, m.avatar);
+        if (a0.status === 'blocked') return sendWs(ws, { t: 'authError', msg: '이용이 막힌 계정이에요. 관리자에게 문의해 주세요' });
+        const token = rid(24); db.sessions[token] = a0.id; save();
+        attach(ws, a0, token);
+        return;
+      }
       const f = loginFails.get(key);
       if (f && f.until > now()) return sendWs(ws, { t: 'authError', msg: '여러 번 틀려서 1분 뒤에 다시 해 주세요' });
       const a = findByName(name);
-      if (!a || !safeEq(hashPin(String(m.pin || ''), a.salt), a.pinHash)) {
+      if (!a || !safeEq(hashPin(pin, a.salt), a.pinHash)) {
         const n = (f && f.until <= now() ? 0 : (f ? f.n : 0)) + 1;
         loginFails.set(key, { n: n >= 5 ? 0 : n, until: n >= 5 ? now() + 60e3 : 0 });
         return sendWs(ws, { t: 'authError', msg: '닉네임 또는 PIN이 맞지 않아요' });
@@ -725,7 +739,7 @@ function handle(ws, m) {
       for (const [t, id] of Object.entries(db.sessions)) if (id === a.id && t === m.token) delete db.sessions[t];
       leaveRoom(u, true);
       u.approved = false; u.req = 0; u.ws = null; ws.user = null; save();
-      sendWs(ws, { t: 'auth', reason: 'logout' });
+      sendWs(ws, { t: 'auth', reason: 'logout', testPin: db.settings.testPin || '' });
       return;
     }
     case 'enterReq': {

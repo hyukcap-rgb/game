@@ -770,7 +770,14 @@
     profile.token = null; store.set('rh_sess', null);
     Me.info = null; closeModal(); show('home'); homeState('auth');
   }
+  function showTestPin(pin) {
+    const el = $('#testPinNote');
+    if (pin) { el.innerHTML = `🧪 테스트 기간 동안 PIN은 <b class="num">${esc(pin)}</b> 입니다<br><small>닉네임만 정하고 PIN ${esc(pin)}을 넣으면 누구나 들어올 수 있어요</small>`; el.hidden = false; }
+    else el.hidden = true;
+  }
+  fetch('/api/config').then((r) => r.json()).then((c) => showTestPin(c.testPin)).catch(() => {});
   Net.on('auth', (m) => {
+    if ('testPin' in m) showTestPin(m.testPin);
     Me.info = null;
     if (m.reason === 'blocked') $('#authErr').textContent = '이용이 막힌 계정이에요';
     else if (m.reason === 'expired') { profile.token = null; store.set('rh_sess', null); }

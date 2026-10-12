@@ -346,3 +346,7 @@ input { font: inherit; }
 .rb-note small { color: var(--muted); }
 @keyframes rbnote { 0% { opacity: 0; transform: translate(-50%, 3cqw); } 12% { opacity: 1; transform: translate(-50%, 0); } 82% { opacity: 1; } 100% { opacity: 0; } }
 .seat .rb-count { display: inline-block; margin-top: .3cqw; font-size: 2.3cqw; font-weight: 900; color: #2a1a00; background: var(--gold); border-radius: 99px; padding: .1cqw 1.4cqw; text-shadow: none; }
+
+.test-pin { margin: 0; width: 100%; max-width: 300px; text-align: center; background: rgba(242, 195, 91, .12); border: 1px dashed rgba(242, 195, 91, .55); color: #f6e3b4; border-radius: 12px; padding: 9px 10px; font-size: 14px; line-height: 1.5; }
+.test-pin b { color: var(--gold); font-size: 17px; letter-spacing: 2px; }
+.test-pin small { color: var(--muted); font-size: 12px; }
