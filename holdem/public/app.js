@@ -207,7 +207,7 @@
       const prev = this.prev;
       this.v = v;
       if (!prev || prev.players.length !== v.players.length || this.myIndex(prev) !== this.myIndex(v)) this.build(v);
-      const newHand = !prev || prev.handNo !== v.handNo;
+      const newHand = !prev || prev.hk !== v.hk;   // 재대결로 새 게임이면 핸드 번호가 다시 1이라 게임 씨앗까지 같이 비교
       if (newHand) this.newHand(v, prev);
       this.renderBoard(v, prev, newHand);
       this.renderSeats(v, prev, newHand);
@@ -216,6 +216,7 @@
       this.renderDealer(v);
       this.renderTurn(v, opts.deadline);
       if (v.result && (!prev || !prev.result || newHand)) this.showResult(v);
+      if (!v.result) $('#banner').className = 'banner';   // 결과가 없는 동안은 승리 글자를 절대 남기지 않음
       $('#myHand').textContent = v.myHand || '';
       $('#myHand').classList.toggle('show', !!v.myHand && !v.result);
       this.prev = JSON.parse(JSON.stringify(v));
@@ -382,7 +383,7 @@
     renderPot(v) {
       const amt = v.stage === 'done' ? v.potTotal : v.pot;
       $('#potAmt').textContent = fmt(amt);
-      $('#pot').classList.toggle('show', amt > 0 && !(v.result && this._potGone === v.handNo));
+      $('#pot').classList.toggle('show', amt > 0 && !(v.result && this._potGone === v.hk));
     },
 
     renderDealer(v) {
@@ -395,7 +396,7 @@
 
     renderTurn(v, deadline) {
       this.seatEls.forEach((el, i) => el.classList.toggle('turn', v.toAct === i && !v.result));
-      const key = v.handNo + ':' + v.actionSeq + ':' + v.toAct;
+      const key = v.hk + ':' + v.actionSeq + ':' + v.toAct;
       if (key === this.turnKey) return;
       this.turnKey = key;
       this.seatEls.forEach((el) => { const c = el.querySelector('circle'); c.style.transition = 'none'; c.style.strokeDashoffset = 0; });
@@ -415,14 +416,14 @@
       const res = v.result;
       const me = v.players.find((p) => p.id === this.myId);
       const potPt = this.tablePt([50, 35.5]);
-      const hand = v.handNo;
+      const hand = v.hk;
       // 쇼다운 하이라이트
       if (res.type === 'showdown') {
         const mainPot = res.pots.find((p) => !p.refund) || res.pots[0];
         const wid = mainPot.winners[0];
         const best = new Set((res.hands[wid] || {}).best || []);
         setTimeout(() => {
-          if (this.v.handNo !== hand) return;
+          if (this.v.hk !== hand) return;
           $$('#board .card').forEach((c) => { c.classList.toggle('best', best.has(c.dataset.c)); c.classList.toggle('dim', !best.has(c.dataset.c)); });
           const wi = v.players.findIndex((p) => p.id === wid);
           if (wi >= 0) Array.from(this.seatEls[wi].querySelectorAll('.cards .card')).forEach((c) => c.classList.toggle('best', best.has(c.dataset.c)));
@@ -430,7 +431,7 @@
       }
       // 팟 → 승자
       setTimeout(() => {
-        if (this.v.handNo !== hand) return;
+        if (this.v.hk !== hand) return;
         res.pots.forEach((pot, pi) => {
           pot.winners.forEach((w, wi) => {
             const si = v.players.findIndex((p) => p.id === w);
@@ -472,7 +473,7 @@
       }
       if (cat >= 6) cls += ' epic';
       setTimeout(() => {
-        if (this.v.handNo !== hand) return;
+        if (this.v.hk !== hand) return;
         b.innerHTML = `<div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div>`;
         b.className = 'banner ' + cls;
         requestAnimationFrame(() => b.classList.add('show'));

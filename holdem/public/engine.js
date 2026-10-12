@@ -418,7 +418,7 @@
       if (me && me.inHand && !me.folded && this.board.length >= 3) myHand = handName(evaluate(me.hole.concat(this.board)));
       const toActP = this.toAct >= 0 ? this.players[this.toAct] : null;
       return {
-        stage: this.stage, handNo: this.handNo, board: this.board.slice(),
+        stage: this.stage, handNo: this.handNo, hk: this.seed + ':' + this.handNo, board: this.board.slice(),
         pot: this.potTotal() - streetBets, potTotal: this.potTotal(),
         currentBet: this.currentBet, dealer: this.dealer, sbIdx: this.sbIdx, bbIdx: this.bbIdx,
         toAct: this.toAct, sb: this.sb, bb: this.bb, runout: this.runout, actionSeq: this.actionSeq,
