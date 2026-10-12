@@ -402,8 +402,8 @@ function renderAdv(lv){
     if(NG[id].entry){ list.appendChild(entryCard(id)); continue; }   /* 입구형 게임(따로 도는 서비스를 여는 게임): 챕터·별·판 고르기 없이 버튼 하나 */
     const p = advProg(id), cur = p.max, c = chOf(cur), cs = (c - 1) * 10;
     let dots = ''; for(let k = 1; k <= 10; k++){ const n = cs + k, s = p.stars[n] || 0; dots += `<i class="${s ? 's' + s : n === cur ? 'cur' : ''}"></i>`; }
-    const el = document.createElement('div'); el.className = 'acard tile panel'; el.style.setProperty('--gc', GCOL[id][1]);
-    el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c} · ${chName(id, c)}</span></span>
+    const el = document.createElement('div'); el.className = 'acard tile panel' + (isFav(id) ? ' fav' : ''); el.style.setProperty('--gc', GCOL[id][1]);
+    el.innerHTML = `${favBtnHtml(id)}<span class="g-art">${ART[id]()}<span class="chn">챕터 ${c} · ${chName(id, c)}</span></span>
       <div class="ac-top"><b>${GAMES[id].name}</b><span>★ ${advStarsOf(id)}</span></div>
       ${NG[id].cardNote ? '<div class="ac-note"><b class="cnote">' + escH(NG[id].cardNote()) + '</b></div>' : ''}
       <div class="chdots" aria-label="챕터 ${c}에서 별 ${chStars(id, c)}개">${dots}</div>
@@ -411,6 +411,7 @@ function renderAdv(lv){
     el.querySelector('.map').onclick = () => openAdvMap(id);
     el.querySelector('.gr-go').onclick = () => startGame(id, null, { adv:cur });
     el.querySelector('.g-art').onclick = () => openAdvMap(id);
+    favBind(el, id);
     list.appendChild(el);
   }
 }
@@ -418,14 +419,15 @@ function renderAdv(lv){
    스테이지·별·솔로 포인트가 없는 게임(독립 서비스를 사이트 안에서 여는 게임). 솔로 목록에서 버튼 하나로 바로 연다. */
 function entryCard(id){
   const ent = NG[id].entry, el = document.createElement('div');
-  el.className = 'acard tile panel entry'; el.style.setProperty('--gc', GCOL[id][1]);
-  el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">${escH(ent.tag || '바로 시작')}</span></span>
+  el.className = 'acard tile panel entry' + (isFav(id) ? ' fav' : ''); el.style.setProperty('--gc', GCOL[id][1]);
+  el.innerHTML = `${favBtnHtml(id)}<span class="g-art">${ART[id]()}<span class="chn">${escH(ent.tag || '바로 시작')}</span></span>
     <div class="ac-top"><b>${GAMES[id].name}</b></div>
     ${NG[id].cardNote ? '<div class="ac-note"><b class="cnote">' + escH(NG[id].cardNote()) + '</b></div>' : ''}
     <div class="ac-btns"><button class="gr-go adv" aria-label="${GAMES[id].name} ${escH(ent.solo || '시작')}${ent.free ? ', 무료' : ''}">${escH(ent.solo || '시작')}</button></div>`;
   const go = () => startGame(id, 'normal', { entry:'solo' });
   el.querySelector('.gr-go').onclick = go;
   el.querySelector('.g-art').onclick = go;
+  favBind(el, id);
   return el;
 }
 
@@ -436,10 +438,24 @@ const FILT = { adv:'전체', duel:'전체' }, ADULT_SEP = '__adult__';
 const subjOfGame = id => SUBJ_OF_ABIL[ABIL[id]] || '';
 /* 성인(19) 묶음은 접어 두고, 눌러야 펼침(결정 224, 세대별 테스트) */
 const ADULT_OPEN = { adv:false, duel:false };
+/* 즐겨찾기(사용자 지시 2026-10-12): 별을 누른 게임은 솔로·대전 목록 맨 위로. 한 번 누르면 두 목록에 같이 적용(성인 게임도 맨 위로 꺼냄) */
+const favList = () => { const v = store.get('hp:fav', []); return Array.isArray(v) ? v.filter(id => GAMES[id]) : []; };
+const isFav = id => favList().includes(id);
+function toggleFav(id){
+  const f = favList(), on = !f.includes(id);
+  store.set('hp:fav', on ? [id].concat(f) : f.filter(x => x !== id));   /* 새로 누른 게임이 맨 위 */
+  toast(on ? `${GAMES[id].name} 즐겨찾기 · 맨 위로 올렸어요` : `${GAMES[id].name} 즐겨찾기 해제`);
+  renderAdv(lvInfo()); if(typeof renderDuel === 'function') renderDuel(dayState());
+}
+const favBtnHtml = id => { const on = isFav(id); return `<button class="favb${on ? ' on' : ''}" aria-pressed="${on}" aria-label="${GAMES[id].name} 즐겨찾기${on ? ' 빼기' : '에 넣기'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z"/></svg></button>`; };
+function favBind(el, id){ const b = el.querySelector('.favb'); if(b) b.onclick = e => { e.stopPropagation(); toggleFav(id); }; }
 function filteredIds(kind){
-  const ids = kind === 'adv' ? soloIds() : GAME_IDS, f = FILT[kind], main = ids.filter(id => !isAdult(id) && (f === '전체' || subjOfGame(id) === f));
-  const adult = f === '전체' ? ids.filter(isAdult) : [];
-  return adult.length ? main.concat([ADULT_SEP], ADULT_OPEN[kind] ? adult : []) : main;
+  const ids = kind === 'adv' ? soloIds() : GAME_IDS, f = FILT[kind];
+  const fav = favList().filter(id => ids.includes(id) && (f === '전체' || (!isAdult(id) && subjOfGame(id) === f)));
+  const main = ids.filter(id => !fav.includes(id) && !isAdult(id) && (f === '전체' || subjOfGame(id) === f));
+  const adult = f === '전체' ? ids.filter(id => isAdult(id) && !fav.includes(id)) : [];
+  const head = fav.concat(main);
+  return adult.length ? head.concat([ADULT_SEP], ADULT_OPEN[kind] ? adult : []) : head;
 }
 const adultSepHtml = (kind = 'adv') => `<button class="adultsec" data-adult="${kind}" aria-expanded="${!!ADULT_OPEN[kind]}"><span class="a19">19</span>성인 게임 · 만 19세 이상<em>${ADULT_OPEN[kind] ? '접기 ▴' : '펼치기 ▾'}</em></button>`;
 function adultSepBind(kind){ const b = document.querySelector(`[data-adult="${kind}"]`); if(b) b.onclick = () => { ADULT_OPEN[kind] = !ADULT_OPEN[kind]; if(kind === 'adv') renderAdv(lvInfo()); else renderDuel(dayState()); }; }
