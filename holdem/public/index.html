@@ -23,19 +23,31 @@
     <div class="home-glow"></div>
     <button class="home-back" id="homeBack" hidden>‹ 하루퍼즐</button>
     <img class="logo" src="img/logo.jpg" alt="로열 홀덤">
-    <div class="profile">
+    <!-- 로그인·가입 -->
+    <div class="auth" id="authBox" hidden>
       <div class="avatar-pick" id="avatarPick"></div>
-      <input id="nick" maxlength="10" placeholder="닉네임" autocomplete="off">
+      <input id="nick" maxlength="10" placeholder="닉네임 (10자까지)" autocomplete="username">
+      <input id="pin" maxlength="6" inputmode="numeric" type="password" placeholder="PIN 숫자 4~6자리" autocomplete="current-password">
+      <div class="auth-btns"><button class="btn primary" id="loginBtn">로그인</button><button class="btn ghost" id="signupBtn">가입 신청</button></div>
+      <p class="auth-err" id="authErr"></p>
+      <p class="muted center">가입은 관리자 승인 후 이용할 수 있어요 · 19세 이상</p>
     </div>
-    <div class="modes">
+    <!-- 승인 대기 -->
+    <div class="gate" id="gateBox" hidden></div>
+    <!-- 승인된 뒤 -->
+    <div class="mebar" id="meBar" hidden>
+      <img id="meAva" alt=""><div class="me-t"><b id="meName"></b><small>보유 칩 <span class="num" id="meBal">0</span></small></div>
+      <button class="link" id="logoutBtn">로그아웃</button>
+    </div>
+    <div class="modes" id="modesBox" hidden>
       <button class="mode-card solo" data-mode="solo">
         <span class="mode-ico">🤖</span>
-        <span class="mode-txt"><b>AI 대결</b><small>개성 다른 AI 5명과 한 테이블</small></span>
+        <span class="mode-txt"><b>AI 대결</b><small>개성 다른 AI 8명과 9인 테이블</small></span>
         <span class="chev">›</span>
       </button>
       <button class="mode-card friends" data-mode="friends">
         <span class="mode-ico">👥</span>
-        <span class="mode-txt"><b>친구 대전</b><small>방 만들고 링크로 초대 · 최대 6명</small></span>
+        <span class="mode-txt"><b>친구 대전</b><small>방 만들고 링크로 초대 · 최대 9명</small></span>
         <span class="chev">›</span>
       </button>
       <button class="mode-card daily" data-mode="daily">
@@ -44,11 +56,11 @@
         <span class="chev">›</span>
       </button>
     </div>
-    <div class="join-row">
+    <div class="join-row" id="joinRow" hidden>
       <input id="joinCode" maxlength="4" placeholder="방 코드" autocomplete="off">
       <button id="joinBtn" class="btn ghost">입장</button>
     </div>
-    <div class="home-links">
+    <div class="home-links" id="homeLinks" hidden>
       <button class="link" id="rankBtn">🏅 오늘의 랭킹</button>
       <button class="link" id="rulesBtn">📖 족보·규칙</button>
     </div>
@@ -107,7 +119,9 @@
         <button class="act raise" id="raiseBtn">레이즈</button>
       </div>
       <div class="wait-row" id="waitRow"></div>
-      <div class="emotes" id="emotes"><button class="emo-toggle" id="emoToggle">😀</button><div class="emo-list" id="emoList"></div></div>
+      <div class="reveal-row" id="revealRow"></div>
+      <div class="emotes" id="emotes"><button class="emo-toggle" id="emoToggle">😀</button>
+        <div class="emo-panel" id="emoPanel"><div class="emo-list" id="emoList"></div><div class="say-list" id="sayList"></div></div></div>
     </footer>
   </section>
 

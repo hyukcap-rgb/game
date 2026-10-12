@@ -19,7 +19,7 @@
   const profile = {
     name: store.get('rh_name', ''),
     avatar: store.get('rh_avatar', 5),
-    token: store.get('rh_token', null),
+    token: store.get('rh_sess', null),
   };
 
   // ---------- 사운드 (WebAudio 합성) ----------
@@ -84,7 +84,7 @@
     if (b) closeModal();
   });
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const avatarSrc = (i) => `img/av${((i % 6) + 6) % 6}.png`;
+  const avatarSrc = (i) => `img/av${(((i | 0) % 9) + 9) % 9}.png`;
 
   // ---------- 카드 DOM ----------
   const SUIT_SYM = { s: '♠', h: '♥', d: '♦', c: '♣' };
@@ -124,9 +124,10 @@
   }
 
   // ---------- 좌석 배치 ----------
-  const SLOT_POS = [[50, 85], [14, 64], [14, 30], [50, 12], [86, 30], [86, 64]];
-  const SLOT_SETS = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 5], 5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5] };
-  const CENTER = [50, 47];
+  // 9인 테이블: 0 = 나(아래 가운데), 시계 방향으로 왼쪽 아래 → 위 → 오른쪽 아래, 9 = 위 가운데(인원이 짝수일 때)
+  const SLOT_POS = [[50, 86], [11, 54], [10, 39.5], [17, 25.5], [33, 13.5], [67, 13.5], [83, 25.5], [90, 39.5], [89, 54], [50, 12]];
+  const SLOT_SETS = { 1: [0], 2: [0, 9], 3: [0, 3, 6], 4: [0, 2, 9, 7], 5: [0, 2, 4, 5, 7], 6: [0, 1, 3, 9, 6, 8], 7: [0, 1, 2, 4, 5, 7, 8], 8: [0, 1, 2, 3, 9, 6, 7, 8], 9: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
+  const CENTER = [50, 45];
   const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
 
@@ -148,20 +149,19 @@
       const n = v.players.length;
       const mi = Math.max(0, this.myIndex(v));
       const rel = (seat - mi + n) % n;
-      return SLOT_POS[(SLOT_SETS[n] || SLOT_SETS[6])[rel] ?? rel];
+      return SLOT_POS[(SLOT_SETS[n] || SLOT_SETS[9])[rel] ?? rel];
     },
     lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; },
     betPos(v, seat) {
       const p = this.slotPos(v, seat);
-      if (p[1] > 80) return [50, 66.5];
-      if (p[1] < 20) return [50, 26];
-      return this.lerp(p, CENTER, 0.43).map((x, i) => (i === 1 ? x + 2 : x));
+      if (p[1] > 80) return [50, 70];
+      return this.lerp(p, CENTER, 0.5);
     },
     dealerPos(v, seat) {
       const p = this.slotPos(v, seat);
-      if (p[1] > 80) return [69, 76];
-      if (p[1] < 20) return [33, 18];
-      return [p[0] < 50 ? p[0] + 15 : p[0] - 15, p[1] + 7.5];
+      if (p[1] > 80) return [66, 78];
+      if (p[0] === 50) return [60, p[1] + 7];
+      return this.lerp(p, CENTER, 0.3).map((x, i) => (i === 1 ? x - 4 : x));
     },
     tablePt(pct) {
       const r = $('#table').getBoundingClientRect();
@@ -176,7 +176,7 @@
         el.innerHTML = `<div class="cards"></div>
           <div class="ava"><img alt=""><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16.5" pathLength="100"/></svg></div>
           <div class="plate"><div class="nm"></div><div class="stk"></div></div>
-          <div class="tag"></div><div class="hn"></div>`;
+          <div class="tag"></div><div class="hn"></div><div class="shown-tag" hidden>공개</div>`;
         $('#seats').appendChild(el);
         return el;
       });
@@ -195,6 +195,8 @@
         const el = this.seatEls[i];
         el.style.left = x + '%'; el.style.top = y + '%';
         el.classList.toggle('me', p.id === this.myId);
+        el.classList.toggle('side-l', p.id !== this.myId && x <= 50);
+        el.classList.toggle('side-r', p.id !== this.myId && x > 50);
         const [bx, by] = this.betPos(v, i);
         const b = this.betEls[i];
         b.style.left = bx + '%'; b.style.top = by + '%';
@@ -234,7 +236,7 @@
 
     renderBoard(v, prev, newHand) {
       const slots = $$('#board .slot');
-      const from = this.tablePt([50, 27]);
+      const from = this.tablePt([50, 42]);
       const had = newHand ? 0 : (prev ? prev.board.length : 0);
       v.board.forEach((c, i) => {
         if (i < had && slots[i].firstChild) return;
@@ -250,7 +252,7 @@
     },
 
     renderSeats(v, prev, newHand) {
-      const deckPt = this.tablePt([50, 27]);
+      const deckPt = this.tablePt([50, 42]);
       const n = v.players.length;
       const winners = new Set();
       if (v.result) v.result.pots.forEach((p) => { if (!p.refund || v.result.pots.length === 1) p.winners.forEach((w) => winners.add(w)); });
@@ -300,6 +302,12 @@
           });
         }
 
+        // 공개된 카드 / 앞면 카드는 크게
+        const faceUp = p.hole.some((c) => c && c !== '??');
+        box.classList.toggle('up', !isMe && faceUp);
+        box.classList.toggle('shown', !!p.showMask);
+        el.querySelector('.shown-tag').hidden = !(p.showMask && p.folded);
+
         // 액션 태그
         const tag = el.querySelector('.tag');
         const la = p.lastAction;
@@ -341,7 +349,7 @@
     dispBet(v, p) { return v.stage === 'done' ? 0 : p.bet; },
 
     renderBets(v, prev, newHand) {
-      const potPt = this.tablePt([50, 35.5]);
+      const potPt = this.tablePt([50, 46]);
       v.players.forEach((p, i) => {
         const b = this.betEls[i];
         const amt = this.dispBet(v, p);
@@ -415,7 +423,7 @@
     showResult(v) {
       const res = v.result;
       const me = v.players.find((p) => p.id === this.myId);
-      const potPt = this.tablePt([50, 35.5]);
+      const potPt = this.tablePt([50, 46]);
       const hand = v.hk;
       // 쇼다운 하이라이트
       if (res.type === 'showdown') {
@@ -505,6 +513,18 @@
       }
     },
 
+    say(pid, text) {
+      if (!this.v || !text) return;
+      const i = this.v.players.findIndex((p) => p.id === pid);
+      if (i < 0) return;
+      const old = this.seatEls[i].querySelector('.say'); if (old) old.remove();
+      const d = document.createElement('div');
+      d.className = 'say'; d.textContent = text;
+      this.seatEls[i].appendChild(d);
+      Sound.tone(660, 0.08, 'triangle', 0.06); Sound.tone(880, 0.1, 'triangle', 0.05, 0.07);
+      setTimeout(() => d.remove(), 2700);
+    },
+
     emote(pid, e) {
       if (!this.v) return;
       const i = this.v.players.findIndex((p) => p.id === pid);
@@ -523,6 +543,19 @@
       const a = $('#actions');
       const L = v.legal;
       this.L = L;
+      const me0 = v.players.find((p) => p.id === R.myId);
+      const canReveal = me0 && me0.inHand && me0.hole.length === 2 && me0.hole[0] !== '??' && (me0.folded || (v.stage === 'done' && !(v.result && v.result.hands && v.result.hands[me0.id]))) && (me0.showMask | 0) !== 3;
+      a.classList.toggle('can-reveal', !!canReveal && !(L && !v.result));
+      if (canReveal) {
+        const key = v.hk + ':' + (me0.showMask | 0);
+        const rr = $('#revealRow');
+        if (rr.dataset.key !== key) {
+          rr.dataset.key = key;
+          const mini = (cs) => `<span class="mini">${cs.map((c) => `<div class="card"><div class="inner"><div class="face${c[1] === 'h' || c[1] === 'd' ? ' r' : ''}">${faceHTML(c)}</div></div></div>`).join('')}</span>`;
+          const m = me0.showMask | 0;
+          rr.innerHTML = `<button data-mask="1" ${m & 1 ? 'disabled' : ''}>${mini([me0.hole[0]])}공개</button><button data-mask="2" ${m & 2 ? 'disabled' : ''}>${mini([me0.hole[1]])}공개</button><button data-mask="3">${mini(me0.hole)}공개</button>`;
+        }
+      }
       a.classList.toggle('online', !!(this.ctrl && this.ctrl.online && Online.mode !== 'daily'));
       if (L && !v.result) {
         a.classList.add('mine'); a.classList.remove('waiting');
@@ -612,95 +645,21 @@
     $('#emoList').appendChild(b);
   });
 
-  // ---------- 블라인드 레벨 ----------
-  const LEVELS = [[50, 100], [100, 200], [200, 400], [300, 600], [500, 1000], [1000, 2000], [2000, 4000]];
-  const levelFor = (handNo) => LEVELS[Math.min(LEVELS.length - 1, Math.floor(handNo / 10))];
-
   function hud(title, v, extra) {
     $('#hudTitle').textContent = title;
     if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)} · ${extra || '#' + v.handNo}`;
   }
+  const PHRASES = {
+    p1: '빨리빨리~', p2: '아 까비!', p3: '이걸 넘겨?', p4: '나이스!', p5: '블러프지?', p6: '올인 간다!',
+    p7: '한 판 더!', p8: 'ㅋㅋㅋㅋ', p9: '봐줬다~', p10: '살려줘…', p11: '굿게임!', p12: '고민 중…',
+  };
+  Object.entries(PHRASES).forEach(([id, txt]) => {
+    const b = document.createElement('button'); b.textContent = txt;
+    b.onclick = () => { $('#emotes').classList.remove('open'); Net.send({ t: 'emote', p: id }); };
+    $('#sayList').appendChild(b);
+  });
 
-  // ---------- AI 대결 (로컬) ----------
-  const BOTS = [
-    { name: '김영감', style: 'rock', avatar: 0 },
-    { name: '샤크', style: 'shark', avatar: 1 },
-    { name: '해피', style: 'fish', avatar: 2 },
-    { name: '폭주핑크', style: 'maniac', avatar: 3 },
-    { name: '에이스', style: 'pro', avatar: 4 },
-    { name: '레드', style: 'pro', avatar: 5 },
-  ];
-  class Solo {
-    constructor() {
-      this.online = false;
-      this.g = new H.Game({ sb: 50, bb: 100 });
-      this.g.addPlayer({ id: 'me', name: profile.name || '나', stack: 10000, avatar: profile.avatar });
-      BOTS.filter((b) => b.avatar !== profile.avatar).slice(0, 5)
-        .forEach((b, i) => this.g.addPlayer({ id: 'bot' + i, name: b.name, stack: 10000, isBot: true, style: b.style, avatar: b.avatar }));
-      this.timer = null;
-      this.over = false;
-    }
-    start() {
-      R.myId = 'me'; R.reset(); Actions.ctrl = this;
-      show('game');
-      this.nextHand();
-    }
-    nextHand() {
-      const g = this.g;
-      const alive = g.players.filter((p) => p.stack > 0);
-      if (g.players[0].stack <= 0) return this.end(false);
-      if (alive.length === 1) return this.end(true);
-      const [sb, bb] = levelFor(g.handNo);
-      g.setBlinds(sb, bb);
-      g.startHand();
-      this.update();
-    }
-    update() {
-      if (current !== this || this.over) { clearTimeout(this.timer); return; }   // 다른 게임으로 바뀌었으면 멈춤
-      const v = this.g.view('me');
-      R.render(v);
-      hud('AI 대결', v);
-      this.schedule();
-    }
-    schedule() {
-      clearTimeout(this.timer);
-      const g = this.g;
-      if (this.over) return;
-      if (g.stage === 'done') {
-        this.timer = setTimeout(() => this.nextHand(), g.result.type === 'showdown' ? 4300 : 2300);
-        return;
-      }
-      if (g.runout) { this.timer = setTimeout(() => { g.runoutStep(); this.update(); }, 1500); return; }
-      const p = g.players[g.toAct];
-      const meOut = g.players[0].folded;
-      if (p.isBot) {
-        this.timer = setTimeout(() => {
-          const d = H.botDecide(g);
-          g.act(p.id, d.type, d.amount);
-          this.update();
-        }, meOut ? 350 + Math.random() * 300 : 700 + Math.random() * 800);
-      }
-    }
-    act(type, amount) { if (this.g.act('me', type, amount)) this.update(); }
-    end(won) {
-      this.over = true;
-      const hands = this.g.handNo;
-      const wins = store.get('rh_solo_wins', 0) + (won ? 1 : 0);
-      if (won) store.set('rh_solo_wins', wins);
-      modal(`<h3>${won ? '🏆 테이블 정복!' : '탈락'}</h3>
-        <p>${won ? `AI 5명을 모두 이겼어요! (${hands}핸드)` : `${hands}핸드 동안 버텼어요.`}</p>
-        <p class="muted">누적 우승 ${wins}회</p>
-        <div class="btns"><button class="btn primary big" id="again">다시 하기</button><button class="btn ghost" data-close id="toHome">홈으로</button></div>`,
-      (m) => {
-        m.querySelector('#again').onclick = () => { closeModal(); startSolo(); };
-        m.querySelector('#toHome').onclick = () => goHome();
-      });
-      if (won) { Sound.epic(); R.confetti(100); }
-    }
-    leave() { clearTimeout(this.timer); this.over = true; }
-  }
-
-  // ---------- 온라인 ----------
+  // ---------- 서버 연결 ----------
   const Net = {
     ws: null, open: false, queue: [], handlers: {}, wantOpen: false, retry: 0,
     connect() {
@@ -710,7 +669,7 @@
       this.ws = ws;
       ws.onopen = () => {
         this.open = true; this.retry = 0;
-        ws.send(JSON.stringify({ t: 'hello', token: profile.token, name: myName(), avatar: profile.avatar }));
+        ws.send(JSON.stringify({ t: 'hello', token: profile.token }));
         const q = this.queue; this.queue = [];
         q.forEach((m) => ws.send(JSON.stringify(m)));
       };
@@ -733,56 +692,130 @@
     },
     on(t, fn) { this.handlers[t] = fn; },
   };
-  function myName() {
-    let n = ($('#nick').value || profile.name || '').trim();
-    if (!n) { n = '게스트' + Math.floor(100 + Math.random() * 900); }
-    if (n !== profile.name) { profile.name = n; store.set('rh_name', n); $('#nick').value = n; }
-    return n;
-  }
 
+  // ---------- 회원·승인 ----------
+  const Me = { info: null, pendingStart: null };
   const Online = {
-    online: true, room: null, mode: null, active: false,
+    online: true, room: null, mode: null, active: false, pid: null,
     act(type, amount) { Net.send({ t: 'act', type, amount }); },
     emote(e) { Net.send({ t: 'emote', e }); },
+    reveal(mask) { Net.send({ t: 'reveal', mask }); },
     leave() { Net.send({ t: 'leave' }); this.active = false; this.room = null; },
   };
-  Net.on('welcome', (m) => {
-    profile.token = m.token; store.set('rh_token', m.token);
-    Online.pid = m.pid;
-    if (current === Online) R.myId = m.pid;
-    if (Online.pendingJoin) { Net.send({ t: 'join', code: Online.pendingJoin }); Online.pendingJoin = null; }
+  Actions.ctrl = Online;
+  $('#revealRow').addEventListener('click', (e) => { const b = e.target.closest('button[data-mask]'); if (b && !b.disabled) Online.reveal(+b.dataset.mask); });
+
+  function homeState(kind) {
+    // kind: 'auth' | 'gate' | 'ready'
+    $('#authBox').hidden = kind !== 'auth';
+    $('#gateBox').hidden = kind !== 'gate';
+    const ready = kind === 'ready';
+    $('#meBar').hidden = !ready; $('#modesBox').hidden = !ready; $('#joinRow').hidden = !ready; $('#homeLinks').hidden = !ready;
+  }
+  function gate(html) { $('#gateBox').innerHTML = html; homeState('gate'); }
+  function renderMe() {
+    const m = Me.info;
+    if (!m) return;
+    if (m.status === 'pending') {
+      gate(`<img src="${avatarSrc(m.avatar)}"><b>${esc(m.name)}님, 가입 신청을 받았어요</b><div class="spin"></div><p>관리자가 가입을 승인하면 바로 이용할 수 있어요.</p><div class="row"><button class="btn ghost" id="gLogout">로그아웃</button></div>`);
+    } else if (m.status === 'rejected') {
+      gate(`<b>가입이 승인되지 않았어요</b><p>관리자에게 문의해 주세요.</p><div class="row"><button class="btn ghost" id="gLogout">로그아웃</button></div>`);
+    } else if (m.status === 'blocked') {
+      gate(`<b>이용이 막힌 계정이에요</b><p>관리자에게 문의해 주세요.</p><div class="row"><button class="btn ghost" id="gLogout">로그아웃</button></div>`);
+    } else if (!m.approved) {
+      if (!m.req) { Net.send({ t: 'enterReq' }); }   // 접속할 때마다 입장 승인 요청
+      gate(`<img src="${avatarSrc(m.avatar)}"><b>${esc(m.name)}님, 입장 승인을 기다리는 중</b><div class="spin"></div><p>관리자가 승인하면 자동으로 들어가요.<br>보유 칩 <b class="num" style="color:var(--gold)">${fmt(m.balance)}</b></p><div class="row"><button class="btn ghost" id="gLogout">로그아웃</button></div>`);
+    } else {
+      $('#meAva').src = avatarSrc(m.avatar); $('#meName').textContent = m.name; $('#meBal').textContent = fmt(m.balance);
+      if ($('#home').classList.contains('active')) homeState('ready');
+      if (Me.pendingStart) { const f = Me.pendingStart; Me.pendingStart = null; setTimeout(f, 30); }
+    }
+    const lo = $('#gLogout'); if (lo) lo.onclick = logout;
+    $$('#avatarPick img').forEach((x, k) => x.classList.toggle('on', k === (m.avatar | 0)));
+  }
+  function logout() {
+    Net.send({ t: 'logout', token: profile.token });
+    profile.token = null; store.set('rh_sess', null);
+    Me.info = null; closeModal(); show('home'); homeState('auth');
+  }
+  Net.on('auth', (m) => {
+    Me.info = null;
+    if (m.reason === 'blocked') $('#authErr').textContent = '이용이 막힌 계정이에요';
+    else if (m.reason === 'expired') { profile.token = null; store.set('rh_sess', null); }
+    if (!$('#home').classList.contains('active')) show('home');
+    homeState('auth');
   });
+  Net.on('authError', (m) => { $('#authErr').textContent = m.msg; });
+  Net.on('session', (m) => { profile.token = m.token; store.set('rh_sess', m.token); $('#authErr').textContent = ''; });
+  Net.on('me', (m) => {
+    const was = Me.info;
+    Me.info = m; Online.pid = m.pid; R.myId = m.pid;
+    if (was && was.approved && !m.approved && !$('#home').classList.contains('active')) { goHome(true); }
+    if (was && was.balance !== m.balance && was.approved && m.approved && !$('#home').classList.contains('active')) toast(`보유 칩 ${fmt(m.balance)}`);
+    if ($('#home').classList.contains('active') || !m.approved) renderMe();
+    else { $('#meBal').textContent = fmt(m.balance); }
+  });
+  Net.on('entryRejected', () => {
+    gate(`<b>입장이 승인되지 않았어요</b><p>잠시 후 다시 요청해 보세요.</p><div class="row"><button class="btn primary" id="gRetry">다시 요청</button><button class="btn ghost" id="gLogout">로그아웃</button></div>`);
+    $('#gRetry').onclick = () => Net.send({ t: 'enterReq' });
+    $('#gLogout').onclick = logout;
+    if (Me.info) Me.info.req = false;
+  });
+  Net.on('kicked', (m) => {
+    closeModal(); Online.active = false; current = null; show('home');
+    modal(`<h3>알림</h3><p>${esc(m.msg)}</p><div class="btns"><button class="btn ghost" data-close>확인</button></div>`);
+  });
+  function doLogin(signup) {
+    const name = $('#nick').value.trim(), pin = $('#pin').value.trim();
+    $('#authErr').textContent = '';
+    if (name.length < 1) return ($('#authErr').textContent = '닉네임을 입력해 주세요');
+    if (!/^\d{4,6}$/.test(pin)) return ($('#authErr').textContent = 'PIN은 숫자 4~6자리예요');
+    store.set('rh_name', name);
+    Net.send(signup ? { t: 'signup', name, pin, avatar: profile.avatar } : { t: 'login', name, pin });
+  }
+  $('#loginBtn').onclick = () => doLogin(false);
+  $('#signupBtn').onclick = () => doLogin(true);
+  $('#pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(false); });
+
+  // ---------- 게임 소식 ----------
   Net.on('error', (m) => toast(m.msg));
-  // 한 화면에는 한 게임만: AI 대결(로컬)이 돌고 있으면 서버 방 소식은 받지 않고 그 방에서 나감
-  // (예전에는 재접속한 방의 화면과 AI 대결 화면이 번갈아 그려져 콜/체크·올인 금액이 엉뚱하게 보였음)
-  const otherGame = () => current && current !== Online && !current.over;
   Net.on('room', (m) => {
-    if (otherGame()) { Net.send({ t: 'leave' }); return; }
     current = Online;
     R.myId = Online.pid;
     Online.room = m; Online.active = true; Online.mode = m.mode;
-    Actions.ctrl = Online;
-    if (m.status === 'lobby') {
-      show('lobby');
-      renderLobby(m);
-    } else if (!$('#game').classList.contains('active')) {
-      R.reset(); show('game');
-    }
+    if (m.status === 'lobby') { show('lobby'); renderLobby(m); }
+    else if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     if (m.status !== 'over' && $('#modal').dataset.kind === 'over') { closeModal(); $('#modal').dataset.kind = ''; }
   });
+  const MODE_TITLE = { solo: 'AI 대결', friends: '친구 대전', daily: '오늘의 토너먼트' };
   Net.on('state', (m) => {
     if (!Online.active || current !== Online) return;
     R.myId = Online.pid;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
-    if (Online.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);
-    else hud('친구 대전 · ' + (Online.room ? Online.room.code : ''), m.view);
+    if (m.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);
+    else if (m.mode === 'friends') hud('친구 대전 · ' + (Online.room ? Online.room.code : ''), m.view);
+    else hud(MODE_TITLE[m.mode] || '로열 홀덤', m.view);
   });
-  Net.on('emote', (m) => R.emote(m.pid, m.e));
+  Net.on('emote', (m) => { if (m.p) R.say(m.pid, PHRASES[m.p] || ''); else R.emote(m.pid, m.e); });
   Net.on('over', (m) => {
-    const isHost = Online.room && Online.room.isHost;
     $('#modal').dataset.kind = 'over';
-    modal(`<h3>🏁 게임 종료</h3>
+    const cash = `<p>정산 <b class="num" style="color:var(--gold)">${fmt(m.cashOut)}</b> → 보유 칩 <b class="num">${fmt(m.balance)}</b></p>`;
+    if (m.mode === 'solo') {
+      const me = m.standings.find((s) => s.pid === R.myId);
+      const won = me && m.standings[0].pid === R.myId && m.standings.filter((s) => s.stack > 0).length === 1;
+      modal(`<h3>${won ? '🏆 테이블 정복!' : me && me.stack > 0 ? '게임 종료' : '탈락'}</h3>${cash}
+        <div class="btns"><button class="btn primary big" id="again">다시 하기</button><button class="btn ghost" id="toHome">홈으로</button></div>`,
+      (el) => {
+        el.querySelector('#again').onclick = () => { closeModal(); startSolo(); };
+        el.querySelector('#toHome').onclick = () => goHome();
+      });
+      if (won) { Sound.epic(); R.confetti(100); }
+      Online.active = false;
+      return;
+    }
+    const isHost = Online.room && Online.room.isHost;
+    modal(`<h3>🏁 게임 종료</h3>${cash}
       <ol class="rank-list">${m.standings.map((s, i) => `<li class="${s.pid === R.myId ? 'me' : ''}"><span class="rk">${i + 1}</span><img src="${avatarSrc(s.avatar)}"><span class="nm">${esc(s.name)}</span><span class="sc">${fmt(s.stack)}</span></li>`).join('')}</ol>
       <div class="btns">${isHost ? '<button class="btn primary big" id="rematch">🔁 재대결</button>' : '<p class="muted">방장이 재대결을 누르면 바로 시작돼요</p>'}
       <button class="btn ghost" id="leaveRoom">나가기</button></div>`,
@@ -793,10 +826,11 @@
   });
   Net.on('dailyEnd', (m) => {
     $('#modal').dataset.kind = 'daily';
+    Online.active = false;
     modal(`<h3>🏆 오늘의 기록</h3>
       <div class="big-score">${fmt(m.score)}</div>
       <p>${m.total}명 중 <b style="color:var(--gold)">${m.rank}위</b></p>
-      ${rankListHTML(m.top, m.pid)}
+      ${rankListHTML(m.top)}
       <div class="btns"><button class="btn gold" id="shareScore">📣 기록 자랑하기</button><button class="btn ghost" id="dHome">홈으로</button></div>`,
     (el) => {
       el.querySelector('#dHome').onclick = () => goHome();
@@ -808,7 +842,7 @@
   function renderLobby(m) {
     $('#roomCode').textContent = m.code;
     const slots = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < (m.maxSeats || 9); i++) {
       const p = m.members[i];
       if (p) slots.push(`<li class="${p.online ? '' : 'off'}">${p.host ? '<span class="host">👑</span>' : ''}<img src="${avatarSrc(p.avatar)}"><span>${esc(p.name)}${p.pid === R.myId ? ' (나)' : ''}</span></li>`);
       else slots.push(`<li class="empty">${m.fillBots ? '🤖 AI' : '빈자리'}</li>`);
@@ -819,13 +853,14 @@
     $('#startBtn').style.display = m.isHost ? '' : 'none';
     const canStart = m.members.length >= 2 || m.fillBots;
     $('#startBtn').disabled = !canStart;
-    $('#lobbyHint').textContent = m.isHost ? (canStart ? '' : '친구가 들어오거나 AI 채우기를 켜면 시작할 수 있어요') : '방장이 시작하길 기다리는 중…';
+    const bi = Me.info ? Me.info.buyIn : 10000;
+    $('#lobbyHint').textContent = (m.isHost ? (canStart ? '' : '친구가 들어오거나 AI 채우기를 켜면 시작할 수 있어요') : '방장이 시작하길 기다리는 중…') + ` · 시작하면 보유 칩에서 ${fmt(bi)}씩 가져가요`;
   }
   $('#botToggle').onchange = (e) => Net.send({ t: 'setBots', on: e.target.checked });
   $('#startBtn').onclick = () => Net.send({ t: 'start' });
   $('#shareBtn').onclick = () => {
     const code = Online.room && Online.room.code;
-    share(`${myName()}님이 홀덤 한 판 하자고 초대했어요! 방 코드 ${code}`, `${location.origin}/?room=${code}`);
+    share(`${Me.info ? Me.info.name : ''}님이 홀덤 한 판 하자고 초대했어요! 방 코드 ${code}`, `${location.origin}/?room=${code}`);
   };
   async function share(text, url) {
     if (navigator.share) { try { await navigator.share({ title: '로열 홀덤', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
@@ -835,49 +870,43 @@
 
   // ---------- 홈 ----------
   let current = null;
-  function goHome() {
+  function goHome(silent) {
     closeModal();
-    if (current && current.leave) current.leave();
-    if (Online.active) Online.leave();
+    if (Online.active && !silent) Online.leave();
+    Online.active = false;
     current = null;
     history.replaceState(null, '', location.pathname + (EMBED ? '?embed=1' : ''));
     show('home');
+    renderMe();
     loadDailyInfo();
   }
+  const approved = () => Me.info && Me.info.approved;
+  function needApproval(fn) {
+    if (approved()) return fn();
+    Me.pendingStart = fn;
+    toast('관리자 입장 승인이 필요해요');
+  }
   function startSolo() {
-    myName();
-    if (current && current.leave) current.leave();
-    if (Online.active) Online.leave();   // 서버 방에 남아 있으면 나감(한 번에 한 게임)
-    current = new Solo();
-    current.start();
+    needApproval(() => {
+      if (Me.info.balance < Me.info.minBuyIn) return toast(`보유 칩이 ${fmt(Me.info.minBuyIn)} 이상 있어야 해요`);
+      current = Online; R.reset(); Net.send({ t: 'solo' });
+    });
   }
-  function startFriends() {
-    myName();
-    current = Online;
-    Net.connect();
-    Net.send({ t: 'create' });
-  }
+  function startFriends() { needApproval(() => { current = Online; Net.send({ t: 'create' }); }); }
   function joinRoom(code) {
     code = (code || '').trim().toUpperCase();
     if (code.length !== 4) return toast('방 코드 4자리를 입력하세요');
-    myName();
-    current = Online;
-    if (!profile.token || !Net.open) { Online.pendingJoin = code; Net.connect(); }
-    else Net.send({ t: 'join', code });
+    needApproval(() => { current = Online; Net.send({ t: 'join', code }); });
   }
   async function startDaily() {
-    myName();
+    if (!approved()) return needApproval(startDaily);
     const info = await fetchDaily();
     if (info && info.played) return showRanking(info, true);
     modal(`<h3>🏆 오늘의 토너먼트</h3>
-      <p>오늘 참가자 <b>모두 같은 카드</b>로 AI 5명과 겨뤄요.<br>시작 칩 10,000 · <b>30핸드</b> 후 남은 칩으로 순위!<br>블라인드는 10핸드마다 올라가요.</p>
+      <p>오늘 참가자 <b>모두 같은 카드</b>로 AI 8명과 겨뤄요.<br>시작 칩 10,000(보유 칩과 별개) · <b>30핸드</b> 후 남은 칩으로 순위!<br>블라인드는 10핸드마다 올라가요.</p>
       <p class="muted">하루 1번만 도전할 수 있고, 시작하면 중간에 나가도 그때 칩으로 기록돼요.</p>
       <div class="btns"><button class="btn gold big" id="goDaily">도전 시작</button><button class="btn ghost" data-close>다음에</button></div>`,
-    (el) => {
-      el.querySelector('#goDaily').onclick = () => {
-        closeModal(); current = Online; Net.connect(); Net.send({ t: 'daily' });
-      };
-    });
+    (el) => { el.querySelector('#goDaily').onclick = () => { closeModal(); current = Online; R.reset(); Net.send({ t: 'daily' }); }; });
   }
   async function fetchDaily() {
     try {
@@ -885,9 +914,9 @@
       return await r.json();
     } catch (e) { return null; }
   }
-  function rankListHTML(top, myPid) {
+  function rankListHTML(top) {
     if (!top || !top.length) return '<p class="muted">아직 기록이 없어요. 첫 번째 주인공이 되어보세요!</p>';
-    return `<ol class="rank-list">${top.map((s, i) => `<li class="${s.mine || (myPid && s.pid === myPid) ? 'me' : ''}"><span class="rk">${i + 1}</span><img src="${avatarSrc(s.avatar)}"><span class="nm">${esc(s.name)}</span><span class="sc">${fmt(s.score)}</span></li>`).join('')}</ol>`;
+    return `<ol class="rank-list">${top.map((s, i) => `<li class="${s.mine ? 'me' : ''}"><span class="rk">${i + 1}</span><img src="${avatarSrc(s.avatar)}"><span class="nm">${esc(s.name)}</span><span class="sc">${fmt(s.score)}</span></li>`).join('')}</ol>`;
   }
   function showRanking(info, playedMsg) {
     info = info || {};
@@ -914,23 +943,35 @@
       <table>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
       <p><b>진행</b> 프리플롭(카드 2장) → 플랍(바닥 3장) → 턴(1장) → 리버(1장). 매번 베팅해요.</p>
       <p><b>체크</b> 넘기기 · <b>콜</b> 같은 금액 따라가기 · <b>레이즈</b> 더 올리기 · <b>폴드</b> 포기 · <b>올인</b> 전부 걸기</p>
+      <p><b>보유 칩</b> 게임에 앉을 때 보유 칩에서 바이인하고, 나올 때 남은 칩이 돌아와요. 게임 안에서만 쓰는 칩이에요.</p>
       </div><div class="btns"><button class="btn ghost" data-close>닫기</button></div>`);
   }
 
-  // 아바타 선택
+  // 아바타 선택(9명)
   const ap = $('#avatarPick');
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 9; i++) {
     const img = document.createElement('img');
     img.src = avatarSrc(i);
     img.className = i === profile.avatar ? 'on' : '';
     img.onclick = () => {
       profile.avatar = i; store.set('rh_avatar', i);
       $$('#avatarPick img').forEach((x, k) => x.classList.toggle('on', k === i));
+      if (Me.info) Net.send({ t: 'setAvatar', avatar: i });
     };
     ap.appendChild(img);
   }
-  $('#nick').value = profile.name;
-  $('#nick').addEventListener('change', () => { profile.name = $('#nick').value.trim(); store.set('rh_name', profile.name); });
+  $('#meAva').onclick = () => {
+    modal(`<h3>캐릭터 바꾸기</h3><div class="avatar-pick" id="avPick2" style="margin:12px auto"></div><div class="btns"><button class="btn ghost" data-close>닫기</button></div>`, (el) => {
+      const box = el.querySelector('#avPick2');
+      for (let i = 0; i < 9; i++) {
+        const img = document.createElement('img'); img.src = avatarSrc(i); img.className = Me.info && Me.info.avatar === i ? 'on' : '';
+        img.onclick = () => { Net.send({ t: 'setAvatar', avatar: i }); closeModal(); };
+        box.appendChild(img);
+      }
+    });
+  };
+  $('#nick').value = store.get('rh_name', '') || '';
+  $('#logoutBtn').onclick = logout;
   $$('.mode-card').forEach((b) => b.onclick = () => {
     const m = b.dataset.mode;
     if (m === 'solo') startSolo();
@@ -941,10 +982,10 @@
   $('#joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(e.target.value); });
   $('#rankBtn').onclick = async () => showRanking(await fetchDaily());
   $('#rulesBtn').onclick = rules;
-  $$('[data-back]').forEach((b) => b.onclick = goHome);
+  $$('[data-back]').forEach((b) => b.onclick = () => goHome());
   $('#exitBtn').onclick = () => {
     const daily = Online.active && Online.mode === 'daily';
-    modal(`<h3>나가기</h3><p>${daily ? '지금 나가면 현재 칩으로 오늘 기록이 확정돼요.' : '게임에서 나갈까요?'}</p>
+    modal(`<h3>나가기</h3><p>${daily ? '지금 나가면 현재 칩으로 오늘 기록이 확정돼요.' : '게임에서 나갈까요? 남은 칩은 보유 칩으로 돌아가요(진행 중인 핸드에 건 칩은 제외).'}</p>
       <div class="btns"><button class="btn primary big" data-close>계속하기</button><button class="btn ghost" id="reallyExit">나가기</button></div>`,
     (el) => { el.querySelector('#reallyExit').onclick = () => goHome(); });
   };
@@ -956,38 +997,23 @@
   // 하루퍼즐 안에서 열렸을 때
   if (EMBED) {
     $('#homeBack').hidden = false;
-    $('#homeBack').onclick = () => toParent('exit');
+    $('#homeBack').onclick = () => { Net.send({ t: 'exit' }); setTimeout(() => toParent('exit'), 80); };
     const nm = (Q0.get('name') || '').trim().slice(0, 10);
-    if (nm && !profile.name) { profile.name = nm; store.set('rh_name', nm); $('#nick').value = nm; }
+    if (nm && !$('#nick').value) $('#nick').value = nm;
     const st = Q0.get('start');
-    if (st === 'solo') setTimeout(startSolo, 50);
-    else if (st === 'friends') setTimeout(startFriends, 50);
-    else if (st === 'daily') setTimeout(startDaily, 50);
+    if (st === 'solo') Me.pendingStart = startSolo;
+    else if (st === 'friends') Me.pendingStart = startFriends;
     toParent('ready');
   }
 
-  // 초대 링크로 들어온 경우
+  // 초대 링크로 들어온 경우: 로그인·승인 뒤 바로 입장
   const params = new URLSearchParams(location.search);
-  if (params.get('room')) {
-    const code = params.get('room');
-    if (!profile.name) {
-      modal(`<h3>친구 대전 초대</h3><p>방 <b style="color:var(--gold)">${esc(code.toUpperCase())}</b>에 초대받았어요!</p>
-        <input id="inviteNick" maxlength="10" placeholder="닉네임" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;text-align:center;font-weight:700;margin-top:6px">
-        <div class="btns"><button class="btn primary big" id="inviteGo">입장하기</button></div>`,
-      (el) => {
-        el.querySelector('#inviteGo').onclick = () => {
-          const n = el.querySelector('#inviteNick').value.trim();
-          if (n) $('#nick').value = n;
-          closeModal(); joinRoom(code);
-        };
-      });
-    } else joinRoom(code);
-  } else if (profile.token) {
-    // 진행 중인 방이 있으면 서버가 다시 붙여줌
-    Net.connect();
-  }
+  if (params.get('room')) { const code = params.get('room'); Me.pendingStart = () => joinRoom(code); }
+  homeState(profile.token ? 'gate' : 'auth');
+  if (profile.token) gate('<div class="spin"></div><p>연결 중…</p>');
+  Net.connect();
   loadDailyInfo();
 
   // 디버그/테스트용
-  window.__rh = { R, Online, Net, get current() { return current; } };
+  window.__rh = { R, Online, Net, Me, get current() { return current; } };
 })();

@@ -193,7 +193,7 @@
       this.runout = false;
       for (const p of this.players) {
         p.hole = []; p.bet = 0; p.total = 0; p.acted = false; p.actedAt = 0; p.lastAction = null; p.raises = 0;
-        p.inHand = eligible(p); p.folded = !p.inHand; p.allIn = false; p.won = 0; p.shown = false;
+        p.inHand = eligible(p); p.folded = !p.inHand; p.allIn = false; p.won = 0; p.shown = false; p.showMask = 0;
       }
       this.dealer = this.nextIdx(this.dealer, (p) => p.inHand);
       const headsUp = seated.length === 2;
@@ -347,6 +347,18 @@
       return true;
     }
 
+    // 폴드했거나 핸드가 끝난 뒤 내 카드 공개(1 = 첫 장, 2 = 둘째 장, 3 = 둘 다)
+    reveal(id, mask) {
+      const p = this.players.find((x) => x.id === id);
+      if (!p || !p.inHand || p.hole.length < 2) return false;
+      if (!(p.folded || this.stage === 'done')) return false;
+      mask = (mask | 0) & 3;
+      if (!mask) return false;
+      p.showMask = (p.showMask | 0) | mask;
+      this.actionSeq++;
+      return true;
+    }
+
     buildPots() {
       const contrib = this.players.filter((p) => p.total > 0);
       const live = this.live();
@@ -439,7 +451,10 @@
           seat: i, id: p.id, name: p.name, stack: p.stack, bet: p.bet, total: p.total,
           folded: p.folded, allIn: p.allIn, inHand: p.inHand, isBot: p.isBot, avatar: p.avatar,
           lastAction: p.lastAction, won: p.won || 0, away: !!p.away,
-          hole: p.id === forId || reveal(p) ? p.hole.slice() : (p.inHand && !p.folded ? ['??', '??'] : []),
+          hole: p.id === forId || reveal(p) ? p.hole.slice()
+            : p.showMask ? p.hole.map((c, k) => (p.showMask & (1 << k) ? c : '??'))
+            : (p.inHand && !p.folded ? ['??', '??'] : []),
+          showMask: p.showMask || 0,
         })),
         legal: toActP && toActP.id === forId ? this.legal() : null,
         result: this.result,
