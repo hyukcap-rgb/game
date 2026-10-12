@@ -131,7 +131,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
   const ava = (i) => `<img class="ava" src="img/av${(i | 0) % 9}.png" alt="">`;
   const ago = (t) => { if (!t) return '-'; const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; };
   const dt = (t) => { const d = new Date(t); const p = (n) => String(n).padStart(2, '0'); return `${d.getMonth() + 1}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
-  const TYPE = { admin_add: '관리자 지급', admin_sub: '관리자 차감', welcome: '가입 지급', buyin: '바이인', cashout: '정산', refund: '반환', signup: '가입 신청', delete: '삭제' };
+  const TYPE = { rebuy: '리바인', admin_add: '관리자 지급', admin_sub: '관리자 차감', welcome: '가입 지급', buyin: '바이인', cashout: '정산', refund: '반환', signup: '가입 신청', delete: '삭제' };
   const MODE = { solo: 'AI 대결', friends: '친구 대전', daily: '오늘의 토너먼트' };
   let token = null; try { token = sessionStorage.getItem('rh_admin'); } catch (e) { /* */ }
   let S = null, tab = 'wait', logFilter = { acct: '', type: '' }, search = '', pollT = null;

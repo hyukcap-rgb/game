@@ -34,6 +34,8 @@ const BOTS = [
   { name: '카우보이', style: 'maniac', avatar: 8 },
 ];
 const AVATARS = 9;
+const REBUY_MIN_BB = 40, REBUY_MAX_BB = 200;   // 리바인: 빅블라인드의 40배 ~ 200배
+const REBUY_WAIT_MS = 30000;                    // 사람이 모두 칩을 잃으면 리바인을 이만큼 기다림
 // 방을 만들 때 고르는 블라인드(고정)와 최소 머니
 const BLINDS = [[50, 100], [100, 200], [250, 500], [500, 1000], [1000, 2000], [2500, 5000], [5000, 10000], [10000, 20000]];
 const MIN_INS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
@@ -212,6 +214,7 @@ class Room {
     if (this.paid() && this.members.some((m) => !this.seats.get(m.id))) return 'seat';
     if (this.mode === 'friends' && this.members.length < 2 && !this.fillBots) return 'few';
     this.status = 'playing';
+    this.waitUntil = 0;
     this.seed = this.mode === 'daily' ? 'daily:' + this.date : rid(8);
     const g = (this.game = new H.Game({ seed: this.seed }));
     for (const m of this.members) {
@@ -267,7 +270,19 @@ class Room {
       if (g.handNo >= DAILY_HANDS || me.stack <= 0 || alive.length < 2) return this.finishDaily();
     } else {
       const humansAlive = alive.filter((p) => p.acct && !p.gone);
-      if (alive.length < 2 || humansAlive.length === 0) return this.finish();
+      if (alive.length < 2 || humansAlive.length === 0) {
+        // 칩을 잃은 사람이 리바인할 수 있으면 잠깐 기다림
+        const canWait = this.paid() && g.players.some((p) => this.rebuyOk(p));
+        if (canWait && this.waitUntil !== -1) {
+          if (!this.waitUntil) { this.waitUntil = now() + REBUY_WAIT_MS; this.broadcastState(); }
+          clearTimeout(this.timer);
+          this.timer = setTimeout(() => { this.waitUntil = -1; this.nextHand(); }, Math.max(0, this.waitUntil - now()));
+          return;
+        }
+        this.waitUntil = 0;
+        return this.finish();
+      }
+      this.waitUntil = 0;
     }
     // 오늘의 토너먼트만 블라인드가 오르고, 일반 방은 방장이 정한 블라인드 고정
     const [sb, bb] = this.mode === 'daily' ? levelFor(g.handNo) : [this.sb, this.bb];
@@ -343,10 +358,41 @@ class Room {
     }
   }
 
+  // 리바인: 칩이 BB 40배보다 적고, 지금 핸드에 걸려 있지 않을 때. 금액은 BB 40배 ~ 200배
+  rebuyRange() { return { min: this.bb * REBUY_MIN_BB, max: this.bb * REBUY_MAX_BB }; }
+  rebuyOk(p) {
+    if (!this.paid() || this.status !== 'playing' || !this.game || !p || !p.acct || p.gone) return false;
+    const g = this.game, { min } = this.rebuyRange();
+    const a = db.accounts[p.acct];
+    if (!a || a.balance < min || p.stack >= min) return false;
+    return g.stage === 'done' || !p.inHand || p.folded;
+  }
+  rebuy(u, amount) {
+    const g = this.game;
+    const p = g && g.players.find((x) => x.id === u.pid);
+    const { min, max } = this.rebuyRange();
+    if (!this.rebuyOk(p)) return send(u, { t: 'error', msg: `리바인은 칩이 ${min.toLocaleString()}(${REBUY_MIN_BB}BB)보다 적고, 지금 핸드에 참여하지 않을 때 할 수 있어요` });
+    amount = Math.round(Number(amount) || 0);
+    if (amount < min || amount > max) return send(u, { t: 'error', msg: `리바인은 ${min.toLocaleString()} ~ ${max.toLocaleString()} (${REBUY_MIN_BB}~${REBUY_MAX_BB}BB)이에요` });
+    if (amount > u.acct.balance) return send(u, { t: 'error', msg: `보유 칩(${u.acct.balance.toLocaleString()})이 모자라요` });
+    u.acct.balance -= amount;
+    p.stack += amount; p.rebuys = (p.rebuys || 0) + 1;
+    u.acct.inPlay = p.stack;
+    log(u.acct, 'rebuy', -amount, `${this.label()} 리바인 ${p.rebuys}회차 (${Math.round(amount / this.bb)}BB)`);
+    pushMe(u.id);
+    this.members.forEach((m) => send(m, { t: 'rebuy', pid: p.id, name: p.name, amount, stack: p.stack, count: p.rebuys, bb: Math.round(amount / this.bb) }));
+    if (this.waitUntil > 0) { this.waitUntil = 0; clearTimeout(this.timer); this.nextHand(); }
+    else this.broadcastState();
+  }
+
   broadcastState() {
     const g = this.game;
+    const rr = this.rebuyRange();
     for (const m of this.members) {
-      send(m, { t: 'state', view: g.view(m.pid), deadline: this.deadline ? this.deadline - now() : 0, handLimit: DAILY_HANDS, mode: this.mode });
+      const p = g.players.find((x) => x.id === m.pid);
+      const rebuy = this.paid() ? { min: rr.min, max: rr.max, can: this.rebuyOk(p), balance: m.acct.balance, count: (p && p.rebuys) || 0 } : null;
+      send(m, { t: 'state', view: g.view(m.pid), deadline: this.deadline ? this.deadline - now() : 0, handLimit: DAILY_HANDS, mode: this.mode,
+        rebuy, waitRebuy: this.waitUntil > 0 ? this.waitUntil - now() : 0 });
     }
   }
 
@@ -756,6 +802,7 @@ function handle(ws, m) {
     }
     case 'act': if (r) r.act(u, String(m.type), Number(m.amount)); break;
     case 'reveal': if (r) r.reveal(u, Number(m.mask)); break;
+    case 'rebuy': if (r) r.rebuy(u, m.amount); break;
     case 'emote': {
       if (!r) return;
       const isEmoji = EMOTES.has(m.e), isPhrase = Object.prototype.hasOwnProperty.call(PHRASES, m.p);

@@ -274,7 +274,10 @@
           shownStack = Number(el.dataset.shown || p.stack);
         }
         if (!(v.result && p.won)) el.dataset.shown = p.stack;
-        el.querySelector('.stk').textContent = !p.inHand && p.stack <= 0 ? '탈락' : fmt(shownStack);
+        el.querySelector('.stk').textContent = !p.inHand && p.stack <= 0 ? '칩 없음' : fmt(shownStack);
+        let rbc = el.querySelector('.rb-count');
+        if (p.rebuys) { if (!rbc) { rbc = document.createElement('div'); rbc.className = 'rb-count'; el.querySelector('.plate').appendChild(rbc); } rbc.textContent = `리바인 ${p.rebuys}`; }
+        else if (rbc) rbc.remove();
 
         // 홀카드
         const box = el.querySelector('.cards');
@@ -514,6 +517,24 @@
       }
     },
 
+    rebuyFx(pid, amount, bbN) {
+      if (!this.v) return;
+      const i = this.v.players.findIndex((p) => p.id === pid);
+      if (i < 0) return;
+      const el = this.seatEls[i];
+      const b = document.createElement('div');
+      b.className = 'rb-pop'; b.innerHTML = `리바인<b class="num">+${fmt(amount)}</b>`;
+      el.appendChild(b);
+      setTimeout(() => b.remove(), 3600);
+      const n = document.createElement('div');
+      n.className = 'rb-note'; n.innerHTML = `💰 <b>${esc(this.v.players[i].name)}</b> 리바인 <b class="num">+${fmt(amount)}</b> <small>${bbN}BB</small>`;
+      $('#fx').appendChild(n);
+      setTimeout(() => n.remove(), 3200);
+      const tr = $('#table').getBoundingClientRect(), to = center(el.querySelector('.ava'));
+      for (let k = 0; k < 5; k++) this.flyChip({ x: tr.left + tr.width / 2, y: tr.top + 4 }, to, '#d4a017', null, k * 70);
+      Sound.chip(); Sound.chip(0.1); Sound.win();
+    },
+
     say(pid, text) {
       if (!this.v || !text) return;
       const i = this.v.players.findIndex((p) => p.id === pid);
@@ -580,7 +601,17 @@
         else if (v.result) txt = '다음 핸드 준비 중…';
         else if (v.runout) txt = '올인! 카드 공개 중…';
         else if (v.toAct >= 0) txt = `${esc(v.players[v.toAct].name)} 차례…`;
-        if (wr.dataset.txt !== txt) { wr.innerHTML = `<span>${txt}</span>`; wr.dataset.txt = txt; }
+        const rb = Online.rebuy;
+        if (Online.waitRebuy > Date.now()) txt = `리바인을 기다리는 중 · ${Math.ceil((Online.waitRebuy - Date.now()) / 1000)}초`;
+        else if (rb && rb.can && me && me.stack <= 0) txt = '칩을 모두 잃었어요';
+        const key = txt + '|' + (rb && rb.can ? 1 : 0);
+        if (wr.dataset.txt !== key) {
+          wr.innerHTML = `<span>${txt}</span>${rb && rb.can ? `<button class="btn gold rb-btn" id="rebuyBtn">💰 리바인</button>` : ''}`;
+          wr.dataset.txt = key;
+          const b = $('#rebuyBtn'); if (b) b.onclick = rebuyModal;
+        }
+        clearTimeout(Actions._wt);
+        if (Online.waitRebuy > Date.now()) Actions._wt = setTimeout(() => R.v && Actions.render(R.v), 1000);
       }
     },
     syncRaise() {
@@ -792,6 +823,8 @@
   Net.on('state', (m) => {
     if (!Online.active || current !== Online) return;
     R.myId = Online.pid;
+    Online.rebuy = m.rebuy || null;
+    Online.waitRebuy = m.waitRebuy ? Date.now() + m.waitRebuy : 0;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
     if (m.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);
@@ -919,6 +952,35 @@
       draw();
     });
   }
+  // ---------- 리바인 ----------
+  function rebuyModal() {
+    const rb = Online.rebuy, v = R.v;
+    if (!rb || !rb.can || !v) return;
+    const bb = v.bb, hi = Math.min(rb.max, rb.balance);
+    let amt = Math.min(hi, bb * 100 >= rb.min ? Math.max(rb.min, Math.min(bb * 100, hi)) : rb.min);
+    modal(`<h3>💰 리바인</h3>
+      <div class="bi">
+        <p class="bi-info">블라인드 <b class="num">${fmt(v.sb)} / ${fmt(bb)}</b><br>리바인 <b class="num">${fmt(rb.min)}</b> (40BB) ~ <b class="num">${fmt(rb.max)}</b> (200BB)</p>
+        <label>리바인할 칩 <small>보유 ${fmt(rb.balance)}</small></label>
+        <div class="bi-amt num" id="rbAmt"></div>
+        <input type="range" id="rbRange" min="${rb.min}" max="${Math.max(rb.min, hi)}" step="${bb}">
+        <div class="bi-quick" id="rbQuick">${[['40BB', rb.min], ['100BB', bb * 100], ['200BB', rb.max], ['최대', hi]].filter(([, x]) => x >= rb.min && x <= hi).map(([n, x]) => `<button data-v="${x}">${n}</button>`).join('')}</div>
+        <p class="bi-err">${rb.balance < rb.min ? `보유 칩이 ${fmt(rb.min)}보다 적어요` : rb.count ? `이번 게임 리바인 ${rb.count}회째 다음` : ''}</p>
+      </div>
+      <div class="btns"><button class="btn gold big" id="rbOk" ${rb.balance < rb.min ? 'disabled' : ''}>리바인</button><button class="btn ghost" data-close>취소</button></div>`,
+    (el) => {
+      const set = (x) => { amt = Math.max(rb.min, Math.min(hi, Math.round(x / bb) * bb)); el.querySelector('#rbAmt').textContent = fmt(amt); el.querySelector('#rbAmt').dataset.bb = Math.round(amt / bb) + 'BB'; el.querySelector('#rbRange').value = amt; el.querySelector('#rbOk').textContent = `리바인 +${fmt(amt)}`; };
+      el.querySelector('#rbRange').oninput = (e) => set(+e.target.value);
+      el.onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) set(+b.dataset.v); };
+      el.querySelector('#rbOk').onclick = () => { closeModal(); Net.send({ t: 'rebuy', amount: amt }); };
+      set(amt);
+    });
+  }
+  Net.on('rebuy', (m) => {
+    R.rebuyFx(m.pid, m.amount, m.bb);
+    toast(`💰 ${m.name}님 리바인 +${fmt(m.amount)} (${m.bb}BB)${m.count > 1 ? ` · ${m.count}회째` : ''}`);
+  });
+
   Net.on('roomInfo', (m) => {
     if (m.mine) { Net.send({ t: 'join', code: m.code }); return; }
     if (m.status !== 'lobby') return toast('이미 게임이 진행 중인 방이에요');

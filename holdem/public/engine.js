@@ -455,6 +455,7 @@
             : p.showMask ? p.hole.map((c, k) => (p.showMask & (1 << k) ? c : '??'))
             : (p.inHand && !p.folded ? ['??', '??'] : []),
           showMask: p.showMask || 0,
+          rebuys: p.rebuys || 0,
         })),
         legal: toActP && toActP.id === forId ? this.legal() : null,
         result: this.result,
