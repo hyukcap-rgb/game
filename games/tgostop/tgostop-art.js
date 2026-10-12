@@ -1,9 +1,9 @@
 /* 트럼프 고스톱 카드 그림 (games/tgostop) — v0.2 디자인팀
    - 52장(176×287 — 고스톱 판의 카드 자리·크기를 그대로 쓰려고 화투와 같은 비율).
    - 숫자 A~Q = 1~12월, 무늬 = 패 종류(♠ 광·열끗, ♥ 띠, ♦♣ 피). K 4장 = 보너스패.
-   - 모서리 숫자를 크게(먹은 패 64px에서도 읽히게), 오른쪽 위 문양 메달 = 광(금빛 해) · 열끗(사슴) · 고도리(새) · 쌍피/쓰리피(보라 메달),
+   - 모서리 숫자를 크게(먹은 패 64px에서도 읽히게), 오른쪽 위 문양 메달 = 광(금빛 해) · 열끗(사슴) · 고도리(새) · 쌍피(Figma 보라 메달)·쓰리피(SVG 빨강 메달),
      아래 띠 = 종류 글자(광·홍단·청단·초단·띠·열끗·고도리·국진·쌍피). 피는 띠·메달 없음.
-   - J·Q·K 인물·광/열끗/고도리 메달 그림은 Figma AI로 그린 원본(tgostop-img.js의 TG_IMG, 한 번만 Blob URL로 바꿔 씀). 쌍피 메달은 SVG.
+   - J·Q·K 인물·광/열끗/고도리/쌍피 메달 그림은 Figma AI로 그린 원본(tgostop-img.js의 TG_IMG, 한 번만 Blob URL로 바꿔 씀). 쓰리피 메달은 SVG.
    - 뒷면·폭탄 빈 패는 고스톱(games/gostop)과 같은 모양. */
 const TGART = (() => {
   const W = 176, H = 287;
@@ -57,8 +57,8 @@ const TGART = (() => {
       + inner + `<ellipse cx="${cx - r * .3}" cy="${cy - r * .45}" rx="${r * .45}" ry="${r * .2}" fill="rgba(255,255,255,.28)"/>`;
     if(c.g) return pic('gwang');
     if(c.y) return pic(c.bird ? 'bird' : 'deer');
-    if(c.pv >= 2){
-      const leaf = (rot) => `<path d="M0 0C-7-6-7-16 0-22C7-16 7-6 0 0Z" fill="#7BE07B" stroke="#2C7A2C" stroke-width="1.4" transform="translate(${cx} ${cy + 9}) rotate(${rot})"/>`;
+    if(c.pv === 2) return pic('ssangpi');   /* 쌍피·보너스 쌍피 = Figma 메달, 쓰리피는 아래 SVG */
+    if(c.pv >= 3){      const leaf = (rot) => `<path d="M0 0C-7-6-7-16 0-22C7-16 7-6 0 0Z" fill="#7BE07B" stroke="#2C7A2C" stroke-width="1.4" transform="translate(${cx} ${cy + 9}) rotate(${rot})"/>`;
       return disc(c.bonus && c.pv === 3 ? '#B0122E' : '#5B2A9E', (c.pv === 3 ? leaf(-34) + leaf(0) + leaf(34) : leaf(-22) + leaf(22))
         + `<circle cx="${cx}" cy="${cy + 9}" r="3" fill="#FFD866"/>`);
     }

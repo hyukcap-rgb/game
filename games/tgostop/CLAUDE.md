@@ -47,7 +47,7 @@
 |---|---|
 | `tgostop.js` | games/gostop/gostop.js 복사본 + 바뀐 곳: `C`(무늬 `su`, K 4장, `NCARD=52`), `RK/SU/SUN`(숫자·무늬 이름), `gsApply`의 연뻑·3연뻑, `fpCheck`(단계별 정산), 도움말 글, 이름 `NG.tgostop`·`ID='tgostop'`·`TGART`·`TGFX` |
 | `tgostop-art.js` `TGART` | 트럼프 카드 SVG: 큰 모서리 숫자(흰 테두리), 오른쪽 위 메달(광=금빛 해·열끗=사슴·고도리=새·쌍피/쓰리피=보라/빨강 잎 메달), 아래 종류 띠, J·Q·K 인물 칸, 광 카드 금테·햇살, 뒷면·빈 패 |
-| `tgostop-img.js` `TG_IMG` | Figma AI로 그린 원본 그림(WebP base64): jack·queen·king 인물(330×492), gwang·deer·bird 메달(192×192 원형). 다시 그릴 땐 같은 이름으로 바꿔 넣기 |
+| `tgostop-img.js` `TG_IMG` | Figma AI로 그린 원본 그림(WebP base64): jack·queen·king 인물(330×492), gwang·deer·bird·ssangpi 메달(192×192 원형). 다시 그릴 땐 같은 이름으로 바꿔 넣기 |
 | `guide.html` | 외국인용 영어 설명서(그림 카드 포함). 주소 https://hyukcap-rgb.github.io/game/games/tgostop/guide.html — 도움말 'English rules'에 링크 |
 | `tgostop-fx.js` `TGFX` | gostop-fx.js 복사본(이름만 바꿈) — 효과·소리 그대로 |
 | `tgostop.css` | gostop.css 복사본 그대로 |
@@ -62,6 +62,7 @@
 - `node tools/tgostop-sim.js 3000` — AI끼리 3,000판(패 보존·다시 두기·결과 분포)
 
 ## 바뀐 기록
+- 2026-10-12 v0.3.1 쌍피 메달을 Figma AI 그림으로 바꿈(보라 원판·초록 잎 두 장·금테, 다른 메달과 같은 모델·지시문) — 쌍피 카드와 보너스 쌍피 K(♦·♣)에 씀. 쓰리피 K(♠·♥)는 SVG 빨강 메달 그대로. 사용자 지시: 전체 디자인을 Figma로 했으니 일관성 위해 Canva 대신 Figma 한도를 기다렸다가 만듦.
 - 2026-10-11 v0.3.0 카드 디자인 새로: 모서리 숫자 크게·굵게(흰 테두리), 광·열끗·고도리 메달(Figma AI 그림), 쌍피·쓰리피 메달(SVG), 띠 리본 입체감, 광 카드 금테·햇살, J·Q·K 인물 그림(Figma AI). 띠 글자 '새·열끗' → '고도리'. 영어 설명서 guide.html 추가 + 도움말 링크. (Figma 쌍피 메달 생성은 사용량 한도에 걸려 SVG로 그림)
 - 2026-10-11 v0.2.0 처음 바닥에 깔린 같은 월 3장 = 뻑(주인 없음): 4번째로 먹으면 상대 피 1장. 규칙이 바뀌어 빠른 대전 짝 맞춤 표시 dv 2 → 3(옛 버전과는 짝이 안 됨).
 - 2026-10-11 v0.1.1 사이트에 보이게: registerGames·ADULT에 tgostop 추가(portal/portal.js). `npm test` 전체 통과. (`tools/gostop-play.mjs`·`tgostop-play.mjs`의 첫 단계 '19세 확인 창' 점검은 사이트가 먼저 띄우는 성인 확인 창 때문에 화투 고스톱에서도 똑같이 실패 — 원래 있던 문제, 도구 손볼 일)
