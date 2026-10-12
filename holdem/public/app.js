@@ -73,6 +73,7 @@
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
   }
   function modal(html, onMount) {
+    $('#modalCard').onclick = null;   // 이전 창의 클릭 처리 지우기
     $('#modalCard').innerHTML = html;
     $('#modal').classList.add('show');
     if (onMount) onMount($('#modalCard'));
@@ -785,7 +786,7 @@
     Online.room = m; Online.active = true; Online.mode = m.mode;
     if (m.status === 'lobby') { show('lobby'); renderLobby(m); }
     else if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
-    if (m.status !== 'over' && $('#modal').dataset.kind === 'over') { closeModal(); $('#modal').dataset.kind = ''; }
+    if (m.status === 'playing' && $('#modal').dataset.kind === 'over') { closeModal(); $('#modal').dataset.kind = ''; }
   });
   const MODE_TITLE = { solo: 'AI 대결', friends: '친구 대전', daily: '오늘의 토너먼트' };
   Net.on('state', (m) => {
@@ -814,13 +815,12 @@
       Online.active = false;
       return;
     }
-    const isHost = Online.room && Online.room.isHost;
     modal(`<h3>🏁 게임 종료</h3>${cash}
       <ol class="rank-list">${m.standings.map((s, i) => `<li class="${s.pid === R.myId ? 'me' : ''}"><span class="rk">${i + 1}</span><img src="${avatarSrc(s.avatar)}"><span class="nm">${esc(s.name)}</span><span class="sc">${fmt(s.stack)}</span></li>`).join('')}</ol>
-      <div class="btns">${isHost ? '<button class="btn primary big" id="rematch">🔁 재대결</button>' : '<p class="muted">방장이 재대결을 누르면 바로 시작돼요</p>'}
+      <div class="btns"><button class="btn primary big" id="again">🔁 다시 앉기 (칩 가져오기)</button>
       <button class="btn ghost" id="leaveRoom">나가기</button></div>`,
     (el) => {
-      const r = el.querySelector('#rematch'); if (r) r.onclick = () => { Net.send({ t: 'rematch' }); };
+      el.querySelector('#again').onclick = () => { closeModal(); $('#modal').dataset.kind = ''; show('lobby'); const rm = Online.room; if (rm) $('#sitBtn').click(); };
       el.querySelector('#leaveRoom').onclick = () => { goHome(); };
     });
   });
@@ -844,17 +844,21 @@
     const slots = [];
     for (let i = 0; i < (m.maxSeats || 9); i++) {
       const p = m.members[i];
-      if (p) slots.push(`<li class="${p.online ? '' : 'off'}">${p.host ? '<span class="host">👑</span>' : ''}<img src="${avatarSrc(p.avatar)}"><span>${esc(p.name)}${p.pid === R.myId ? ' (나)' : ''}</span></li>`);
+      if (p) slots.push(`<li class="${p.online ? '' : 'off'}">${p.host ? '<span class="host">👑</span>' : ''}<img src="${avatarSrc(p.avatar)}"><span>${esc(p.name)}${p.pid === R.myId ? ' (나)' : ''}</span><small class="seat-amt ${p.seat ? '' : 'wait'}">${p.seat ? fmt(p.seat) : '칩 고르는 중'}</small></li>`);
       else slots.push(`<li class="empty">${m.fillBots ? '🤖 AI' : '빈자리'}</li>`);
     }
     $('#members').innerHTML = slots.join('');
     $('#botToggle').checked = m.fillBots;
     $('#botToggle').disabled = !m.isHost;
     $('#startBtn').style.display = m.isHost ? '' : 'none';
-    const canStart = m.members.length >= 2 || m.fillBots;
+    const allSeated = m.members.every((x) => x.seat > 0);
+    const canStart = (m.members.length >= 2 || m.fillBots) && allSeated;
     $('#startBtn').disabled = !canStart;
-    const bi = Me.info ? Me.info.buyIn : 10000;
-    $('#lobbyHint').textContent = (m.isHost ? (canStart ? '' : '친구가 들어오거나 AI 채우기를 켜면 시작할 수 있어요') : '방장이 시작하길 기다리는 중…') + ` · 시작하면 보유 칩에서 ${fmt(bi)}씩 가져가요`;
+    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b>`;
+    const sitBtn = $('#sitBtn');
+    sitBtn.hidden = m.mySeat > 0;
+    sitBtn.onclick = () => buyInModal({ title: '칩 가져오기', sb: m.sb, bb: m.bb, minIn: m.minIn, go: '앉기', onOk: (x) => Net.send({ t: 'sit', buyIn: x.buyIn }) });
+    $('#lobbyHint').textContent = !allSeated ? '모두 칩을 가져와 앉으면 시작할 수 있어요' : m.isHost ? (canStart ? '' : '친구가 들어오거나 AI 채우기를 켜면 시작할 수 있어요') : '방장이 시작하길 기다리는 중…';
   }
   $('#botToggle').onchange = (e) => Net.send({ t: 'setBots', on: e.target.checked });
   $('#startBtn').onclick = () => Net.send({ t: 'start' });
@@ -867,6 +871,59 @@
     try { await navigator.clipboard.writeText(text + '\n' + url); toast('링크를 복사했어요'); }
     catch (e) { prompt('아래 링크를 복사하세요', url); }
   }
+
+  // ---------- 칩 가져오기(입장) 창 ----------
+  const BLINDS = [[50, 100], [100, 200], [250, 500], [500, 1000], [1000, 2000], [2500, 5000], [5000, 10000], [10000, 20000]];
+  const MIN_INS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+  const short = (n) => n >= 10000 ? (n % 10000 === 0 ? n / 10000 + '만' : (n / 10000).toFixed(1) + '만') : fmt(n);
+  const defMin = (bb) => Math.max(MIN_INS.find((x) => x >= bb * 20) || bb * 20, bb * 10, (Me.info && Me.info.minBuyIn) || 0);
+  // o: { title, pickBlinds, pickMin, sb, bb, minIn, go:'만들기', onOk(opts) }
+  function buyInModal(o) {
+    const bal = Me.info ? Me.info.balance : 0;
+    let bb = o.bb || 100, minIn = o.minIn || defMin(bb), amt = 0;
+    const fitAmt = (v) => Math.max(minIn, Math.min(bal, Math.round(v / 100) * 100));
+    amt = fitAmt(Math.min(bal, Math.max(minIn, (Me.info && Me.info.buyIn) || bb * 100)));
+    modal(`<h3>${esc(o.title)}</h3>
+      <div class="bi">
+        ${o.pickBlinds ? '<label>블라인드 (SB / BB)</label><div class="bi-chips" id="biBlinds"></div>' : `<p class="bi-info">블라인드 <b class="num">${fmt(o.sb)} / ${fmt(o.bb)}</b> · 최소 머니 <b class="num">${fmt(minIn)}</b></p>`}
+        ${o.pickMin ? '<label>최소 머니 (들어올 때 이만큼은 가져와야 해요)</label><div class="bi-chips" id="biMins"></div>' : ''}
+        <label>가져갈 칩 <small>보유 ${fmt(bal)}</small></label>
+        <div class="bi-amt num" id="biAmt"></div>
+        <input type="range" id="biRange">
+        <div class="bi-quick" id="biQuick"></div>
+        <p class="bi-err" id="biErr"></p>
+      </div>
+      <div class="btns"><button class="btn primary big" id="biOk">${esc(o.go || '입장')}</button><button class="btn ghost" data-close>취소</button></div>`,
+    (el) => {
+      const draw = () => {
+        if (o.pickBlinds) el.querySelector('#biBlinds').innerHTML = BLINDS.map(([a, b]) => `<button data-bb="${b}" class="${b === bb ? 'on' : ''}">${short(a)}/${short(b)}</button>`).join('');
+        if (o.pickMin) el.querySelector('#biMins').innerHTML = MIN_INS.filter((x) => x >= bb * 10).map((x) => `<button data-min="${x}" class="${x === minIn ? 'on' : ''}" ${x > bal ? 'disabled' : ''}>${short(x)}</button>`).join('');
+        const ok = bal >= minIn;
+        const r = el.querySelector('#biRange');
+        r.min = minIn; r.max = Math.max(minIn, bal); r.step = 100; r.value = amt; r.disabled = !ok;
+        el.querySelector('#biAmt').textContent = ok ? fmt(amt) : '-';
+        el.querySelector('#biAmt').dataset.bb = ok ? `${Math.floor(amt / bb)}BB` : '';
+        el.querySelector('#biErr').textContent = ok ? '' : `보유 칩이 최소 머니(${fmt(minIn)})보다 적어요`;
+        el.querySelector('#biOk').disabled = !ok;
+        const qs = [['최소', minIn], ['100BB', bb * 100], ['절반', Math.floor(bal / 2)], ['전부', bal]].filter(([, v]) => v >= minIn && v <= bal);
+        el.querySelector('#biQuick').innerHTML = qs.map(([n, v]) => `<button data-v="${v}">${n}</button>`).join('');
+      };
+      el.onclick = (e) => {
+        const b = e.target.closest('button'); if (!b || b.disabled) return;
+        if (b.dataset.bb) { bb = +b.dataset.bb; if (minIn < bb * 10 || !o.pickMin) minIn = defMin(bb); amt = fitAmt(Math.max(amt, minIn)); draw(); }
+        else if (b.dataset.min) { minIn = +b.dataset.min; amt = fitAmt(Math.max(amt, minIn)); draw(); }
+        else if (b.dataset.v) { amt = fitAmt(+b.dataset.v); draw(); }
+      };
+      el.querySelector('#biRange').oninput = (e) => { amt = fitAmt(+e.target.value); el.querySelector('#biAmt').textContent = fmt(amt); el.querySelector('#biAmt').dataset.bb = `${Math.floor(amt / bb)}BB`; };
+      el.querySelector('#biOk').onclick = () => { closeModal(); o.onOk({ sb: (BLINDS.find((x) => x[1] === bb) || [bb / 2])[0], bb, minIn, buyIn: amt }); };
+      draw();
+    });
+  }
+  Net.on('roomInfo', (m) => {
+    if (m.mine) { Net.send({ t: 'join', code: m.code }); return; }
+    if (m.status !== 'lobby') return toast('이미 게임이 진행 중인 방이에요');
+    buyInModal({ title: `방 ${m.code} 들어가기`, sb: m.sb, bb: m.bb, minIn: m.minIn, go: '칩 가져가서 입장', onOk: (x) => { current = Online; Net.send({ t: 'join', code: m.code, buyIn: x.buyIn }); } });
+  });
 
   // ---------- 홈 ----------
   let current = null;
@@ -887,16 +944,15 @@
     toast('관리자 입장 승인이 필요해요');
   }
   function startSolo() {
-    needApproval(() => {
-      if (Me.info.balance < Me.info.minBuyIn) return toast(`보유 칩이 ${fmt(Me.info.minBuyIn)} 이상 있어야 해요`);
-      current = Online; R.reset(); Net.send({ t: 'solo' });
-    });
+    needApproval(() => buyInModal({ title: 'AI 대결 — 테이블 고르기', pickBlinds: true, go: '앉기', onOk: (x) => { current = Online; R.reset(); Net.send(Object.assign({ t: 'solo' }, x)); } }));
   }
-  function startFriends() { needApproval(() => { current = Online; Net.send({ t: 'create' }); }); }
+  function startFriends() {
+    needApproval(() => buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } }));
+  }
   function joinRoom(code) {
     code = (code || '').trim().toUpperCase();
     if (code.length !== 4) return toast('방 코드 4자리를 입력하세요');
-    needApproval(() => { current = Online; Net.send({ t: 'join', code }); });
+    needApproval(() => Net.send({ t: 'peek', code }));
   }
   async function startDaily() {
     if (!approved()) return needApproval(startDaily);

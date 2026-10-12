@@ -315,3 +315,22 @@ input { font: inherit; }
 .say-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .say-list button { width: auto; height: auto; padding: 8px 11px; border-radius: 99px; background: #fff; color: #1d2130; font-weight: 900; font-size: 13px; border: 2px solid #1d2130; }
 .actions.online .emotes { display: block; }
+
+/* ---------- 칩 가져오기 창 ---------- */
+.bi { text-align: left; }
+.bi label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+.bi label small { font-weight: 400; }
+.bi-info { text-align: center; margin: 6px 0 0 !important; }
+.bi-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.bi-chips button, .bi-quick button { padding: 9px 0; border-radius: 10px; background: rgba(255, 255, 255, .07); font-size: 13px; font-weight: 700; font-family: 'Oswald', 'Noto Sans KR', sans-serif; }
+.bi-chips button.on { background: var(--gold); color: #2a1a00; }
+.bi-chips button:disabled { opacity: .3; }
+.bi-amt { text-align: center; font-size: 34px; color: #fff; line-height: 1.1; }
+.bi-amt::after { content: attr(data-bb); display: block; font-size: 13px; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; }
+.bi input[type=range] { width: 100%; accent-color: var(--gold); margin: 8px 0; }
+.bi-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.bi-err { color: #fca5b1; font-size: 13px; text-align: center; min-height: 18px; margin: 8px 0 0 !important; }
+.room-rule { margin: -4px 0 0; color: #c8cdda; font-size: 14px; }
+.room-rule b { color: var(--gold); }
+.members li .seat-amt { font-family: 'Oswald', sans-serif; color: var(--gold); font-size: 13px; }
+.members li .seat-amt.wait { color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: 11.5px; font-weight: 400; }

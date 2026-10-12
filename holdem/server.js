@@ -34,6 +34,17 @@ const BOTS = [
   { name: '카우보이', style: 'maniac', avatar: 8 },
 ];
 const AVATARS = 9;
+// 방을 만들 때 고르는 블라인드(고정)와 최소 머니
+const BLINDS = [[50, 100], [100, 200], [250, 500], [500, 1000], [1000, 2000], [2500, 5000], [5000, 10000], [10000, 20000]];
+const MIN_INS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+function roomOpts(m) {
+  const bi = BLINDS.findIndex((b) => b[1] === Number(m.bb));
+  const [sb, bb] = BLINDS[bi >= 0 ? bi : 0];
+  let minIn = Math.round(Number(m.minIn) || 0);
+  if (!MIN_INS.includes(minIn)) minIn = MIN_INS.find((x) => x >= bb * 20) || bb * 20;
+  minIn = Math.max(minIn, bb * 10, db.settings.minBuyIn);   // 최소 머니는 BB 10배 이상
+  return { sb, bb, minIn };
+}
 const EMOTES = new Set(['👍', '😂', '😱', '😡', '🔥']);
 const PHRASES = {
   p1: '빨리빨리~', p2: '아 까비!', p3: '이걸 넘겨?', p4: '나이스!', p5: '블러프지?', p6: '올인 간다!',
@@ -137,9 +148,12 @@ function genCode() {
 
 // ---------- 게임 방 ----------
 class Room {
-  constructor(mode, host) {
+  constructor(mode, host, opts) {
     this.code = genCode();
     this.mode = mode;          // 'solo' | 'friends' | 'daily'
+    opts = opts || {};
+    this.sb = opts.sb || 50; this.bb = opts.bb || 100; this.minIn = opts.minIn || 1000;
+    this.seats = new Map();    // 회원 id → 가져온 칩(대기실에서 앉을 때 보유 칩에서 빠짐)
     this.hostId = host.id;
     this.members = [];
     this.fillBots = true;
@@ -161,47 +175,54 @@ class Room {
   roomMsg(u) {
     return {
       t: 'room', code: this.code, mode: this.mode, status: this.status, maxSeats: MAX_SEATS,
-      isHost: u.id === this.hostId, fillBots: this.fillBots,
-      members: this.members.map((m) => ({ pid: m.pid, name: m.acct.name, avatar: m.acct.avatar, online: !!m.ws, host: m.id === this.hostId, balance: m.acct.balance })),
+      isHost: u.id === this.hostId, fillBots: this.fillBots, sb: this.sb, bb: this.bb, minIn: this.minIn,
+      mySeat: this.seats.get(u.id) || 0,
+      members: this.members.map((m) => ({ pid: m.pid, name: m.acct.name, avatar: m.acct.avatar, online: !!m.ws, host: m.id === this.hostId, seat: this.seats.get(m.id) || 0 })),
     };
   }
   sendRoom() { this.members.forEach((m) => send(m, this.roomMsg(m))); }
   paid() { return this.mode !== 'daily'; }
+  label() { return this.mode === 'solo' ? 'AI 대결' : '친구 대전 ' + this.code; }
+
+  // 앉기: 내가 고른 만큼 보유 칩에서 테이블로(최소 머니 이상, 보유 칩 이하)
+  sit(u, amount) {
+    if (!this.paid() || this.status !== 'lobby') return 'now';
+    if (this.seats.get(u.id)) return '';
+    amount = Math.round(Number(amount) || 0);
+    if (amount < this.minIn) return `최소 ${this.minIn.toLocaleString()} 이상 가져와야 해요`;
+    if (amount > u.acct.balance) return `보유 칩(${u.acct.balance.toLocaleString()})보다 많이 가져올 수 없어요`;
+    u.acct.balance -= amount; u.acct.inPlay = amount;
+    this.seats.set(u.id, amount);
+    log(u.acct, 'buyin', -amount, this.label() + ' 입장(가져간 칩)');
+    pushMe(u.id);
+    return '';
+  }
+  unsit(u, reason) {
+    const amt = this.seats.get(u.id);
+    if (!amt) return;
+    this.seats.delete(u.id);
+    u.acct.balance += amt; u.acct.inPlay = 0;
+    log(u.acct, 'cashout', amt, this.label() + ' ' + (reason || '대기실에서 나감'));
+    pushMe(u.id);
+  }
 
   start() {
     clearTimeout(this.timer);
-    const S = db.settings;
-    // 바이인(보유 칩에서 테이블로). 모자라는 사람은 방에서 내보냄
-    if (this.paid()) {
-      for (const m of this.members.slice()) {
-        if (m.acct.balance < S.minBuyIn) {
-          send(m, { t: 'error', msg: `보유 칩이 ${S.minBuyIn.toLocaleString()} 이상 있어야 앉을 수 있어요` });
-          if (m.id === this.hostId && this.members.length === 1) return;
-          this.members = this.members.filter((x) => x !== m); m.room = null; send(m, { t: 'left' });
-        }
-      }
-      if (!this.members.length) return this.destroy();
-      if (!this.members.some((m) => m.id === this.hostId)) this.hostId = this.members[0].id;
-      if (this.mode === 'friends' && this.members.length < 2 && !this.fillBots) { this.sendRoom(); return; }
-    }
+    // 모두 칩을 가져와 앉아야 시작
+    if (this.paid() && this.members.some((m) => !this.seats.get(m.id))) return 'seat';
+    if (this.mode === 'friends' && this.members.length < 2 && !this.fillBots) return 'few';
     this.status = 'playing';
     this.seed = this.mode === 'daily' ? 'daily:' + this.date : rid(8);
     const g = (this.game = new H.Game({ seed: this.seed }));
     for (const m of this.members) {
-      let stack = DAILY_STACK;
-      if (this.paid()) {
-        stack = Math.min(m.acct.balance, S.buyIn);
-        m.acct.balance -= stack; m.acct.inPlay = stack;
-        log(m.acct, 'buyin', -stack, (this.mode === 'solo' ? 'AI 대결' : '친구 대전 ' + this.code) + ' 바이인');
-        pushMe(m.id);
-      }
+      const stack = this.paid() ? this.seats.get(m.id) : DAILY_STACK;
       g.addPlayer({ id: m.pid, name: m.acct.name, stack, avatar: m.acct.avatar });
       g.players[g.players.length - 1].acct = m.id;
     }
     if (this.mode !== 'friends' || this.fillBots) {
       const used = new Set(this.members.map((m) => m.acct.avatar));
       const pool = BOTS.filter((b) => !used.has(b.avatar)).concat(BOTS.filter((b) => used.has(b.avatar)));
-      const botStack = this.paid() ? S.buyIn : DAILY_STACK;
+      const botStack = this.paid() ? Math.max(this.minIn, this.bb * 100) : DAILY_STACK;
       let k = 0;
       while (g.players.length < MAX_SEATS) {
         const b = pool[k % pool.length];
@@ -209,8 +230,10 @@ class Room {
         k++;
       }
     }
+    this.seats.clear();   // 이제 칩은 테이블(게임) 위에 있음
     this.sendRoom();
     this.nextHand();
+    return '';
   }
 
   // 나간 사람의 칩을 보유 칩으로 돌려줌
@@ -246,7 +269,8 @@ class Room {
       const humansAlive = alive.filter((p) => p.acct && !p.gone);
       if (alive.length < 2 || humansAlive.length === 0) return this.finish();
     }
-    const [sb, bb] = levelFor(g.handNo);
+    // 오늘의 토너먼트만 블라인드가 오르고, 일반 방은 방장이 정한 블라인드 고정
+    const [sb, bb] = this.mode === 'daily' ? levelFor(g.handNo) : [this.sb, this.bb];
     g.setBlinds(sb, bb);
     g.startHand();
     this.tick();
@@ -349,6 +373,8 @@ class Room {
     for (const p of g.players) if (p.acct) cash[p.acct] = this.cashOut(p);
     this.members.forEach((m) => send(m, { t: 'over', mode: this.mode, standings, cashOut: cash[m.id] || 0, balance: m.acct.balance }));
     if (this.mode === 'solo') { for (const m of this.members) m.room = null; return this.destroy(); }
+    // 친구 대전: 다시 대기실로(각자 칩을 다시 가져와 앉으면 방장이 시작)
+    this.status = 'lobby'; this.game = null;
     this.sendRoom();
   }
 
@@ -375,6 +401,7 @@ class Room {
   remove(u) {
     this.members = this.members.filter((m) => m !== u);
     if (u.room === this.code) u.room = null;
+    this.unsit(u);
     if (this.mode === 'daily') return this.finishDaily();
     if (this.status === 'playing' && this.game) {
       const p = this.game.players.find((x) => x.id === u.pid);
@@ -396,6 +423,7 @@ class Room {
 
   destroy() {
     clearTimeout(this.timer); clearTimeout(this.nagT);
+    for (const m of this.members) this.unsit(m, '방 정리 — 칩 반환');
     if (this.game && this.status === 'playing' && this.paid()) {
       for (const p of this.game.players) if (p.acct && !p.cashed) this.cashOut(p, '방 정리 — 칩 반환');
     }
@@ -466,7 +494,7 @@ app.get('/admin/api/state', adminAuth, (req, res) => {
       totalBalance: accts.reduce((s, a) => s + (a.balance || 0) + (a.inPlay || 0), 0),
     },
     users: rows.sort((a, b) => (b.online - a.online) || (b.req - a.req) || a.name.localeCompare(b.name)),
-    rooms: [...rooms.values()].map((r) => ({ code: r.code, mode: r.mode, status: r.status, hand: r.game ? r.game.handNo : 0,
+    rooms: [...rooms.values()].map((r) => ({ code: r.code, mode: r.mode, status: r.status, hand: r.game ? r.game.handNo : 0, sb: r.sb, bb: r.bb, minIn: r.minIn,
       players: r.game ? r.game.players.map((p) => ({ name: p.name, stack: p.stack, bot: !!p.isBot, gone: !!p.gone })) : r.members.map((m) => ({ name: m.acct.name, stack: 0, bot: false })),
       createdAt: r.createdAt })),
     settings: db.settings,
@@ -674,14 +702,35 @@ function handle(ws, m) {
   switch (m.t) {
     case 'solo': {
       if (r) leaveRoom(u, true);
-      if (a.balance < db.settings.minBuyIn) return send(u, { t: 'error', msg: `보유 칩이 ${db.settings.minBuyIn.toLocaleString()} 이상 있어야 해요` });
-      const room = new Room('solo', u);
+      const o = roomOpts(m);
+      if (a.balance < o.minIn) return send(u, { t: 'error', msg: `이 블라인드는 최소 ${o.minIn.toLocaleString()}이 필요해요` });
+      const room = new Room('solo', u, o);
+      const err = room.sit(u, m.buyIn);
+      if (err) { leaveRoom(u, true); return send(u, { t: 'error', msg: err }); }
       room.start();
       break;
     }
     case 'create': {
       if (r) leaveRoom(u, true);
-      new Room('friends', u);
+      const o = roomOpts(m);
+      if (a.balance < o.minIn) return send(u, { t: 'error', msg: `최소 머니 ${o.minIn.toLocaleString()}보다 보유 칩이 적어요` });
+      const room = new Room('friends', u, o);
+      const err = room.sit(u, m.buyIn);
+      if (err) send(u, { t: 'error', msg: err });
+      room.sendRoom();
+      break;
+    }
+    case 'peek': {   // 들어가기 전에 방 설정 보기(블라인드·최소 머니)
+      const room = rooms.get(String(m.code || '').toUpperCase());
+      if (!room || room.mode !== 'friends') return send(u, { t: 'error', msg: '방을 찾을 수 없어요' });
+      send(u, { t: 'roomInfo', code: room.code, sb: room.sb, bb: room.bb, minIn: room.minIn, status: room.status, count: room.members.length, maxSeats: MAX_SEATS, mine: room.members.includes(u) });
+      break;
+    }
+    case 'sit': {
+      if (!r) return;
+      const err = r.sit(u, m.buyIn);
+      if (err) return send(u, { t: 'error', msg: err === 'now' ? '지금은 칩을 가져올 수 없어요' : err });
+      r.sendRoom();
       break;
     }
     case 'join': {
@@ -691,21 +740,18 @@ function handle(ws, m) {
       if (room.members.includes(u)) { send(u, room.roomMsg(u)); if (room.status === 'playing') room.tick(); return; }
       if (room.status !== 'lobby') return send(u, { t: 'error', msg: '이미 게임이 진행 중인 방이에요' });
       if (room.members.length >= MAX_SEATS) return send(u, { t: 'error', msg: '방이 가득 찼어요' });
-      if (a.balance < db.settings.minBuyIn) return send(u, { t: 'error', msg: `보유 칩이 ${db.settings.minBuyIn.toLocaleString()} 이상 있어야 해요` });
+      if (a.balance < room.minIn) return send(u, { t: 'error', msg: `이 방은 최소 ${room.minIn.toLocaleString()}이 필요해요` });
+      const err = room.sit(u, m.buyIn);
+      if (err) return send(u, { t: 'error', msg: err });
       room.add(u);
       break;
     }
     case 'setBots': if (r && r.hostId === u.id && r.status === 'lobby') { r.fillBots = !!m.on; r.sendRoom(); } break;
     case 'start': {
       if (!r || r.hostId !== u.id || r.status !== 'lobby') return;
-      if (r.members.length < 2 && !r.fillBots) return send(u, { t: 'error', msg: '2명 이상이어야 시작할 수 있어요' });
-      r.start();
-      break;
-    }
-    case 'rematch': {
-      if (!r || r.hostId !== u.id || r.status !== 'over') return;
-      if (r.members.length < 2 && !r.fillBots) return send(u, { t: 'error', msg: '함께할 친구가 없어요' });
-      r.start();
+      const why = r.start();
+      if (why === 'seat') send(u, { t: 'error', msg: '모두 칩을 가져와 앉아야 시작할 수 있어요' });
+      else if (why === 'few') send(u, { t: 'error', msg: '2명 이상이어야 시작할 수 있어요' });
       break;
     }
     case 'act': if (r) r.act(u, String(m.type), Number(m.amount)); break;
@@ -731,7 +777,7 @@ function handle(ws, m) {
       if (r) leaveRoom(u, true);
       board.entries[a.id] = { name: a.name, avatar: a.avatar, score: null, at: now() };
       save();
-      const room = new Room('daily', u);
+      const room = new Room('daily', u, { sb: 50, bb: 100, minIn: 0 });
       room.date = date; room.ownerId = a.id;
       room.start();
       break;

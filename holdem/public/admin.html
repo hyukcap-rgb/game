@@ -232,7 +232,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
   }
 
   function renderRooms() {
-    $('#tab-rooms').innerHTML = `<div class="card"><h2>게임 방 (${S.rooms.length})</h2>${S.rooms.length ? `<table><tr><th>방</th><th>종류</th><th>상태</th><th>핸드</th><th>자리</th></tr>${S.rooms.map((r) => `<tr><td class="num">${r.code}</td><td>${MODE[r.mode] || r.mode}</td><td>${r.status === 'playing' ? '<span class="pill p-game">진행 중</span>' : r.status === 'lobby' ? '<span class="pill p-wait">대기실</span>' : '<span class="pill p-off">끝남</span>'}</td><td class="num">${r.hand || '-'}</td>
+    $('#tab-rooms').innerHTML = `<div class="card"><h2>게임 방 (${S.rooms.length})</h2>${S.rooms.length ? `<table><tr><th>방</th><th>종류</th><th>블라인드 · 최소</th><th>상태</th><th>핸드</th><th>자리</th></tr>${S.rooms.map((r) => `<tr><td class="num">${r.code}</td><td>${MODE[r.mode] || r.mode}</td><td class="num">${r.mode === 'daily' ? '토너먼트' : fmt(r.sb) + '/' + fmt(r.bb) + ' · ' + fmt(r.minIn)}</td><td>${r.status === 'playing' ? '<span class="pill p-game">진행 중</span>' : r.status === 'lobby' ? '<span class="pill p-wait">대기실</span>' : '<span class="pill p-off">끝남</span>'}</td><td class="num">${r.hand || '-'}</td>
       <td class="muted">${r.players.map((p) => `${p.bot ? '🤖' : '👤'}${esc(p.name)}${p.stack ? ' ' + fmt(p.stack) : ''}${p.gone ? '(나감)' : ''}`).join(' · ')}</td></tr>`).join('')}</table>` : '<div class="empty">열린 방이 없어요</div>'}</div>`;
   }
 
@@ -241,8 +241,8 @@ tr:hover td { background:rgba(255,255,255,.02); }
     const box = $('#tab-settings'); box.dataset.done = '1';
     box.innerHTML = `<div class="card"><h2>설정</h2><div class="setgrid">
       <div><label>가입 승인 때 주는 칩</label><input type="number" id="sWelcome" value="${s.welcomeChips}" min="0" step="1000"></div>
-      <div><label>바이인(한 번 앉을 때 가져가는 칩)</label><input type="number" id="sBuyIn" value="${s.buyIn}" min="1000" step="1000"></div>
-      <div><label>최소 보유 칩(이보다 적으면 앉을 수 없음)</label><input type="number" id="sMin" value="${s.minBuyIn}" min="200" step="100"></div>
+      <div><label>가져가기 기본값(입장 창에 처음 보이는 칩)</label><input type="number" id="sBuyIn" value="${s.buyIn}" min="1000" step="1000"></div>
+      <div><label>방 최소 머니의 하한(방장이 이보다 낮게 못 정함)</label><input type="number" id="sMin" value="${s.minBuyIn}" min="200" step="100"></div>
       <div><label>입장 자동 승인</label><select id="sAuto"><option value="0" ${!s.autoApprove ? 'selected' : ''}>끔 — 접속할 때마다 관리자 승인</option><option value="1" ${s.autoApprove ? 'selected' : ''}>켬 — 가입·입장 자동 승인</option></select></div>
     </div><div class="row" style="margin-top:14px"><button class="btn y" id="sSave">저장</button><span class="muted">보유 칩은 게임 안에서만 쓰는 칩이에요. 현금 충전·환전은 지원하지 않아요.</span></div></div>`;
     $('#sSave').onclick = async () => {
