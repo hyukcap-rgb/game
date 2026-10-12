@@ -437,21 +437,17 @@ NG.spot = (() => {
     name:'틀린그림 찾기', abil:'집중력', col:['#8EEBDF', '#14B8A6', '#0B6B61'], time:'약 2분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 2.5h17A1.5 1.5 0 0 1 22 4v6a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 10V4a1.5 1.5 0 0 1 1.5-1.5zm0 10h17A1.5 1.5 0 0 1 22 14v6a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 20v-6a1.5 1.5 0 0 1 1.5-1.5z" opacity=".5"/><circle cx="15" cy="17" r="3.6" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="15" cy="7" r="2.4"/></svg>',
     art(){
-      const u = 'spotA' + Math.floor(performance.now() * 1000 % 1e6);
-      /* 손으로 그린 간단한 액자 두 장(왼쪽=원래, 오른쪽=다른 곳이 있는 그림): 언덕·해·집 */
-      const mini = (x, y, alt) => `<g transform="translate(${x} ${y})"><rect width="64" height="50" rx="7" fill="#FDE9B8" stroke="#1A0F45" stroke-width="2.4"/>
-        <path d="M1.5 38c14-10 26-12 38-6s16 4 23-2v14a6 6 0 0 1-6 6H7.5a6 6 0 0 1-6-6z" fill="#7BBF7A"/>
-        ${alt ? '' : '<circle cx="48" cy="14" r="7" fill="#FFB020" stroke="#1A0F45" stroke-width="2"/>'}
-        <path d="M14 38V26l10-8 10 8v12z" fill="#FFF3E4" stroke="#1A0F45" stroke-width="2" stroke-linejoin="round"/><path d="M11 27l13-11 13 11" fill="none" stroke="${alt ? '#4B6CD9' : '#E8503A'}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <rect width="64" height="50" rx="7" fill="none" stroke="#1A0F45" stroke-width="2.4"/></g>`;
-      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
-        <linearGradient id="${u}1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E2FBF6"/><stop offset="1" stop-color="#8EE3D4"/></linearGradient></defs>
-        <rect width="160" height="100" fill="url(#${u}1)"/>
-        <g fill="#fff" opacity=".5"><circle cx="10" cy="12" r="3"/><circle cx="150" cy="90" r="4"/><circle cx="80" cy="8" r="2.4"/></g>
-        ${mini(10, 26, false)}${mini(86, 26, true)}
-        <circle cx="111" cy="43" r="12" fill="none" stroke="#1A0F45" stroke-width="5"/><circle cx="111" cy="43" r="12" fill="none" stroke="#FF3D7F" stroke-width="2.8"/>
-        <circle cx="139" cy="38" r="9" fill="none" stroke="#1A0F45" stroke-width="5"/><circle cx="139" cy="38" r="9" fill="none" stroke="#FF3D7F" stroke-width="2.8"/>
-        <path d="M76 44l4 4-4 4" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      /* 썸네일: 실제 게임처럼 명화(고흐 「아를의 침실」 한 부분) 두 장 — 왼쪽 원래 그림, 오른쪽 바뀐 그림(의자·베개 색) + 찾은 동그라미 2개.
+         그림은 art/thumb_a.webp·thumb_b.webp(198×228, 각 약 9KB, 명화 원본에 차이 조각 2개를 얹어 만든 것). 주소는 판 그림처럼 artBase()로 사이트/모듈을 나눔 */
+      const base = artBase(), PW = 66, PH = 76, Y = 12;
+      const pic = (x, f, cir) => `<g transform="translate(${x} ${Y})"><rect x="-1.5" y="-1.5" width="${PW + 3}" height="${PH + 3}" rx="6" fill="#1A0F45"/>
+        <image href="${base}${f}" width="${PW}" height="${PH}" preserveAspectRatio="xMidYMid slice"/>
+        <rect width="${PW}" height="${PH}" rx="4.5" fill="none" stroke="#1A0F45" stroke-width="3"/>${cir || ''}</g>`;
+      const ring = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="6"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1A0F45" stroke-width="4"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#FF3D7F" stroke-width="2.4"/>`;
+      return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <rect width="160" height="100" fill="#A9EADF"/>
+        ${pic(10, 'thumb_a.webp')}${pic(84, 'thumb_b.webp', ring(20, 49, 14) + ring(41, 27, 10))}
+        <path d="M78 46l3.5 4-3.5 4" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     },
     help:[
       ['두 그림을 비교해요', '유명한 명화 한 점이 위·아래 두 장으로 나와요. 아래 그림은 몇 곳이 살짝 달라요. 색이 바뀌거나, 어두워지거나, 모양이 뒤집히거나, 다른 곳의 조각으로 바뀌어 있어요.'],
@@ -505,6 +501,7 @@ NG.spot = (() => {
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
         if(m.onResize) removeEventListener('resize', m.onResize);
+        if(m.touchOff) m.touchOff();
         if(G && G.raf) cancelAnimationFrame(G.raf);
       };
       /* 테스트·도구용: 차이를 차례로 모두 누른다 */
@@ -549,12 +546,35 @@ NG.spot = (() => {
           <div class="sp-pic" id="spB">${picB(m)}<div class="sp-cover" aria-hidden="true">${COVER}<b>잠깐!</b></div></div>
         </div>
       </div>`;
-      /* 누르기: 보통은 누르는 순간(빠르게). 크게 보기에서는 옆으로 밀기와 구분하려고 손을 뗄 때(움직임 10px 안) */
+      /* 누르기(2026-10-12 두 손가락 확대 고침):
+         - 마우스·펜: 보통은 누르는 순간(빠르게), 크게 보기에서는 손을 뗄 때(움직임 10px 안).
+         - 손가락: 늘 **손을 뗄 때** 판정. 두 손가락(핀치) 확대·이동이 시작되면 그 몸짓의 모든 손가락은 누름이 아니고(첫 손가락의 대기 중 누름도 취소),
+           핀치 뒤 남은 한 손가락을 떼도, 다 뗀 뒤 0.35초 안에 다시 닿아도 판정하지 않는다. 12px 넘게 끌어도 누름 아님.
+           그래서 핀치로는 찾기·빗나감·감점·쉬는 시간이 생기지 않는다(대전 선점도 같음). 판 상태·rng·대전 통신은 그대로 */
+      if(m.touchOff) m.touchOff();   /* 다시 그릴 때 문서 듣기가 겹치지 않게 */
+      const TP = m.tp = { on:new Map(), multi:false, quiet:0 };
+      const docDown = ev => { if(ev.pointerType !== 'touch') return; TP.on.set(ev.pointerId, 1); if(TP.on.size >= 2){ TP.multi = true; dnAll.forEach(d => { d.bad = true; }); } };
+      const docUp = ev => { if(ev.pointerType !== 'touch') return; TP.on.delete(ev.pointerId); if(!TP.on.size && TP.multi){ TP.multi = false; TP.quiet = performance.now() + 350; } };
+      const docTouch = ev => { if(ev.touches && ev.touches.length >= 2){ TP.multi = true; dnAll.forEach(d => { d.bad = true; }); } };
+      const docTouchEnd = ev => { if(ev.touches && !ev.touches.length && TP.multi){ TP.multi = false; TP.on.clear(); TP.quiet = performance.now() + 350; } };   /* 브라우저가 확대하느라 pointer를 취소해도 다 떼면 풀림 */
+      const dnAll = new Map();   /* 손가락(pointerId)마다 누르기 후보 */
+      document.addEventListener('pointerdown', docDown, true); document.addEventListener('pointerup', docUp, true); document.addEventListener('pointercancel', docUp, true);
+      document.addEventListener('touchstart', docTouch, { capture:true, passive:true });
+      document.addEventListener('touchend', docTouchEnd, { capture:true, passive:true }); document.addEventListener('touchcancel', docTouchEnd, { capture:true, passive:true });
+      m.touchOff = () => { document.removeEventListener('pointerdown', docDown, true); document.removeEventListener('pointerup', docUp, true); document.removeEventListener('pointercancel', docUp, true); document.removeEventListener('touchstart', docTouch, { capture:true }); document.removeEventListener('touchend', docTouchEnd, { capture:true }); document.removeEventListener('touchcancel', docTouchEnd, { capture:true }); dnAll.clear(); TP.on.clear(); };
       ['A', 'B'].forEach(w => { const e = $('#sp' + w); if(!e) return;
-        let dn = null;
-        e.onpointerdown = ev => { if(S().big){ dn = { x:ev.clientX, y:ev.clientY, t:performance.now() }; return; } tapAt(w, ev); };
-        e.onpointerup = ev => { const d0 = dn; dn = null; if(!S().big || !d0) return; if(Math.hypot(ev.clientX - d0.x, ev.clientY - d0.y) < 10 && performance.now() - d0.t < 600) tapAt(w, ev); };
-        e.onpointercancel = () => { dn = null; };
+        e.onpointerdown = ev => {
+          const touch = ev.pointerType === 'touch';
+          if(!touch && !S().big){ tapAt(w, ev); return; }
+          dnAll.set(ev.pointerId, { x:ev.clientX, y:ev.clientY, t:performance.now(), far:0, touch, bad:touch && (TP.multi || TP.on.size >= 2 || performance.now() < TP.quiet) });
+        };
+        e.onpointermove = ev => { const d = dnAll.get(ev.pointerId); if(d) d.far = Math.max(d.far, Math.hypot(ev.clientX - d.x, ev.clientY - d.y)); };
+        e.onpointerup = ev => {
+          const d = dnAll.get(ev.pointerId); dnAll.delete(ev.pointerId); if(!d || d.bad) return;
+          const far = Math.max(d.far, Math.hypot(ev.clientX - d.x, ev.clientY - d.y)), dt = performance.now() - d.t;
+          if(d.touch ? (far < 12 && dt < (S().big ? 600 : 1500)) : (far < 10 && dt < 600)) tapAt(w, ev);
+        };
+        e.onpointercancel = ev => { dnAll.delete(ev.pointerId); };
       });
       const zb = $('#spZoom'); if(zb) zb.onclick = () => bigSet(!S().big);
       const sb = $('#spSwap'); if(sb) sb.onclick = bigSwap;
