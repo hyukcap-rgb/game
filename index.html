@@ -18,9 +18,11 @@
 <meta name="twitter:image" content="https://hyukcap-rgb.github.io/game/og.png">
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<!-- 디자인 테마(portal/theme.js): 첫 그림 전에 html에 붙여 깜빡임을 막는다. 기본은 티켓 부스 -->
+<script>try{var t=JSON.parse(localStorage.getItem((window.HP_NS||'')+'hp:theme'));}catch(e){}if(['ticket','classic','neon','jelly'].indexOf(t)<0)t='ticket';document.documentElement.setAttribute('data-theme',t);if(t!=='classic')document.documentElement.classList.add('th');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;600;700&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
 <!-- 화면 모양(CSS): core(공용) → games(게임마다) → core/play.css → portal(이 사이트). 순서는 tools/build.js가 game.json을 보고 맞춰요. -->
 <!-- @build:css 손으로 고치지 마세요 -->
 <link rel="stylesheet" href="core/base.css">
@@ -39,6 +41,7 @@
 <link rel="stylesheet" href="core/play.css">
 <link rel="stylesheet" href="core/duel.css">
 <link rel="stylesheet" href="portal/portal.css">
+<link rel="stylesheet" href="portal/theme.css">
 <!-- @end -->
 
 <svg class="gdefs" aria-hidden="true" focusable="false"><defs>
@@ -97,31 +100,20 @@
   </div>
 
   <div class="pane" id="paneMe" hidden>
+    <!-- 내 정보(2026-10-12 간소화, Figma 10:4): 프로필 한 줄 + 오늘 요약 티켓 + ⚙ 설정. 나머지 메뉴는 설정 시트(openSettings) 안 -->
+    <div class="mehead"><div><h2>내 정보</h2><small id="meDate"></small></div><button class="megear" id="meGear" aria-label="설정 열기 · 기록, 친구, 디자인 테마, 소리"></button></div>
     <div class="prof panel" id="prof"></div>
-    <section class="hero" aria-label="오늘 점수">
-      <div class="ribbon"><span>오늘의 성적</span></div>
-      <div class="hero-in">
-        <div class="medal-big" id="myMedal"></div>
-        <div class="hero-score"><small>오늘 점수</small><div class="n"><span class="num" id="bq" aria-live="polite">0</span><em>점</em></div><p id="rankLine"></p></div>
+    <section class="meticket panel" aria-label="오늘의 성적">
+      <div class="mt-band"><b>오늘의 성적</b><span id="meExam"></span></div>
+      <div class="mt-score"><span class="num" id="bq" aria-live="polite">0</span><em>점</em><p id="rankLine"></p></div>
+      <div class="mt-cells">
+        <div class="mt-c"><small id="lbSkill"></small><b><span class="num" id="bqSkill">0</span><em id="bqSkillU"></em></b><span id="skillEx"></span></div>
+        <div class="mt-c grit"><small id="lbGrit"></small><b><span class="num" id="bqGrit">0</span><em>일</em></b><span id="gritEx"></span></div>
       </div>
-      <div class="bq-split">
-        <div class="bq-part"><span class="lb" id="lbSkill"></span><span class="v"><span id="bqSkill">0</span><small id="bqSkillU"></small></span><span class="ex" id="skillEx"></span><div class="bar"><i id="barSkill" style="width:0"></i></div></div>
-        <div class="bq-part grit"><span class="lb" id="lbGrit"></span><span class="v"><span id="bqGrit">0</span><small>일</small></span><span class="ex" id="gritEx"></span><div class="bar"><i id="barGrit" style="width:0"></i></div></div>
-      </div>
-      <div class="gems" id="dots"></div>
-      <div class="hero-foot"><span id="progTxt"></span></div>
+      <div class="mt-acts"><button class="mt-a" id="meReport">두뇌 리포트</button><button class="mt-a pri" id="meShare">성적표 공유</button></div>
     </section>
+    <button class="memore" id="meMore"></button>
     <p class="tagline">같은 문제, <b>다른 점수</b>.</p>
-    <button class="panel gritcard" id="gritCard" aria-label="내 두뇌 리포트 열기"></button>
-    <div class="me-links"><button id="meFriends">친구</button><button id="meReport">두뇌 리포트</button><button id="meShare">성적표 공유</button><button id="meSound">소리·진동</button></div>
-    <div class="sec"><h2>솔로 성장</h2></div>
-    <div class="panel growlist" id="growList"></div>
-    <div class="sec"><h2>챕터 배지 <small class="num" id="bdgCount" style="font-size:14px;-webkit-text-stroke:3px var(--outline2)"></small></h2></div>
-    <div class="panel bdwrap" id="badges"></div>
-    <details class="proto" id="proto" hidden><summary>테스트 도구</summary>
-      <p>진짜 친구가 없으면 예시 친구를 보여 줘요. 게임 기록은 이 브라우저에 저장되고, 친구·친구 점수는 친구 서버에 저장돼요.</p>
-      <button class="btn small secondary" id="devFill">하트 5개 채우기</button><button class="btn small secondary" id="devReset">오늘 기록 초기화</button><button class="btn small secondary" id="devWelcome">첫 안내 다시 보기</button><button class="btn small secondary" id="devHist">지난 2주 출석 기록 만들기</button><button class="btn small secondary" id="devHistClr">출석 기록 모두 지우기</button><button class="btn small secondary" id="devWeek">주간 결과 발표 보기</button><button class="btn small secondary" id="devAdv">솔로 초기화</button><button class="btn small secondary" id="devLvUp">레벨업 연출 보기</button><button class="btn small secondary" id="devCh">챕터 클리어 연출 보기</button>
-    </details>
   </div>
 
   <nav class="dock" id="dock" aria-label="메뉴">
@@ -211,6 +203,7 @@
 <script src="games/tgostop/tgostop-fx.js"></script>
 <script src="games/tgostop/tgostop.js"></script>
 <script src="games/holdem/holdem.js"></script>
+<script src="portal/theme.js"></script>
 <script src="portal/portal.js"></script>
 <script src="portal/viral.js"></script>
 <script src="portal/friends.js"></script>

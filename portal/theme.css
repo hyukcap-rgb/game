@@ -1,0 +1,332 @@
+/* ===== 사이트 디자인 테마 (2026-10-12, portal/theme.js) =====
+   html[data-theme] = ticket(기본, 티켓 부스) · classic(밤하늘, 덮어쓰기 없음) · neon(네온 아레나) · jelly(말랑 젤리)
+   - classic이 아니면 html에 .th가 붙는다. 모든 규칙은 .th body:not([data-mode]) 아래에서만 → 게임 플레이 화면(body[data-mode])은 그대로.
+   - 1부: 테마마다 색·글꼴 값(--t-*, 공용 --ink 등) / 2부: 세 테마 공용 모양(값만 다름) / 3부: 테마마다 고유 꾸밈.
+   - 설문 주의점(docs/25): 보조 글씨도 진한 색 13px 이상, 네온은 대비 충분히. */
+
+/* ---------- 1부: 값 ---------- */
+html[data-theme="ticket"] body:not([data-mode]){
+  --t-bg:#FFF4E2; --t-ink:#2B1B12; --t-sub:#5A4636;
+  --t-card:#FFFFFF; --t-card2:#FFF4E2; --t-line:#2B1B12; --t-bw:2px; --t-r:16px; --t-sh:0 4px 0 #2B1B12; --t-sh-s:0 3px 0 #2B1B12;
+  --t-acc:#E8443A; --t-acc-ink:#FFFFFF; --t-acc2:#14808D; --t-acc2-ink:#FFFFFF; --t-yel:#FFC21A; --t-yel-ink:#2B1B12; --t-fav:#FFE08A;
+  --t-chip:#FFFFFF; --t-chip-ink:#2B1B12; --t-dock:#2B1B12; --t-dock-ink:#FFF4E2; --t-hero:#14808D; --t-hero-ink:#FFFFFF; --t-hero2:rgba(255,255,255,.16);
+  --t-veil:rgba(43,27,18,.55);
+  --ink:#2B1B12; --sub:#5A4636; --paper:#FFFFFF; --paper2:#FFFFFF; --paper-line:#E6CFA9; --outline:#2B1B12; --outline2:#2B1B12; --line:#E6CFA9;
+  --primary:#D83A30; --pink:#E8443A; --sky:#14808D; --gold:#FFC21A;
+  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --disp:"Do Hyeon","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --heavy:"Black Han Sans","Do Hyeon","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+html[data-theme="neon"] body:not([data-mode]){
+  --t-bg:radial-gradient(80% 40% at 100% 0%, rgba(255,46,136,.18), transparent 70%), radial-gradient(70% 40% at 0% 100%, rgba(34,211,238,.14), transparent 70%), linear-gradient(180deg,#0B0F2A 0%,#1A1048 100%);
+  --t-ink:#F3F4FF; --t-sub:#C9CEF7;
+  --t-card:#161B45; --t-card2:#21275C; --t-line:#3A44A0; --t-bw:1.5px; --t-r:18px; --t-sh:0 8px 22px rgba(0,0,0,.4); --t-sh-s:0 4px 12px rgba(0,0,0,.35);
+  --t-acc:#FF2E88; --t-acc-ink:#FFFFFF; --t-acc2:#22D3EE; --t-acc2-ink:#0B0F2A; --t-yel:#FFD43B; --t-yel-ink:#0B0F2A; --t-fav:#2A2550;
+  --t-chip:#1F2558; --t-chip-ink:#E3E6FF; --t-dock:#12163A; --t-dock-ink:#C9CEF7; --t-hero:linear-gradient(135deg,#22D3EE,#3B82F6); --t-hero-ink:#0B0F2A; --t-hero2:rgba(11,15,42,.16);
+  --t-veil:rgba(5,7,24,.78);
+  --ink:#F3F4FF; --sub:#C9CEF7; --paper:#161B45; --paper2:#161B45; --paper-line:#2E3785; --outline:#3A44A0; --outline2:#0B0F2A; --line:#2E3785;
+  --primary:#7C3AED; --pink:#FF2E88; --sky:#22D3EE; --gold:#FFD43B;
+  --font:"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --disp:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --heavy:"Black Han Sans","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+html[data-theme="jelly"] body:not([data-mode]){
+  --t-bg:linear-gradient(180deg,#F3F0FF 0%,#FFF0F6 100%);
+  --t-ink:#2A2340; --t-sub:#4F4668;
+  --t-card:#FFFFFF; --t-card2:#F5F2FF; --t-line:#E6DFFF; --t-bw:1.5px; --t-r:22px; --t-sh:0 8px 20px rgba(124,92,255,.16); --t-sh-s:0 4px 12px rgba(124,92,255,.14);
+  --t-acc:#7C5CFF; --t-acc-ink:#FFFFFF; --t-acc2:#E0507E; --t-acc2-ink:#FFFFFF; --t-yel:#FFC83D; --t-yel-ink:#2A2340; --t-fav:#FFF4CF;
+  --t-chip:#FFFFFF; --t-chip-ink:#3B3358; --t-dock:#FFFFFF; --t-dock-ink:#4F4668; --t-hero:linear-gradient(135deg,#FF7EA8,#E0507E); --t-hero-ink:#FFFFFF; --t-hero2:rgba(255,255,255,.22);
+  --t-veil:rgba(42,35,64,.45);
+  --ink:#2A2340; --sub:#4F4668; --paper:#FFFFFF; --paper2:#FFFFFF; --paper-line:#ECE6FF; --outline:#D8CEFF; --outline2:#CBBFFF; --line:#ECE6FF;
+  --primary:#7C5CFF; --pink:#E0507E; --sky:#7C5CFF; --gold:#FFC83D;
+  --font:"Gowun Dodum","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --disp:"Jua","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --heavy:"Jua","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+
+/* ---------- 2부: 세 테마 공용 모양 ---------- */
+.th body:not([data-mode]){background:var(--t-bg); background-attachment:fixed; color:var(--t-ink)}
+.th body:not([data-mode]) .scene{display:none}
+.th body:not([data-mode]) button:focus-visible, .th body:not([data-mode]) summary:focus-visible{outline:3px solid var(--t-acc); outline-offset:3px}
+/* 카드(양피지 패널) */
+.th body:not([data-mode]) .panel{background:var(--t-card); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+/* 머리줄 */
+.th body:not([data-mode]) .hud-logo{color:var(--t-ink); -webkit-text-stroke:0; text-shadow:none}
+.th body:not([data-mode]) .hud-logo small{color:var(--t-acc)}
+.th body:not([data-mode]) .me-btn{border-color:var(--t-line); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .me-btn .lvb{border-color:var(--t-line); color:var(--t-yel-ink); background:var(--t-yel)}
+.th body:not([data-mode]) .res{background:var(--t-card); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s); color:var(--t-ink)}
+.th body:not([data-mode]) .res-val small{color:var(--t-sub)}
+.th body:not([data-mode]) .res-ico{filter:none}
+.th body:not([data-mode]) .mail{background:var(--t-card); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .badge{border-color:var(--t-card)}
+/* 섹션 제목·안내 글 */
+.th body:not([data-mode]) .sec{justify-content:flex-start}
+.th body:not([data-mode]) .sec::before, .th body:not([data-mode]) .sec::after{display:none}
+.th body:not([data-mode]) .sec h2{font-family:var(--heavy); font-size:21px; color:var(--t-ink); -webkit-text-stroke:0; text-shadow:none}
+.th body:not([data-mode]) .sec h2::before, .th body:not([data-mode]) .sec h2::after{display:none}
+.th body:not([data-mode]) .sec .more{color:var(--t-sub)}
+.th body:not([data-mode]) :is(.daynote, .advnote, .rank-note, .tagline){color:var(--t-sub); text-shadow:none}
+.th body:not([data-mode]) .daynote{text-align:left; margin-left:2px}
+.th body:not([data-mode]) .tagline b{color:var(--t-acc)}
+/* 오늘: 요약줄 · 큰 버튼 */
+.th body:not([data-mode]) .strip{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .strip .sc{background:var(--t-card2); box-shadow:none; border:1.5px solid var(--paper-line)}
+.th body:not([data-mode]) .strip .sc small{color:var(--t-sub)}
+.th body:not([data-mode]) .strip .sc b{color:var(--t-ink)}
+.th body:not([data-mode]) .strip .sc b em{color:var(--t-sub)}
+.th body:not([data-mode]) .stgr i{color:var(--t-ink); background:var(--t-card2); border-color:var(--paper-line)}
+.th body:not([data-mode]) .stgr i b{-webkit-text-stroke:3px var(--t-card2); paint-order:stroke fill}
+.th body:not([data-mode]) .stgr i.none b{color:var(--t-sub)}
+.th body:not([data-mode]) .strip .go{color:var(--t-sub)}
+.th body:not([data-mode]) .cta{background:var(--t-acc); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .cta::before, .th body:not([data-mode]) .cta::after{display:none}
+.th body:not([data-mode]) .cta-txt b{color:var(--t-acc-ink); -webkit-text-stroke:0; text-shadow:none; font-family:var(--heavy)}
+.th body:not([data-mode]) .cta-txt i{color:var(--t-acc-ink); background:rgba(0,0,0,.22)}
+.th body:not([data-mode]) .cta-txt small{color:var(--t-acc-ink)}
+.th body:not([data-mode]) .cta-tile{border-color:var(--t-line); box-shadow:none; background:#fff}
+.th body:not([data-mode]) .cta-play{border-color:var(--t-line); box-shadow:none; background:var(--t-yel)}
+/* 목록 줄·버튼 */
+.th body:not([data-mode]) .g-art{border-color:var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .g-art::after{display:none}
+.th body:not([data-mode]) .grow.now{outline-color:var(--t-yel)}
+.th body:not([data-mode]) .gr-mid em.nowtx{color:var(--t-acc)}
+.th body:not([data-mode]) .gr-go{background:var(--t-acc); color:var(--t-acc-ink); border:var(--t-bw) solid var(--t-line); text-shadow:none; box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .gr-go::before{display:none}
+.th body:not([data-mode]) .gr-go.adv{background:var(--t-acc2); color:var(--t-acc2-ink)}
+.th body:not([data-mode]) .gr-go.soft{background:var(--t-card); color:var(--t-acc)}
+.th body:not([data-mode]) .gr-go.soft.re{color:var(--t-ink)}
+.th body:not([data-mode]) .gr-go.soft .freebadge, .th body:not([data-mode]) .gr-go.soft .cost{background:var(--t-card2); color:var(--t-acc)}
+.th body:not([data-mode]) .gr-go .cost{background:rgba(0,0,0,.2); color:inherit}
+.th body:not([data-mode]) .freebadge{color:inherit}
+.th body:not([data-mode]) .gr-mid .subj, .th body:not([data-mode]) .rprow .subj{background:var(--t-ink); color:var(--t-card)}
+.th body:not([data-mode]) .lvchip{background:var(--t-card2); color:var(--t-ink); border-color:var(--paper-line)}
+.th body:not([data-mode]) .pool{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) dashed var(--t-line)}
+.th body:not([data-mode]) .pool > .ico{color:var(--t-yel-ink)}
+.th body:not([data-mode]) :is(.pool, .lgpool) :is(.pl-t, .pl-n){color:var(--t-ink)}
+.th body:not([data-mode]) :is(.pool, .lgpool) .pl-s{color:var(--t-sub)}
+.th body:not([data-mode]) .advpromo{color:var(--t-acc2-ink); background:var(--t-acc2); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .advpromo b{text-shadow:none}
+.th body:not([data-mode]) .advpromo small{color:inherit; opacity:.92}
+.th body:not([data-mode]) .duelpromo{color:var(--t-acc-ink); background:var(--t-acc)}
+.th body:not([data-mode]) .rppast{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
+/* 솔로 */
+.th body:not([data-mode]) .lvcard{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .lvcard .t{color:var(--t-acc)}
+.th body:not([data-mode]) .xp{background:var(--t-card2); box-shadow:inset 0 0 0 1.5px var(--paper-line)}
+.th body:not([data-mode]) .xp i{background:var(--t-yel); box-shadow:none}
+.th body:not([data-mode]) .xp-t{color:var(--t-sub)}
+.th body:not([data-mode]) .xp-t b{color:var(--t-ink)}
+.th body:not([data-mode]) .solopts{border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .fchips button{color:var(--t-chip-ink); background:var(--t-chip); border:var(--t-bw) solid var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .fchips button[aria-pressed="true"]{color:var(--t-card); background:var(--t-ink); border-color:var(--t-ink); box-shadow:none}
+.th body:not([data-mode]) .ac-top b, .th body:not([data-mode]) .gr-mid b, .th body:not([data-mode]) .duelrow .dname{color:var(--t-ink)}
+.th body:not([data-mode]) .ac-top span{color:var(--t-ink)}
+.th body:not([data-mode]) .ac-btns .map{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .acard.fav, .th body:not([data-mode]) .duelrow.fav, .th body:not([data-mode]) .grow.fav{background:var(--t-fav); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .favb svg{stroke:var(--t-ink)}
+.th body:not([data-mode]) .adultsec{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) dashed var(--t-line)}
+.th body:not([data-mode]) .adultsec em{color:var(--t-acc)}
+/* 대전 */
+.th body:not([data-mode]) .duelhead{color:var(--t-hero-ink); background:var(--t-hero); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .dh-top b{-webkit-text-stroke:0; color:inherit}
+.th body:not([data-mode]) :is(.dh-top small, .dh-rec span, .dh-wk small, .dh-live, .dh-fire small){color:inherit; opacity:.95}
+.th body:not([data-mode]) :is(.dh-rec > div, .dh-week){background:var(--t-hero2); border-color:rgba(255,255,255,.3)}
+.th body:not([data-mode]) .dh-rec .pts b, .th body:not([data-mode]) .dh-wk b .num, .th body:not([data-mode]) .dh-fire b{color:inherit}
+.th body:not([data-mode]) .dh-wk b{color:inherit}
+.th body:not([data-mode]) .dh-ico{border-color:var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .dh-bar{background:rgba(0,0,0,.22); box-shadow:none}
+.th body:not([data-mode]) .dh-live b{color:inherit}
+.th body:not([data-mode]) .dfr{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .dfr p, .th body:not([data-mode]) .dfr-f small, .th body:not([data-mode]) .dfr.empty small{color:var(--t-sub)}
+.th body:not([data-mode]) .duelrow .dhow, .th body:not([data-mode]) .duelrow .dname .drec{color:var(--t-sub)}
+.th body:not([data-mode]) .duelrow .drec{color:var(--t-sub)!important}
+/* 리그 */
+.th body:not([data-mode]) .tabs button{color:var(--t-chip-ink); background:var(--t-chip); border:var(--t-bw) solid var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .tabs button[aria-pressed="true"]{color:var(--t-card); background:var(--t-ink); border-color:var(--t-ink); box-shadow:none}
+.th body:not([data-mode]) .lgcard{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
+.th body:not([data-mode]) .lgcard .t{color:var(--t-acc)}
+.th body:not([data-mode]) .lgcard .s2{color:var(--t-sub)}
+.th body:not([data-mode]) .lgcard .s2 b{color:var(--t-ink)}
+.th body:not([data-mode]) .lgpool{background:var(--t-card2); box-shadow:none; color:var(--t-ink); border:1.5px solid var(--paper-line)}
+.th body:not([data-mode]) .worldcard{background:var(--t-card); color:var(--t-sub); border:var(--t-bw) solid var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .worldcard b{color:var(--t-acc)}
+.th body:not([data-mode]) .worldcard > .ico{color:var(--t-acc2)}
+.th body:not([data-mode]) .pnum{background:var(--t-ink); color:var(--t-card); border-color:var(--t-ink); box-shadow:none}
+.th body:not([data-mode]) .row.upz .pnum{background:#1F9D55; color:#fff} .th body:not([data-mode]) .row.downz .pnum{background:#D63B3B; color:#fff}
+.th body:not([data-mode]) .row{border-top-color:var(--paper-line)}
+.th body:not([data-mode]) .row.me{border-color:var(--t-line); background:var(--t-fav); box-shadow:none}
+.th body:not([data-mode]) .av{box-shadow:0 0 0 2px var(--t-line)}
+.th body:not([data-mode]) .row .send{background:var(--t-card); border-color:var(--t-acc); color:var(--t-acc); box-shadow:none}
+/* 내 정보(간소화) */
+.th body:not([data-mode]) .mehead h2{font-family:var(--heavy); color:var(--t-ink); -webkit-text-stroke:0}
+.th body:not([data-mode]) .mehead small{color:var(--t-sub)}
+.th body:not([data-mode]) .megear{color:var(--t-yel-ink); background:var(--t-yel); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .prof .ttlchip{background:var(--t-acc); color:var(--t-acc-ink); border-color:var(--t-line)}
+.th body:not([data-mode]) .prof .xp-t b{color:var(--t-ink)}
+.th body:not([data-mode]) .mt-band{background:var(--t-acc); color:var(--t-acc-ink); border-bottom:var(--t-bw) solid var(--t-line)}
+.th body:not([data-mode]) .mt-band b{text-shadow:none}
+.th body:not([data-mode]) .mt-score p em, .th body:not([data-mode]) .mt-score > em{color:var(--t-acc)}
+.th body:not([data-mode]) .mt-cells{border-top:var(--t-bw) dashed var(--t-line)}
+.th body:not([data-mode]) .mt-c{background:var(--t-card2); border:1.5px solid var(--paper-line)}
+.th body:not([data-mode]) .mt-c > span b{color:var(--t-acc)}
+.th body:not([data-mode]) .mt-a{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s); text-shadow:none}
+.th body:not([data-mode]) .mt-a.pri{color:var(--t-acc2-ink); background:var(--t-acc2)}
+.th body:not([data-mode]) .memore{color:var(--t-ink); background:var(--t-card); border:var(--t-bw) dashed var(--t-line)}
+.th body:not([data-mode]) .mm-i{background:var(--t-yel); color:var(--t-yel-ink)}
+.th body:not([data-mode]) .mm-t small{color:var(--t-sub)}
+/* 아래 탭 */
+.th body:not([data-mode]) .dock{background:var(--t-dock); border-top:0; box-shadow:none; left:50%; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:calc(100% - 24px); max-width:436px; padding:6px; border-radius:22px}
+.th body:not([data-mode]) .dock button{color:var(--t-dock-ink)}
+.th body:not([data-mode]) .dock button[aria-current="page"]{color:var(--t-acc-ink); background:var(--t-acc); box-shadow:none; transform:none}
+.th body:not([data-mode]) .dock .dot{border-color:var(--t-dock)}
+/* 창(모달·시트) · 알림 */
+.th body:not([data-mode]) .veil{background:var(--t-veil); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px)}
+.th body:not([data-mode]) .modal{background:var(--t-card); color:var(--t-ink); border:var(--t-bw) solid var(--t-line); border-radius:calc(var(--t-r) + 6px); box-shadow:var(--t-sh), 0 20px 50px rgba(0,0,0,.3)}
+.th body:not([data-mode]) .modal h3{color:var(--t-acc-ink); background:var(--t-acc); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s); text-shadow:none; font-family:var(--heavy)}
+.th body:not([data-mode]) .modal h3.ok{background:#1F9D55}
+.th body:not([data-mode]) .modal h3.bad{background:#6B6F86}
+.th body:not([data-mode]) .modal h3.dz-h{background:none; border:0; box-shadow:none}
+.th body:not([data-mode]) .modal .big{color:var(--t-yel); -webkit-text-stroke:7px var(--t-ink)}
+.th body:not([data-mode]) .modal.celebrate{background:var(--t-card); color:var(--t-ink); border-color:var(--t-yel)}
+.th body:not([data-mode]) .modal.celebrate .rprec, .th body:not([data-mode]) .modal.celebrate .rpnote{color:var(--t-ink)}
+.th body:not([data-mode]) .mx{color:var(--t-ink)}
+.th body:not([data-mode]) :is(.b1, .btn.primary, .b2, .btn.secondary, .btn.gold){border:var(--t-bw) solid var(--t-line); text-shadow:none; box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) :is(.b1, .btn.primary){background:var(--t-acc); color:var(--t-acc-ink)}
+.th body:not([data-mode]) :is(.b2, .btn.secondary){background:var(--t-acc2); color:var(--t-acc2-ink)}
+.th body:not([data-mode]) .btn.gold{background:var(--t-yel); color:var(--t-yel-ink)}
+.th body:not([data-mode]) :is(.btn.primary, .b1, .btn.secondary, .b2, .btn.gold)::before{display:none}
+.th body:not([data-mode]) :is(.btn, .b1, .b2):active{box-shadow:none}
+.th body:not([data-mode]) .btn.ghost{color:var(--t-sub)}
+.th body:not([data-mode]) .mbtns .b1.on{background:#8A7FB8}
+.th body:not([data-mode]) .mbtns .b1.danger{background:#D63B3B; color:#fff}
+.th body:not([data-mode]) .rb-pri.rb-cost{background:var(--t-card); color:var(--t-ink)}
+.th body:not([data-mode]) .rb-pri small{text-shadow:none}
+.th body:not([data-mode]) .rb-links button{color:var(--t-sub)}
+.th body:not([data-mode]) .toast{color:var(--t-card); background:var(--t-ink); border:var(--t-bw) solid var(--t-ink); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) details.more > summary{color:var(--t-acc)}
+.th body:not([data-mode]) .rp-type{color:var(--t-yel); -webkit-text-stroke:6px var(--t-ink); text-shadow:none}
+.th body:not([data-mode]) .mrow.tot b{color:var(--t-acc)}
+.th body:not([data-mode]) .thcard.on{border-color:var(--t-line); background:var(--t-fav); box-shadow:var(--t-sh-s)}
+.th body:not([data-mode]) .setbox{border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s); background:var(--t-card)}
+.th body:not([data-mode]) .setrow{border-top-color:var(--paper-line)}
+.th body:not([data-mode]) .setrow .sr-i{border-color:var(--t-line)}
+.th body:not([data-mode]) .sgt{color:var(--t-sub)}
+
+/* ---------- 3부-1: 티켓 부스 — 크림 종이 · 잉크 2px 테두리 · 아래 4px 딱딱한 그림자 · 절취선 ---------- */
+/* 목록 카드 오른쪽 버튼 띠 + 점선 절취선(솔로·대전·오늘) */
+html[data-theme="ticket"] body:not([data-mode]) .duelrow{padding-right:0; overflow:hidden; column-gap:10px}
+html[data-theme="ticket"] body:not([data-mode]) .duelrow .gr-go{grid-row:1/3; align-self:stretch; height:auto; min-height:72px; margin:-6px 0; border:0; border-left:2.5px dashed #2B1B12; border-radius:0; box-shadow:none; padding:0 12px}
+html[data-theme="ticket"] body:not([data-mode]) .duelrow .dhow{grid-column:2}
+html[data-theme="ticket"] body:not([data-mode]) .acard.tile .ac-btns{margin:4px -7px -8px; padding:8px 7px 8px; border-top:2.5px dashed #2B1B12; background:#FFF4E2; border-radius:0 0 14px 14px}
+html[data-theme="ticket"] body:not([data-mode]) .acard.tile.fav .ac-btns{background:#FFF0B8}
+html[data-theme="ticket"] body:not([data-mode]) .acard.tile{padding-bottom:8px; overflow:hidden}
+html[data-theme="ticket"] body:not([data-mode]) .grow{position:relative}
+html[data-theme="ticket"] body:not([data-mode]) .grow .gr-go{box-shadow:none}
+/* 티켓 양쪽 반달 홈(절취선 끝) */
+html[data-theme="ticket"] body:not([data-mode]) .meticket{position:relative; overflow:visible}
+html[data-theme="ticket"] body:not([data-mode]) .mt-band{border-radius:14px 14px 0 0}
+html[data-theme="ticket"] body:not([data-mode]) .mt-cells{position:relative}
+html[data-theme="ticket"] body:not([data-mode]) .mt-cells::before, html[data-theme="ticket"] body:not([data-mode]) .mt-cells::after{content:""; position:absolute; top:-10px; width:18px; height:18px; border-radius:50%; background:#FFF4E2; border:2px solid #2B1B12}
+html[data-theme="ticket"] body:not([data-mode]) .mt-cells::before{left:-11px; clip-path:inset(0 0 0 50%)}
+html[data-theme="ticket"] body:not([data-mode]) .mt-cells::after{right:-11px; clip-path:inset(0 50% 0 0)}
+html[data-theme="ticket"] body:not([data-mode]) .strip{background:#E8443A; color:#fff}
+html[data-theme="ticket"] body:not([data-mode]) .strip .sc{background:rgba(0,0,0,.18); border-color:rgba(255,255,255,.35)}
+html[data-theme="ticket"] body:not([data-mode]) .strip .sc small, html[data-theme="ticket"] body:not([data-mode]) .strip .sc b, html[data-theme="ticket"] body:not([data-mode]) .strip .sc b em, html[data-theme="ticket"] body:not([data-mode]) .strip .go{color:#fff}
+html[data-theme="ticket"] body:not([data-mode]) .stgr i{background:#fff; border-color:#2B1B12}
+html[data-theme="ticket"] body:not([data-mode]) .stgr i b{-webkit-text-stroke:3px #fff}
+html[data-theme="ticket"] body:not([data-mode]) .cta{background:#FFC21A}
+html[data-theme="ticket"] body:not([data-mode]) .cta-txt b, html[data-theme="ticket"] body:not([data-mode]) .cta-txt small{color:#2B1B12}
+html[data-theme="ticket"] body:not([data-mode]) .cta-txt i{color:#fff; background:#2B1B12}
+html[data-theme="ticket"] body:not([data-mode]) .cta-play{background:#E8443A}
+html[data-theme="ticket"] body:not([data-mode]) .cta-play svg path{fill:#fff}
+html[data-theme="ticket"] body:not([data-mode]) .duelhead .dh-ico{background:#FFC21A; color:#2B1B12}
+html[data-theme="ticket"] body:not([data-mode]) .mt-a.pri{color:#fff}
+
+/* ---------- 3부-2: 네온 아레나 — 어두운 경기장 · 네온 빛(대비 충분히) ---------- */
+html[data-theme="neon"] body:not([data-mode]) .panel, html[data-theme="neon"] body:not([data-mode]) :is(.lvcard, .lgcard, .strip){box-shadow:0 0 0 1px rgba(124,58,237,.25), 0 10px 26px rgba(0,0,0,.45)}
+html[data-theme="neon"] body:not([data-mode]) .cta{background:linear-gradient(135deg,#FF2E88,#7C3AED); border-color:#FF6FB0; box-shadow:0 0 22px rgba(255,46,136,.45)}
+html[data-theme="neon"] body:not([data-mode]) .cta-play{background:#22D3EE}
+html[data-theme="neon"] body:not([data-mode]) :is(.b1, .btn.primary){background:linear-gradient(135deg,#FF2E88,#C026D3); border-color:#FF6FB0; box-shadow:0 0 14px rgba(255,46,136,.4)}
+html[data-theme="neon"] body:not([data-mode]) :is(.b2, .btn.secondary){border-color:#7BE9F7; box-shadow:0 0 14px rgba(34,211,238,.35)}
+html[data-theme="neon"] body:not([data-mode]) .btn.gold{border-color:#FFE27A}
+html[data-theme="neon"] body:not([data-mode]) .gr-go{border-color:transparent; box-shadow:0 0 12px rgba(255,46,136,.35)}
+html[data-theme="neon"] body:not([data-mode]) .gr-go.adv, html[data-theme="neon"] body:not([data-mode]) .gr-go.duel{box-shadow:0 0 12px rgba(34,211,238,.35)}
+html[data-theme="neon"] body:not([data-mode]) .gr-go.soft{background:#21275C; color:#FF7AB6; border-color:#3A44A0; box-shadow:none}
+html[data-theme="neon"] body:not([data-mode]) .gr-go.soft.re{color:#E3E6FF}
+html[data-theme="neon"] body:not([data-mode]) .gr-go.soft .freebadge, html[data-theme="neon"] body:not([data-mode]) .gr-go.soft .cost{background:#161B45; color:#FF7AB6}
+html[data-theme="neon"] body:not([data-mode]) .fchips button[aria-pressed="true"], html[data-theme="neon"] body:not([data-mode]) .tabs button[aria-pressed="true"]{color:#0B0F2A; background:#22D3EE; border-color:#22D3EE; box-shadow:0 0 12px rgba(34,211,238,.45)}
+html[data-theme="neon"] body:not([data-mode]) .gr-mid .subj, html[data-theme="neon"] body:not([data-mode]) .rprow .subj{background:#7C3AED; color:#fff}
+html[data-theme="neon"] body:not([data-mode]) .pnum{background:#7C3AED; color:#fff; border-color:#7C3AED}
+html[data-theme="neon"] body:not([data-mode]) .acard.fav, html[data-theme="neon"] body:not([data-mode]) .duelrow.fav{border-color:#FFD43B; box-shadow:0 0 16px rgba(255,212,59,.3)}
+html[data-theme="neon"] body:not([data-mode]) .favb svg{stroke:#0B0F2A}
+html[data-theme="neon"] body:not([data-mode]) .row.me{background:rgba(255,212,59,.14); border-color:#FFD43B}
+html[data-theme="neon"] body:not([data-mode]) .dock{border:1.5px solid #3A44A0; box-shadow:0 10px 30px rgba(0,0,0,.5)}
+html[data-theme="neon"] body:not([data-mode]) .dock button[aria-current="page"]{box-shadow:0 0 16px rgba(255,46,136,.55)}
+html[data-theme="neon"] body:not([data-mode]) .megear, html[data-theme="neon"] body:not([data-mode]) .me-btn .lvb{border-color:#FFE27A}
+html[data-theme="neon"] body:not([data-mode]) .modal h3{background:linear-gradient(135deg,#FF2E88,#7C3AED); border-color:#FF6FB0}
+html[data-theme="neon"] body:not([data-mode]) .modal .big, html[data-theme="neon"] body:not([data-mode]) .rp-type{-webkit-text-stroke:6px #0B0F2A}
+html[data-theme="neon"] body:not([data-mode]) .toast{color:#0B0F2A; background:#22D3EE; border-color:#22D3EE}
+html[data-theme="neon"] body:not([data-mode]) .mail svg, html[data-theme="neon"] body:not([data-mode]) .res-ico svg{filter:drop-shadow(0 0 4px rgba(255,46,136,.4))}
+html[data-theme="neon"] body:not([data-mode]) .stgr i b{-webkit-text-stroke:0}
+/* 네온 창 안: 흰 바탕으로 만든 칸들을 어두운 칸으로(글자는 밝은 --ink라 흰 바탕이면 안 보임) */
+html[data-theme="neon"] body:not([data-mode]) :is(.rsum, .runsub, .brk, .hstep, .opt, .rp-sec, .rp-stat, .sharebox, .frscore, .frcode, .rmcode, .rmpt, .rmd, .seg button, .rmxo, .rmcap button, .rmpv, .frvis, .rmseat, .rmseat2, .dz-rows li, .gpick button, .rprow, .rpday, .frx, .invrow, .dfcard, .chal, .rmf button, .mt-c, .thcard, .lvchip, .ac-btns .map, .mt-a, .memore, .fradd input, .nickrow input, .rmcells i, .dz-share){background:#21275C; color:#F3F4FF; border-color:#3A44A0}
+html[data-theme="neon"] body:not([data-mode]) :is(.rmd.on, .seg button.on, .rmxo.on, .rmcap button.on, .thcard.on, .rmf button.on){background:#2A2550; border-color:#FFD43B; color:#FFE27A}
+html[data-theme="neon"] body:not([data-mode]) :is(.rmd b, .rmpt b, .gp, .dz-p, .rmcapn, .dr-bonus){color:#FFD43B}
+html[data-theme="neon"] body:not([data-mode]) .rmseat2.rdy, html[data-theme="neon"] body:not([data-mode]) .rmrow.fr, html[data-theme="neon"] body:not([data-mode]) .frrow.on{background:rgba(43,196,138,.16)}
+html[data-theme="neon"] body:not([data-mode]) .dz-rows li.me{background:rgba(255,46,136,.18); border-color:#FF6FB0}
+html[data-theme="neon"] body:not([data-mode]) .dz-pts{background:#2A2550; border-color:#FFD43B}
+html[data-theme="neon"] body:not([data-mode]) .dz-pts > small, html[data-theme="neon"] body:not([data-mode]) .dz-pts p{color:#E3E6FF}
+html[data-theme="neon"] body:not([data-mode]) .dz-band:not(:empty), html[data-theme="neon"] body:not([data-mode]) :is(.lvt, .rdytag){background:#2A2550; color:#E3E6FF}
+html[data-theme="neon"] body:not([data-mode]) .pill.info{background:#2A2550; color:#E3E6FF; border-color:#3A44A0}
+html[data-theme="neon"] body:not([data-mode]) :is(.cal .c, .wd){background:#21275C; color:#C9CEF7}
+html[data-theme="neon"] body:not([data-mode]) :is(.cal .c.att, .wd.att){background:linear-gradient(#FFA34F,#E0480E); color:#fff}
+html[data-theme="neon"] body:not([data-mode]) .cal .c.fut{background:transparent; color:#6D74B0}
+html[data-theme="neon"] body:not([data-mode]) .rmfoot{background:linear-gradient(180deg,rgba(22,27,69,0),#161B45 22%)}
+html[data-theme="neon"] body:not([data-mode]) .setrow:active{background:rgba(255,255,255,.05)}
+
+/* ---------- 3부-3: 말랑 젤리 — 밝은 파스텔 · 테두리 대신 부드러운 보라 그림자 · 둥근 모서리 ---------- */
+html[data-theme="jelly"] body:not([data-mode]) .panel, html[data-theme="jelly"] body:not([data-mode]) :is(.lvcard, .lgcard, .strip, .duelhead, .cta, .dfr, .worldcard, .rppast, .memore, .setbox){border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .strip{background:linear-gradient(135deg,#9B82FF,#7C5CFF); color:#fff}
+html[data-theme="jelly"] body:not([data-mode]) .strip .sc{background:rgba(255,255,255,.2); border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .strip .sc small, html[data-theme="jelly"] body:not([data-mode]) .strip .sc b, html[data-theme="jelly"] body:not([data-mode]) .strip .sc b em, html[data-theme="jelly"] body:not([data-mode]) .strip .go{color:#fff}
+html[data-theme="jelly"] body:not([data-mode]) .stgr i{background:#fff; border-color:transparent; color:#3B3358}
+html[data-theme="jelly"] body:not([data-mode]) .stgr i b{-webkit-text-stroke:0}
+html[data-theme="jelly"] body:not([data-mode]) .cta{box-shadow:0 10px 24px rgba(124,92,255,.35)}
+html[data-theme="jelly"] body:not([data-mode]) .cta-play{background:#fff; border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .cta-play svg path{fill:#7C5CFF}
+html[data-theme="jelly"] body:not([data-mode]) .cta-tile, html[data-theme="jelly"] body:not([data-mode]) .g-art{border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .g-art{border-radius:16px}
+html[data-theme="jelly"] body:not([data-mode]) :is(.gr-go, .b1, .btn.primary, .b2, .btn.secondary, .btn.gold, .mt-a, .megear, .res, .mail, .me-btn){border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .gr-go{border-radius:999px}
+html[data-theme="jelly"] body:not([data-mode]) .gr-go.soft{background:#F1ECFF; color:#6A4AE8; box-shadow:none}
+html[data-theme="jelly"] body:not([data-mode]) .gr-go.soft.re{color:#3B3358}
+html[data-theme="jelly"] body:not([data-mode]) .gr-go.soft .freebadge, html[data-theme="jelly"] body:not([data-mode]) .gr-go.soft .cost{background:#fff; color:#6A4AE8}
+html[data-theme="jelly"] body:not([data-mode]) .fchips button, html[data-theme="jelly"] body:not([data-mode]) .tabs button{border-color:#E6DFFF; border-radius:999px}
+html[data-theme="jelly"] body:not([data-mode]) .fchips button[aria-pressed="true"], html[data-theme="jelly"] body:not([data-mode]) .tabs button[aria-pressed="true"]{color:#fff; background:#7C5CFF; border-color:#7C5CFF}
+html[data-theme="jelly"] body:not([data-mode]) .gr-mid .subj, html[data-theme="jelly"] body:not([data-mode]) .rprow .subj{background:#EDE7FF; color:#5B3CC4}
+html[data-theme="jelly"] body:not([data-mode]) .pnum{background:#7C5CFF; color:#fff; border-color:#7C5CFF}
+html[data-theme="jelly"] body:not([data-mode]) .acard.fav, html[data-theme="jelly"] body:not([data-mode]) .duelrow.fav{box-shadow:0 0 0 2.5px #FFC83D, 0 8px 20px rgba(255,200,61,.25)}
+html[data-theme="jelly"] body:not([data-mode]) .favb svg{stroke:#6A4AE8}
+html[data-theme="jelly"] body:not([data-mode]) .row.me{border-color:#FFC83D}
+html[data-theme="jelly"] body:not([data-mode]) .dock{box-shadow:0 10px 30px rgba(124,92,255,.22)}
+html[data-theme="jelly"] body:not([data-mode]) .dock button{border-radius:999px}
+html[data-theme="jelly"] body:not([data-mode]) .modal{border-color:transparent; box-shadow:0 20px 50px rgba(80,50,180,.28)}
+html[data-theme="jelly"] body:not([data-mode]) .modal h3{border-color:transparent; border-radius:999px; box-shadow:none}
+html[data-theme="jelly"] body:not([data-mode]) .modal .big, html[data-theme="jelly"] body:not([data-mode]) .rp-type{-webkit-text-stroke:6px #2A2340}
+html[data-theme="jelly"] body:not([data-mode]) .setrow .sr-i, html[data-theme="jelly"] body:not([data-mode]) .grw .gi{border-color:transparent; border-radius:14px}
+html[data-theme="jelly"] body:not([data-mode]) .mt-band{border-bottom-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .mt-cells{border-top:2px dashed #E6DFFF}
+html[data-theme="jelly"] body:not([data-mode]) .mt-c{border-color:transparent}
+html[data-theme="jelly"] body:not([data-mode]) .memore{border:2px dashed #CBBFFF}
+html[data-theme="jelly"] body:not([data-mode]) .pool, html[data-theme="jelly"] body:not([data-mode]) .adultsec{border-color:#CBBFFF}
+html[data-theme="jelly"] body:not([data-mode]) .toast{color:#fff; background:#7C5CFF; border-color:#7C5CFF; border-radius:999px}
+html[data-theme="neon"] body:not([data-mode]) .sampnote{background:#2A2550; color:#E3E6FF; border-color:#FFD43B}
+html[data-theme="neon"] body:not([data-mode]) .row .samp{background:#FFD43B; color:#0B0F2A}
+html[data-theme="neon"] body:not([data-mode]) .cnote{color:#FFB38A}
+html[data-theme="neon"] body:not([data-mode]) .chdots i{background:#2E3785}
+html[data-theme="neon"] body:not([data-mode]) .mini{background:#2E3785; color:#8F96D6}
+html[data-theme="neon"] body:not([data-mode]) :is(.srow2, .sdemo, .amap .chhead button, .ncard, .chprog, .h3l li, .amgo input, .dmini, .dres-list li, .modal .amx){background:#21275C; color:#F3F4FF; border-color:#3A44A0; box-shadow:none}
+html[data-theme="neon"] body:not([data-mode]) .rg em{color:#F3F4FF}
+/* 당겨 내릴 때 보이는 맨 바탕색 */
+html[data-theme="ticket"]{background:#FFF4E2} html[data-theme="neon"]{background:#0B0F2A} html[data-theme="jelly"]{background:#F3F0FF}

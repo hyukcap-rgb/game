@@ -534,43 +534,121 @@ function showLeagueResult(res){
 }
 
 function renderMe(d, tl, P, lv){
-  const tt = tl.today, { b, pos } = P, me = b[pos - 1];
-  $('#prof').innerHTML = `${avatar({ me:true })}<div><b>나</b><span class="ttlchip">Lv.${lv.L} ${lv.title}</span><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>솔로 별 ${lv.stars}개</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
-  const nplay = d.set.filter(g => d.best[g] > 0).length, nextPct = bonusPct(tl.streak + 1), curPct = tt.st === 'att' ? tt.pct : 0;
+  /* 내 정보(2026-10-12 간소화, Figma 10:4): 프로필 한 줄 + 오늘 요약 티켓 + ⚙ 설정 시트. 기능은 그대로, 나머지 메뉴는 openSettings() 안으로 */
+  const { b, pos } = P, me = b[pos - 1];
+  const nick = typeof myNick === 'function' ? myNick() : '나';
+  $('#prof').innerHTML = `${avatar({ me:true })}<div><div class="pf-n"><b>${escH(nick)}</b><span class="ttlchip">Lv.${lv.L} ${lv.title}</span></div><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>솔로 별 ${lv.stars}개 · Lv.${lv.L + 1}까지 ${lv.need - lv.cur}개</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
+  const now = new Date(); $('#meDate').textContent = `${now.getMonth() + 1}월 ${now.getDate()}일 ${WD_KO[now.getDay()]}요일 · 오늘의 기록`;
+  $('#meExam').textContent = examLabel();
+  const nplay = d.set.filter(g => d.best[g] > 0).length;
   const ng = nextGift(tl.streak), sampleOnly = DEMO_NUMBERS && onlySample();
-  $('#bq').textContent = fmt(tl.score); $('#bqSkill').textContent = nplay; $('#bqSkillU').textContent = '/' + DAILY_N + '과목'; $('#bqGrit').textContent = tl.streak;
-  $('#skillEx').innerHTML = '첫 판만 기록돼요';
-  $('#barSkill').style.width = (nplay / DAILY_N * 100) + '%'; $('#barGrit').style.width = (ng ? Math.min(100, tl.streak / ng[0] * 100) : 100) + '%';
+  $('#bq').textContent = fmt(tl.score); $('#bqSkill').textContent = nplay; $('#bqSkillU').textContent = '/' + DAILY_N; $('#bqGrit').textContent = tl.streak;
+  $('#skillEx').textContent = nplay === DAILY_N ? '시험지를 다 풀었어요' : '첫 판만 기록돼요';
   $('#lbSkill').innerHTML = ic('brain') + '푼 과목'; $('#lbGrit').innerHTML = ic('flame') + '연속 출석';
-  $('#gritEx').innerHTML = ng ? `${ng[0]}일째 선물 하트 <b>+${ng[1]}</b>` : '모든 선물을 받았어요';
-  $('#myMedal').innerHTML = medal(tl.score && !sampleOnly ? pos : 0, true);
+  $('#gritEx').innerHTML = (ng ? `${ng[0]}일째 하트 <b>+${ng[1]}</b>` : '선물 모두 받음');
   let line;
-  if(!tl.score) line = `아직 오늘 기록이 없어요. <em>${examLabel()}</em> 시험지를 풀어 보세요!`;
+  if(!tl.score) line = `아직 기록이 없어요. <em>${examLabel()}</em> 시험지를 풀어 보세요`;
   else if(sampleOnly) line = `친구를 초대하면 <em>친구 순위</em>가 나와요`;   /* 예시 친구 기준 순위는 보이지 않음 */
   else if(pos === 1) line = `<em>1위</em>예요! 2위 ${b[1].name}님보다 ${fmt(me.score - b[1].score)}점 앞서요`;
   else { const a = b[pos - 2], gap = a.score - me.score; line = gap > 0 ? `${a.name}님까지 <em>${fmt(gap)}점</em> 남았어요` : `${a.name}님과 <em>동점</em>이에요`; }
   $('#rankLine').innerHTML = line;
-  renderGritCard(tl);
-  const played = d.set.filter(g => d.best[g] > 0).length;
-  $('#dots').innerHTML = d.set.map(g => `<span class="gem${d.best[g] ? ' on' : ''}" style="--g1:${GCOL[g][0]};--g2:${GCOL[g][1]}" title="${GAMES[g].name}${d.best[g] ? ' · ' + fmt(d.best[g]) + '점' : ''}">${ic(g)}${d.best[g] ? `<i class="gem-ck">${ic('check')}</i>` : ''}</span>`).join('');
-  /* 결정 152: 오늘 점수 = 시험지 그날 과목 합. 솔로·대전은 따로(여기에 더하지 않음) */
-  $('#progTxt').textContent = played === DAILY_N ? `오늘의 시험지 ${DAILY_N}과목을 다 풀었어요!` : `오늘의 시험지 ${played} / ${DAILY_N}과목 · 솔로·대전은 따로 쌓여요`;
-  /* 솔로 성장: 별 많은 순 5개 + 나머지는 접기 */
+  $('#meGear').innerHTML = SVG_GEAR;
+  $('#meMore').innerHTML = `<span class="mm-i">${SVG_GEAR}</span><span class="mm-t"><b>기록 · 친구 · 화면 설정</b><small>솔로 성장 · 챕터 배지 · 디자인 테마 · 소리</small></span>${ic('chev')}`;
+}
+/* 톱니(설정) 그림 */
+const SVG_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+
+/* ---- 솔로 성장 목록 · 챕터 배지(전에는 내 정보에 펼쳐 있던 것, 이제 설정 시트 → 각 창) ---- */
+function growHtml(){
   const grw = id => { const p = advProg(id), c = chOf(p.max);
     return `<div class="grw" style="--gc:${GCOL[id][1]}"><span class="gi">${ic(id)}</span><span><b>${GAMES[id].name}</b><small>${p.max > 1 ? '스테이지 ' + (p.max - 1) + '까지 클리어 · ' : ''}지금 ${chName(id, c)}</small></span><span class="gs">★ ${advStarsOf(id)}</span></div>`; };
-  const opn = sel => { const e = $(sel + ' details.more'); return e && e.open ? ' open' : ''; }, gOpen = opn('#growList'), bOpen = opn('#badges');   /* 다시 그려도 펼친 상태 유지 */
   const byStars = stageIds().sort((a, b) => advStarsOf(b) - advStarsOf(a));
   /* 은퇴한 게임: 별이 있으면 이름만 한 줄(솔로 레벨에 그대로 들어감) */
   const old = Object.keys(RETIRED).map(g => { const p = store.get('hp:adv:' + g, null), s = p && p.stars ? Object.values(p.stars).reduce((a, b) => a + (b || 0), 0) : 0;
     return s ? `<div class="grw retired"><span class="gi">${ic('trophy')}</span><span><b>${gameName(g)}</b><small>이제 없는 게임 · 모은 별은 레벨에 그대로 들어가요</small></span><span class="gs">★ ${s}</span></div>` : ''; }).join('');
-  $('#growList').innerHTML = byStars.slice(0, 5).map(grw).join('') + (byStars.length > 5 || old ? `<details class="more"${gOpen}><summary>나머지 ${byStars.length - 5}개 게임 보기</summary>${byStars.slice(5).map(grw).join('')}${old}</details>` : '');
-  /* 챕터 배지: 받은 것만 보이고 전체는 접기 */
+  return byStars.map(grw).join('') + old;
+}
+function badgeInfo(){
   const bdg = (id, c, on) => `<div class="bdg${on ? '' : ' off'}" title="${GAMES[id].name} 챕터 ${c} ${chName(id, c)}${on ? ' 클리어' : ' 아직'}">${badgeSVG(id, c)}<span>${chName(id, c)}</span></div>`;
   let got = '', all = '', nb = 0; const total = stageIds().length * 5;
   for(const id of stageIds()) for(let c = 1; c <= 5; c++){ const on = chCleared(id, c); if(on){ nb++; got += bdg(id, c, true); } all += bdg(id, c, on); }
-  $('#badges').innerHTML = (nb ? `<div class="badges">${got}</div>` : '<p class="bd-empty">아직 받은 배지가 없어요. 솔로에서 챕터를 깨면 배지를 받아요.</p>')
-    + `<details class="more"${bOpen}><summary>배지 ${total}개 모두 보기</summary><div class="badges">${all}</div></details>`;
-  $('#bdgCount').textContent = nb + ' / ' + total;
+  return { nb, total, got, all };
+}
+function openGrow(back){
+  const lv = lvInfo();
+  openModal(`<h3>솔로 성장</h3><p class="note">Lv.${lv.L} ${lv.title} · 솔로 별 <b>${lv.stars}개</b> · 별 많은 순</p>
+    <div class="panel growlist setlist">${growHtml()}</div>
+    <div class="mbtns one"><button class="b1" id="mBack">${back ? '돌아가기' : '닫기'}</button></div>`);
+  $('#mBack').onclick = () => back ? back() : closeModal();
+}
+function openBadges(back){
+  const B = badgeInfo();
+  openModal(`<h3>챕터 배지 ${B.nb} / ${B.total}</h3>
+    <div class="panel bdwrap setlist">${B.nb ? `<div class="badges">${B.got}</div>` : '<p class="bd-empty">아직 받은 배지가 없어요. 솔로에서 챕터를 깨면 배지를 받아요.</p>'}
+    <details class="more"><summary>배지 ${B.total}개 모두 보기</summary><div class="badges">${B.all}</div></details></div>
+    <div class="mbtns one"><button class="b1" id="mBack">${back ? '돌아가기' : '닫기'}</button></div>`);
+  $('#mBack').onclick = () => back ? back() : closeModal();
+}
+/* 연속 기록 · 휴식권(전에는 내 정보의 불꽃 카드). 누르면 두뇌 리포트(이번 달 출석 달력·휴식권)로 */
+function streakRowSub(tl){
+  const ng = nextGift(tl.streak);
+  return `${tl.today.st === 'att' ? '연속 ' + tl.streak + '일째' : tl.streak ? '연속 ' + tl.streak + '일 · 오늘 이어가기' : '오늘부터 시작'} · 휴식권 ${tl.restLeft}/${REST_PER_MONTH}장${ng ? ' · ' + ng[0] + '일째 하트 +' + ng[1] : ''}`;
+}
+/* 테스트 도구(?dev=1): 전에는 내 정보 맨 아래 접기. 같은 단추 id·같은 동작 */
+const DEV_BTNS = [['devFill','하트 5개 채우기'],['devReset','오늘 기록 초기화'],['devWelcome','첫 안내 다시 보기'],['devHist','지난 2주 출석 기록 만들기'],['devHistClr','출석 기록 모두 지우기'],['devWeek','주간 결과 발표 보기'],['devAdv','솔로 초기화'],['devLvUp','레벨업 연출 보기'],['devCh','챕터 클리어 연출 보기']];
+const DEV_FN = {};
+function openDevTools(back){
+  openModal(`<h3>테스트 도구</h3><p class="note">진짜 친구가 없으면 예시 친구를 보여 줘요. 게임 기록은 이 브라우저에 저장되고, 친구·친구 점수는 친구 서버에 저장돼요.</p>
+    <div class="devgrid">${DEV_BTNS.map(([id, t]) => `<button class="btn small secondary" id="${id}">${t}</button>`).join('')}</div>
+    <div class="mbtns one"><button class="b1" id="mBack">${back ? '돌아가기' : '닫기'}</button></div>`);
+  for(const [id] of DEV_BTNS) if(DEV_FN[id]) $('#' + id).onclick = DEV_FN[id];
+  $('#mBack').onclick = () => back ? back() : closeModal();
+}
+
+/* ---- ⚙ 설정 시트(2026-10-12, Figma 10:93): 내 기록 / 친구·초대 / 화면(디자인 테마·소리·글씨) / 기타 ----
+   각 줄은 원래 있던 창 함수를 그대로 연다(back = 설정으로 돌아오기). */
+function openSettings(){
+  const tl = myTL(), lv = lvInfo(), B = badgeInfo(), cur = curTheme();
+  const back = () => openSettings();
+  const fr = typeof FR !== 'undefined' ? FR.friends.length : 0, on = typeof frOnlineN === 'function' ? frOnlineN() : 0;
+  const row = (id, icon, col, t, sub) => `<button class="setrow" id="${id}"><span class="sr-i" style="--sc:${col}">${icon}</span><span class="sr-t"><b>${t}</b><small>${sub}</small></span>${ic('chev')}</button>`;
+  const grp = (t, rows) => `<div class="setgrp"><p class="sgt">${t}</p><div class="setbox">${rows}</div></div>`;
+  const thCard = t => `<button class="thcard${t.id === cur ? ' on' : ''}" data-th="${t.id}" role="radio" aria-checked="${t.id === cur}"><span class="thsw">${t.sw.map(c => `<i style="background:${c}"></i>`).join('')}${t.id === cur ? `<em class="thck">${ic('check')}</em>` : ''}</span><b>${t.name}</b><small>${t.desc}</small></button>`;
+  const code = typeof frCode === 'function' && frCode();
+  openModal(`<div class="setsheet"><button class="mx" id="setX" aria-label="닫기">✕</button><h3>설정</h3>
+    ${grp('내 기록',
+      row('sReport', ic('brain'), '#E8443A', '두뇌 리포트', '능력 5가지 · 이번 달 출석 달력')
+      + row('sStreak', ic('flame'), '#FF7A1F', '연속 기록 · 휴식권', streakRowSub(tl))
+      + row('sGrow', ic('map'), '#1B9AAA', '솔로 성장', `Lv.${lv.L} ${lv.title} · 별 ${lv.stars}개`)
+      + row('sBadge', ic('trophy'), '#E0A100', '챕터 배지', `받은 배지 ${B.nb} / ${B.total}`))}
+    ${grp('친구 · 초대',
+      row('sFriends', ic('heart'), '#1B9AAA', '친구', fr ? `친구 ${fr}명${on ? ' · 접속 중 ' + on + '명' : ''} · 같이 하기` : '접속 중인 친구 · 같이 하기')
+      + row('sCode', ic('ticket'), '#E8443A', '친구 코드 · 초대', `${code ? '내 코드 ' + code + ' · ' : ''}카톡으로 초대 · 코드로 추가`)
+      + row('sShare', ic('share'), '#E0A100', '성적표 공유', '오늘 성적표를 그림으로 보내기'))}
+    <div class="setgrp"><p class="sgt">화면 · 디자인 테마</p><div class="thgrid" role="radiogroup" aria-label="디자인 테마">${THEMES.map(thCard).join('')}</div>
+      <div class="setbox">${row('sSound', ic('help'), '#7C5CFF', '소리 · 진동 · 큰 글씨', `${typeof bigOn === 'function' && bigOn() ? '큰 글씨 켬' : '큰 글씨 끔'} · 효과음 · 배경 소리`)}</div></div>
+    ${grp('기타',
+      row('sPool', ic('coin'), '#E0A100', '모두의 기부 안내', '광고 수익 일부를 모아 기부해요')
+      + row('sWelcome', ic('check'), '#2E8FE8', '처음 안내 다시 보기', '하루퍼즐 리그 이용 방법')
+      + (DEV_TOOLS ? row('sDev', ic('help'), '#8F7A52', '테스트 도구', '?dev=1 일 때만 보여요') : ''))}
+  </div>`);
+  $('#modal').classList.add('setm');
+  $('#setX').onclick = closeModal;
+  $('#sReport').onclick = openReport;
+  $('#sStreak').onclick = openReport;   /* 연속 기록 달력·휴식권은 두뇌 리포트 안에 있음 */
+  $('#sGrow').onclick = () => openGrow(back);
+  $('#sBadge').onclick = () => openBadges(back);
+  $('#sFriends').onclick = () => frHub();
+  $('#sCode').onclick = () => frManage();
+  $('#sShare').onclick = () => openShare(back);
+  $('#sSound').onclick = () => openSoundSheet(back);
+  $('#sPool').onclick = openDonateInfo;
+  $('#sWelcome').onclick = welcome;
+  if(DEV_TOOLS) $('#sDev').onclick = () => openDevTools(back);
+  document.querySelectorAll('.thcard').forEach(b => b.onclick = () => {
+    setTheme(b.dataset.th); try{ sfx('toggle', { on:true }); }catch(_){}
+    toast('디자인 테마: ' + THEMES.find(x => x.id === b.dataset.th).name); renderHome(); openSettings();
+  });
 }
 
 /* ---- 난이도 시트(데일리): 고른 난이도는 기억해서 다음엔 바로 시작 ---- */
@@ -687,7 +765,7 @@ function renderGritCard(tl){
   const week = last7.map(x => { const dt = new Date(x.k + 'T00:00'); return `<span class="wd ${x.st === 'att' ? 'att' : x.st === 'rest' ? 'rest' : ''}${x.st === 'today' ? ' today' : ''}" title="${x.k}">${WD[dt.getDay()]}</span>`; }).join('');
   const title = tl.today.st === 'att' ? `연속 ${tl.streak}일째 출석 중` : tl.streak ? `연속 ${tl.streak}일 · 오늘 이어가기` : '오늘부터 연속 기록 시작';
   const ng = nextGift(tl.streak), sub = `${ng ? '다음 선물 ' + ng[0] + '일째(하트 +' + ng[1] + ')' : '선물 모두 받음'} · 휴식권 ${tl.restLeft}/${REST_PER_MONTH}장`;
-  const c = $('#gritCard');
+  const c = $('#gritCard'); if(!c) return;   /* 내 정보 간소화(2026-10-12): 카드는 설정 시트의 '연속 기록' 줄로 옮김 */
   c.innerHTML = `<span class="flame${on ? '' : ' off'}">${ic('flame')}</span><span><span class="gc-t" style="display:block">${title}</span><span class="gc-s">${sub}</span><span class="week">${week}</span></span><span class="gc-go">${ic('chev')}</span>`;
   c.onclick = openReport;
 }
@@ -983,22 +1061,21 @@ document.querySelectorAll('#dock button').forEach(b => { b.innerHTML = b.innerHT
 $('#meBtn').onclick = () => setTab('me');
 $('#strip').onclick = () => setTab('me');
 $('#pool').onclick = openDonateInfo;
-{ const pr = $('#proto'); if(pr) pr.hidden = !DEV_TOOLS; }   /* 테스트 도구는 ?dev=1 일 때만 */
-$('#devWeek').onclick = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
+DEV_FN.devWeek = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
 $('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
-$('#meSound').onclick = () => openSoundSheet(); $('#meSound').textContent = '소리·글씨'; $('#meFriends').onclick = () => frHub(); $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);
+$('#meGear').onclick = openSettings; $('#meMore').onclick = openSettings; $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);   /* 내 정보 ⚙ 설정 시트(2026-10-12) */
 if(!store.get('hp:advLv', 0)) store.set('hp:advLv', lvInfo().L);
-$('#devAdv').onclick = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };
-$('#devLvUp').onclick = () => { const L = lvInfo().L + 1; showCelebrations([{ kind:'level', L, from:L - 1, hearts:1 }], () => {}); };
-$('#devCh').onclick = () => showCelebrations([{ kind:'chapter', id:'fox', c:1 }], () => {});
+DEV_FN.devAdv = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };
+DEV_FN.devLvUp = () => { const L = lvInfo().L + 1; showCelebrations([{ kind:'level', L, from:L - 1, hearts:1 }], () => {}); };
+DEV_FN.devCh = () => showCelebrations([{ kind:'chapter', id:'fox', c:1 }], () => {});
 $('#heartChip').onclick = () => openHeartSheet();
 $('#inboxBtn').innerHTML = MAIL_G + '<span class="badge" id="badge">0</span>'; $('#inboxBtn').onclick = openInbox;
-$('#devFill').onclick = () => { const h = heartState(); if(h.n < MAX_H){ h.n = MAX_H; h.t = Date.now(); store.set('hp:hearts', h); } renderHome(); toast('하트를 채웠어요'); };
-$('#devReset').onclick = () => { store.set('hp:day:' + dayKey(), null); renderHome(); toast('오늘 기록을 초기화했어요'); };
-$('#devWelcome').onclick = () => { GAME_IDS.forEach(g => store.set('hp:help:' + g, 0)); welcome(); };
+DEV_FN.devFill = () => { const h = heartState(); if(h.n < MAX_H){ h.n = MAX_H; h.t = Date.now(); store.set('hp:hearts', h); } renderHome(); toast('하트를 채웠어요'); };
+DEV_FN.devReset = () => { store.set('hp:day:' + dayKey(), null); renderHome(); toast('오늘 기록을 초기화했어요'); };
+DEV_FN.devWelcome = () => { GAME_IDS.forEach(g => store.set('hp:help:' + g, 0)); welcome(); };
 $('#tabDay').onclick = () => { RANK_MODE = 'day'; renderHome(); };
 $('#tabMonth').onclick = () => { RANK_MODE = 'week'; renderHome(); };
-$('#devHist').onclick = () => {
+DEV_FN.devHist = () => {
   const today = dayKey(), r = mulberry(seedFrom('hist' + today));
   for(let i = 1; i <= 14; i++){
     const k = addDays(today, -i);
@@ -1009,4 +1086,4 @@ $('#devHist').onclick = () => {
   }
   renderHome(); toast('지난 2주 기록을 만들었어요(2일은 휴식권)');
 };
-$('#devHistClr').onclick = () => { const today = dayKey(); for(let i = 0; i <= 120; i++) store.set('hp:day:' + addDays(today, -i), null); renderHome(); toast('출석 기록을 모두 지웠어요'); };
+DEV_FN.devHistClr = () => { const today = dayKey(); for(let i = 0; i <= 120; i++) store.set('hp:day:' + addDays(today, -i), null); renderHome(); toast('출석 기록을 모두 지웠어요'); };

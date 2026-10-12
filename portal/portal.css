@@ -835,3 +835,74 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 .favb.on svg{fill:#FFC21A}
 .favb:active svg{transform:scale(.85)}
 .acard.fav, .duelrow.fav{box-shadow:0 0 0 2.5px #FFC21A, 0 3px 0 rgba(0,0,0,.08)}
+
+/* ===== 내 정보 간소화 + ⚙ 설정 시트 (2026-10-12, Figma 10:4 · 10:93) — 밤하늘(classic) 기본 모양. 다른 테마는 portal/theme.css ===== */
+.mehead{display:flex; align-items:center; gap:10px; margin:8px 0 12px}
+.mehead > div{flex:1; min-width:0}
+.mehead h2{margin:0; font-family:var(--heavy); font-weight:400; font-size:26px; line-height:1.15; color:#fff; -webkit-text-stroke:5px var(--outline2); paint-order:stroke fill}
+.mehead small{display:block; margin-top:2px; font-size:13px; font-weight:700; color:#D9D0FF}
+.megear{flex:none; width:48px; height:48px; border-radius:14px; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFE98E,#FFB020); border:2.5px solid var(--outline2); box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 4px 0 #0E0730}
+.megear svg{width:26px; height:26px}
+.megear:active{transform:translateY(3px); box-shadow:0 1px 0 #0E0730}
+.pf-n{display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px}
+.pf-n b{max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.prof .ttlchip{margin-top:0}
+.meticket{margin-top:12px; padding:0; overflow:hidden}
+.mt-band{display:flex; align-items:center; gap:8px; padding:8px 14px; color:#fff; background:linear-gradient(#FF7DB8,#E62C7F); border-bottom:2.5px solid var(--outline)}
+.mt-band b{flex:1; font-family:var(--disp); font-weight:400; font-size:16px; text-shadow:0 1px 0 #7A0B45}
+.mt-band span{font-size:13px; font-weight:800}
+.mt-score{display:flex; flex-wrap:wrap; align-items:baseline; gap:0 6px; padding:10px 16px 10px}
+.mt-score > span{font-family:var(--heavy); font-size:44px; line-height:1.05; color:var(--ink); letter-spacing:.5px}
+.mt-score > em{font-style:normal; font-family:var(--heavy); font-size:20px; color:#D1145A}
+.mt-score p{flex-basis:100%; margin:2px 0 0; font-size:14px; font-weight:700; line-height:1.4; color:var(--ink)}
+.mt-score p em{font-style:normal; color:#C2185B}
+.mt-cells{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; border-top:2.5px dashed var(--outline)}
+.mt-c{display:flex; flex-direction:column; gap:1px; min-width:0; padding:8px 10px; border-radius:12px; background:#fff; border:2px solid var(--paper-line)}
+.mt-c small{display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:var(--sub)}
+.mt-c small .ico{width:15px; height:15px}
+.mt-c.grit small .ico{color:var(--grit)}
+.mt-c b{font-family:var(--heavy); font-weight:400; font-size:24px; line-height:1.15; color:var(--ink)}
+.mt-c b em{font-style:normal; font-size:14px; color:var(--sub); margin-left:1px}
+.mt-c > span{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mt-c > span b{font-family:inherit; font-size:inherit; font-weight:800; color:#C2410C}
+.mt-acts{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 14px}
+.mt-a{height:48px; border-radius:13px; font-family:var(--disp); font-size:16px; color:var(--ink); background:#fff; border:2.5px solid var(--outline2); box-shadow:0 3px 0 var(--outline2)}
+.mt-a.pri{color:#fff; background:linear-gradient(#86D6FF,#2E8FE8); border-color:#124F92; box-shadow:0 3px 0 #124F92; text-shadow:0 1px 0 #124F92}
+.mt-a:active{transform:translateY(2px); box-shadow:none}
+.memore{width:100%; margin-top:14px; display:grid; grid-template-columns:40px 1fr 22px; gap:10px; align-items:center; padding:10px 12px; border-radius:16px; text-align:left; color:#fff; border:2px dashed rgba(255,255,255,.45); background:rgba(255,255,255,.06)}
+.mm-i{width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:rgba(255,255,255,.14)}
+.mm-i svg{width:24px; height:24px}
+.mm-t b{display:block; font-family:var(--disp); font-weight:400; font-size:16px}
+.mm-t small{display:block; font-size:13px; font-weight:700; color:#E3DCFF}
+.memore > .ico{width:22px; height:22px}
+#paneMe .tagline{margin:14px 0 0}
+/* 설정 시트 */
+.modal.setm{text-align:left}
+.setsheet{position:relative}
+.setsheet h3{margin-right:48px}
+.setsheet .mx{top:0; right:0}
+.setgrp{margin-top:12px}
+.sgt{margin:0 0 6px 4px; font-family:var(--disp); font-size:15px; color:var(--sub)}
+.setbox{background:#fff; border:2.5px solid var(--outline); border-radius:16px; overflow:hidden; box-shadow:0 3px 0 var(--outline2)}
+.setrow{width:100%; display:grid; grid-template-columns:38px 1fr 20px; gap:12px; align-items:center; min-height:60px; padding:8px 10px 8px 12px; text-align:left; color:var(--ink); border-top:2px dashed var(--paper-line)}
+.setrow:first-child{border-top:0}
+.setrow:active{background:rgba(0,0,0,.04)}
+.setrow .sr-i{width:38px; height:38px; border-radius:11px; display:grid; place-items:center; color:#fff; background:var(--sc); border:2px solid var(--outline2)}
+.setrow .sr-i .ico{width:22px; height:22px}
+.setrow .sr-t{min-width:0}
+.setrow .sr-t b{display:block; font-family:var(--disp); font-weight:400; font-size:17px; line-height:1.25}
+.setrow .sr-t small{display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--sub)}
+.setrow > .ico{width:20px; height:20px; color:var(--sub)}
+.thgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px}
+.thcard{display:flex; flex-direction:column; gap:4px; min-height:92px; padding:10px 12px; border-radius:14px; text-align:left; background:#fff; border:2.5px solid var(--paper-line); color:var(--ink)}
+.thcard.on{border-color:var(--outline2); background:#FFF0C2; box-shadow:0 3px 0 var(--outline2)}
+.thsw{display:flex; align-items:center; gap:4px; min-height:22px}
+.thsw i{width:16px; height:16px; border-radius:50%; border:1.5px solid rgba(20,10,40,.6)}
+.thck{margin-left:auto; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; color:#fff; background:#E8443A}
+.thck .ico{width:13px; height:13px}
+.thcard b{font-family:var(--disp); font-weight:400; font-size:17px}
+.thcard small{font-size:13px; font-weight:700; line-height:1.35; color:var(--sub)}
+.setlist{max-height:56vh; overflow:auto; text-align:left}
+.devgrid{display:flex; flex-wrap:wrap; justify-content:center; gap:6px}
+.devgrid .btn{margin:0}
+body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .sr-t small, body.big .thcard small, body.big .mt-c small, body.big .mt-c > span, body.big .mm-t small{font-size:15px}
