@@ -11,18 +11,40 @@ NG.chosung = (() => {
   const choOf = s => Array.from(s, choCh).join('');
   const norm = s => String(s || '').replace(/[^가-힣ㄱ-ㅎ]/g, '');   /* 띄어쓰기·문장부호 빼고 비교 */
 
-  /* ----- 사전 준비(처음 한 번): 분류별 낱말, 분류·초성 색인, 전체 초성 색인(비밀 분류용) ----- */
-  let D = null;
-  function dict(){
-    if(D) return D;
+  /* ----- 뜻풀이(chosung-gloss.js): '분류:낱말' → { w, g:뜻풀이, basic:아주 쉬운 기본 낱말 } ----- */
+  let GL = null;
+  function glossMap(){
+    if(GL) return GL;
+    GL = { list:{} };
+    const src = typeof CHOSUNG_GLOSS === 'object' && CHOSUNG_GLOSS ? CHOSUNG_GLOSS : {};
+    for(const key in src){
+      GL.list[key] = [];
+      for(const it of String(src[key]).split(/[|\n]/)){
+        const i = it.indexOf('='); if(i < 0) continue;
+        let w = it.slice(0, i).trim(); const basic = w[0] === '*'; if(basic) w = w.slice(1).trim();
+        const n = norm(w), g = it.slice(i + 1).trim(); if(!n || !g || GL[key + ':' + n]) continue;
+        GL[key + ':' + n] = { w, g, basic }; GL.list[key].push(w);
+      }
+    }
+    return GL;
+  }
+  /* ----- 사전 준비(판 버전마다 처음 한 번): 분류별 낱말, 분류·초성 색인, 전체 초성 색인(비밀 분류용) -----
+     v1 = CHOSUNG_WORDS 그대로(그 전 날짜의 오늘의 문제·대전이 예전과 같게). v2 = 뜻풀이 목록의 새 낱말을 분류 끝에 더함(CHOSUNG_V2_FROM부터, 솔로는 바로) */
+  const DV = {};
+  function dict(v2){
+    if(v2 === undefined) v2 = !!(typeof G !== 'undefined' && G && G.m && G.m.v2);
+    const dk = v2 ? 2 : 1; if(DV[dk]) return DV[dk];
+    const GM = glossMap();
     const cats = [], byKey = {}, byCC = {}, allCho = {};
     for(const [key, name, col, easy] of CHOSUNG_CATS){
       const special = key === 'saying' || key === 'idiom';
       const raw = (CHOSUNG_WORDS[key] || '').split(special ? '/' : ' ').map(x => x.trim()).filter(Boolean);
+      if(v2) raw.push(...(GM.list[key] || []));   /* 새 낱말은 그 분류 끝에(겹친 낱말은 아래에서 빠짐) */
       const seen = new Set(), words = [];
       for(const w of raw){
         const n = norm(w); if(n.length < 2 || seen.has(n)) continue; seen.add(n);   /* 한 글자 낱말·겹친 낱말은 뺀다 */
-        const o = { w, n, cho:choOf(n), len:n.length, cat:key };
+        const gm = GM[key + ':' + n];
+        const o = { w, n, cho:choOf(n), len:n.length, cat:key, gl:gm ? gm.g : null, basic:!!(gm && gm.basic) };
         words.push(o);
         (byCC[key + ':' + o.cho] = byCC[key + ':' + o.cho] || []).push(o);
         if(!special) (allCho[o.cho] = allCho[o.cho] || []).push(o);
@@ -30,21 +52,36 @@ NG.chosung = (() => {
       const c = { key, name, col, easy:!!easy, special, words };
       cats.push(c); byKey[key] = c;
     }
-    D = { cats, byKey, byCC, allCho };
-    return D;
+    DV[dk] = { cats, byKey, byCC, allCho, v2 };
+    return DV[dk];
   }
   const uniqN = list => list.map(o => o.n).filter((x, i, a) => a.indexOf(x) === i);
   /* 문제로 내지 않는 낱말(chosung-words.js 끝 CHOSUNG_ASK_OUT). 정답으로는 그대로 인정한다 */
   let ASK_OUT = null;
   const askOut = () => ASK_OUT || (ASK_OUT = new Set(typeof CHOSUNG_ASK_OUT === 'string' ? CHOSUNG_ASK_OUT.split(' ').map(norm).filter(Boolean) : []));
   /* 빼는 목록을 쓰는 날인가: 판 날짜(대전은 씨앗 안 날짜, 그 밖은 오늘) ≥ CHOSUNG_ASK_FROM → 그 전 날짜의 문제는 예전 그대로 */
+  /* 판 날짜: 대전은 씨앗 안 날짜, 그 밖은 오늘 */
+  function seedDay(){
+    try{ const sd = G && G.duel && /(\d{4}-\d{2}-\d{2})/.exec(String(G.duel.seed || '')); return sd ? sd[1] : dayKey(); }catch(_){ return dayKey(); }
+  }
   function askOn(){
+    try{ return typeof CHOSUNG_ASK_FROM === 'string' && seedDay() >= CHOSUNG_ASK_FROM; }catch(_){ return false; }
+  }
+  /* 사전 v2(새 낱말·뜻풀이 있는 낱말만 문제로): 솔로는 바로, 오늘의 문제·연습·대전은 CHOSUNG_V2_FROM 날짜부터(같은 날 문제가 바뀌지 않게) */
+  function v2On(){
     try{
-      if(typeof CHOSUNG_ASK_FROM !== 'string') return false;
-      const sd = G && G.duel && /(\d{4}-\d{2}-\d{2})/.exec(String(G.duel.seed || ''));
-      return (sd ? sd[1] : dayKey()) >= CHOSUNG_ASK_FROM;
+      if(typeof CHOSUNG_V2_FROM !== 'string') return false;
+      if(G && G.adv && !G.duel) return true;
+      return seedDay() >= CHOSUNG_V2_FROM;
     }catch(_){ return false; }
   }
+  /* 솔로: 같은 판을 다시 해도 새 문제(판 번호 + 이 기기에서 몇 번째 판인지로 씨앗), 최근에 나온 낱말은 피함 — 이 기기 기록만 씀(Math.random 없음) */
+  const SOLO_K = 'hp:cs:plays', SEEN_K = 'hp:cs:seen', SEEN_MAX = 240;
+  const seenGet = () => { try{ const a = store.get(SEEN_K, []); return Array.isArray(a) ? a.map(String) : []; }catch(_){ return []; } };
+  function seenAdd(qs){
+    try{ const add = qs.map(p => p.n), a = seenGet().filter(x => !add.includes(x)).concat(add); store.set(SEEN_K, a.slice(-SEEN_MAX)); }catch(_){}
+  }
+  function soloPlayNo(){ try{ const k = store.get(SOLO_K, 0) | 0; store.set(SOLO_K, k + 1); return k; }catch(_){ return 0; } }
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
@@ -74,7 +111,7 @@ NG.chosung = (() => {
     ch1:[6, 6, 7, 7, 8, 6, 7, 8, 6, 9],
     base:[0, 0, 8, 9, 10, 10, 11],
     kOff:[0, -2, -1, 0, 0, 2, -1, 0, 1, -2, 2],
-    spq:[0, 17, 16, 15, 14.5, 14, 13.5],
+    spq:[0, 19, 17, 15.5, 14.5, 14, 13.5],   /* v1.3.0: 챕터 1·2 여유를 늘림(17→19, 16→17, 15→15.5) */
     kTime:[0, 1.15, 1.05, 1.0, 1.0, 0.9, 1.1, 1.0, 1.0, 1.1, 0.85],
     mjTime:{ long:1.05, hidecat:1.1, blank:1.15, saying:1.3 },
     twTime:{ flash:0.7, bare:1.1, tight:1.0, first:0.55, tick:1.05 }
@@ -94,19 +131,26 @@ NG.chosung = (() => {
     mj.forEach(x => { limit *= LT.mjTime[x] || 1; });
     if(tw) limit *= LT.twTime[tw] || 1;
     limit = Math.max(40, Math.round(limit / 5) * 5);
-    const hints = tw === 'bare' ? 0 : p.boss ? 3 : 4, skips = tw === 'bare' ? 1 : c === 1 ? 3 : 2;
-    return { q, minLen, maxLen, easy:easyCats ? 1 : 0, maxCand, say, hide, blank, first:tw === 'first', limit, hints, skips,
+    const hints = tw === 'bare' ? 0 : p.boss ? 3 : c === 1 ? 5 : 4, skips = tw === 'bare' ? 1 : c === 1 ? 3 : 2;
+    /* 챕터 1(첫소리 마을): 아주 쉬운 기본 낱말 먼저(basic) + 뜻풀이를 처음부터 무료로 보여 줌(glFree), 힌트 5 */
+    return { q, minLen, maxLen, easy:easyCats ? 1 : 0, maxCand, say, hide, blank, first:tw === 'first', limit, hints, skips, basic:c === 1 ? 1 : 0, glFree:c === 1 ? 1 : 0,
       lives:tw === 'tight' ? LIVES_TIGHT : 0, tick:tw === 'tick' ? TICK_SEC : 0, boss:p.boss, hard:p.hard, mj:mj.slice(), tw, n };
   }
 
   /* ===== 문제 세트 만들기(rng만): 같은 판에 같은 낱말·같은 (분류, 초성) 금지, 정답 후보가 너무 많은 초성은 피한다 ===== */
   function makeSet(cfg, rng){
-    const d = dict(), q = cfg.q, say = Math.min(cfg.say || 0, q - 1), reg = q - say;
+    const d = dict(!!cfg.v2), q = cfg.q, say = Math.min(cfg.say || 0, q - 1), reg = q - say;
     const usedW = new Set(), usedCC = new Set(), perCat = {}, cap = Math.max(2, Math.ceil(reg / 4));
     let pool = shuffle(d.cats.filter(c => !c.special && (!cfg.easy || c.easy)).flatMap(c => c.words).filter(o => o.len >= (cfg.minLen || 2) && o.len <= (cfg.maxLen || 4)), rng);
     /* 빼는 낱말은 섞은 뒤에 거른다(rng 쓰는 횟수는 그대로) */
     const out0 = cfg.askOut ? askOut() : null;
     if(out0) pool = pool.filter(o => !out0.has(o.n));
+    /* 사전 v2: 뜻풀이가 있는 낱말만 문제로(나머지는 정답으로만 인정). 아래 두 줄은 섞은 순서를 지킨 채 앞뒤로만 나눈다(rng 쓰는 횟수 그대로) */
+    if(cfg.v2) pool = pool.filter(o => o.gl);
+    const part = (list, first) => list.filter(first).concat(list.filter(o => !first(o)));
+    const av = cfg.avoid && cfg.avoid.size ? cfg.avoid : null;
+    if(cfg.v2 && cfg.basic) pool = part(pool, o => o.basic);   /* 아주 쉬운 기본 낱말 먼저 */
+    if(av) pool = part(pool, o => !av.has(o.n));          /* 최근에 나온 낱말은 맨 뒤로(모자랄 때만 다시 씀) */
     const out = [];
     const cands = (o, hide) => hide ? d.allCho[o.cho] : d.byCC[o.cat + ':' + o.cho];
     /* 두 번 훑는다: 처음엔 엄격하게(후보 수·분류 고르게·같은 분류 연달아 금지), 모자라면 너그럽게 */
@@ -127,7 +171,7 @@ NG.chosung = (() => {
     /* 문제 모양: 분류 숨김(hide) · 빈 초성(blank) · 정답 목록(ans) */
     const qs = out.map((o, i) => {
       const hide = i < (cfg.hide || 0);
-      return { cat:o.cat, w:o.w, n:o.n, cho:o.cho, hide, blank:-1, ans:uniqN(cands(o, hide)) };
+      return { cat:o.cat, w:o.w, n:o.n, cho:o.cho, hide, blank:-1, ans:uniqN(cands(o, hide)), gl:o.gl || null };
     });
     shuffle(qs, rng);
     /* 빈 초성: 3글자 이상 문제 중 앞에서부터 blank개, 가린 자리로도 후보가 너무 많아지지 않는 곳 */
@@ -147,9 +191,10 @@ NG.chosung = (() => {
     if(say > 0){
       let id = shuffle(d.byKey.idiom.words.slice(), rng), sy = shuffle(d.byKey.saying.words.filter(o => o.len <= 11), rng);
       if(out0){ id = id.filter(o => !out0.has(o.n)); sy = sy.filter(o => !out0.has(o.n)); }
+      if(av){ id = part(id, o => !av.has(o.n)); sy = part(sy, o => !av.has(o.n)); }
       for(let s = 0; s < say; s++){
         const src = s % 2 === 0 ? id : sy, o = src[Math.floor(s / 2)] || id[s];
-        const pq = { cat:o.cat, w:o.w, n:o.n, cho:o.cho, hide:false, blank:-1, ans:[o.n], say:true };
+        const pq = { cat:o.cat, w:o.w, n:o.n, cho:o.cho, hide:false, blank:-1, ans:[o.n], say:true, gl:o.gl || null };
         const at = Math.min(qs.length, Math.round((s + 1) * q / (say + 1)));
         qs.splice(at, 0, pq);
       }
@@ -173,7 +218,13 @@ NG.chosung = (() => {
   function hud(){
     const m = S(); if(!m) return;
     const f = $('#csNo'); if(f) f.textContent = Math.min(m.i + 1, m.q);
-    const h = $('#csHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || !canHint(); }
+    const h = $('#csHint');
+    if(h){
+      const gn = glNext(); h.querySelector('b').textContent = m.hintLeft; h.disabled = !gn && (m.hintLeft <= 0 || !canHint());
+      const c = h.querySelector('.cs-cost'); if(c) c.textContent = gn ? '−5' : '−15';
+      const e = h.querySelector('.cs-hl'); if(e) e.textContent = gn ? '뜻풀이' : '힌트';
+      h.setAttribute('aria-label', gn ? '힌트: 뜻풀이 보기, 점수 5점 깎임' : '힌트: 한 글자 열기, 점수 15점 깎임');
+    }
     const k = $('#csSkip'); if(k){ k.querySelector('b').textContent = m.skipLeft; k.disabled = m.skipLeft <= 0; }
     const lv = $('#csLives');
     if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
@@ -186,12 +237,15 @@ NG.chosung = (() => {
     const m = S(), p = m.qs[m.i]; if(!p) return '';
     if(p.say) return '<span>띄어쓰기는 안 해도 돼요</span>';
     if(p.hide) return '<span>어느 분류든 이 초성이면 정답!</span>';
-    const n = valid(p).length;
-    return n > 1 ? `<span>정답 ${n}개 중 <b class="k">하나만</b> 맞히면 돼요</span>` : '<span>낱말을 떠올려 써 보세요</span>';
+    const n = valid(p).length, c = dict().byKey[p.cat];
+    return n > 1 ? `<span>정답 ${n}개 중 <b class="k">하나만</b> 맞히면 돼요</span>` : `<span>${esc(c ? c.name : '')} 중에서 ${p.n.length}글자 낱말!</span>`;
   }
   /* 지금 열린 글자와 맞는 정답만 */
-  const valid = p => p.ans.filter(a => [...p.open].every(i => a[i] === p.n[i]));
+  const valid = p => { const m = S(); if(m && m.bz) return p.ans;   /* 대전의 저절로 열린 글자는 보이기만(다른 정답도 그대로 인정) */
+    return p.ans.filter(a => [...p.open].every(i => a[i] === p.n[i])); };
   const canHint = () => { const m = S(), p = m && m.qs[m.i]; return !!p && p.open.size < p.n.length - 1; };
+  /* 다음 힌트가 뜻풀이인가(뜻풀이가 있고 아직 안 보였음) */
+  const glNext = () => { const m = S(), p = m && m.qs[m.i]; return !!(m && m.glOk && p && p.gl && !p.glOn); };
 
   /* 글자 칸 그리기: 띄어쓰기 단위로 묶어 줄바꿈(속담) */
   function tilesHtml(p, show, cls){
@@ -208,8 +262,12 @@ NG.chosung = (() => {
   }
   function cardHtml(){
     const m = S(), p = m.qs[m.i], c = dict().byKey[p.cat];
-    const chip = p.hide ? '<span class="cs-cat hide">분류를 숨겼어요</span>' : `<span class="cs-cat" style="--cc:${c.col}">${c.name}</span>`;
-    return `<div class="cs-top">${chip}<span class="cs-len">${p.n.length}글자</span></div>${tilesHtml(p)}`;
+    const chip = p.hide ? '<span class="cs-cat hide">분류를 숨겼어요</span>' : `<span class="cs-cat" style="--cc:${c.col}"><small>주제</small>${c.name}</span>`;
+    /* 뜻풀이 줄: 보였으면 글, 아직이면 '💡를 누르면 뜻풀이'(힌트가 있는 판만) */
+    const gl = p.gl && p.glOn ? `<p class="cs-gl"><b>뜻</b><span>${esc(p.gl)}</span></p>`
+      : p.gl && m.glOk && !m.bz ? '<p class="cs-gl off"><span>💡 힌트를 누르면 뜻풀이가 나와요</span></p>'
+      : m.bz && p.gl ? `<p class="cs-gl off"><span>조금 뒤 뜻풀이가 나와요</span></p>` : '';
+    return `<div class="cs-top">${chip}<span class="cs-len">${p.n.length}글자</span></div>${tilesHtml(p)}${gl}`;
   }
   function showQ(){
     const m = S(), card = $('#csCard'); if(!card) return;
@@ -233,13 +291,16 @@ NG.chosung = (() => {
     const card = $('#csCard');
     if(card){ try{ fxShake(card, 5); }catch(_){} card.classList.remove('bad'); void card.offsetWidth; card.classList.add('bad'); }
     sfx('chosungBad'); try{ fxBuzz(20); }catch(_){}
+    /* 무엇이 틀렸는지 알려 주기: 글자 수 / 몇 번째 초성 / 다른 주제 / 열린 글자 / 사전에 없음 */
     let hard = !same, why;
+    const nm = i => ['첫', '둘째', '셋째', '넷째', '다섯째', '여섯째'][i] || (i + 1) + '번째';
     if(same){
       const other = !p.hide && !p.say && (dict().allCho[p.cho] || []).find(o => o.n === v);
-      if(other){ why = `${dict().byKey[other.cat].name} 분류의 낱말이에요`; hard = true; }
+      if(other){ why = `「${dict().byKey[other.cat].name}」 낱말이에요 · 주제는 「${dict().byKey[p.cat].name}」`; hard = true; }
       else if(p.ans.includes(v)) why = '열린 글자와 달라요';
-      else why = '이 사전에는 없는 낱말이에요';
-    } else why = vc.length !== p.cho.length ? `${p.n.length}글자 낱말이에요` : '초성이 달라요';
+      else why = '초성은 맞아요! 다른 낱말을 떠올려 봐요';
+    } else if(vc.length !== p.cho.length) why = `${[...v].length}글자를 썼어요 · ${p.n.length}글자 낱말이에요`;
+    else { const i = [...vc].findIndex((ch, k) => k !== p.blank && ch !== p.cho[k]); why = `${nm(i)} 글자 초성이 달라요(${vc[i]} → ${p.cho[i]})`; }
     if(hard){
       m.wrongs++;
       if(m.tick){ m.pen += m.tick; const tp = $('#csTimeP'); if(tp){ try{ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); }catch(_){} } }
@@ -263,7 +324,7 @@ NG.chosung = (() => {
     const m = S(), p = m.qs[m.i];
     m.lock = true; p.res = 'ok'; p.got = v; m.solved++; m.combo++; m.best = Math.max(m.best, m.combo);
     const card = $('#csCard');
-    if(card){ card.innerHTML = `<div class="cs-top"><span class="cs-cat ok">정답!</span><span class="cs-len">${m.combo >= 2 ? m.combo + '연속' : ''}</span></div>` + tilesHtml(p, v, 'flip'); card.classList.add('ok'); }
+    if(card){ card.innerHTML = `<div class="cs-top"><span class="cs-cat ok">정답!</span><span class="cs-len">${m.combo >= 2 ? m.combo + '연속' : ''}</span></div>` + tilesHtml(p, v, 'flip') + glShow(p, v); card.classList.add('ok'); }
     clearInput();
     sfx('chosungOk', { n:m.combo - 1 }); try{ fxBuzz(12); }catch(_){}
     try{ if(card){ const q = fxCenter(card); fxBurst(q.x, q.y, ['#FFE27A', '#B9A6FF', '#FFFFFF', '#7CE0B0'], 16, { speed:260, size:5, kinds:['star','dot','spark'], up:120, g:440, glow:true, dur:.7 }); } if(m.combo >= 3) fxCombo(m.combo); }catch(_){}
@@ -271,6 +332,12 @@ NG.chosung = (() => {
     boom(p.say ? p.w : v);
     hud();
     T(next, 700);
+  }
+  /* 정답을 보여 줄 때 뜻풀이 한 줄(배우며 넘어가게). 내가 다른 정답을 썼으면 그 뜻풀이가 없을 수 있어 목표 낱말 뜻을 보여 줌 */
+  function glShow(p, v){
+    if(!p || !p.gl) return '';
+    const same = !v || norm(v) === p.n;
+    return `<p class="cs-gl ans"><b>${same ? '뜻' : esc(p.w)}</b><span>${esc(p.gl)}</span></p>`;
   }
   /* 정답이 화면 가득 터지는 연출(1초, 보이기만 · 누르기를 막지 않음) */
   function boom(word){
@@ -291,16 +358,26 @@ NG.chosung = (() => {
     const p = m.qs[m.i];
     m.lock = true; m.skipLeft--; m.skipped++; m.combo = 0; p.res = 'skip';
     const card = $('#csCard');
-    if(card){ card.innerHTML = `<div class="cs-top"><span class="cs-cat sk">건너뜀</span><span class="cs-len">정답</span></div>` + tilesHtml(p, p.n, 'flip'); card.classList.add('skip'); }
+    if(card){ card.innerHTML = `<div class="cs-top"><span class="cs-cat sk">건너뜀</span><span class="cs-len">정답</span></div>` + tilesHtml(p, p.n, 'flip') + glShow(p); card.classList.add('skip'); }
     clearInput(); sfx('chosungSkip');
     msg(`<b class="sk">정답은</b><span>${esc(p.w)}</span>`, 'cs-pop');
     hud();
     T(next, 1200);
   }
+  /* 힌트 단계: ① 뜻풀이 한 줄(−5점, 힌트 개수·별에 안 셈) → ② 앞에서부터 한 글자씩(−15점, 힌트 1개) */
   function useHint(){
-    const m = S(); if(!m || G.over || G.paused || m.lock || m.phase !== 'play' || m.hintLeft <= 0 || !canHint()) return;
+    const m = S(); if(!m || G.over || G.paused || m.lock || m.phase !== 'play' || m.bz) return;
     if(G.duel && !G.duel.go) return;
     const p = m.qs[m.i];
+    if(glNext()){
+      p.glOn = true; m.gls++;
+      const card = $('#csCard'); if(card) card.innerHTML = cardHtml();
+      try{ const g = card && card.querySelector('.cs-gl'); if(g){ g.classList.add('pop'); const q = fxCenter(g); fxBurst(q.x, q.y, ['#FFE27A', '#FFFFFF'], 8, { speed:160, size:4, kinds:['star','dot'], up:60, g:300, dur:.5 }); } }catch(_){}
+      sfx('chosungHint'); hud(); msg(baseMsg());
+      const inp = $('#csIn'); if(inp) inp.focus();
+      return;
+    }
+    if(m.hintLeft <= 0 || !canHint()) return;
     let i = 0; while(p.open.has(i)) i++;   /* 앞에서부터 한 글자 */
     p.open.add(i); m.hintLeft--; m.hints++;
     const card = $('#csCard'); if(card) card.innerHTML = cardHtml();
@@ -347,7 +424,7 @@ NG.chosung = (() => {
     m.phase = 'done'; m.lock = true; m.fail = why;
     const inp = $('#csIn'); if(inp){ inp.disabled = true; inp.blur(); }
     const p = m.qs[m.i];
-    const card = $('#csCard'); if(card && p && !p.res){ card.innerHTML = `<div class="cs-top"><span class="cs-cat sk">정답</span></div>` + tilesHtml(p, p.n, 'flip'); card.classList.add('skip'); }
+    const card = $('#csCard'); if(card && p && !p.res){ card.innerHTML = `<div class="cs-top"><span class="cs-cat sk">정답</span></div>` + tilesHtml(p, p.n, 'flip') + glShow(p); card.classList.add('skip'); }
     msg(`<b class="bad">${text}</b><span>${m.solved}/${m.q}문제</span>`, 'cs-pop');
     sfx('chosungTimeUp'); try{ fxBuzz([40, 40, 60]); }catch(_){}
     T(() => finish(false), 1400);
@@ -357,7 +434,7 @@ NG.chosung = (() => {
      문제 일정은 모든 기기가 같은 값으로 계산한다: 첫 문제는 대전 시작 시각(서버 ms)에 열리고, 누가 차지하면 그 사람이 누른 시각에,
      아무도 못 맞히면 열린 뒤 qt초에 닫힌다 → 정답 보여 주기 BZ_SHOW → 다음 문제.
      차지 기록이 늦게 도착하면(간발의 차) 주인과 일정이 저절로 다시 맞춰진다. 마지막 문제 뒤 duelEndNow → 순위 = 차지 수 → 틀린 수 → 마지막 차지 이른 순(엔진) */
-  const BZ_SHOW = 1600, BZ_LOCK = 800;
+  const BZ_SHOW = 1600, BZ_LOCK = 800, BZ_GL = .25, BZ_LT = .55;
   const srvNow = () => typeof duelSrv === 'function' ? duelSrv() : Date.now();
   const bzPl = pid => { try{ return (duelPlayers() || []).find(x => x.pid === pid) || null; }catch(_){ return null; } };
   function bzMine(){ const D = G && G.duel; if(!D || !D.owners) return 0; let n = 0; for(const k in D.owners) if(D.owners[k] === D.myPid) n++; return n; }
@@ -382,6 +459,14 @@ NG.chosung = (() => {
     const key = s.i + ':' + s.ph + ':' + (s.own || '');
     if(key !== B.key){ B.key = key; bzEnter(s); if(G.over) return; }
     if(s.ph === 'open'){
+      /* 같은 시점 힌트: 뜻풀이 → 첫 글자 */
+      const p = m.qs[s.i], el = (s.now - s.s) / 1000;
+      if(p && B.shown === s.i){
+        let ch = false;
+        if(p.gl && !p.glOn && el >= B.glAt){ p.glOn = true; ch = true; }
+        if(!p.say && p.n.length >= 2 && !p.open.has(0) && el >= B.ltAt){ p.open.add(0); ch = true; }
+        if(ch){ const card = $('#csCard'); if(card) card.innerHTML = cardHtml(); msg(baseMsg()); try{ sfx('chosungHint'); }catch(_){} }
+      }
       const rem = Math.max(0, (s.end - s.now) / 1000), sec = Math.ceil(rem), bar = $('#csBar');
       if(bar) bar.style.transform = `scaleX(${Math.min(1, rem / B.qt)})`;
       if(sec !== m.lastSec){
@@ -417,7 +502,7 @@ NG.chosung = (() => {
     const word = mine && p.got ? p.got : p.n, nick = pl ? pl.nick : '';
     if(card){
       card.style.setProperty('--oc', p.col || '#8E8AA6');
-      card.innerHTML = `<div class="cs-top"><span class="cs-cat ${own ? 'op' : 'sk'}">${own ? (mine ? '내가 맞혔어요!' : esc(nick) + '님 정답!') : '아무도 못 맞혔어요'}</span></div>` + tilesHtml(p, word, 'flip');
+      card.innerHTML = `<div class="cs-top"><span class="cs-cat ${own ? 'op' : 'sk'}">${own ? (mine ? '내가 맞혔어요!' : esc(nick) + '님 정답!') : '아무도 못 맞혔어요'}</span></div>` + tilesHtml(p, word, 'flip') + glShow(p, word);
       card.classList.remove('ok', 'skip', 'op', 'bad'); card.classList.add(mine ? 'ok' : own ? 'op' : 'skip');
     }
     clearInput();
@@ -523,10 +608,11 @@ NG.chosung = (() => {
         <path d="M24 48l2.4 5 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" fill="#FFE27A" stroke="${OL}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
     },
     help:[
-      ['초성과 분류를 봐요', '예를 들어 분류가 「과일」, 초성이 ㅅㄱ이면 "사과"를 떠올릴 수 있어요. 같은 분류·같은 초성인 낱말은 무엇이든 정답이에요.'],
+      ['주제와 초성을 봐요', '초성은 낱말 글자마다 첫소리만 적은 거예요. 주제가 「과일」, 초성이 ㅅㄱ이면 "사과"! 같은 주제·같은 초성인 낱말은 무엇이든 정답이에요.'],
       ['써서 확인해요', '아래 칸에 낱말을 쓰고 [확인]이나 Enter를 눌러요. 틀려도 점수는 거의 깎이지 않아요(초성이 다르면 −5점).'],
-      ['대전: 먼저 맞히면 내 것', '대전은 2~5명이 같은 문제 8개를 함께 봐요. 먼저 맞힌 사람이 그 문제를 차지하고(문제당 15초), 틀리면 0.8초 쉬어요. 많이 차지한 사람이 1등!'],
-      ['막히면 힌트·건너뛰기', '💡힌트는 앞에서부터 한 글자를 열어 줘요(−15점). 건너뛰면 그 문제는 0점이고 정답을 보여 줘요(판마다 횟수 제한).'],
+      ['대전: 먼저 맞히면 내 것', '대전은 2~5명이 같은 문제 8개를 함께 봐요. 먼저 맞힌 사람이 그 문제를 차지하고(문제당 15초), 틀리면 0.8초 쉬어요. 모두에게 같은 때에 뜻풀이(약 4초)·첫 글자(약 8초) 힌트가 저절로 나와요. 많이 차지한 사람이 1등!'],
+      ['막히면 힌트·건너뛰기', '💡힌트를 처음 누르면 낱말 뜻풀이 한 줄이 나와요(−5점, 횟수 안 셈). 또 누르면 앞에서부터 한 글자씩 열려요(−15점). 건너뛰면 그 문제는 0점이고 정답과 뜻을 보여 줘요.'],
+      ['틀리면 까닭을 알려 줘요', '글자 수가 다른지, 몇 번째 초성이 다른지, 다른 주제의 낱말인지 알려 줘요. 초성이 맞는데 사전에 없는 낱말이면 벌칙 없이 다시 써요.'],
       ['시간 안에 모두 풀어요', '제한 시간 안에 모든 문제를 풀면 성공! 빨리 풀수록 시간 보너스가 커요.'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 긴 낱말·비밀 분류·빈 초성·속담 같은 새 규칙과 빠른 판·첫 글자 선물 같은 변주가 5판마다 하나씩 나와요.']
     ],
@@ -546,13 +632,13 @@ NG.chosung = (() => {
             <text x="0" y="-32" font-size="18" text-anchor="middle" fill="#F0368A" stroke="#fff" stroke-width="4" paint-order="stroke" font-family="Jua,sans-serif" opacity="0">+1<animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.42;.46;.8;.86" dur="4s" repeatCount="indefinite"/></text></g>
           <g transform="translate(36 96)"><path d="M-12-18h24a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H-2l-8 8v-8h-2a6 6 0 0 1-6-6v-20a6 6 0 0 1 6-6z" fill="#fff" stroke="${OL}" stroke-width="2.6" stroke-linejoin="round"/><text y="5" font-size="20" text-anchor="middle" fill="#7B5CE6" font-family="Jua,sans-serif">?</text></g></svg>`;
       },
-      lines:['분류와 초성을 보고 낱말을 떠올려요', '아래 칸에 쓰고 [확인]을 눌러요', '대전은 먼저 맞힌 사람이 차지해요']
+      lines:['ㄱㅇㅇ처럼 첫소리만 보고 낱말을 맞혀요', '위의 주제를 보고 떠올려 쓰면 돼요', '막히면 💡 뜻풀이 → 첫 글자 힌트']
     },
     helpExtra(){ const m = G && G.id === 'chosung' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['첫소리 마을','낱말 숲','수수께끼 다리','이야기 장터','말씨 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·건너뛰기 2번 이하 · ★★★ 힌트·건너뛰기 없이',
     levels:{
-      easy:{ q:8, minLen:2, maxLen:3, easy:1, maxCand:6, limit:150, hints:4, skips:3 },
+      easy:{ q:8, minLen:2, maxLen:3, easy:1, maxCand:6, limit:150, hints:4, skips:3, basic:1 },
       normal:{ q:10, minLen:2, maxLen:4, easy:0, maxCand:4, limit:180, hints:4, skips:3 },
       hard:{ q:12, minLen:3, maxLen:4, easy:0, maxCand:2, say:2, limit:240, hints:4, skips:3 }
     },
@@ -561,16 +647,34 @@ NG.chosung = (() => {
     stageDesc(n){ const c = stageCfg(n); return `${c.q}문제 · ${mmss(c.limit)}${c.lives ? ' · 기회 ' + c.lives + '번' : ''}`; },
     levelDesc(lv){ const c = this.levels[lv] || this.levels.normal; return `${c.q}문제 · ${c.minLen}~${c.maxLen}글자${c.say ? ' · 사자성어·속담' : ''}`; },
     init(cfg, rng){
-      const qs = makeSet(askOn() ? Object.assign({}, cfg, { askOut:true }) : cfg, rng);
+      /* 판 씨앗: 오늘의 문제·대전 = 엔진이 준 rng 그대로(같은 날·같은 방 = 같은 문제).
+         솔로 = 이 기기에서 몇 번째 솔로 판인지(k)를 씨앗에 더해 다시 해도 새 문제(첫 판 k=0은 예전 씨앗), 최근 나온 낱말(최대 240개)은 피함 */
+      const v2 = v2On(), c2 = Object.assign({}, cfg, { v2 });
+      if(askOn()) c2.askOut = true;
+      const solo = !!(G.adv && !G.duel);
+      if(solo && v2){
+        const k = soloPlayNo();
+        if(k > 0) rng = mulberry(seedFrom('adv:chosung:' + G.adv + ':' + k));
+        c2.avoid = new Set(seenGet());
+      }
+      const qs = makeSet(c2, rng);
+      if(solo && v2) seenAdd(qs);
+      const glOk = !!(cfg.glFree || (cfg.hints == null ? 4 : cfg.hints) > 0);   /* 맨손(힌트 0)은 뜻풀이도 없음 */
+      qs.forEach(p => { p.glOn = !!(cfg.glFree && p.gl); });
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
-      G.m = { qs, q:qs.length, i:0, solved:0, skipped:0, hints:0, wrongs:0, combo:0, best:0, pen:0,
+      G.m = { qs, q:qs.length, i:0, solved:0, skipped:0, hints:0, gls:0, wrongs:0, combo:0, best:0, pen:0, v2, glOk, glFree:!!cfg.glFree,
         hintLeft:cfg.hints == null ? 4 : cfg.hints, skipLeft:cfg.skips == null ? 3 : cfg.skips,
         lives:G.duel ? 0 : cfg.lives || 0, tick:cfg.tick || 0,   /* 대전은 기회 제한 없음 */
         phase:'play', lock:false, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, lastSec:-1, sec:0, fail:null, timers:new Set() };
       G.limit = cfg.limit; if(G.m.lives) G.paws = G.m.lives;
       const m = G.m;
       /* 실시간 대전(v3) = 버저 선점: 힌트·넘기기 없음, 문제마다 qt초 */
-      if(G.duel && G.duel.v === 3 && !G.duel.fleet){ m.bz = { qt:cfg.qt || 15, key:'', lockUntil:0, shown:-1 }; m.hintLeft = 0; m.skipLeft = 0; }
+      if(G.duel && G.duel.v === 3 && !G.duel.fleet){
+        /* 대전 힌트는 모두 같은 시점에 저절로: 문제가 열린 뒤 qt×0.25초에 뜻풀이, qt×0.55초에 첫 글자(서버 시각 기준이라 모든 기기가 같음) */
+        const qt = cfg.qt || 15;
+        m.bz = { qt, key:'', lockUntil:0, shown:-1, glAt:qt * BZ_GL, ltAt:qt * BZ_LT }; m.hintLeft = 0; m.skipLeft = 0; m.glOk = false;
+        qs.forEach(p => { p.glOn = false; });
+      }
       G.cleanup = () => { m.timers.forEach(clearTimeout); m.timers.clear(); if(G && G.raf) cancelAnimationFrame(G.raf); document.querySelectorAll('.fxcombo').forEach(e => e.remove()); };
       /* 테스트·도구용: 남은 문제를 차례로 모두 맞힌다 */
       m._solveForTest = () => new Promise(res => {
@@ -583,14 +687,16 @@ NG.chosung = (() => {
       });
     },
     _solveForTest(){ return G.m._solveForTest(); },
-    _make:makeSet, _stage:stageCfg, _dict:dict, _cho:choOf, _askOut:askOut, _askOn:askOn,
+    _make:makeSet, _stage:stageCfg, _dict:dict, _cho:choOf, _askOut:askOut, _askOn:askOn, _v2On:v2On, _seen:seenGet,
+    /* 뜻풀이 점검: 뜻풀이에 정답 낱말이 그대로 들어 있으면 돌려줌(빈 배열이면 통과) */
+    _glossCheck(){ const g = glossMap(), bad = []; for(const k in g) if(k !== 'list'){ const n = k.split(':')[1]; if(norm(g[k].g).includes(n)) bad.push(k + ' = ' + g[k].g); } return bad; },
     render(st){
       const m = S();
       st.innerHTML = `<div class="ng-chosung">
         <div class="hud-row">
           <div class="hchip" aria-label="문제"><span class="hv">${ICO.q}<b id="csNo">1</b><small>/${m.q}</small></span><em>문제</em></div>
           <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(m.bz ? m.bz.qt : G.limit)}</b></span><em>남은 시간</em></div>
-          ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트<i class="cs-cost">−15</i></em></button>
+          ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em><span class="cs-hl">힌트</span><i class="cs-cost">−15</i></em></button>
           <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기<i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></em></button>`}
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
@@ -617,8 +723,8 @@ NG.chosung = (() => {
       const m = G.m, sec = Math.max(0, Math.min(G.limit, (m.sec || elapsed()) + (m.pen || 0)));
       const base = Math.round(600 * m.solved / m.q);
       const time = Math.max(0, 250 - Math.floor(sec * 250 / G.limit));
-      const extra = Math.max(0, 150 - 15 * m.hints - 5 * m.wrongs);
-      return { base, time, extra, rows:[`맞힌 문제 ${m.solved}/${m.q}` + (m.skipped ? ` (건너뛰기 ${m.skipped})` : ''), '시간 보너스 (' + mmss(sec) + ')', `힌트 ${m.hints} · 틀림 ${m.wrongs}`] };
+      const extra = Math.max(0, 150 - 15 * m.hints - 5 * (m.gls || 0) - 5 * m.wrongs);
+      return { base, time, extra, rows:[`맞힌 문제 ${m.solved}/${m.q}` + (m.skipped ? ` (건너뛰기 ${m.skipped})` : ''), '시간 보너스 (' + mmss(sec) + ')', `힌트 ${m.hints}${m.gls ? ' · 뜻풀이 ' + m.gls : ''} · 틀림 ${m.wrongs}`] };
     },
     stars(){ const m = G.m, help = m.hints + m.skipped; return help === 0 ? 3 : help <= 2 ? 2 : 1; },
     css:`
@@ -669,6 +775,14 @@ body[data-mode="chosung"]{background:
 @keyframes chosung-in{from{transform:translateX(26px) scale(.96); opacity:0}}
 .ng-chosung .cs-top{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; position:relative}
 .ng-chosung .cs-cat{font-family:var(--heavy); font-weight:400; font-size:19px; line-height:1; padding:7px 14px 6px; border-radius:99px; border:2.5px solid #1A0F45; color:#fff; background:var(--cc,#7B5CE6); box-shadow:0 3px 0 #1A0F45; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; white-space:nowrap}
+.ng-chosung .cs-cat small{display:block; font-family:var(--disp); font-size:11px; line-height:1; letter-spacing:1px; -webkit-text-stroke:0; color:#fff; opacity:.95; margin:0 0 3px; text-shadow:0 1px 0 #1A0F45}
+.ng-chosung .cs-cat:has(small){font-size:24px; padding:6px 18px 7px; text-align:center}
+.ng-chosung .cs-gl{display:flex; align-items:flex-start; gap:7px; width:100%; max-width:330px; margin:-2px 0 0; padding:8px 11px; border-radius:14px; background:#FFF7D6; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45;
+  font-family:var(--disp); font-size:16px; line-height:1.35; color:#2E1F7A; text-align:left; word-break:keep-all}
+.ng-chosung .cs-gl b{flex:none; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:1; padding:4px 7px 3px; margin-top:1px; border-radius:8px; background:#7B5CE6; color:#fff; white-space:nowrap}
+.ng-chosung .cs-gl.off{background:rgba(255,255,255,.55); border:2px dashed rgba(26,15,69,.35); box-shadow:none; color:#6A5DA0; font-size:14.5px; justify-content:center}
+.ng-chosung .cs-gl.ans{background:#fff; font-size:15px}
+.ng-chosung .cs-gl.pop{animation:chosung-pop .45s cubic-bezier(.2,1.6,.4,1)}
 .ng-chosung .cs-cat.hide{background:repeating-linear-gradient(135deg,#3E2A9A 0 8px,#5B44C4 8px 16px); font-size:16px}
 .ng-chosung .cs-cat.ok{background:#2BB673}
 .ng-chosung .cs-cat.sk{background:#8E8AA6}
@@ -690,7 +804,7 @@ body[data-mode="chosung"]{background:
 .ng-chosung .hlives[hidden]{display:none}
 .ng-chosung .hlives{flex:none}
 .ng-chosung .cs-msg{flex:1; min-width:0; overflow:hidden; height:40px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#3E2A9A; white-space:nowrap}
-.ng-chosung .cs-msg span{overflow:hidden; text-overflow:ellipsis}
+.ng-chosung .cs-msg span{overflow:hidden; text-overflow:ellipsis; white-space:normal; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; text-align:center; word-break:keep-all}
 .ng-chosung .cs-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; flex:none}
 .ng-chosung .cs-msg b.k{font-size:16px; -webkit-text-stroke:4px #1A0F45; color:#FFE27A}
 .ng-chosung .cs-msg b.bad{color:#FF8A8F}
@@ -734,7 +848,7 @@ Object.assign(NG.chosung, {
   /* 대전 판: 보통 = 8문제·문제당 15초. 쉬움·어려움은 방 난이도에서(문제 수·시간은 같고 낱말 길이·분류·정답 후보 수만 다름) */
   duelCfg(o){
     const d = o && o.diff, q = 8, qt = 15;
-    const c = d === 'easy' ? { minLen:2, maxLen:3, easy:1, maxCand:6 } : d === 'hard' ? { minLen:3, maxLen:4, easy:0, maxCand:3 } : { minLen:2, maxLen:4, easy:0, maxCand:4 };
+    const c = d === 'easy' ? { minLen:2, maxLen:3, easy:1, maxCand:6, basic:1 } : d === 'hard' ? { minLen:3, maxLen:4, easy:0, maxCand:3 } : { minLen:2, maxLen:4, easy:0, maxCand:4 };
     return Object.assign({ q, qt, limit:q * (qt + 2), hints:0, skips:0 }, c);
   },
   duelSlow(cfg){ const qt = (cfg.qt || 15) * 2; return Object.assign({}, cfg, { qt, limit:cfg.q * (qt + 2) }); },
