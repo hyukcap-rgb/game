@@ -6,6 +6,7 @@
 //  5) 방장이 나가면 들어온 순서가 가장 빠른 사람이 방장(나머지 화면에 "이제 ○○님이 방장이에요")
 //  6) 일부만 한 판 더 → 방장 [시작]으로 누른 사람끼리 · 3판 연속 쉬면 자동으로 나감 · 5판째부터 ♥1
 //  7) 390px 화면 캡처: 대전 탭 · 방 목록 · 방 안 2·3·5명 · 결과 창 2·4명 · 코드 입력
+//  8) 처음 온 사람(빈 저장소)이 방 링크로 → 안내 창 없이 바로 방 · 성인 방은 19세 확인만 · 사라진/꽉 찬 방 안내
 //   node tools/build.js && npm run test:room
 // 중계 서버는 이 프로세스 안에 띄우고(server/index.ts와 같은 규칙), 친구 서버는 막고 친구 정보는 직접 넣는다.
 // 다인원은 이 점검 안에서만 NG.sudoku.duelMax = 5로 덮어쓴다(게임 WP가 올리기 전에도 방 동작을 볼 수 있게).
@@ -197,6 +198,39 @@ await E.pg.evaluate(()=>rmOpen()); await w(600); await shot(E.pg,'room-5.png');
 const fullErr=await (await mk('F','여섯째F')).pg.evaluate(id=>new Promise(res=>rmJoin(id,{invited:true,onErr:res})),code2).catch(e=>String(e));
 ok(/꽉 찼어요/.test(fullErr), '꽉 찬 방에 코드로 들어가면 → '+fullErr);
 await b.evaluate(()=>{closeModal(); rmPillRender();}); await w(300); await shot(b,'room-pill.png');
-const errs=[A,Bp,C,Dp,E].flatMap(x=>x.errs); ok(!errs.length, '오류 없음 '+errs.join(' | '));
+// 8) 처음 온 사람(빈 저장소)이 방 링크로 → 안내 창 없이 바로 그 방(2026-10-12 대표 지시)
+//    · 일반 방: 바로 방 안 · 주소에서 room 지움 · "오늘의 시험지가 도착했습니다"가 안 뜸
+//    · 성인 게임 방(고스톱): 19세 확인만 → 네 → 방 안
+//    · 사라진 방: "방이 이미 닫혔어요" + 그 게임 방 목록 버튼 → 방 목록
+async function fresh(tag,url){const ctx=await br.newContext({viewport:{width:390,height:844}});
+  await ctx.routeWebSocket(/battle-production/,ws=>attach(ws)); await ctx.route(/function-bun|railway\.app\/api|fonts\.(googleapis|gstatic)\.com/,r=>r.abort());
+  const pg=await ctx.newPage(); const errs=[]; pg.on('pageerror',e=>errs.push(tag+' '+String(e)));
+  await pg.goto(url,{waitUntil:'domcontentloaded'}); return {ctx,pg,errs,tag};}
+const H8=await mk('H','방장H'); const h8=H8.pg;
+const linkFor=async()=>(await h8.evaluate(()=>rmLink(false))).replace(/^https?:\/\/[^?]*/,B+'index.html');
+await h8.evaluate(()=>rmCreate({g:'sudoku',d:'easy',band:'near',pv:true}));
+const l1=await linkFor(); ok(/[?&]room=/.test(l1)&&/[?&]rg=sudoku/.test(l1), '방 링크에 방 코드·게임 '+l1.replace(B,''));
+const F1=await fresh('F1',l1);
+ok(await until(F1.pg,()=>RM.cur&&!!document.querySelector('#rmRoom'),null,12000), '처음 온 사람: 링크로 바로 방 안');
+ok(await F1.pg.evaluate(()=>!/시험지가/.test(document.querySelector('#modal').textContent)&&!/[?&](room|rg)=/.test(location.search)), '첫 안내 창 없음 · 주소에서 방 코드 지움');
+ok(await until(h8,()=>RM.cur.ord.length===2), '방장 화면에 처음 온 사람이 들어옴');
+await shot(F1.pg,'room-link-fresh.png');
+await F1.ctx.close(); await h8.evaluate(()=>rmLeave()); await w(600);
+await h8.evaluate(()=>rmCreate({g:'gostop',d:'normal',x:0,band:'all',pv:true}));
+const F2=await fresh('F2',await linkFor());
+ok(await until(F2.pg,()=>!!document.querySelector('#mGo')&&!RM.cur,null,8000), '성인 게임 방 링크: 19세 확인 먼저');
+await shot(F2.pg,'room-link-19.png');
+await F2.pg.click('#mGo');
+ok(await until(F2.pg,()=>RM.cur&&RM.cur.g==='gostop'&&!!document.querySelector('#rmRoom'),null,12000), '19세 확인 → 고스톱 방 안');
+await F2.ctx.close();
+const l3=await linkFor(); await h8.evaluate(()=>rmLeave()); await w(800);
+const F3=await fresh('F3',l3.replace(/rg=gostop/,'rg=sudoku'));
+ok(await until(F3.pg,()=>!!document.querySelector('#rmArrNo')&&/닫혔어요/.test(document.querySelector('#rmArrNo').textContent),null,15000), '사라진 방 링크: "방이 이미 닫혔어요" 안내');
+await shot(F3.pg,'room-link-gone.png');
+await F3.pg.click('#raList');
+ok(await until(F3.pg,()=>!!document.querySelector('#rmList')&&RM.listG==='sudoku',null,5000), '안내에서 그 게임 방 목록으로');
+const F4=await fresh('F4',B+'index.html?room='+code2+'&rg=sudoku');
+ok(await until(F4.pg,()=>!!document.querySelector('#rmArrNo')&&/꽉 찼어요/.test(document.querySelector('#rmArrNo').textContent),null,15000), '꽉 찬 방 링크: "방이 꽉 찼어요" 안내');
+const errs=[A,Bp,C,Dp,E,H8,F1,F3,F4].flatMap(x=>x.errs); ok(!errs.length, '오류 없음 '+errs.join(' | '));
 await br.close(); srv.close();
 console.log(fail?`실패 ${fail}개`:'대전 방 점검 모두 통과'); process.exit(fail?1:0);

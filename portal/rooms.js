@@ -18,6 +18,8 @@ const RM_HARD_LV = 5, RM_BAND = 5, RM_BONUS = DUEL_STRONG, RM_INV_GAP = 30000, R
 const RM_CODE_A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 /* 방 링크·방 QR(?room=)로 들어온 방 번호: readLink(start.js)가 주소를 지우기 전에 먼저 잡아 둔다 */
 const RM_ARRIVE = (() => { try{ return String(new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); }catch(_){ return ''; } })();
+/* 방 링크의 게임(?rg=, 2026-10-12 더함): 19세 확인을 방에 들어가기 전에 하고, 방이 없거나 꽉 찼으면 그 게임 방 목록으로 안내. 예전 링크엔 없음 */
+const RM_ARRIVE_G = (() => { try{ const g = String(new URLSearchParams(location.search).get('rg') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 24); return RM_ARRIVE && g ? g : ''; }catch(_){ return ''; } })();
 const rmLv = () => { try{ return lvInfo().L; }catch(_){ return 1; } };
 const rmRec = L => L >= 12 ? 'hard' : L >= 5 ? 'normal' : 'easy';
 const rmCanD = (d, L = rmLv()) => d !== 'hard' || L >= RM_HARD_LV;
@@ -128,7 +130,7 @@ async function rmCreate(o){
 /* 방 들어가기: 방장이 보이면 확인(내보내짐·레벨·꽉 참·대전 중) 뒤 방 안으로. o = { invited, onErr(msg), quiet } */
 async function rmJoin(id, o = {}){
   id = rmNorm(id);
-  const err = msg => { if(o.onErr) o.onErr(msg); else { closeModal(); toast(msg); } };
+  const err = (msg, g) => { if(o.onErr) o.onErr(msg, g); else { closeModal(); toast(msg); } };   /* g = 방의 게임(알 때만) */
   if(!id) return err('그런 방이 없어요. 코드를 다시 봐 주세요');
   if(RM.cur){ if(RM.cur.id === id){ rmOpen(); return; } toast('이미 다른 대전 방에 있어요. 먼저 나가 주세요'); rmOpen(); return; }
   if(!duelLive()) return err('실시간 연결이 안 돼요. 잠시 뒤 다시 해 주세요');
@@ -141,7 +143,7 @@ async function rmJoin(id, o = {}){
   nr.presence(Object.assign(rmMyPres(), { rdy:0, rv:0, bye:0, iv:o.invited ? 1 : 0 })).catch(() => {});   /* bye:0 — 막혀서 나갔다 다시 들어올 때 지난 '나감' 표시가 남지 않게 */
   const t0 = Date.now();
   const host = await new Promise(res => { const iv = setInterval(() => { let h = null; try{ h = rmBestHost(nr.peers().filter(p => !p.sameTab)); }catch(_){} if(h || Date.now() - t0 > 4000){ clearInterval(iv); res(h); } }, 150); });
-  const out = msg => { try{ nr.presence({ bye:1 }).catch(() => {}); }catch(_){} setTimeout(() => { try{ nr.leave(); }catch(_){} }, 100); err(msg); };
+  const out = msg => { try{ nr.presence({ bye:1 }).catch(() => {}); }catch(_){} setTimeout(() => { try{ nr.leave(); }catch(_){} }, 100); err(msg, host && host.presence && host.presence.g); };
   if(!host) return out('그런 방이 없어요. 코드를 다시 봐 주세요');
   const H = host.presence, L = rmLv(), cap = Math.max(2, Math.min(5, +H.cap || 2)), ord = Array.isArray(H.ord) ? H.ord : [];
   if((H.kick || []).includes(me)) return out('이 방에서 내보내져서 들어갈 수 없어요');
@@ -362,7 +364,7 @@ function rmInviteFriend(f){
 }
 function rmLink(keepF){
   const c = RM.cur; if(!c) return '';
-  const u = new URL(linkOf({ room:c.id })); if(!keepF) u.searchParams.delete('f'); return u.toString();   /* QR(얼굴 보고 초대)은 친구 코드도 넣어 들어오면 친구가 됨 */
+  const u = new URL(linkOf({ room:c.id, rg:c.g })); if(!keepF) u.searchParams.delete('f'); return u.toString();   /* QR(얼굴 보고 초대)은 친구 코드도 넣어 들어오면 친구가 됨 */
 }
 /* 방 QR로 초대: 옆에 있는 친구가 폰 카메라로 찍으면 이 방으로 바로 들어옴(초대받은 사람이라 레벨 제한 없음 · 처음이면 친구도 맺어짐) */
 function rmQrSheet(back){
@@ -731,13 +733,40 @@ function rmStart(){
   frBtnRender();
   setInterval(rmTick, 1200);
   addEventListener('pagehide', () => { if(RM.cur) try{ RM.cur.nr.presence({ bye:1 }).catch(() => {}); }catch(_){} });
-  /* 방 링크(?room=)로 들어옴: 실시간 연결을 기다렸다가 들어가기 */
-  const id = RM_ARRIVE;   /* 주소에서 먼저 잡아 둔 값(초대 링크라 readLink가 주소를 이미 지웠을 수 있음) */
-  if(id){
-    try{ const u = new URL(location.href); if(u.searchParams.has('room')){ u.searchParams.delete('room'); history.replaceState(history.state, '', u.toString()); } }catch(_){}
+  if(RM_ARRIVE) rmArrive(RM_ARRIVE, RM_ARRIVE_G);
+}
+/* 방 링크(?room=)로 들어옴(처음 온 사람도): 안내 창 없이 바로 그 방으로(2026-10-12 대표 지시).
+   · 연결을 기다리는 동안 "들어가는 중" 창을 먼저 띄워 둔다 → 이벤트 선물·안내 창은 방 창이 닫힐 때까지 기다림(evCheck·runNotice가 창이 떠 있으면 미룸)
+   · 성인 게임 방이면(rg) 들어가기 전에 그 게임의 시작 관문(19세 확인)만
+   · 방이 없거나 꽉 찼거나 연결이 안 되면 친절한 안내 + 그 게임 방 목록(또는 다시 해 보기) */
+function rmArrive(id, g){
+  try{ const u = new URL(location.href); if(u.searchParams.has('room') || u.searchParams.has('rg')){ u.searchParams.delete('room'); u.searchParams.delete('rg'); history.replaceState(history.state, '', u.toString()); } }catch(_){}
+  const gOk = GAMES[g] ? g : '';
+  const wait = () => openModal(`<div class="rmwait" id="rmArr"><span class="ds-radar"><i></i><i></i><i></i></span><p class="note">${gOk ? `<b>${GAMES[gOk].name}</b> ` : ''}대전 방 <b class="num">${rmCodeFmt(id)}</b>에<br>들어가는 중…</p></div>`);
+  const fail = (msg, g2) => {
+    if(RM.cur) return;
+    if(/그런 방이 없어요/.test(msg)) msg = '방이 이미 닫혔어요. 방장이 나갔을 수 있어요';
+    const gg = [gOk, g2].find(x => x && GAMES[x] && rmOk(x)) || '';
+    openModal(`<div class="rmwait" id="rmArrNo"><h3>대전 방에 못 들어갔어요</h3><p class="note">${escH(msg)}</p>
+      <p class="note" style="font-size:13px">${gg ? `${GAMES[gg].name} 방 목록에서 다른 방에 들어가거나 새 방을 만들 수 있어요.` : '대전 탭에서 다른 방에 들어가거나 새 방을 만들 수 있어요.'}</p>
+      <div class="mbtns"><button class="b2" id="raHome">홈으로</button><button class="b1" id="raList">${gg ? GAMES[gg].name + ' 방 목록' : '대전 탭으로'}</button></div></div>`);
+    $('#raHome').onclick = () => { closeModal(); renderHome(); };
+    $('#raList').onclick = () => { closeModal(); try{ setTab('duel'); }catch(_){} if(gg) rmList(gg); };
+  };
+  const go = () => {
+    wait();
     let n = 0; const t = setInterval(() => {
-      if(duelLive() && !($('#veil').classList.contains('on') && !$('#rmRoom'))){ clearInterval(t); rmJoin(id, { invited:true }); }
-      else if(++n > 120){ clearInterval(t); if(!duelLive()) toast('실시간 연결이 안 돼서 대전 방에 못 들어갔어요'); }
+      if(RM.cur){ clearInterval(t); if(RM.cur.id !== id) rmOpen(); return; }
+      if(duelLive()){ clearInterval(t); rmJoin(id, { invited:true, quiet:true, onErr:fail }); }
+      else if(++n > 40){   /* 20초 */
+        clearInterval(t);
+        openModal(`<div class="rmwait" id="rmArrNo"><h3>실시간 연결이 안 돼요</h3><p class="note">인터넷 연결을 확인하고 다시 해 봐 주세요.<br>방 코드 <b class="num">${rmCodeFmt(id)}</b></p>
+          <div class="mbtns"><button class="b2" id="raHome">홈으로</button><button class="b1" id="raRe">다시 해 보기</button></div></div>`);
+        $('#raHome').onclick = () => { closeModal(); renderHome(); };
+        $('#raRe').onclick = go;
+      }
     }, 500);
-  }
+  };
+  if(gOk && startGateOf(gOk)) gateThen(gOk, go);   /* 성인 게임 방: 19세 확인 먼저(네 → 방으로, 아니요 → 홈) */
+  else go();
 }
