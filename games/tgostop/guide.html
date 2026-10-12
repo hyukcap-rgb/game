@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trump Go-Stop Rules</title>
+<meta name="description" content="How to play Trump Go-Stop: Korea's Go-Stop card game played with a standard 52-card deck.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Rubik:wght@400;500;700;800&family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: one long felt-table page; each section is a cream "rule card" panel; real game cards drawn inline. Single dark-felt look by choice. */
+:root{
+  --felt:#1E6A3E; --felt-2:#124A2A; --paper:#FCFAF4; --ink:#1A1F2E; --muted:#5D6472;
+  --gold:#E2A92A; --gold-hi:#FFD866; --red:#C8102E; --navy:#232A5C; --purple:#5B2A9E;
+  --f-display:"Alfa Slab One",Georgia,serif; --f-body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif; --f-ko:"Noto Sans KR","Malgun Gothic",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--felt-2);background-image:radial-gradient(ellipse at 50% 0%,var(--felt) 0%,var(--felt-2) 70%);background-attachment:fixed;color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6}
+.wrap{max-width:920px;margin:0 auto;padding-block:20px 60px;padding-inline:16px;display:flex;flex-direction:column;gap:18px}
+.ko{font-family:var(--f-ko);font-weight:700}
+header.hero{color:#fff;padding:22px 4px 8px;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+.hero h1{font-family:var(--f-display);font-weight:400;font-size:clamp(38px,7vw,64px);line-height:1;margin:0;color:var(--gold-hi);text-shadow:0 4px 0 #0B2E19;text-wrap:balance}
+.hero p{margin:10px 0 0;color:#DCEBDF;max-width:52ch;font-size:17px}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.facts span{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
+.facts .age{background:var(--red);border-color:var(--red)}
+.fan{position:relative;width:230px;height:190px}
+.fan svg{position:absolute;width:108px;height:176px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.45))}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px}
+nav.toc a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);border-radius:8px;padding:5px 10px}
+nav.toc a:hover,nav.toc a:focus-visible{background:var(--gold);color:#2E1A00;outline:none}
+section.panel{background:var(--paper);border-radius:18px;padding:22px 22px 24px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.panel h2{font-family:var(--f-display);font-weight:400;font-size:clamp(24px,4vw,32px);margin:0 0 4px;color:var(--navy);line-height:1.15;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.panel h2 small{font-family:var(--f-ko);font-size:16px;color:var(--muted);font-weight:700}
+.panel h3{font-size:18px;margin:18px 0 6px}
+.panel p{margin:6px 0;max-width:68ch}
+.lead{font-size:17px}
+.step{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:start;margin:12px 0}
+.step b.n{font-family:var(--f-display);font-weight:400;font-size:20px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:var(--gold-hi)}
+.cards{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:10px 0}
+.cards svg{width:74px;height:121px;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.cards.sm svg{width:56px;height:91px}
+.arrow{font-size:26px;color:var(--muted);padding-bottom:40px}
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:12px}
+.lg{display:grid;grid-template-columns:74px 1fr;gap:12px;align-items:center;background:#F3EEE2;border-radius:12px;padding:10px}
+.lg svg{width:74px;height:121px}
+.lg h4{margin:0;font-size:16px}
+.lg p{margin:2px 0 0;font-size:14px;color:#3B4150}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid #E3DBC8;padding:8px 8px;text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.pts{font-weight:800;white-space:nowrap;color:var(--red)}
+.deck{display:grid;grid-template-columns:28px repeat(13,minmax(44px,1fr));gap:4px;min-width:700px;align-items:center}
+.deck svg{width:100%;height:auto;aspect-ratio:176/287}
+.deck .s{font-size:22px;text-align:center}
+.moves{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:10px}
+.mv{border:2px solid #E7DDC6;border-radius:14px;padding:12px 14px}
+.mv h4{margin:0;font-size:17px;display:flex;justify-content:space-between;gap:8px}
+.mv h4 .ko{color:var(--muted);font-size:14px}
+.mv p{margin:4px 0 0;font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:1px 7px;margin-top:6px;background:#EADFF8;color:var(--purple)}
+.house{border-color:var(--red);background:#FFF4F2}
+.callout{background:var(--navy);color:#fff;border-radius:14px;padding:14px 16px;margin-top:12px}
+.callout b{color:var(--gold-hi)}
+.gloss{columns:2 260px;column-gap:24px;margin:8px 0 0;padding:0;list-style:none}
+.gloss li{break-inside:avoid;padding:6px 0;border-bottom:1px dashed #E0D6C0;font-size:14px}
+.gloss .ko{font-size:15px;margin-right:6px}
+.gloss i{color:var(--muted);font-style:normal}
+.cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.btn{display:inline-block;background:var(--gold);color:#2E1A00;text-decoration:none;font-weight:800;border-radius:999px;padding:10px 18px}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+footer{color:#BFD8C6;font-size:13px;text-align:center}
+@media (max-width:620px){header.hero{grid-template-columns:1fr}.fan{margin:0 auto}section.panel{padding:18px 16px}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <h1>Trump Go-Stop</h1>
+      <p>Korea's favourite card game, <span class="ko">고스톱</span> (Go-Stop), played with an ordinary 52-card deck. Match ranks, collect sets, score 7 points first, then gamble: <b>Go</b> for more or <b>Stop</b> and win.</p>
+      <div class="facts"><span>2 players</span><span>About 5 minutes</span><span>Standard 52-card deck</span><span class="age">19+ only</span></div>
+    </div>
+    <div class="fan" id="fan" aria-hidden="true"></div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <a href="#cards">1. Read a card</a><a href="#turn">2. Your turn</a><a href="#score">3. Scoring</a><a href="#gostop">4. Go or Stop</a><a href="#special">5. Special moves</a><a href="#penalty">6. Penalties</a><a href="#deck">All 52 cards</a><a href="#words">Korean words</a>
+  </nav>
+
+  <section class="panel" id="cards">
+    <h2>1. Read a card <small>카드 읽기</small></h2>
+    <p class="lead">Every card tells you two things: its <b>rank</b> (big number in the corner) and its <b>type</b> (the badge on the right and the label strip at the bottom).</p>
+    <div class="step"><b class="n">A</b><div><b>Rank = month.</b> Go-Stop is normally played with Korean flower cards, one suit per month. Here the ranks <b>A, 2 … 10, J, Q</b> stand for months 1 to 12. <b>You capture cards of the same rank</b> — suit does not matter for matching.</div></div>
+    <div class="step"><b class="n">B</b><div><b>Type = how many points it is worth.</b> Look for the gold, deer, bird or purple badge and the coloured strip. No badge and no strip means a plain <b>Junk</b> card.</div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel" id="turn">
+    <h2>2. Your turn <small>차례</small></h2>
+    <p class="lead">Each player starts with 10 cards; 8 cards lie face up on the table and the rest form the draw pile. On every turn you do two things:</p>
+    <div class="step"><b class="n">1</b><div><b>Play a card from your hand.</b> If a table card has the same rank, your card lands on it. Glowing cards in your hand have a match.</div></div>
+    <div class="step"><b class="n">2</b><div><b>Flip the top card of the draw pile.</b> It also lands on a matching rank, or stays on the table.</div></div>
+    <div class="step"><b class="n">3</b><div><b>Take every pair you made.</b> Captured cards go to your side, sorted by type. Then it is your opponent's turn.</div></div>
+    <div class="cards" id="ex-turn" aria-label="Example: you play the 3 of hearts onto the 3 of spades and capture both"></div>
+    <h3>How many cards of that rank are on the table?</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>On the table</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>None</td><td>Your card stays on the table.</td></tr>
+        <tr><td>One</td><td>You take both cards.</td></tr>
+        <tr><td>Two</td><td>Pick which one to take (the better one, usually).</td></tr>
+        <tr><td>Three</td><td>You take all four, and also steal 1 Junk card from your opponent.</td></tr>
+      </tbody>
+    </table></div>
+    <p><b>K cards are bonus cards.</b> Play one any time: it goes straight to your pile as extra Junk, you draw a replacement, and you play again. If you flip one from the pile, keep it and flip again.</p>
+  </section>
+
+  <section class="panel" id="score">
+    <h2>3. Scoring <small>점수</small></h2>
+    <p class="lead">Points come only from the cards you have captured. Your score updates live in the game.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Collect</th><th>Example</th><th>Points</th></tr></thead>
+      <tbody id="score-rows"></tbody>
+    </table></div>
+    <p>Junk counting: a Double Junk counts as 2, a bonus K as 2 or 3. The <b>9 of spades</b> is special: it counts as an Animal or as a Double Junk, whichever gives you more points (the game decides for you).</p>
+  </section>
+
+  <section class="panel" id="gostop">
+    <h2>4. Go or Stop <small>고 · 스톱</small></h2>
+    <p class="lead">The moment you reach <b>7 points</b>, you must choose.</p>
+    <div class="step"><b class="n">S</b><div><b>Stop</b> — the round ends now and you win your points.</div></div>
+    <div class="step"><b class="n">G</b><div><b>Go</b> — keep playing to win bigger. 1 Go adds +1 point, 2 Go adds +2, from 3 Go your total is doubled (×2, ×4, ×8 …). You may only call again after your score goes up.</div></div>
+    <div class="callout"><b>The risk:</b> if you call Go and your opponent reaches 7 and stops first, you lose double (<b>Go-bak</b>). If nobody can stop before the cards run out, the round is a draw (<b>Nagari</b>).</div>
+  </section>
+
+  <section class="panel" id="special">
+    <h2>5. Special moves <small>특수 상황</small></h2>
+    <p class="lead">These are where the big screen effects happen.</p>
+    <div class="moves">
+      <div class="mv"><h4>Ppuk — "stuck" <span class="ko">뻑</span></h4><p>You match one table card, then the flipped card is the same rank too. All three stay stuck on the table. Whoever later plays the 4th card takes all four and steals 1 Junk (2 if it was your own Ppuk). Three cards of one rank dealt onto the table at the start also count as a Ppuk.</p></div>
+      <div class="mv"><h4>Jjok — "kiss" <span class="ko">쪽</span></h4><p>Your played card had no match, but the flipped card matches it. Take both and steal 1 Junk.</p></div>
+      <div class="mv"><h4>Ttadak — "double click" <span class="ko">따닥</span></h4><p>Two table cards of a rank, you play the third, and flip the fourth. Take all four and steal 1 Junk.</p></div>
+      <div class="mv"><h4>Sweep <span class="ko">쓸</span></h4><p>You clear every card off the table. Steal 1 Junk.</p></div>
+      <div class="mv"><h4>Shake <span class="ko">흔들기</span></h4><p>You hold three cards of one rank and none is on the table. Show them when you play one: your winnings are doubled.</p></div>
+      <div class="mv"><h4>Bomb <span class="ko">폭탄</span></h4><p>You hold three of a rank and the fourth is on the table. Play all three at once, take all four, steal 1 Junk, double your winnings. Your next two turns are flip-only.</p></div>
+      <div class="mv house"><h4>First Ppuk <span class="ko">첫뻑</span></h4><p>Ppuk on your very first turn: collect <b>5× the stake</b> immediately.</p><span class="tag">Trump Go-Stop rule</span></div>
+      <div class="mv house"><h4>Double Ppuk <span class="ko">연뻑</span></h4><p>Ppuk again on your second turn: collect another <b>10× the stake</b>.</p><span class="tag">Trump Go-Stop rule</span></div>
+      <div class="mv house"><h4>Triple Ppuk <span class="ko">3연뻑</span></h4><p>Ppuk on each of your first three turns: collect <b>15× the stake</b> and win the round on the spot.</p><span class="tag">Trump Go-Stop rule</span></div>
+      <div class="mv house"><h4>Three Ppuks <span class="ko">3뻑</span></h4><p>Make Ppuk three times in one round (any turns): you win instantly with 10 points.</p></div>
+      <div class="mv"><h4>Four of a kind <span class="ko">총통</span></h4><p>You are dealt all four cards of one rank: instant win, 10 points.</p></div>
+    </div>
+  </section>
+
+  <section class="panel" id="penalty">
+    <h2>6. Penalties for the loser <small>박</small></h2>
+    <p class="lead">Each one doubles what the loser pays (they stack).</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Name</th><th>When</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><b>Pi-bak</b> <span class="ko">피박</span></td><td>Winner scored with Junk and the loser has only 1–5 Junk.</td><td class="pts">×2</td></tr>
+        <tr><td><b>Gwang-bak</b> <span class="ko">광박</span></td><td>Winner scored with Brights and the loser has no Bright.</td><td class="pts">×2</td></tr>
+        <tr><td><b>Go-bak</b> <span class="ko">고박</span></td><td>Loser had called Go, then the other player won.</td><td class="pts">×2</td></tr>
+        <tr><td><b>Meong-tta</b> <span class="ko">멍따</span></td><td>Winner has 7 or more Animal cards.</td><td class="pts">×2</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>Money in this game is virtual.</b> Points and coins stay inside the game: nothing can be bought, cashed out or gifted.</div>
+  </section>
+
+  <section class="panel" id="deck">
+    <h2>All 52 cards <small>카드 전체</small></h2>
+    <p>One row per suit. ♠ holds the Brights and Animals, ♥ the Ribbons, ♦ and ♣ the Junk. The four Ks are bonus cards.</p>
+    <div class="tbl"><div class="deck" id="deckgrid"></div></div>
+  </section>
+
+  <section class="panel" id="words">
+    <h2>Korean words you will hear <small>용어</small></h2>
+    <ul class="gloss">
+      <li><span class="ko">광</span><b>gwang</b> <i>— Bright</i></li>
+      <li><span class="ko">열끗</span><b>yeol-kkeut</b> <i>— Animal</i></li>
+      <li><span class="ko">고도리</span><b>go-do-ri</b> <i>— "five birds", the 3 Bird cards</i></li>
+      <li><span class="ko">띠</span><b>tti</b> <i>— Ribbon</i></li>
+      <li><span class="ko">홍단 · 청단 · 초단</span><b>hong · cheong · cho-dan</b> <i>— red · blue · green ribbon sets</i></li>
+      <li><span class="ko">피 · 쌍피</span><b>pi · ssang-pi</b> <i>— Junk · Double Junk</i></li>
+      <li><span class="ko">고 · 스톱</span><b>go · stop</b> <i>— keep playing · end and win</i></li>
+      <li><span class="ko">뻑</span><b>ppuk</b> <i>— stuck pile of three</i></li>
+      <li><span class="ko">선</span><b>seon</b> <i>— the player who goes first</i></li>
+      <li><span class="ko">점당</span><b>jeom-dang</b> <i>— stake per point</i></li>
+      <li><span class="ko">나가리</span><b>na-ga-ri</b> <i>— draw, nobody wins</i></li>
+      <li><span class="ko">맞고</span><b>mat-go</b> <i>— the 2-player version of Go-Stop</i></li>
+    </ul>
+    <div class="cta"><a class="btn" href="https://hyukcap-rgb.github.io/game/embed/tgostop.html">Play Trump Go-Stop</a><span style="color:var(--muted);font-size:14px">For adults 19 and over.</span></div>
+  </section>
+  <footer>Trump Go-Stop · card art drawn for this game · 하루퍼즐</footer>
+</div>
+<script src="tgostop-img.js"></script>
+<script src="tgostop-art.js"></script>
+<script>
+(() => {
+  /* 카드 정의 — games/tgostop/tgostop.js의 C와 같은 규칙 */
+  const T = [null, ['g','hong','p','p'], ['y','hong','p','p'], ['g','hong','p','p'], ['y','cho','p','p'], ['y','cho','p','p'], ['y','cheong','p','p'], ['y','cho','p','p'], ['g','y','p','p'], ['y','cheong','p','p'], ['y','cheong','p','p'], ['g','s','p','p'], ['g','y','rain','s']];
+  const C = [];
+  for (let m = 1; m <= 12; m++) for (let k = 0; k < 4; k++) {
+    const t = T[m][k], id = (m - 1) * 4 + k;
+    C[id] = { id, m, k, g:t === 'g', y:t === 'y', tt:['hong','cheong','cho','rain'].includes(t) ? t : null, pv:t === 'p' ? 1 : t === 's' ? 2 : 0,
+      bird:t === 'y' && (m === 2 || m === 4 || m === 8), rg:t === 'g' && m === 12, kj:t === 'y' && m === 9 };
+    C[id].su = m === 11 ? [0, 3, 2, 1][k] : m === 12 ? [0, 2, 1, 3][k] : k;
+  }
+  [[48, 2, 2], [49, 3, 2], [50, 0, 3], [51, 1, 3]].forEach(([id, su, pv]) => C[id] = { id, m:0, bonus:true, pv, su });
+  const RANK = { A:1, J:11, Q:12, K:13 };
+  const find = code => { const r = code.slice(0, -1), s = '♠♥♦♣'.indexOf(code.slice(-1)), m = RANK[r] || +r; return C.find(c => c && c.su === s && (m === 13 ? c.bonus : !c.bonus && c.m === m)); };
+  const svg = (code, label) => { const c = find(code); return `<svg viewBox="${TGART.VB}" role="img" aria-label="${label || code}">${TGART.face(c)}</svg>`; };
+  const $ = s => document.querySelector(s);
+
+  $('#fan').innerHTML = [['A♠', -18, 0, 20], ['J♠', 0, 62, 4], ['8♥', 16, 122, 22]].map(([c, r, x, y]) => svg(c).replace('<svg', `<svg style="left:${x}px;top:${y}px;transform:rotate(${r}deg)"`)).join('');
+
+  const LEG = [
+    ['A♠', 'Bright', '광 gwang', 'Gold sun badge and gold frame. Only 5 exist: A, 3, 8, J and Q of spades.'],
+    ['Q♠', 'Rain Bright', '비광 bi-gwang', 'The weakest Bright: 3 Brights that include it score 2 instead of 3.'],
+    ['5♠', 'Animal', '열끗 yeol-kkeut', 'Deer badge, dark strip. 9 Animal cards in the deck.'],
+    ['2♠', 'Bird (Godori)', '고도리 go-do-ri', 'Bird badge, red strip. Collect all three birds (2♠, 4♠, 8♥) for 5 points.'],
+    ['A♥', 'Red ribbon', '홍단 hong-dan', 'Red ribbon strip: A, 2, 3 of hearts. All three = 3 points.'],
+    ['6♥', 'Blue ribbon', '청단 cheong-dan', 'Blue ribbon strip: 6, 9, 10 of hearts. All three = 3 points.'],
+    ['4♥', 'Green ribbon', '초단 cho-dan', 'Green ribbon strip: 4, 5, 7 of hearts. All three = 3 points.'],
+    ['Q♥', 'Plain ribbon', '띠 tti', 'Grey ribbon. Counts toward 5+ Ribbons only.'],
+    ['7♦', 'Junk', '피 pi', 'No badge, no strip. Most of the deck: you need 10 for a point.'],
+    ['J♣', 'Double Junk', '쌍피 ssang-pi', 'Purple double-leaf badge. Counts as 2 Junk.'],
+    ['K♥', 'Bonus King', '보너스 bonus', 'Free card: K♠ and K♥ = 3 Junk, K♦ and K♣ = 2 Junk.']
+  ];
+  $('#legend').innerHTML = LEG.map(([c, n, ko, d]) => `<div class="lg">${svg(c, n)}<div><h4>${n} <span class="ko" style="color:#5D6472;font-size:13px">${ko}</span></h4><p>${d}</p></div></div>`).join('');
+
+  $('#ex-turn').innerHTML = `<div><small>Your hand</small><br>${svg('3♥')}</div><span class="arrow" aria-hidden="true">→</span><div><small>Table</small><br>${svg('3♠')}</div><span class="arrow" aria-hidden="true">=</span><div><small>You capture</small><div class="cards sm" style="margin:0">${svg('3♠')}${svg('3♥')}</div></div>`;
+
+  const SC = [
+    ['3 Brights', ['A♠', '3♠', '8♠'], '3'], ['3 Brights incl. Rain Bright (Q♠)', ['A♠', '3♠', 'Q♠'], '2'], ['4 Brights', ['A♠', '3♠', '8♠', 'J♠'], '4'], ['5 Brights', ['A♠', '3♠', '8♠', 'J♠', 'Q♠'], '15'],
+    ['Godori — the 3 Birds', ['2♠', '4♠', '8♥'], '5'],
+    ['Red ribbons', ['A♥', '2♥', '3♥'], '3'], ['Blue ribbons', ['6♥', '9♥', '10♥'], '3'], ['Green ribbons', ['4♥', '5♥', '7♥'], '3'],
+    ['5 Animals (any)', ['5♠', '6♠', '7♠', '10♠', 'Q♦'], '1, +1 each extra'], ['5 Ribbons (any)', ['A♥', '4♥', '6♥', '9♥', 'Q♥'], '1, +1 each extra'],
+    ['10 Junk (Double = 2, K = 2 or 3)', ['2♦', '3♣', '5♦', '6♣', '7♦', '8♣', 'J♣', 'K♦'], '1, +1 each extra']
+  ];
+  $('#score-rows').innerHTML = SC.map(([n, cs, p]) => `<tr><td><b>${n}</b></td><td><div class="cards sm" style="margin:0">${cs.map(c => svg(c)).join('')}</div></td><td class="pts">${p}</td></tr>`).join('');
+
+  const R = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  $('#deckgrid').innerHTML = '♠♥♦♣'.split('').map(s => `<span class="s" style="color:${s === '♥' || s === '♦' ? '#C8102E' : '#1A1F2E'}">${s}</span>` + R.map(r => svg(r + s)).join('')).join('');
+})();
+</script>
+</body>
+</html>

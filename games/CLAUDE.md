@@ -66,6 +66,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `duelReplay` | 대전 결과 창 "이 판 다시 풀기 · 친구에게 보내기"(R11) 켜기/끄기. 없으면 경주(`race`)·점수(`score`)만 켜짐, 선점·차례·`duelLaunch`는 꺼짐. 상대 수에 따라 판이 달라지는 게임은 `false`(예: 오목). 다시 풀기는 대전과 같은 씨앗·`duelCfg`로 `init`을 부르고, `init` 동안만 `G.duel = { replay:true, … }`(가짜 표식)이 있어 대전 전용 판 갈래를 그대로 탄 뒤 `G.duel = null`로 혼자 푼다(대전 뒤 계속 풀기와 같은 모양) |
 
 공용 조작 부품(엔진, 게임이 붙여 씀): `dpadHtml({ okText, ok:false, cls })` + `dpadBind(요소, dir => …, { repeat:ms })`(▲▼◀▶ + [확인] 56px), `tapPlace(요소, { item:'.조각', cell:'.칸', place:(조각, 칸) => false면 못 놓음, pick? })`(끌기 대신 누르고 놓기, 고른 것에 `.tp-sel`). 큰 글씨는 `body.big`(글자 +2px) — 게임 CSS에서 필요하면 `body.big .내클래스{…}`로 맞춘다.
+| `entry` | 입구형 게임(독립 서비스를 사이트 안에서 여는 게임, 예: 홀덤) `{ tag, solo, duel, free }`. 있으면 사이트 솔로 목록 카드는 챕터·별·판 고르기 없이 [`solo` 글] 버튼 하나(`startGame(id, 'normal', { entry:'solo' })`), 대전 목록 줄은 인원·전적 없이 [`duel` 글] 버튼(누르면 `gateThen` → `duelLaunch({ entry:'duel' })`, 빠른 대전·방 목록 안 거침). `free:true`면 하트·시험지 기회·대전 판 수를 쓰지 않음. 솔로 레벨 게임 수·배지 수에서 빠짐(`stageIds`) |
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
 
 ## 대전 v3 (선택, `core/duel.js`, docs/21 3절) — 2~5명 · 순위 · 사건 · 선점 · 차례

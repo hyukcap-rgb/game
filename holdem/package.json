@@ -1,0 +1,23 @@
+{
+  "name": "royal-holdem",
+  "version": "1.0.0",
+  "description": "로열 홀덤 — 텍사스 홀덤 웹게임",
+  "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/engine.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.3.0",
+    "ws": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,6 +1,6 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
-registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','jigsaw','tidy']);   /* 사이트에 보일 게임과 순서 */
-const ADULT = ['gostop'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
+registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','tgostop','holdem','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','jigsaw','tidy']);   /* 사이트에 보일 게임과 순서 */
+const ADULT = ['gostop', 'tgostop', 'holdem'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
 const isAdult = id => !!(NG[id] && NG[id].adult) || ADULT.includes(id);
 /* ===== 가상 숫자 스위치 (2026-10-04 UI 검수 결론) =====
    서버 집계가 붙기 전까지: 기부액·참가자 수는 숨기고, 상위 %는 정수 + '예상', 예시 친구는 하트를 보내지 않고 추월 알림도 안 보낸다.
@@ -228,6 +228,7 @@ const EXAM_MODE = { omok:'puzzle' };
 const hasMode = (g, md) => { const m = NG[g]; return !!m && (m.examMode === md || m.dailyMode === md || (Array.isArray(m.modes) && m.modes.includes(md)) || !!(m.modes && !Array.isArray(m.modes) && m.modes[md])); };
 /* 솔로가 있는 게임만(게임 정의 modes에 'solo'가 없으면 대전 전용, 예: 산넘어산) — 솔로 목록·레벨·배지에서 뺀다 */
 const soloIds = () => GAME_IDS.filter(g => !Array.isArray(NG[g].modes) || NG[g].modes.includes('solo'));
+const stageIds = () => soloIds().filter(g => !NG[g].entry);   /* 스테이지·별·배지가 있는 솔로 게임(입구형 게임 빼고) */
 const examReady = g => !!GAMES[g] && (!EXAM_MODE[g] || hasMode(g, EXAM_MODE[g]));
 const examOpt = (id, o = {}) => EXAM_MODE[id] ? Object.assign({ mode:EXAM_MODE[id] }, o) : o;
 const subjGames = (i, kk) => SUBJ[i][1].filter(g => (!SUBJ_FROM[g] || kk >= SUBJ_FROM[g]) && (!SUBJ_UNTIL[g] || kk < SUBJ_UNTIL[g]));
@@ -386,7 +387,7 @@ function renderToday(d, tl, P, lv){
     g.appendChild(row);
   }
   if(typeof rpPastBtn === 'function') rpPastBtn();   /* 지난 7일 문제 다시 풀기(portal/replay.js) */
-  $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>${soloIds().length}가지 게임 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
+  $('#advPromo').innerHTML = `<span class="ap-i">${shieldSVG(lv.L)}</span><span><b>솔로 · Lv.${lv.L} ${lv.title}</b><small>${stageIds().length}가지 게임 · 별을 모아 레벨 업</small></span>${ic('chev')}`;
   $('#duelPromo').innerHTML = `<span class="ap-i">${ic('duel')}</span><span><b>대전 · 2~5명 · 오늘 ${d.dw + d.dd + d.dl}판</b><small>같은 문제를 같은 순간에 · 이번 주 ${DUEL_TIERS[duelTierOf(duelWeek().pts)].n} 등급</small></span>${ic('chev')}`;
 }
 
@@ -398,6 +399,7 @@ function renderAdv(lv){
   const list = $('#advList'); list.innerHTML = '';
   for(const id of filteredIds('adv')){
     if(id === ADULT_SEP){ list.insertAdjacentHTML('beforeend', adultSepHtml('adv')); adultSepBind('adv'); continue; }
+    if(NG[id].entry){ list.appendChild(entryCard(id)); continue; }   /* 입구형 게임(따로 도는 서비스를 여는 게임): 챕터·별·판 고르기 없이 버튼 하나 */
     const p = advProg(id), cur = p.max, c = chOf(cur), cs = (c - 1) * 10;
     let dots = ''; for(let k = 1; k <= 10; k++){ const n = cs + k, s = p.stars[n] || 0; dots += `<i class="${s ? 's' + s : n === cur ? 'cur' : ''}"></i>`; }
     const el = document.createElement('div'); el.className = 'acard tile panel'; el.style.setProperty('--gc', GCOL[id][1]);
@@ -412,6 +414,21 @@ function renderAdv(lv){
     list.appendChild(el);
   }
 }
+/* ---- 입구형 게임 카드(게임 정의 entry = { solo, duel, tag, free }) ----
+   스테이지·별·솔로 포인트가 없는 게임(독립 서비스를 사이트 안에서 여는 게임). 솔로 목록에서 버튼 하나로 바로 연다. */
+function entryCard(id){
+  const ent = NG[id].entry, el = document.createElement('div');
+  el.className = 'acard tile panel entry'; el.style.setProperty('--gc', GCOL[id][1]);
+  el.innerHTML = `<span class="g-art">${ART[id]()}<span class="chn">${escH(ent.tag || '바로 시작')}</span></span>
+    <div class="ac-top"><b>${GAMES[id].name}</b></div>
+    ${NG[id].cardNote ? '<div class="ac-note"><b class="cnote">' + escH(NG[id].cardNote()) + '</b></div>' : ''}
+    <div class="ac-btns"><button class="gr-go adv" aria-label="${GAMES[id].name} ${escH(ent.solo || '시작')}${ent.free ? ', 무료' : ''}">${escH(ent.solo || '시작')}</button></div>`;
+  const go = () => startGame(id, 'normal', { entry:'solo' });
+  el.querySelector('.gr-go').onclick = go;
+  el.querySelector('.g-art').onclick = go;
+  return el;
+}
+
 /* ---- 솔로·대전 목록: 과목 칩 필터 + 성인(19) 묶음 ---- */
 const SUBJ_OF_ABIL = { '논리력':'논리', '집중력':'집중', '공간지각':'공간', '전략력':'전략', '추리력':'추리', '순발력':'순발' };
 const FILT_SUBJ = ['전체', '논리', '집중', '공간', '전략', '추리', '순발'];
@@ -526,15 +543,15 @@ function renderMe(d, tl, P, lv){
   const grw = id => { const p = advProg(id), c = chOf(p.max);
     return `<div class="grw" style="--gc:${GCOL[id][1]}"><span class="gi">${ic(id)}</span><span><b>${GAMES[id].name}</b><small>${p.max > 1 ? '스테이지 ' + (p.max - 1) + '까지 클리어 · ' : ''}지금 ${chName(id, c)}</small></span><span class="gs">★ ${advStarsOf(id)}</span></div>`; };
   const opn = sel => { const e = $(sel + ' details.more'); return e && e.open ? ' open' : ''; }, gOpen = opn('#growList'), bOpen = opn('#badges');   /* 다시 그려도 펼친 상태 유지 */
-  const byStars = soloIds().sort((a, b) => advStarsOf(b) - advStarsOf(a));
+  const byStars = stageIds().sort((a, b) => advStarsOf(b) - advStarsOf(a));
   /* 은퇴한 게임: 별이 있으면 이름만 한 줄(솔로 레벨에 그대로 들어감) */
   const old = Object.keys(RETIRED).map(g => { const p = store.get('hp:adv:' + g, null), s = p && p.stars ? Object.values(p.stars).reduce((a, b) => a + (b || 0), 0) : 0;
     return s ? `<div class="grw retired"><span class="gi">${ic('trophy')}</span><span><b>${gameName(g)}</b><small>이제 없는 게임 · 모은 별은 레벨에 그대로 들어가요</small></span><span class="gs">★ ${s}</span></div>` : ''; }).join('');
   $('#growList').innerHTML = byStars.slice(0, 5).map(grw).join('') + (byStars.length > 5 || old ? `<details class="more"${gOpen}><summary>나머지 ${byStars.length - 5}개 게임 보기</summary>${byStars.slice(5).map(grw).join('')}${old}</details>` : '');
   /* 챕터 배지: 받은 것만 보이고 전체는 접기 */
   const bdg = (id, c, on) => `<div class="bdg${on ? '' : ' off'}" title="${GAMES[id].name} 챕터 ${c} ${chName(id, c)}${on ? ' 클리어' : ' 아직'}">${badgeSVG(id, c)}<span>${chName(id, c)}</span></div>`;
-  let got = '', all = '', nb = 0; const total = soloIds().length * 5;
-  for(const id of soloIds()) for(let c = 1; c <= 5; c++){ const on = chCleared(id, c); if(on){ nb++; got += bdg(id, c, true); } all += bdg(id, c, on); }
+  let got = '', all = '', nb = 0; const total = stageIds().length * 5;
+  for(const id of stageIds()) for(let c = 1; c <= 5; c++){ const on = chCleared(id, c); if(on){ nb++; got += bdg(id, c, true); } all += bdg(id, c, on); }
   $('#badges').innerHTML = (nb ? `<div class="badges">${got}</div>` : '<p class="bd-empty">아직 받은 배지가 없어요. 솔로에서 챕터를 깨면 배지를 받아요.</p>')
     + `<details class="more"${bOpen}><summary>배지 ${total}개 모두 보기</summary><div class="badges">${all}</div></details>`;
   $('#bdgCount').textContent = nb + ' / ' + total;
@@ -862,7 +879,8 @@ Object.assign(HOST, {
   duelQuitNote:'대전 점수는 받지 못하고 쓴 하트도 돌아오지 않아요.',
   beforeStart(id, lv, o){
     const adv = o.adv || 0, duel = o.duel || null;
-    if(o.replay) return { attempt:0 };   /* 지난 문제·받은 판·대전 판 다시 풀기: 하트 없음·기록 안 됨(portal/replay.js) */
+    if(o.replay) return { attempt:0 };
+    if(NG[id] && NG[id].entry && NG[id].entry.free) return { attempt:0 };   /* 입구형 게임: 하트·시험지 기회·대전 판 수와 무관 */   /* 지난 문제·받은 판·대전 판 다시 풀기: 하트 없음·기록 안 됨(portal/replay.js) */
     const freeRun = !adv && !duel && !(dayState().tries[id] > 0);   /* v9: 시험지 첫 판(공식 답안)은 무료 */
     const dFree = duel ? duelHeartFree(duel) : false;   /* 같은 방 2~4판째 무료(portal/duel-ui.js, 결정 212) */
     if(!adv && !freeRun && !dFree && !spendHeart()){ openHeartSheet('empty'); return false; }

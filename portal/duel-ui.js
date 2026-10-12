@@ -135,8 +135,10 @@ function renderDuel(d){
     /* 게임마다 다른 한 줄: 게임 정의의 duelHow, 없으면 게임 방법 첫 줄 */
     const how = NG[id].duelHow || (HELP[id] && HELP[id][0] && HELP[id][0][0]) || '점수가 높으면 승리';
     const row = document.createElement('div'); row.className = 'grow panel duelrow'; row.style.setProperty('--gc', GCOL[id][1]);
-    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}<small class="drec"><em class="dmax">${mx > 2 ? `2~${mx}명` : '1:1'}</em> ${NG[id].cardNote ? '<b class="cnote">' + escH(NG[id].cardNote()) + '</b> ' : ''}${tot ? `1위 ${r.w}번 · 판 ${tot}번` : ''}</small></b><button class="gr-go duel${rmOk(id) ? ' rooms' : ''}" aria-label="${GAMES[id].name} ${rmOk(id) ? '대전 방 목록' : '대전 시작, 하트 1개'}">${rmRowBtn(id)}</button><span class="dhow">${escH(how)}</span>`;
-    const open = () => rmOk(id) ? rmList(id) : (RM.cur ? (toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'), rmOpen()) : gateThen(id, () => duelStart(id)));   /* 게임을 누르면 그 게임의 방 목록(22번 문서) */
+    const ent = NG[id].entry;   /* 입구형 게임: 인원·전적 대신 한 줄, 버튼은 게임이 정한 글(하트 없음) */
+    row.innerHTML = `<span class="g-art">${ART[id]()}${wait ? `<span class="live"><i></i>${wait}명</span>` : ''}</span><b class="dname">${GAMES[id].name}<small class="drec">${ent ? '' : `<em class="dmax">${mx > 2 ? `2~${mx}명` : '1:1'}</em> `}${NG[id].cardNote ? '<b class="cnote">' + escH(NG[id].cardNote()) + '</b> ' : ''}${!ent && tot ? `1위 ${r.w}번 · 판 ${tot}번` : ''}</small></b><button class="gr-go duel${!ent && rmOk(id) ? ' rooms' : ''}" aria-label="${GAMES[id].name} ${ent ? escH(ent.duel || '대전') + (ent.free ? ', 무료' : '') : rmOk(id) ? '대전 방 목록' : '대전 시작, 하트 1개'}">${ent ? escH(ent.duel || '대전') : rmRowBtn(id)}</button><span class="dhow">${escH(how)}</span>`;
+    const open = () => ent ? (RM.cur ? (toast('대전 방에 있는 동안은 열 수 없어요'), rmOpen()) : gateThen(id, () => NG[id].duelLaunch({ entry:'duel' })))
+      : rmOk(id) ? rmList(id) : (RM.cur ? (toast('대전 방에 있는 동안은 빠른 대전을 할 수 없어요'), rmOpen()) : gateThen(id, () => duelStart(id)));   /* 게임을 누르면 그 게임의 방 목록(22번 문서) */
     row.querySelector('.gr-go').onclick = open;
     row.querySelector('.g-art').onclick = open;
     list.appendChild(row);

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07090f">
+<title>로열 홀덤</title>
+<meta name="description" content="AI·친구와 즐기는 텍사스 홀덤 — 매일 같은 카드로 겨루는 오늘의 토너먼트">
+<meta property="og:title" content="로열 홀덤">
+<meta property="og:description" content="친구랑 홀덤 한 판! 링크 누르고 바로 입장">
+<meta property="og:image" content="img/logo.jpg">
+<link rel="icon" href="img/av5.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 홈 -->
+  <section id="home" class="screen active">
+    <div class="home-glow"></div>
+    <button class="home-back" id="homeBack" hidden>‹ 하루퍼즐</button>
+    <img class="logo" src="img/logo.jpg" alt="로열 홀덤">
+    <div class="profile">
+      <div class="avatar-pick" id="avatarPick"></div>
+      <input id="nick" maxlength="10" placeholder="닉네임" autocomplete="off">
+    </div>
+    <div class="modes">
+      <button class="mode-card solo" data-mode="solo">
+        <span class="mode-ico">🤖</span>
+        <span class="mode-txt"><b>AI 대결</b><small>개성 다른 AI 5명과 한 테이블</small></span>
+        <span class="chev">›</span>
+      </button>
+      <button class="mode-card friends" data-mode="friends">
+        <span class="mode-ico">👥</span>
+        <span class="mode-txt"><b>친구 대전</b><small>방 만들고 링크로 초대 · 최대 6명</small></span>
+        <span class="chev">›</span>
+      </button>
+      <button class="mode-card daily" data-mode="daily">
+        <span class="mode-ico">🏆</span>
+        <span class="mode-txt"><b>오늘의 토너먼트</b><small id="dailySub">모두 같은 카드 · 30핸드 · 하루 1회</small></span>
+        <span class="chev">›</span>
+      </button>
+    </div>
+    <div class="join-row">
+      <input id="joinCode" maxlength="4" placeholder="방 코드" autocomplete="off">
+      <button id="joinBtn" class="btn ghost">입장</button>
+    </div>
+    <div class="home-links">
+      <button class="link" id="rankBtn">🏅 오늘의 랭킹</button>
+      <button class="link" id="rulesBtn">📖 족보·규칙</button>
+    </div>
+  </section>
+
+  <!-- 로비 -->
+  <section id="lobby" class="screen">
+    <header class="bar"><button class="icon-btn" data-back>‹</button><h2>친구 대전</h2><span></span></header>
+    <div class="lobby-body">
+      <p class="muted">방 코드</p>
+      <div class="room-code" id="roomCode">----</div>
+      <button class="btn gold" id="shareBtn">🔗 초대 링크 보내기</button>
+      <ul class="members" id="members"></ul>
+      <label class="toggle" id="botToggleWrap"><input type="checkbox" id="botToggle" checked><span>빈자리는 AI로 채우기</span></label>
+      <button class="btn primary big" id="startBtn">게임 시작</button>
+      <p class="muted center" id="lobbyHint"></p>
+    </div>
+  </section>
+
+  <!-- 테이블 -->
+  <section id="game" class="screen">
+    <header class="hud">
+      <button class="icon-btn" id="exitBtn">‹</button>
+      <div class="hud-mid">
+        <div class="hud-title" id="hudTitle">AI 대결</div>
+        <div class="hud-sub" id="hudSub">블라인드 50/100</div>
+      </div>
+      <button class="icon-btn" id="soundBtn">🔊</button>
+    </header>
+    <div class="table-area">
+      <div class="table" id="table">
+        <img class="felt" src="img/table.jpg" alt="">
+        <div class="pot" id="pot"><span class="pot-chip"></span><b id="potAmt">0</b></div>
+        <div class="board" id="board"></div>
+        <div class="my-hand" id="myHand"></div>
+        <div class="deck" id="deck"></div>
+        <div class="dealer-btn" id="dealerBtn">D</div>
+        <div id="seats"></div>
+        <div id="bets"></div>
+        <div class="banner" id="banner"></div>
+        <div id="fx"></div>
+      </div>
+    </div>
+    <footer class="actions" id="actions">
+      <div class="raise-panel" id="raisePanel">
+        <div class="presets" id="presets"></div>
+        <div class="slider-row">
+          <button class="step" id="minus">−</button>
+          <input type="range" id="raiseRange">
+          <button class="step" id="plus">+</button>
+        </div>
+      </div>
+      <div class="act-row" id="actRow">
+        <button class="act fold" id="foldBtn">폴드</button>
+        <button class="act call" id="callBtn">체크</button>
+        <button class="act raise" id="raiseBtn">레이즈</button>
+      </div>
+      <div class="wait-row" id="waitRow"></div>
+      <div class="emotes" id="emotes"><button class="emo-toggle" id="emoToggle">😀</button><div class="emo-list" id="emoList"></div></div>
+    </footer>
+  </section>
+
+</div>
+
+<!-- 모달 -->
+<div class="modal" id="modal"><div class="modal-card" id="modalCard"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

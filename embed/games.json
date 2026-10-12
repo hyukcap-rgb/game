@@ -104,12 +104,12 @@
     {
       "id": "gostop",
       "name": "고스톱",
-      "version": "1.9.1",
+      "version": "1.10.0",
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 1191241,
-      "gzip": 721382
+      "bytes": 1191333,
+      "gzip": 721436
     },
     {
       "id": "crossword",
@@ -284,12 +284,12 @@
     {
       "id": "march",
       "name": "행군대작전",
-      "version": "1.3.1",
+      "version": "1.9.0",
       "summary": "병사 1명으로 출발해 갈림길·숫자 상자·보상 통을 지나 병력을 키우고, 예고 공격을 피하며 보스를 쓰러뜨리는 행군 — 솔로(새 기믹·3판마다 보스)와 라이벌 2분 대전",
       "duel": true,
       "file": "march.html",
-      "bytes": 330122,
-      "gzip": 109261
+      "bytes": 344550,
+      "gzip": 114155
     },
     {
       "id": "jigsaw",
@@ -314,12 +314,22 @@
     {
       "id": "tgostop",
       "name": "트럼프 고스톱",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "summary": "고스톱(맞고)을 트럼프 52장으로 — 판·연출·대전은 고스톱 그대로, A~Q = 1~12월, K = 보너스패, 연뻑·3연뻑 추가(19세 이상)",
       "duel": true,
       "file": "tgostop.html",
-      "bytes": 412767,
-      "gzip": 135290
+      "bytes": 599184,
+      "gzip": 272255
+    },
+    {
+      "id": "holdem",
+      "name": "로열 홀덤",
+      "version": "1.1.0",
+      "summary": "텍사스 홀덤 노리밋(19세 이상) — 독립 서비스 로열 홀덤을 사이트 안에서 열어요: AI 대결 · 친구 대전 · 오늘의 토너먼트",
+      "duel": true,
+      "file": "holdem.html",
+      "bytes": 276686,
+      "gzip": 88031
     }
   ],
   "retired": [
