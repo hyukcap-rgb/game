@@ -881,4 +881,13 @@ setInterval(() => {
 }, 20000);
 
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { saveNow(); process.exit(0); });
+// 테스트 기간(2026-10-12 사용자 지시): 운영 서버도 한 번 자동 승인 켬 + 기다리던 가입 승인. 이후엔 관리자 설정을 따름.
+if (!db.settings.mig231) {
+  db.settings.mig231 = true; db.settings.autoApprove = true;
+  for (const a of Object.values(db.accounts)) if (a.status === 'pending') {
+    a.status = 'active'; a.approvedAt = now();
+    if (db.settings.welcomeChips > 0) addMoney(a, db.settings.welcomeChips, 'welcome', '가입 지급(자동 승인)', 'admin');
+  }
+  save();
+}
 server.listen(PORT, () => console.log('로열 홀덤 서버 :' + PORT));
