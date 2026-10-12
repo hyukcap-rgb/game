@@ -1,6 +1,6 @@
 /* 틀린그림 찾기 */
 /* ===== 틀린그림 찾기 (spot) · 하루퍼즐 리그 게임 모듈 =====
-   저작권이 끝난 명화 30점(spot-masters.js의 SPOT_MASTERS, 그림 파일은 art/)으로 한 판을 만든다.
+   저작권이 끝난 명화 44점(spot-masters.js의 SPOT_MASTERS, 그림 파일은 art/)으로 한 판을 만든다.
    명화 한 장을 위 그림으로 놓고, 그 작품의 차이 조각 중 N곳만 얹은 것이 아래 그림. 고르지 않은 곳은 원본 그대로.
    차이 조각·좌표는 tools/masterpiece/export.py가 만든다. 규칙·저작권: docs/24_명화_틀린그림_저작권.md */
 NG.spot = (() => {

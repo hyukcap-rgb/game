@@ -33,3 +33,17 @@
 - 37. 김홍도, 「씨름」 (18세기 후반, 국립중앙박물관(대한민국 서울)) — 파일: File:Danwon Ssireum.jpg / https://commons.wikimedia.org/wiki/File:Danwon_Ssireum.jpg / Public domain
 - 39. 정선, 「인왕제색도」 (1751년, 리움미술관(대한민국 서울)) — 파일: File:Inwangjesaekdo.jpg / https://commons.wikimedia.org/wiki/File:Inwangjesaekdo.jpg / Public domain
 - 40. 신윤복, 「월하정인」 (19세기 초, 간송미술관(대한민국 서울)) — 파일: File:Hyewon-Wolha.jeongin-3.jpg / https://commons.wikimedia.org/wiki/File:Hyewon-Wolha.jeongin-3.jpg / Public domain
+- 42. 가쓰시카 호쿠사이, 「붉은 후지산(개풍쾌청)」 (1831경) — 퍼즐 게임 그림 games/jigsaw/img/fuji.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 65. 페르디난트 호들러, 「슈브르에서 본 제네바 호수」 (1905경) — 퍼즐 게임 그림 games/jigsaw/img/hodler.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 75. 존 에버렛 밀레이, 「눈먼 소녀」 (1856) — 퍼즐 게임 그림 games/jigsaw/img/blindgirl.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 96. 폴 시냐크, 「펠릭스 페네옹 초상」 (1890) — 퍼즐 게임 그림 games/jigsaw/img/signac.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 98. 에드워드 포인터, 「레스비아와 참새」 (1907) — 퍼즐 게임 그림 games/jigsaw/img/lesbia.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 110. 윌리엄 홀먼 헌트, 「속죄의 염소」 (1856) — 퍼즐 게임 그림 games/jigsaw/img/scapegoat.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 111. 조지프 라이트 오브 더비, 「태양계 모형 앞에서」 (1766) — 퍼즐 게임 그림 games/jigsaw/img/orrery.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 112. 에두아르 마네, 「깃발이 걸린 모스니에 거리」 (1878) — 퍼즐 게임 그림 games/jigsaw/img/mosnier.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 116. 작자 미상, 「공작명왕」 (12세기) — 퍼즐 게임 그림 games/jigsaw/img/peacock.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 126. 아르투로 미첼레나, 「젊은 어머니」 (1889) — 퍼즐 게임 그림 games/jigsaw/img/michelena.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 129. 베네지투 칼릭스투, 「공화국 선포」 (1893) — 퍼즐 게임 그림 games/jigsaw/img/republic.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 130. 프란스 포스트, 「올린다 풍경」 (1665경) — 퍼즐 게임 그림 games/jigsaw/img/olinda.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 132. 빈센트 반 고흐, 「까마귀가 나는 밀밭」 (1890) — 퍼즐 게임 그림 games/jigsaw/img/vg_wheat.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
+- 133. 빈센트 반 고흐, 「꽃 핀 아몬드 나무」 (1890) — 퍼즐 게임 그림 games/jigsaw/img/vg_almond.webp (원본은 위키미디어 공용, 퍼블릭 도메인(위키미디어 커먼즈))
