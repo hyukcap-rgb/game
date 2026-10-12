@@ -6,6 +6,10 @@
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 분양 주소(/s/이름/…)면 그 사업장으로 연결. 로그인 정보도 사업장마다 따로 저장
+  const BASE = (location.pathname.match(/^\/s\/[a-z0-9-]{2,30}/) || [''])[0];
+  const SESS = 'rh_sess' + (BASE ? ':' + BASE.slice(3) : '');
+  const rakeTxt = (rk) => (rk ? `수수료 ${rk.pct}% · 최대 ${fmt(rk.cap)} (${rk.capBB}BB)${rk.nfnd ? ' · 플랍 전 무료' : ''}` : '수수료 없음');
 
   // ---------- 저장소 ----------
   const store = {
@@ -19,7 +23,7 @@
   const profile = {
     name: store.get('rh_name', ''),
     avatar: store.get('rh_avatar', 5),
-    token: store.get('rh_sess', null),
+    token: store.get(SESS, null),
   };
 
   // ---------- 사운드 (WebAudio 합성) ----------
@@ -501,6 +505,12 @@
           });
         });
         Sound.chip(); Sound.chip(0.12); Sound.chip(0.24);
+        if (res.rake > 0) {
+          const f = document.createElement('div');
+          f.className = 'float-num rake'; f.textContent = '수수료 -' + fmt(res.rake);
+          f.style.left = '50%'; f.style.top = '40%';
+          $('#fx').appendChild(f); setTimeout(() => f.remove(), 2400);
+        }
         this._potGone = hand;
         setTimeout(() => { $('#pot').classList.remove('show'); $$('#sidePots .side-pot').forEach((el) => el.classList.add('gone')); }, 400);
         v.players.forEach((p, i) => {
@@ -727,7 +737,7 @@
 
   function hud(title, v, extra) {
     $('#hudTitle').textContent = title;
-    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)} · ${extra || '#' + v.handNo}`;
+    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)}${v.rake ? ' · 수수료 ' + v.rake.pct + '%' : ''} · ${extra || '#' + v.handNo}`;
   }
   const PHRASES = {
     p1: '빨리빨리~', p2: '아 까비!', p3: '이걸 넘겨?', p4: '나이스!', p5: '블러프지?', p6: '올인 간다!',
@@ -745,7 +755,7 @@
     connect() {
       this.wantOpen = true;
       if (this.ws && (this.ws.readyState === 0 || this.ws.readyState === 1)) return;
-      const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+      const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + BASE + '/ws');
       this.ws = ws;
       ws.onopen = () => {
         this.open = true; this.retry = 0;
@@ -815,7 +825,7 @@
   }
   function logout() {
     Net.send({ t: 'logout', token: profile.token });
-    profile.token = null; store.set('rh_sess', null);
+    profile.token = null; store.set(SESS, null);
     Me.info = null; closeModal(); show('home'); homeState('auth');
   }
   function showTestPin(pin) {
@@ -823,17 +833,20 @@
     if (pin) { el.innerHTML = `🧪 테스트 기간 동안 PIN은 <b class="num">${esc(pin)}</b> 입니다<br><small>닉네임만 정하고 PIN ${esc(pin)}을 넣으면 누구나 들어올 수 있어요</small>`; el.hidden = false; }
     else el.hidden = true;
   }
-  fetch('/api/config').then((r) => r.json()).then((c) => showTestPin(c.testPin)).catch(() => {});
+  fetch(BASE + '/api/config').then((r) => r.json()).then((c) => {
+    showTestPin(c.testPin);
+    if (c.name && !c.main) { const el = $('#siteName'); if (el) { el.textContent = c.name; el.hidden = false; } document.title = c.name + ' · 로열 홀덤'; }
+  }).catch(() => {});
   Net.on('auth', (m) => {
     if ('testPin' in m) showTestPin(m.testPin);
     Me.info = null;
     if (m.reason === 'blocked') $('#authErr').textContent = '이용이 막힌 계정이에요';
-    else if (m.reason === 'expired') { profile.token = null; store.set('rh_sess', null); }
+    else if (m.reason === 'expired') { profile.token = null; store.set(SESS, null); }
     if (!$('#home').classList.contains('active')) show('home');
     homeState('auth');
   });
   Net.on('authError', (m) => { $('#authErr').textContent = m.msg; });
-  Net.on('session', (m) => { profile.token = m.token; store.set('rh_sess', m.token); $('#authErr').textContent = ''; });
+  Net.on('session', (m) => { profile.token = m.token; store.set(SESS, m.token); $('#authErr').textContent = ''; });
   Net.on('me', (m) => {
     const was = Me.info;
     Me.info = m; Online.pid = m.pid; R.myId = m.pid;
@@ -922,7 +935,7 @@
       <div class="btns"><button class="btn gold" id="shareScore">📣 기록 자랑하기</button><button class="btn ghost" id="dHome">홈으로</button></div>`,
     (el) => {
       el.querySelector('#dHome').onclick = () => goHome();
-      el.querySelector('#shareScore').onclick = () => share(`오늘의 홀덤 토너먼트 ${m.rank}위! 최종 칩 ${fmt(m.score)} — 같은 카드로 붙어보자`, location.origin);
+      el.querySelector('#shareScore').onclick = () => share(`오늘의 홀덤 토너먼트 ${m.rank}위! 최종 칩 ${fmt(m.score)} — 같은 카드로 붙어보자`, location.origin + BASE + '/');
     });
   });
   Net.on('left', () => { Online.active = false; });
@@ -942,17 +955,17 @@
     const allSeated = m.members.every((x) => x.seat > 0);
     const canStart = (m.members.length >= 2 || m.fillBots) && allSeated;
     $('#startBtn').disabled = !canStart;
-    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b>`;
+    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b><br><small>${rakeTxt(m.rake)}</small>`;
     const sitBtn = $('#sitBtn');
     sitBtn.hidden = m.mySeat > 0;
-    sitBtn.onclick = () => buyInModal({ title: '칩 가져오기', sb: m.sb, bb: m.bb, minIn: m.minIn, go: '앉기', onOk: (x) => Net.send({ t: 'sit', buyIn: x.buyIn }) });
+    sitBtn.onclick = () => buyInModal({ title: '칩 가져오기', sb: m.sb, bb: m.bb, minIn: m.minIn, rake: m.rake || null, go: '앉기', onOk: (x) => Net.send({ t: 'sit', buyIn: x.buyIn }) });
     $('#lobbyHint').textContent = !allSeated ? '모두 칩을 가져와 앉으면 시작할 수 있어요' : m.isHost ? (canStart ? '' : '친구가 들어오거나 AI 채우기를 켜면 시작할 수 있어요') : '방장이 시작하길 기다리는 중…';
   }
   $('#botToggle').onchange = (e) => Net.send({ t: 'setBots', on: e.target.checked });
   $('#startBtn').onclick = () => Net.send({ t: 'start' });
   $('#shareBtn').onclick = () => {
     const code = Online.room && Online.room.code;
-    share(`${Me.info ? Me.info.name : ''}님이 홀덤 한 판 하자고 초대했어요! 방 코드 ${code}`, `${location.origin}/?room=${code}`);
+    share(`${Me.info ? Me.info.name : ''}님이 홀덤 한 판 하자고 초대했어요! 방 코드 ${code}`, `${location.origin}${BASE}/?room=${code}`);
   };
   async function share(text, url) {
     if (navigator.share) { try { await navigator.share({ title: '로열 홀덤', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
@@ -975,6 +988,7 @@
       <div class="bi">
         ${o.pickBlinds ? '<label>블라인드 (SB / BB)</label><div class="bi-chips" id="biBlinds"></div>' : `<p class="bi-info">블라인드 <b class="num">${fmt(o.sb)} / ${fmt(o.bb)}</b> · 최소 머니 <b class="num">${fmt(minIn)}</b></p>`}
         ${o.pickMin ? '<label>최소 머니 (들어올 때 이만큼은 가져와야 해요)</label><div class="bi-chips" id="biMins"></div>' : ''}
+        <p class="bi-rake" id="biRake"></p>
         <label>가져갈 칩 <small>보유 ${fmt(bal)}</small></label>
         <div class="bi-amt num" id="biAmt"></div>
         <input type="range" id="biRange">
@@ -986,6 +1000,8 @@
       const draw = () => {
         if (o.pickBlinds) el.querySelector('#biBlinds').innerHTML = BLINDS.map(([a, b]) => `<button data-bb="${b}" class="${b === bb ? 'on' : ''}">${short(a)}/${short(b)}</button>`).join('');
         if (o.pickMin) el.querySelector('#biMins').innerHTML = MIN_INS.filter((x) => x >= bb * 10).map((x) => `<button data-min="${x}" class="${x === minIn ? 'on' : ''}" ${x > bal ? 'disabled' : ''}>${short(x)}</button>`).join('');
+        const rt = Me.info && Me.info.rake && Me.info.rake[bb];
+        el.querySelector('#biRake').textContent = rakeTxt(o.rake !== undefined ? o.rake : rt ? rt[o.mode || 'friends'] : null);
         const ok = bal >= minIn;
         const r = el.querySelector('#biRange');
         r.min = minIn; r.max = Math.max(minIn, bal); r.step = 100; r.value = amt; r.disabled = !ok;
@@ -1039,7 +1055,7 @@
   Net.on('roomInfo', (m) => {
     if (m.mine) { Net.send({ t: 'join', code: m.code }); return; }
     if (m.status !== 'lobby') return toast('이미 게임이 진행 중인 방이에요');
-    buyInModal({ title: `방 ${m.code} 들어가기`, sb: m.sb, bb: m.bb, minIn: m.minIn, go: '칩 가져가서 입장', onOk: (x) => { current = Online; Net.send({ t: 'join', code: m.code, buyIn: x.buyIn }); } });
+    buyInModal({ title: `방 ${m.code} 들어가기`, sb: m.sb, bb: m.bb, minIn: m.minIn, rake: m.rake || null, go: '칩 가져가서 입장', onOk: (x) => { current = Online; Net.send({ t: 'join', code: m.code, buyIn: x.buyIn }); } });
   });
 
   // ---------- 홈 ----------
@@ -1061,10 +1077,10 @@
     toast('관리자 입장 승인이 필요해요');
   }
   function startSolo() {
-    needApproval(() => buyInModal({ title: 'AI 대결 — 테이블 고르기', pickBlinds: true, go: '앉기', onOk: (x) => { current = Online; R.reset(); Net.send(Object.assign({ t: 'solo' }, x)); } }));
+    needApproval(() => buyInModal({ title: 'AI 대결 — 테이블 고르기', pickBlinds: true, mode: 'solo', go: '앉기', onOk: (x) => { current = Online; R.reset(); Net.send(Object.assign({ t: 'solo' }, x)); } }));
   }
   function startFriends() {
-    needApproval(() => buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } }));
+    needApproval(() => buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, mode: 'friends', go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } }));
   }
   function joinRoom(code) {
     code = (code || '').trim().toUpperCase();
@@ -1083,7 +1099,7 @@
   }
   async function fetchDaily() {
     try {
-      const r = await fetch('/api/daily' + (profile.token ? '?token=' + encodeURIComponent(profile.token) : ''));
+      const r = await fetch(BASE + '/api/daily' + (profile.token ? '?token=' + encodeURIComponent(profile.token) : ''));
       return await r.json();
     } catch (e) { return null; }
   }

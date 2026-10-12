@@ -355,3 +355,9 @@ input { font: inherit; }
 .test-pin { margin: 0; width: 100%; max-width: 300px; text-align: center; background: rgba(242, 195, 91, .12); border: 1px dashed rgba(242, 195, 91, .55); color: #f6e3b4; border-radius: 12px; padding: 9px 10px; font-size: 14px; line-height: 1.5; }
 .test-pin b { color: var(--gold); font-size: 17px; letter-spacing: 2px; }
 .test-pin small { color: var(--muted); font-size: 12px; }
+
+/* 수수료·분양 */
+.float-num.rake { color: #fca5a5; font-size: 3.6cqw; font-family: 'Noto Sans KR', sans-serif; }
+.bi-rake { margin: 4px 0 2px; font-size: 12.5px; color: #f5d78e; text-align: center; opacity: .9; }
+#roomRule small { color: #f5d78e; opacity: .85; font-size: 12px; }
+.site-name { margin: -6px 0 10px; font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: .5px; text-align: center; }

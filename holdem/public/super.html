@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>로열 홀덤 분양 관리</title>
+<link rel="icon" href="/img/av1.png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0d14; --panel:#131a28; --panel2:#1a2335; --line:rgba(255,255,255,.09); --text:#eef0f5; --muted:#8e97ab; --gold:#f2c35b; --green:#2fbf71; --red:#e0384d; --violet:#a855f7; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:'Noto Sans KR',system-ui,sans-serif; font-size:14px; }
+button { font:inherit; color:inherit; border:0; cursor:pointer; border-radius:10px; }
+input, textarea { font:inherit; color:var(--text); background:#0e1420; border:1px solid var(--line); border-radius:10px; padding:9px 11px; outline:none; width:100%; }
+input:focus, textarea:focus { border-color:var(--gold); }
+a { color:#93c5fd; }
+.num { font-family:'Oswald',sans-serif; letter-spacing:.3px; }
+header { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); background:#0d121c; position:sticky; top:0; z-index:5; }
+header h1 { margin:0; font-size:17px; font-weight:900; }
+header h1 span { color:var(--violet); }
+.sp { flex:1; }
+.wrap { max-width:1200px; margin:0 auto; padding:16px; }
+.btn { padding:8px 13px; font-weight:700; font-size:13px; background:var(--panel2); border:1px solid var(--line); text-decoration:none; color:var(--text); display:inline-block; }
+.btn.y { background:var(--gold); border-color:transparent; color:#2a1a00; }
+.btn.g { background:var(--green); border-color:transparent; color:#04140b; }
+.btn.r { background:var(--red); border-color:transparent; }
+.btn.v { background:var(--violet); border-color:transparent; }
+.btn.sm { padding:5px 9px; font-size:12px; border-radius:8px; }
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
+.stat small { color:var(--muted); font-size:12px; display:block; }
+.stat b { font-size:24px; font-family:'Oswald',sans-serif; }
+.stat.rk b { color:var(--gold); }
+.tlist { display:grid; gap:12px; }
+.tcard { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+.tcard.off { opacity:.55; }
+.thead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.thead h2 { margin:0; font-size:16px; }
+.pill { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700; }
+.p-on { background:rgba(47,191,113,.16); color:#6ee7a6; }
+.p-off { background:rgba(224,56,77,.18); color:#fca5b1; }
+.p-main { background:rgba(168,85,247,.2); color:#d8b4fe; }
+.urls { margin:8px 0; font-size:13px; display:grid; gap:3px; }
+.urls code { background:#0e1420; padding:2px 6px; border-radius:6px; }
+.nums { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin:10px 0; }
+.nums div { background:#0e1420; border-radius:10px; padding:8px 10px; }
+.nums small { color:var(--muted); font-size:11px; display:block; }
+.nums b { font-family:'Oswald',sans-serif; font-size:17px; }
+.nums .rk b { color:var(--gold); }
+.acts { display:flex; gap:6px; flex-wrap:wrap; }
+.muted { color:var(--muted); font-size:12px; }
+.login { max-width:340px; margin:14vh auto; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px; text-align:center; }
+.login h1 { margin:0 0 4px; font-size:20px; }
+.login input { margin:16px 0 10px; text-align:center; }
+.login .btn { width:100%; padding:12px; }
+.err { color:#fca5b1; font-size:13px; min-height:18px; margin-top:8px; }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
+.modal.show { display:flex; }
+.mcard { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; width:100%; max-width:440px; max-height:92vh; overflow:auto; }
+.mcard h3 { margin:0 0 4px; }
+.mcard label { display:block; font-size:12px; color:var(--muted); margin:12px 0 4px; }
+.mcard .hint { font-size:11.5px; color:var(--muted); margin-top:4px; }
+.mbtns { display:flex; gap:8px; margin-top:16px; }
+.mbtns .btn { flex:1; padding:11px; }
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1f2a40; border:1px solid var(--line); padding:10px 16px; border-radius:99px; opacity:0; transition:.25s; pointer-events:none; z-index:60; }
+.toast.show { opacity:1; }
+@media (max-width:820px) { .stats { grid-template-columns:repeat(2,1fr); } .nums { grid-template-columns:repeat(3,1fr); } }
+</style>
+</head>
+<body>
+<div id="loginView" class="login" hidden>
+  <h1>로열 홀덤 <span style="color:var(--violet)">분양 관리</span></h1>
+  <p class="muted">슈퍼 관리자 비밀번호를 입력하세요</p>
+  <input id="pw" type="password" autocomplete="current-password" placeholder="비밀번호">
+  <button class="btn y" id="loginBtn">로그인</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div id="appView" hidden>
+  <header>
+    <h1>로열 홀덤 <span>분양 관리</span></h1>
+    <span class="sp"></span>
+    <span class="muted" id="liveTxt"></span>
+    <button class="btn v sm" id="newBtn">+ 사업장 추가</button>
+    <button class="btn sm" id="logoutBtn">로그아웃</button>
+  </header>
+  <div class="wrap">
+    <div class="stats" id="stats"></div>
+    <div class="tlist" id="tlist"></div>
+    <p class="muted" style="margin-top:16px">사업장마다 회원·보유 칩·칩 로그·게임 방·토너먼트 순위·수수료 설정이 완전히 따로예요. 다른 사업장 회원과는 같은 방에서 게임할 수 없어요.<br>
+      보유 칩은 게임 안에서만 쓰는 칩이에요. 현금 충전·환전 기능은 없어요.</p>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="mcard" id="mcard"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const TK = 'rh_super';
+  let token = null; try { token = sessionStorage.getItem(TK); } catch (e) { /* */ }
+  let L = null, pollT = null, toastT;
+  function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+  async function api(path, body) {
+    const r = await fetch('/super/api/' + path, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'x-admin-token': token || '' }, body ? { 'content-type': 'application/json' } : {}), body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401 && path !== 'login') { logout(); throw new Error(j.error || '로그인 필요'); }
+    if (!r.ok) throw new Error(j.error || '실패');
+    return j;
+  }
+  function logout() { token = null; try { sessionStorage.removeItem(TK); } catch (e) { /* */ } clearTimeout(pollT); $('#appView').hidden = true; $('#loginView').hidden = false; }
+  async function login() {
+    $('#loginErr').textContent = '';
+    try { const j = await api('login', { password: $('#pw').value }); token = j.token; try { sessionStorage.setItem(TK, token); } catch (e) { /* */ } boot(); }
+    catch (e) { $('#loginErr').textContent = e.message; }
+  }
+  $('#loginBtn').onclick = login;
+  $('#pw').onkeydown = (e) => { if (e.key === 'Enter') login(); };
+  $('#logoutBtn').onclick = logout;
+  function boot() { $('#loginView').hidden = true; $('#appView').hidden = false; poll(); }
+  async function poll() {
+    clearTimeout(pollT);
+    try { L = await api('tenants'); $('#liveTxt').textContent = '실시간 · ' + new Date().toLocaleTimeString('ko-KR'); render(); }
+    catch (e) { $('#liveTxt').textContent = '연결 끊김'; }
+    if (token) pollT = setTimeout(poll, 4000);
+  }
+  const pathUrl = (t) => location.origin + (t.id === 'main' ? '/' : '/s/' + t.slug + '/');
+  function render() {
+    const ts = L.tenants;
+    const sum = (k) => ts.reduce((s, t) => s + (t[k] || 0), 0);
+    $('#stats').innerHTML = [['사업장', ts.length], ['전체 회원', sum('members')], ['접속 중', sum('online')], ['게임 중인 방', sum('playing')],
+      ['전체 보유 칩', sum('chips')], ['가입 대기', sum('pending')], ['오늘 수수료(전체)', sum('rakeToday'), 'rk'], ['누적 수수료(전체)', sum('rakeTotal'), 'rk']]
+      .map(([k, v, c]) => `<div class="stat ${c || ''}"><small>${k}</small><b>${fmt(v)}</b></div>`).join('');
+    $('#tlist').innerHTML = ts.map((t) => {
+      const url = pathUrl(t);
+      return `<div class="tcard ${t.active ? '' : 'off'}">
+        <div class="thead"><h2>${esc(t.name)}</h2>${t.id === 'main' ? '<span class="pill p-main">본사</span>' : ''}${t.active ? '<span class="pill p-on">운영 중</span>' : '<span class="pill p-off">운영 중지</span>'}
+          ${t.memo ? `<span class="muted">${esc(t.memo)}</span>` : ''}</div>
+        <div class="urls">
+          <div>게임 주소 <a href="${url}" target="_blank"><code>${esc(url)}</code></a> <button class="btn sm" data-copy="${esc(url)}">복사</button></div>
+          ${t.domains.map((d) => `<div>도메인 <a href="https://${esc(d)}/" target="_blank"><code>https://${esc(d)}/</code></a></div>`).join('')}
+          <div>관리자 페이지 <a href="${url}admin" target="_blank"><code>${esc(url)}admin</code></a> <span class="muted">${t.id === 'main' ? '(슈퍼 관리자 비밀번호)' : t.hasPw ? '(사업장 비밀번호 · 슈퍼 비밀번호도 됨)' : '(비밀번호 미설정)'}</span></div>
+        </div>
+        <div class="nums">
+          <div><small>회원</small><b>${fmt(t.members)}</b></div><div><small>가입 대기</small><b>${fmt(t.pending)}</b></div><div><small>접속</small><b>${fmt(t.online)}</b></div>
+          <div><small>게임 중 방</small><b>${fmt(t.playing)}</b></div><div><small>보유 칩 합계</small><b>${fmt(t.chips)}</b></div>
+          <div class="rk"><small>오늘 수수료</small><b>${fmt(t.rakeToday)}</b></div><div class="rk"><small>누적 수수료</small><b>${fmt(t.rakeTotal)}</b></div>
+        </div>
+        <div class="acts">
+          <button class="btn y sm" data-edit="${t.id}">수정</button>
+          <a class="btn sm" href="${url}admin" target="_blank">관리자 페이지 열기</a>
+          ${t.id !== 'main' ? (t.active ? `<button class="btn r sm" data-active="${t.id}" data-v="0">운영 중지</button>` : `<button class="btn g sm" data-active="${t.id}" data-v="1">운영 재개</button>`) : ''}
+        </div></div>`;
+    }).join('');
+  }
+  function modal(html, mount) { $('#mcard').innerHTML = html; $('#modal').classList.add('show'); if (mount) mount($('#mcard')); }
+  function closeModal() { $('#modal').classList.remove('show'); }
+  $('#modal').onclick = (e) => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); };
+
+  function editModal(t) {
+    const isNew = !t, isMain = t && t.id === 'main';
+    t = t || { name: '', slug: '', domains: [], memo: '' };
+    modal(`<h3>${isNew ? '사업장 추가' : esc(t.name) + ' 수정'}</h3>
+      <label>사업자 이름</label><input id="fName" maxlength="30" value="${esc(t.name)}" placeholder="예: 강남 홀덤펍">
+      ${isMain ? '<p class="hint">본사는 기본 주소(/)를 써요.</p>' : `<label>주소 이름 (영문 소문자·숫자·-)</label><input id="fSlug" maxlength="30" value="${esc(t.slug)}" placeholder="예: gangnam">
+      <p class="hint" id="fUrl"></p>`}
+      <label>사업장 도메인 (선택 · 여러 개는 쉼표로)</label><input id="fDomains" value="${esc(t.domains.join(', '))}" placeholder="예: holdem.gangnam-pub.com">
+      <p class="hint">도메인을 쓰려면 그 도메인을 이 서버(Railway)에 연결해야 해요. 연결 전에는 위 주소로 들어오면 돼요.</p>
+      <label>사업장 관리자 비밀번호 ${isNew ? '' : '(바꿀 때만 입력)'}</label><input id="fPw" type="text" autocomplete="off" placeholder="6자 이상">
+      <label>메모 (선택)</label><input id="fMemo" maxlength="200" value="${esc(t.memo || '')}" placeholder="예: 담당자 연락처">
+      <div class="mbtns"><button class="btn y" id="fSave">${isNew ? '추가' : '저장'}</button><button class="btn" data-close>취소</button></div>`, (el) => {
+      const slug = el.querySelector('#fSlug');
+      const showUrl = () => { if (slug) el.querySelector('#fUrl').textContent = '게임 주소: ' + location.origin + '/s/' + (slug.value.trim().toLowerCase() || '…') + '/'; };
+      if (slug) { slug.oninput = showUrl; showUrl(); }
+      el.querySelector('#fSave').onclick = async () => {
+        const body = { name: el.querySelector('#fName').value, domains: el.querySelector('#fDomains').value, memo: el.querySelector('#fMemo').value };
+        if (slug) body.slug = slug.value;
+        const pw = el.querySelector('#fPw').value; if (pw) body.adminPassword = pw;
+        try { await api(isNew ? 'tenant' : 'tenant/' + t.id, body); toast(isNew ? '사업장을 추가했어요' : '저장했어요'); closeModal(); poll(); }
+        catch (e) { toast(e.message); }
+      };
+      el.querySelector('#fName').focus();
+    });
+  }
+  $('#newBtn').onclick = () => editModal(null);
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b || !L) return;
+    if (b.dataset.copy) { try { await navigator.clipboard.writeText(b.dataset.copy); toast('주소를 복사했어요'); } catch (err) { toast(b.dataset.copy); } return; }
+    if (b.dataset.edit) return editModal(L.tenants.find((t) => t.id === b.dataset.edit));
+    if (b.dataset.active) {
+      const t = L.tenants.find((x) => x.id === b.dataset.active);
+      const on = b.dataset.v === '1';
+      if (!on && !confirm(`${t.name} 운영을 멈출까요? 접속 중인 회원은 모두 나가고, 테이블 칩은 보유 칩으로 돌아가요.`)) return;
+      try { await api('tenant/' + t.id, { active: on }); toast(on ? '운영을 재개했어요' : '운영을 멈췄어요'); poll(); } catch (err) { toast(err.message); }
+    }
+  });
+  if (token) boot(); else { $('#loginView').hidden = false; $('#pw').focus(); }
+})();
+</script>
+</body>
+</html>

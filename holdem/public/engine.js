@@ -157,6 +157,20 @@
       this.runout = false;
       this.toAct = -1;
       this.actionSeq = 0;
+      // 수수료(레이크): { pct: 5, cap: 3000, nfnd: true } — 없으면 안 뗌. 떼어 간 칩은 rakeTotal에 쌓임
+      this.rake = null; this.setRake(opts.rake);
+      this.rakeTotal = 0;
+    }
+
+    setRake(r) { this.rake = r && r.pct > 0 ? { pct: +r.pct, cap: Math.max(0, Math.round(r.cap || 0)), nfnd: r.nfnd !== false } : null; }
+    // 이 판에서 뗄 수수료(플랍 전에 끝나면 0)
+    rakeFor(base) {
+      const R = this.rake;
+      if (!R || base <= 0) return 0;
+      if (R.nfnd && this.board.length < 3) return 0;
+      let x = Math.floor((base * R.pct) / 100);
+      if (R.cap > 0) x = Math.min(x, R.cap);
+      return Math.max(0, x);
     }
 
     addPlayer(p) {
@@ -438,6 +452,15 @@
       // 가운데 팟 = 마지막 다툼 팟. 그 아래 팟은 그 높이에서 올인한 사람 근처에 놓임(화면 연출용)
       let centerIdx = -1;
       pots.forEach((pot, i) => { if (pot.eligible.length > 1) centerIdx = i; });
+      const contested = pots.filter((x) => x.eligible.length > 1).reduce((s, x) => s + x.amount, 0);
+      let rakeLeft = this.rakeFor(contested);
+      const rake = rakeLeft;
+      for (const pot of pots) {
+        if (pot.eligible.length < 2 || rakeLeft <= 0) continue;
+        const t = Math.min(rakeLeft, pot.amount);
+        pot.amount -= t; pot.rake = t; rakeLeft -= t;
+      }
+      this.rakeTotal += rake;
       for (const [pi, pot] of pots.entries()) {
         let bestScore = -1;
         for (const p of pot.eligible) bestScore = Math.max(bestScore, evals.get(p).ev.score);
@@ -454,19 +477,26 @@
           handName: evals.get(winners[0]).name,
           refund: pot.eligible.length === 1,
           at: pi < centerIdx ? this.potOwner(pot.level) : null,
+          rake: pot.rake || 0,
         });
       }
       const hands = {};
       for (const [p, e] of evals) hands[p.id] = { name: e.name, best: e.best, cat: e.ev.cat };
-      this.result = { type: 'showdown', pots: out, hands };
+      this.result = { type: 'showdown', pots: out, hands, rake };
       this.stage = 'done';
       this.toAct = -1;
     }
 
     finishUncontested(p) {
-      const amount = this.potTotal();
+      // 아무도 따라오지 않은 베팅은 수수료 없이 돌려주고, 나머지에서 수수료
+      const otherMax = Math.max(0, ...this.players.filter((x) => x !== p).map((x) => x.bet));
+      const uncalled = Math.max(0, p.bet - otherMax);
+      const total = this.potTotal();
+      const rake = this.rakeFor(total - uncalled);
+      this.rakeTotal += rake;
+      const amount = total - rake;
       p.stack += amount; p.won = amount;
-      this.result = { type: 'fold', pots: [{ amount, winners: [p.id], handName: null }], hands: {} };
+      this.result = { type: 'fold', pots: [{ amount, winners: [p.id], handName: null, rake }], hands: {}, rake };
       this.stage = 'done';
       this.toAct = -1;
       this.runout = false;
@@ -483,7 +513,7 @@
       return {
         stage: this.stage, handNo: this.handNo, hk: this.seed + ':' + this.handNo, board: this.board.slice(),
         pot: this.potTotal() - streetBets, potTotal: this.potTotal(), pots: this.viewPots(),
-        currentBet: this.currentBet, dealer: this.dealer, sbIdx: this.sbIdx, bbIdx: this.bbIdx,
+        currentBet: this.currentBet, rake: this.rake, dealer: this.dealer, sbIdx: this.sbIdx, bbIdx: this.bbIdx,
         toAct: this.toAct, sb: this.sb, bb: this.bb, runout: this.runout, actionSeq: this.actionSeq,
         myHand,
         players: this.players.map((p, i) => ({

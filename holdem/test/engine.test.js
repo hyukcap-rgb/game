@@ -158,12 +158,43 @@ t('short BB all-in heads-up: SB already covers', () => {
   assert.strictEqual(g.players[0].stack + g.players[1].stack, 1030);
 });
 
+// 수수료(레이크)
+t('rake: no flop no drop', () => {
+  const g = mkGame([1000, 1000, 1000], { rake: { pct: 5, cap: 3000, nfnd: true } });
+  g.startHand(); g.act('p0', 'raise', 300); g.act('p1', 'fold'); g.act('p2', 'fold');
+  assert.strictEqual(g.result.rake, 0);
+  assert.strictEqual(g.players[0].stack, 1150);
+});
+t('rake: percent and cap on showdown, chips conserved', () => {
+  const g = mkGame([10000, 10000], { rake: { pct: 5, cap: 300, nfnd: true } });
+  g.startHand();
+  g.act(g.players[g.toAct].id, 'allin'); g.act(g.players[g.toAct].id, 'call');
+  while (g.stage !== 'done') g.runoutStep();
+  assert.strictEqual(g.result.rake, 300);                 // 20000의 5% = 1000 → 상한 300
+  assert.strictEqual(g.players[0].stack + g.players[1].stack + g.rakeTotal, 20000);
+  const g2 = mkGame([1000, 1000], { rake: { pct: 5, cap: 3000 } });
+  g2.startHand(); g2.act(g2.players[g2.toAct].id, 'call'); g2.act(g2.players[g2.toAct].id, 'check');
+  g2.act(g2.players[g2.toAct].id, 'raise', 200); g2.act(g2.players[g2.toAct].id, 'fold');
+  assert.strictEqual(g2.result.rake, 10);                 // 플랍 후 팟 200(베팅 200은 돌려받음) × 5%
+  assert.strictEqual(g2.players[0].stack + g2.players[1].stack + g2.rakeTotal, 2000);
+});
+t('rake: split pot shares after rake', () => {
+  for (let k = 0; k < 400; k++) {
+    const g = mkGame([300, 1000, 2500, 700], { seed: 'rk' + k, rake: { pct: 5, cap: 200 } });
+    g.startHand();
+    let guard = 0;
+    while (g.stage !== 'done' && guard++ < 50) { if (g.runout) { g.runoutStep(); continue; } g.act(g.players[g.toAct].id, 'allin'); }
+    assert.strictEqual(g.players.reduce((s, p) => s + p.stack, 0) + g.rakeTotal, 4500);
+    assert(g.result.rake <= 200);
+  }
+});
+
 // 봇끼리 대량 시뮬레이션: 칩 보존 + 무한루프 없음
 t('bot simulation', () => {
   const styles = Object.keys(H.BOT_STYLES);
   let hands = 0;
   for (let gi = 0; gi < 30; gi++) {
-    const g = new H.Game({ sb: 50, bb: 100, seed: 'sim' + gi });
+    const g = new H.Game({ sb: 50, bb: 100, seed: 'sim' + gi, rake: gi % 2 ? { pct: 5, cap: 3000 } : null });
     for (let i = 0; i < 6; i++) g.addPlayer({ id: 'b' + i, name: 'B' + i, stack: 10000, isBot: true, style: styles[i % styles.length] });
     const rand = H.mulberry32(gi + 1);
     for (let h = 0; h < 60; h++) {
@@ -177,7 +208,7 @@ t('bot simulation', () => {
         const ok = g.act(g.players[g.toAct].id, d.type, d.amount);
         assert(ok, 'action rejected ' + JSON.stringify(d));
       }
-      const tot = g.players.reduce((s, p) => s + p.stack, 0);
+      const tot = g.players.reduce((s, p) => s + p.stack, 0) + g.rakeTotal;
       assert.strictEqual(tot, 60000);
       assert(g.players.every((p) => p.stack >= 0));
     }

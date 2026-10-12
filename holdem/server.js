@@ -39,12 +39,12 @@ const REBUY_WAIT_MS = 30000;                    // 사람이 모두 칩을 잃�
 // 방을 만들 때 고르는 블라인드(고정)와 최소 머니
 const BLINDS = [[50, 100], [100, 200], [250, 500], [500, 1000], [1000, 2000], [2500, 5000], [5000, 10000], [10000, 20000]];
 const MIN_INS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
-function roomOpts(m) {
+function roomOpts(m, tid) {
   const bi = BLINDS.findIndex((b) => b[1] === Number(m.bb));
   const [sb, bb] = BLINDS[bi >= 0 ? bi : 0];
   let minIn = Math.round(Number(m.minIn) || 0);
   if (!MIN_INS.includes(minIn)) minIn = MIN_INS.find((x) => x >= bb * 20) || bb * 20;
-  minIn = Math.max(minIn, bb * 10, db.settings.minBuyIn);   // 최소 머니는 BB 10배 이상
+  minIn = Math.max(minIn, bb * 10, SET(tid).minBuyIn);   // 최소 머니는 BB 10배 이상
   return { sb, bb, minIn };
 }
 const EMOTES = new Set(['👍', '😂', '😱', '😡', '🔥']);
@@ -58,14 +58,48 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 let db;
 try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (e) { db = null; }
-db = Object.assign({ seq: 1, accounts: {}, sessions: {}, logs: [], daily: {}, settings: {} }, db || {});
-db.settings = Object.assign({ welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false, testPin: '1234' }, db.settings);
+db = Object.assign({ seq: 1, accounts: {}, sessions: {}, logs: [], daily: {}, settings: {}, tenants: {} }, db || {});
+
+// ---------- 분양(사업장) ----------
+// 사업장마다 회원·보유 칩·칩 로그·게임 방·오늘의 토너먼트·설정(수수료 포함)이 따로예요. 'main' = 본사(기본 주소).
+const DEF_SETTINGS = { welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false, testPin: '1234' };
+function defRake() {
+  const levels = {};
+  for (const [, bb] of BLINDS) levels[bb] = { pct: 5, capBB: 30 };   // 기본: 5%, 최대 30BB
+  return { on: true, nfnd: true, solo: true, friends: true, levels };
+}
+function fixTenant(t) {
+  t.settings = Object.assign({}, DEF_SETTINGS, t.settings || {});
+  const R = (t.settings.rake = Object.assign(defRake(), t.settings.rake || {}));
+  const d = defRake().levels;
+  R.levels = Object.assign(d, R.levels || {});
+  t.domains = t.domains || [];
+  t.stats = Object.assign({ rake: 0, rakeDays: {} }, t.stats || {});
+  if (t.active == null) t.active = true;
+  return t;
+}
+if (!db.tenants.main) db.tenants.main = { id: 'main', name: '본사', slug: '', domains: [], active: true, createdAt: Date.now(), settings: Object.assign({}, db.settings) };
+for (const t of Object.values(db.tenants)) fixTenant(t);
+for (const a of Object.values(db.accounts)) if (!a.tid) a.tid = 'main';
+const TEN = (tid) => db.tenants[tid] || db.tenants.main;
+const SET = (tid) => TEN(tid).settings;
+const RESERVED = new Set(['admin', 'super', 'api', 'ws', 'img', 's']);
+const tenantBySlug = (slug) => Object.values(db.tenants).find((t) => t.slug && t.slug === slug);
+const tenantByHost = (host) => { const h = String(host || '').split(':')[0].toLowerCase(); return h ? Object.values(db.tenants).find((t) => t.domains.includes(h)) : null; };
+// 이 방의 수수료(오늘의 토너먼트는 무료)
+function rakeOf(tid, bb, mode) {
+  const R = SET(tid).rake;
+  if (!R || !R.on || mode === 'daily' || (mode === 'solo' && !R.solo) || (mode === 'friends' && !R.friends)) return null;
+  const L = R.levels[bb] || { pct: 5, capBB: 30 };
+  if (!(L.pct > 0)) return null;
+  return { pct: L.pct, capBB: L.capBB, cap: Math.round(L.capBB * bb), nfnd: R.nfnd !== false };
+}
 let saveT = null;
 function save() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
-    const days = Object.keys(db.daily).sort();
-    while (days.length > 14) delete db.daily[days.shift()];
+    const cut = new Date(Date.now() - 15 * 86400e3).toISOString().slice(0, 10);
+    for (const k of Object.keys(db.daily)) if (k.split('|').pop() < cut) delete db.daily[k];
     if (db.logs.length > 20000) db.logs = db.logs.slice(-20000);
     const tmp = DB_FILE + '.tmp';
     fs.writeFile(tmp, JSON.stringify(db), (err) => { if (!err) fs.rename(tmp, DB_FILE, () => {}); });
@@ -78,10 +112,10 @@ const now = () => Date.now();
 const nameKey = (s) => String(s).trim().toLowerCase();
 const cleanName = (s) => String(s || '').replace(/[\u0000-\u001f<>"'`\\]/g, '').trim().slice(0, 10);
 const hashPin = (pin, salt) => crypto.scryptSync(String(pin), salt, 32).toString('hex');
-const findByName = (name) => Object.values(db.accounts).find((a) => a.nameKey === nameKey(name));
+const findByName = (tid, name) => Object.values(db.accounts).find((a) => a.tid === tid && a.nameKey === nameKey(name));
 
 function log(acct, type, amount, reason, by) {
-  db.logs.push({ at: now(), acct: acct.id, name: acct.name, type, amount, balance: acct.balance, inPlay: acct.inPlay || 0, reason: reason || '', by: by || 'system' });
+  db.logs.push({ at: now(), tid: acct.tid || 'main', acct: acct.id, name: acct.name, type, amount, balance: acct.balance, inPlay: acct.inPlay || 0, reason: reason || '', by: by || 'system' });
   save();
 }
 // 보유 칩 변경(모든 변경은 로그를 남김)
@@ -107,18 +141,19 @@ save();
 
 // ---------- 오늘의 토너먼트 기록 ----------
 const kstDate = () => new Date(now() + 9 * 3600e3).toISOString().slice(0, 10);
-const dayBoard = (date) => (db.daily[date] = db.daily[date] || { entries: {} });
-function ranking(date) {
-  return Object.entries(dayBoard(date).entries)
+const dayKey = (tid, date) => (tid === 'main' ? date : tid + '|' + date);
+const dayBoard = (tid, date) => (db.daily[dayKey(tid, date)] = db.daily[dayKey(tid, date)] || { entries: {} });
+function ranking(tid, date) {
+  return Object.entries(dayBoard(tid, date).entries)
     .filter(([, e]) => e.score != null)
     .sort((a, b) => b[1].score - a[1].score || a[1].at - b[1].at)
     .map(([acct, e]) => ({ acct, ...e }));
 }
-function dailyInfo(acctId) {
+function dailyInfo(tid, acctId) {
   const date = kstDate();
-  const list = ranking(date);
+  const list = ranking(tid, date);
   const myIdx = acctId ? list.findIndex((e) => e.acct === String(acctId)) : -1;
-  const entry = acctId ? dayBoard(date).entries[acctId] : null;
+  const entry = acctId ? dayBoard(tid, date).entries[acctId] : null;
   return {
     date, total: list.length, played: !!entry,
     my: myIdx >= 0 ? { score: list[myIdx].score, rank: myIdx + 1 } : (entry ? { score: entry.score || 0, rank: '-' } : null),
@@ -140,7 +175,13 @@ function sendWs(ws, msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify
 function meMsg(u) {
   const a = u.acct;
   return { t: 'me', id: a.id, pid: u.pid, name: a.name, avatar: a.avatar, status: a.status, balance: a.balance, inPlay: a.inPlay || 0,
-    approved: !!u.approved, req: !!u.req, buyIn: db.settings.buyIn, minBuyIn: db.settings.minBuyIn };
+    approved: !!u.approved, req: !!u.req, buyIn: SET(a.tid).buyIn, minBuyIn: SET(a.tid).minBuyIn, rake: rakeTable(a.tid) };
+}
+// 화면에 보여 줄 블라인드별 수수료(AI 대결·친구 대전)
+function rakeTable(tid) {
+  const out = {};
+  for (const [, bb] of BLINDS) { const x = rakeOf(tid, bb, 'friends'), y = rakeOf(tid, bb, 'solo'); out[bb] = { friends: x, solo: y }; }
+  return out;
 }
 function pushMe(acctId) { const u = users.get(acctId); if (u) send(u, meMsg(u)); }
 function genCode() {
@@ -157,6 +198,8 @@ class Room {
     this.sb = opts.sb || 50; this.bb = opts.bb || 100; this.minIn = opts.minIn || 1000;
     this.seats = new Map();    // 회원 id → 가져온 칩(대기실에서 앉을 때 보유 칩에서 빠짐)
     this.hostId = host.id;
+    this.tid = host.acct.tid || 'main';   // 같은 사업장 사람만 들어올 수 있음
+    this.rakeReal = 0;                     // 이 방에서 사람에게서 뗀 수수료
     this.members = [];
     this.fillBots = true;
     this.status = 'lobby';
@@ -177,7 +220,7 @@ class Room {
   roomMsg(u) {
     return {
       t: 'room', code: this.code, mode: this.mode, status: this.status, maxSeats: MAX_SEATS,
-      isHost: u.id === this.hostId, fillBots: this.fillBots, sb: this.sb, bb: this.bb, minIn: this.minIn,
+      isHost: u.id === this.hostId, fillBots: this.fillBots, sb: this.sb, bb: this.bb, minIn: this.minIn, rake: rakeOf(this.tid, this.bb, this.mode),
       mySeat: this.seats.get(u.id) || 0,
       members: this.members.map((m) => ({ pid: m.pid, name: m.acct.name, avatar: m.acct.avatar, online: !!m.ws, host: m.id === this.hostId, seat: this.seats.get(m.id) || 0 })),
     };
@@ -287,6 +330,7 @@ class Room {
     // 오늘의 토너먼트만 블라인드가 오르고, 일반 방은 방장이 정한 블라인드 고정
     const [sb, bb] = this.mode === 'daily' ? levelFor(g.handNo) : [this.sb, this.bb];
     g.setBlinds(sb, bb);
+    g.setRake(rakeOf(this.tid, bb, this.mode));   // 관리자가 바꾸면 다음 핸드부터
     g.startHand();
     this.tick();
   }
@@ -299,7 +343,7 @@ class Room {
     const g = this.game;
     if (!g || this.status !== 'playing') return;
     if (g.stage === 'done') {
-      if (!this.spokeFor || this.spokeFor !== g.handNo) { this.spokeFor = g.handNo; this.botReactResult(); }
+      if (!this.spokeFor || this.spokeFor !== g.handNo) { this.spokeFor = g.handNo; this.botReactResult(); this.recordRake(); }
       this.timer = setTimeout(() => this.nextHand(), g.result.type === 'showdown' ? 5200 : 2600);
       return;
     }
@@ -328,6 +372,30 @@ class Room {
       p.away = true;
       this.tick();
     }, ms);
+  }
+
+  // 수수료 집계: 사람이 이긴 몫에서 뗀 것만 사업장 수수료로(AI 칩은 진짜 칩이 아님)
+  recordRake() {
+    const g = this.game, r = g && g.result;
+    if (!r || !r.rake || !this.paid()) return;
+    let real = 0;
+    for (const pot of r.pots) {
+      if (!pot.rake || !pot.winners.length) continue;
+      const share = pot.rake / pot.winners.length;
+      for (const w of pot.winners) {
+        const p = g.players.find((x) => x.id === w);
+        const a = p && p.acct && db.accounts[p.acct];
+        if (!a) continue;
+        real += share; a.rakePaid = Math.round((a.rakePaid || 0) + share);
+      }
+    }
+    real = Math.round(real);
+    if (!real) return;
+    const st = TEN(this.tid).stats, day = kstDate();
+    st.rake += real; st.rakeDays[day] = (st.rakeDays[day] || 0) + real;
+    const keep = Object.keys(st.rakeDays).sort(); while (keep.length > 60) delete st.rakeDays[keep.shift()];
+    this.rakeReal += real;
+    save();
   }
 
   // AI가 가끔 대사(보이기만, 판에는 영향 없음)
@@ -431,10 +499,10 @@ class Room {
     const u = this.members[0];
     const me = this.game ? this.game.players[0] : null;
     const score = me ? me.stack : 0;
-    const e = dayBoard(this.date).entries[this.ownerId];
+    const e = dayBoard(this.tid, this.date).entries[this.ownerId];
     if (e) { e.score = score; e.at = now(); e.hands = this.game ? this.game.handNo : 0; }
     save();
-    const list = ranking(this.date);
+    const list = ranking(this.tid, this.date);
     const rank = list.findIndex((x) => x.acct === String(this.ownerId)) + 1;
     if (u) {
       send(u, { t: 'dailyEnd', score, rank, total: list.length,
@@ -491,32 +559,59 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
 app.get('/healthz', (req, res) => res.send('ok'));
-app.get('/api/config', (req, res) => res.json({ testPin: db.settings.testPin || '' }));
+const msgPage = (title, msg) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body style="background:#0b0f17;color:#e8e2d0;font-family:sans-serif;display:grid;place-items:center;min-height:90vh;text-align:center"><div><h2>${title}</h2><p>${msg}</p></div>`;
+// 사업장 찾기: 사업장 도메인 → /s/주소이름/… → 본사
+app.use((req, res, next) => {
+  if (req.path.startsWith('/super')) { req.tid = null; return next(); }
+  let t = tenantByHost(req.headers.host);
+  const q = req.url.indexOf('?');
+  const pathname = q < 0 ? req.url : req.url.slice(0, q), query = q < 0 ? '' : req.url.slice(q);
+  const m = pathname.match(/^\/s\/([a-z0-9-]{2,30})(\/.*)?$/);
+  if (m) {
+    const t2 = tenantBySlug(m[1]);
+    if (!t2) return res.status(404).send(msgPage('없는 주소예요', '주소를 다시 확인해 주세요.'));
+    if (!m[2]) return res.redirect(302, '/s/' + m[1] + '/' + query);
+    t = t2; req.url = m[2] + query; req.base = '/s/' + m[1];
+  }
+  t = t || db.tenants.main;
+  if (!t.active) return res.status(403).send(msgPage('운영이 멈춘 곳이에요', '자세한 내용은 운영자에게 문의해 주세요.'));
+  req.tid = t.id;
+  next();
+});
+app.get('/api/config', (req, res) => res.json({ testPin: SET(req.tid).testPin || '', name: TEN(req.tid).name, main: req.tid === 'main' }));
 app.get('/api/daily', (req, res) => {
-  const acctId = db.sessions[String(req.query.token || '')];
-  res.json(dailyInfo(acctId));
+  const id = db.sessions[String(req.query.token || '')];
+  const acctId = id && db.accounts[id] && db.accounts[id].tid === req.tid ? id : null;
+  res.json(dailyInfo(req.tid, acctId));
 });
 
 // ----- 관리자 -----
 let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 if (!ADMIN_PASSWORD) { ADMIN_PASSWORD = rid(9); console.log('[관리자] ADMIN_PASSWORD 환경 변수가 없어 임시 비밀번호를 만들었어요:', ADMIN_PASSWORD); }
-const adminTokens = new Map(); // token → 만료 시각
-const adminFails = { n: 0, until: 0 };
+const adminTokens = new Map(); // token → { exp, tid(사업장 관리자) | sup(슈퍼 관리자) }
+const adminFails = new Map();  // 사업장 → { n, until }
 function adminAuth(req, res, next) {
   const t = req.get('x-admin-token') || '';
-  const exp = adminTokens.get(t);
-  if (!exp || exp < now()) { adminTokens.delete(t); return res.status(401).json({ error: '다시 로그인해 주세요' }); }
+  const k = adminTokens.get(t);
+  if (!k || k.exp < now() || !(k.sup || k.tid === req.tid)) { if (k && k.exp < now()) adminTokens.delete(t); return res.status(401).json({ error: '다시 로그인해 주세요' }); }
+  req.sup = !!k.sup;
   next();
 }
+// 이 사업장 회원만
+const acctIn = (req) => { const a = db.accounts[req.params.id]; return a && a.tid === req.tid ? a : null; };
 const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+function checkFail(key) { const f = adminFails.get(key); return f && f.until > now(); }
+function addFail(key) { const f = adminFails.get(key) || { n: 0, until: 0 }; f.n++; if (f.n >= 5) { f.until = now() + 60e3; f.n = 0; } adminFails.set(key, f); }
 app.post('/admin/api/login', (req, res) => {
-  if (adminFails.until > now()) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
-  if (!safeEq((req.body || {}).password || '', ADMIN_PASSWORD)) {
-    adminFails.n++; if (adminFails.n >= 5) { adminFails.until = now() + 60e3; adminFails.n = 0; }
-    return res.status(401).json({ error: '비밀번호가 틀렸어요' });
-  }
-  adminFails.n = 0;
-  const t = rid(24); adminTokens.set(t, now() + 12 * 3600e3);
+  const key = 'a:' + req.tid;
+  if (checkFail(key)) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
+  const pw = String((req.body || {}).password || '');
+  const T = TEN(req.tid);
+  const sup = safeEq(pw, ADMIN_PASSWORD);   // 슈퍼 관리자는 모든 사업장 관리자 페이지에 들어갈 수 있음
+  const own = !sup && T.adminSalt && safeEq(hashPin(pw, T.adminSalt), T.adminHash);
+  if (!sup && !own) { addFail(key); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
+  adminFails.delete(key);
+  const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: req.tid, sup });
   res.json({ token: t });
 });
 function userRow(a) {
@@ -525,10 +620,11 @@ function userRow(a) {
   return { id: a.id, name: a.name, avatar: a.avatar, status: a.status, balance: a.balance, inPlay: a.inPlay || 0,
     online: !!(u && u.ws), approved: !!(u && u.approved), req: u && u.req ? u.req : 0,
     room: room ? { code: room.code, mode: room.mode, status: room.status } : null,
-    createdAt: a.createdAt, lastSeen: u && u.ws ? now() : a.lastSeen || 0, note: a.note || '' };
+    createdAt: a.createdAt, lastSeen: u && u.ws ? now() : a.lastSeen || 0, note: a.note || '', rakePaid: a.rakePaid || 0 };
 }
 app.get('/admin/api/state', adminAuth, (req, res) => {
-  const accts = Object.values(db.accounts);
+  const accts = Object.values(db.accounts).filter((a) => a.tid === req.tid);
+  const T = TEN(req.tid), day = kstDate();
   const rows = accts.map(userRow);
   res.json({
     now: now(),
@@ -539,31 +635,34 @@ app.get('/admin/api/state', adminAuth, (req, res) => {
       playing: rows.filter((r) => r.room && r.room.status === 'playing').length,
       entryReq: rows.filter((r) => r.req).length,
       totalBalance: accts.reduce((s, a) => s + (a.balance || 0) + (a.inPlay || 0), 0),
+      rakeTotal: T.stats.rake, rakeToday: T.stats.rakeDays[day] || 0,
     },
+    tenant: { id: T.id, name: T.name, slug: T.slug, sup: req.sup },
+    blinds: BLINDS,
     users: rows.sort((a, b) => (b.online - a.online) || (b.req - a.req) || a.name.localeCompare(b.name)),
-    rooms: [...rooms.values()].map((r) => ({ code: r.code, mode: r.mode, status: r.status, hand: r.game ? r.game.handNo : 0, sb: r.sb, bb: r.bb, minIn: r.minIn,
+    rooms: [...rooms.values()].filter((r) => r.tid === req.tid).map((r) => ({ code: r.code, mode: r.mode, status: r.status, hand: r.game ? r.game.handNo : 0, sb: r.sb, bb: r.bb, minIn: r.minIn, rake: r.rakeReal,
       players: r.game ? r.game.players.map((p) => ({ name: p.name, stack: p.stack, bot: !!p.isBot, gone: !!p.gone })) : r.members.map((m) => ({ name: m.acct.name, stack: 0, bot: false })),
       createdAt: r.createdAt })),
-    settings: db.settings,
+    settings: SET(req.tid),
   });
 });
 app.get('/admin/api/logs', adminAuth, (req, res) => {
   const acct = req.query.acct ? Number(req.query.acct) : null;
   const type = req.query.type || '';
   const limit = Math.min(1000, Number(req.query.limit) || 300);
-  let list = db.logs;
+  let list = db.logs.filter((l) => (l.tid || 'main') === req.tid);
   if (acct) list = list.filter((l) => l.acct === acct);
   if (type) list = list.filter((l) => l.type === type);
   res.json({ logs: list.slice(-limit).reverse() });
 });
 app.post('/admin/api/signup/:id', adminAuth, (req, res) => {
-  const a = db.accounts[req.params.id];
+  const a = acctIn(req);
   if (!a) return res.status(404).json({ error: '회원이 없어요' });
   if (req.body.approve) {
     if (a.status !== 'pending' && a.status !== 'rejected') return res.json({ ok: true });
     a.status = 'active'; a.approvedAt = now();
     save();
-    if (db.settings.welcomeChips > 0) addMoney(a, db.settings.welcomeChips, 'welcome', '가입 승인 지급', 'admin');
+    if (SET(a.tid).welcomeChips > 0) addMoney(a, SET(a.tid).welcomeChips, 'welcome', '가입 승인 지급', 'admin');
   } else {
     a.status = 'rejected'; save();
   }
@@ -577,14 +676,14 @@ function approveEntry(u, ok) {
   pushMe(u.id);
 }
 app.post('/admin/api/entry/:id', adminAuth, (req, res) => {
-  if (req.params.id === 'all') { for (const u of users.values()) if (u.req) approveEntry(u, true); return res.json({ ok: true }); }
+  if (req.params.id === 'all') { for (const u of users.values()) if (u.req && u.acct.tid === req.tid) approveEntry(u, true); return res.json({ ok: true }); }
   const u = users.get(Number(req.params.id));
-  if (!u) return res.status(404).json({ error: '접속 중이 아니에요' });
+  if (!u || u.acct.tid !== req.tid) return res.status(404).json({ error: '접속 중이 아니에요' });
   approveEntry(u, !!req.body.approve);
   res.json({ ok: true });
 });
 app.post('/admin/api/money/:id', adminAuth, (req, res) => {
-  const a = db.accounts[req.params.id];
+  const a = acctIn(req);
   if (!a) return res.status(404).json({ error: '회원이 없어요' });
   const amount = Math.round(Number(req.body.amount) || 0);
   if (!amount || Math.abs(amount) > 1e9) return res.status(400).json({ error: '금액을 확인해 주세요' });
@@ -600,7 +699,7 @@ function kick(u, msg) {
   pushMe(u.id);
 }
 app.post('/admin/api/user/:id', adminAuth, (req, res) => {
-  const a = db.accounts[req.params.id];
+  const a = acctIn(req);
   if (!a) return res.status(404).json({ error: '회원이 없어요' });
   const u = users.get(a.id);
   const act = req.body.action;
@@ -626,7 +725,7 @@ app.post('/admin/api/user/:id', adminAuth, (req, res) => {
 });
 app.post('/admin/api/settings', adminAuth, (req, res) => {
   const b = req.body || {};
-  const S = db.settings;
+  const S = SET(req.tid);
   const num = (v, min, max) => Math.max(min, Math.min(max, Math.round(Number(v))));
   if (b.welcomeChips != null) S.welcomeChips = num(b.welcomeChips, 0, 1e8);
   if (b.buyIn != null) S.buyIn = num(b.buyIn, 1000, 1e8);
@@ -634,24 +733,125 @@ app.post('/admin/api/settings', adminAuth, (req, res) => {
   if (b.autoApprove != null) {
     const was = S.autoApprove; S.autoApprove = !!b.autoApprove;
     if (S.autoApprove && !was) {   // 켜는 순간 기다리던 가입·입장도 한꺼번에 승인
-      for (const a of Object.values(db.accounts)) if (a.status === 'pending') {
+      for (const a of Object.values(db.accounts)) if (a.tid === req.tid && a.status === 'pending') {
         a.status = 'active'; a.approvedAt = now();
         if (S.welcomeChips > 0) addMoney(a, S.welcomeChips, 'welcome', '가입 지급(자동 승인)', 'admin');
         pushMe(a.id);
       }
-      for (const u of users.values()) if (u.req) approveEntry(u, true);
+      for (const u of users.values()) if (u.req && u.acct.tid === req.tid) approveEntry(u, true);
     }
   }
   if (b.testPin != null) { const t = String(b.testPin).trim(); if (t && !/^\d{4,6}$/.test(t)) return res.status(400).json({ error: '테스트 PIN은 숫자 4~6자리(비우면 끔)' }); S.testPin = t; }
+  // 수수료: 블라인드(BB)별 % 와 최대(BB 배수)
+  if (b.rake && typeof b.rake === 'object') {
+    const R = S.rake, x = b.rake;
+    if (x.on != null) R.on = !!x.on;
+    if (x.nfnd != null) R.nfnd = !!x.nfnd;
+    if (x.solo != null) R.solo = !!x.solo;
+    if (x.friends != null) R.friends = !!x.friends;
+    if (x.levels && typeof x.levels === 'object') {
+      for (const [, bb] of BLINDS) {
+        const L = x.levels[bb];
+        if (!L) continue;
+        const pct = Number(L.pct), capBB = Number(L.capBB);
+        if (!(pct >= 0 && pct <= 20)) return res.status(400).json({ error: `${bb.toLocaleString()} 블라인드: 수수료는 0~20%` });
+        if (!(capBB >= 0 && capBB <= 1000)) return res.status(400).json({ error: `${bb.toLocaleString()} 블라인드: 최대는 0~1000BB` });
+        R.levels[bb] = { pct: Math.round(pct * 100) / 100, capBB: Math.round(capBB * 10) / 10 };
+      }
+    }
+    for (const u of users.values()) if (u.acct.tid === req.tid) pushMe(u.id);
+  }
   save();
   res.json({ ok: true, settings: S });
 });
+// ----- 슈퍼 관리자(분양 관리) -----
+function superAuth(req, res, next) {
+  const k = adminTokens.get(req.get('x-admin-token') || '');
+  if (!k || k.exp < now() || !k.sup) return res.status(401).json({ error: '다시 로그인해 주세요' });
+  next();
+}
+app.post('/super/api/login', (req, res) => {
+  if (checkFail('super')) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
+  if (!safeEq(String((req.body || {}).password || ''), ADMIN_PASSWORD)) { addFail('super'); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
+  adminFails.delete('super');
+  const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: null, sup: true });
+  res.json({ token: t });
+});
+function tenantRow(T) {
+  const accts = Object.values(db.accounts).filter((a) => a.tid === T.id);
+  const online = [...users.values()].filter((u) => u.ws && u.acct.tid === T.id).length;
+  const day = kstDate();
+  return { id: T.id, name: T.name, slug: T.slug, domains: T.domains, active: T.active, createdAt: T.createdAt, hasPw: !!T.adminSalt, memo: T.memo || '',
+    members: accts.filter((a) => a.status === 'active').length, pending: accts.filter((a) => a.status === 'pending').length, online,
+    chips: accts.reduce((s, a) => s + (a.balance || 0) + (a.inPlay || 0), 0),
+    playing: [...rooms.values()].filter((r) => r.tid === T.id && r.status === 'playing').length,
+    rakeTotal: T.stats.rake, rakeToday: T.stats.rakeDays[day] || 0, rakeDays: T.stats.rakeDays };
+}
+app.get('/super/api/tenants', superAuth, (req, res) => {
+  res.json({ now: now(), tenants: Object.values(db.tenants).sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : (a.createdAt || 0) - (b.createdAt || 0))).map(tenantRow) });
+});
+// 이름·주소·도메인·관리자 비밀번호·운영 여부 확인
+function tenantInput(b, T) {
+  const out = {};
+  if (b.name != null) { const n = String(b.name).trim().slice(0, 30); if (!n) return { error: '사업자 이름을 입력해 주세요' }; out.name = n; }
+  if (b.slug != null && (!T || T.id !== 'main')) {
+    const sl = String(b.slug).trim().toLowerCase();
+    if (!/^[a-z0-9-]{2,30}$/.test(sl)) return { error: '주소 이름은 영문 소문자·숫자·- 2~30자예요' };
+    if (RESERVED.has(sl)) return { error: '쓸 수 없는 주소 이름이에요' };
+    const o = tenantBySlug(sl); if (o && (!T || o.id !== T.id)) return { error: '이미 쓰는 주소 이름이에요' };
+    out.slug = sl;
+  }
+  if (b.domains != null) {
+    const list = String(b.domains).split(/[\s,]+/).map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')).filter(Boolean);
+    for (const d of list) {
+      if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d)) return { error: `도메인 형식이 맞지 않아요: ${d}` };
+      const o = tenantByHost(d); if (o && (!T || o.id !== T.id)) return { error: `다른 사업장이 쓰는 도메인이에요: ${d}` };
+    }
+    out.domains = [...new Set(list)];
+  }
+  if (b.adminPassword) { const pw = String(b.adminPassword); if (pw.length < 6) return { error: '관리자 비밀번호는 6자 이상이에요' }; out.adminSalt = rid(12); out.adminHash = hashPin(pw, out.adminSalt); }
+  if (b.active != null && (!T || T.id !== 'main')) out.active = !!b.active;
+  if (b.memo != null) out.memo = String(b.memo).slice(0, 200);
+  return { out };
+}
+app.post('/super/api/tenant', superAuth, (req, res) => {
+  const b = req.body || {};
+  if (!b.name || !b.slug) return res.status(400).json({ error: '사업자 이름과 주소 이름을 입력해 주세요' });
+  if (!b.adminPassword) return res.status(400).json({ error: '사업장 관리자 비밀번호를 정해 주세요' });
+  const r = tenantInput(b, null);
+  if (r.error) return res.status(400).json({ error: r.error });
+  let id; do { id = 't_' + rid(5).toLowerCase().replace(/[^a-z0-9]/g, 'x'); } while (db.tenants[id]);
+  const T = fixTenant(Object.assign({ id, createdAt: now(), domains: [], active: true }, r.out));
+  db.tenants[id] = T; save();
+  res.json({ ok: true, tenant: tenantRow(T) });
+});
+app.post('/super/api/tenant/:id', superAuth, (req, res) => {
+  const T = db.tenants[req.params.id];
+  if (!T) return res.status(404).json({ error: '사업장이 없어요' });
+  const r = tenantInput(req.body || {}, T);
+  if (r.error) return res.status(400).json({ error: r.error });
+  Object.assign(T, r.out);
+  if (r.out.active === false) {   // 운영 중지: 그 사업장 접속자 모두 내보냄(칩은 정산)
+    for (const u of users.values()) if (u.acct.tid === T.id) kick(u, '운영이 멈췄어요');
+  }
+  save();
+  res.json({ ok: true, tenant: tenantRow(T) });
+});
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/super', (req, res) => res.sendFile(path.join(__dirname, 'public', 'super.html')));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '5m' }));
 const server = http.createServer(app);
 
 // ---------- 웹소켓 ----------
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+server.on('upgrade', (req, sock, head) => {
+  const pathname = String(req.url || '').split('?')[0];
+  const m = pathname.match(/^\/s\/([a-z0-9-]{2,30})\/ws$/);
+  if (pathname !== '/ws' && !m) return sock.destroy();
+  const t = m ? tenantBySlug(m[1]) : (tenantByHost(req.headers.host) || db.tenants.main);
+  if (!t || !t.active) return sock.destroy();
+  wss.handleUpgrade(req, sock, head, (ws) => { ws.tid = t.id; wss.emit('connection', ws, req); });
+});
 wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
@@ -673,12 +873,12 @@ wss.on('connection', (ws) => {
 
 const loginFails = new Map(); // 이름 → { n, until }
 function createAccount(ws, name, pin, avatar) {
-  const salt = rid(12);
-  const a = { id: db.seq++, name, nameKey: nameKey(name), salt, pinHash: hashPin(pin, salt), avatar: Math.max(0, Math.min(AVATARS - 1, avatar | 0)),
-    status: db.settings.autoApprove ? 'active' : 'pending', balance: 0, inPlay: 0, createdAt: now(), lastSeen: now() };
+  const salt = rid(12), S = SET(ws.tid);
+  const a = { id: db.seq++, tid: ws.tid, name, nameKey: nameKey(name), salt, pinHash: hashPin(pin, salt), avatar: Math.max(0, Math.min(AVATARS - 1, avatar | 0)),
+    status: S.autoApprove ? 'active' : 'pending', balance: 0, inPlay: 0, createdAt: now(), lastSeen: now() };
   db.accounts[a.id] = a;
   log(a, 'signup', 0, '가입 신청');
-  if (a.status === 'active' && db.settings.welcomeChips > 0) { a.balance += db.settings.welcomeChips; log(a, 'welcome', db.settings.welcomeChips, '가입 지급(자동 승인)'); }
+  if (a.status === 'active' && S.welcomeChips > 0) { a.balance += S.welcomeChips; log(a, 'welcome', S.welcomeChips, '가입 지급(자동 승인)'); }
   const token = rid(24); db.sessions[token] = a.id; save();
   attach(ws, a, token);
 }
@@ -701,8 +901,9 @@ function handle(ws, m) {
     case 'hello': {
       const id = db.sessions[String(m.token || '')];
       const a = id && db.accounts[id];
-      if (!a) return sendWs(ws, { t: 'auth', reason: m.token ? 'expired' : '', testPin: db.settings.testPin || '' });
-      if (a.status === 'blocked') return sendWs(ws, { t: 'auth', reason: 'blocked', testPin: db.settings.testPin || '' });
+      const tp = SET(ws.tid).testPin || '';
+      if (!a || a.tid !== ws.tid) return sendWs(ws, { t: 'auth', reason: m.token ? 'expired' : '', testPin: tp });
+      if (a.status === 'blocked') return sendWs(ws, { t: 'auth', reason: 'blocked', testPin: tp });
       attach(ws, a);
       return;
     }
@@ -710,15 +911,15 @@ function handle(ws, m) {
       const name = cleanName(m.name), pin = String(m.pin || '');
       if (name.length < 1) return sendWs(ws, { t: 'authError', msg: '닉네임을 입력해 주세요' });
       if (!/^\d{4,6}$/.test(pin)) return sendWs(ws, { t: 'authError', msg: 'PIN은 숫자 4~6자리예요' });
-      if (findByName(name)) return sendWs(ws, { t: 'authError', msg: '이미 있는 닉네임이에요' });
+      if (findByName(ws.tid, name)) return sendWs(ws, { t: 'authError', msg: '이미 있는 닉네임이에요' });
       return createAccount(ws, name, pin, m.avatar);
     }
     case 'login': {
-      const name = cleanName(m.name), key = nameKey(name), pin = String(m.pin || '');
-      const T = db.settings.testPin;
+      const name = cleanName(m.name), key = ws.tid + ':' + nameKey(name), pin = String(m.pin || '');
+      const T = SET(ws.tid).testPin;
       // 테스트 기간: 테스트 PIN이면 누구든 들어옴(없는 닉네임이면 바로 가입 신청)
       if (T && pin === T && name.length >= 1) {
-        const a0 = findByName(name);
+        const a0 = findByName(ws.tid, name);
         if (!a0) return createAccount(ws, name, pin, m.avatar);
         if (a0.status === 'blocked') return sendWs(ws, { t: 'authError', msg: '이용이 막힌 계정이에요. 관리자에게 문의해 주세요' });
         const token = rid(24); db.sessions[token] = a0.id; save();
@@ -727,7 +928,7 @@ function handle(ws, m) {
       }
       const f = loginFails.get(key);
       if (f && f.until > now()) return sendWs(ws, { t: 'authError', msg: '여러 번 틀려서 1분 뒤에 다시 해 주세요' });
-      const a = findByName(name);
+      const a = findByName(ws.tid, name);
       if (!a || !safeEq(hashPin(pin, a.salt), a.pinHash)) {
         const n = (f && f.until <= now() ? 0 : (f ? f.n : 0)) + 1;
         loginFails.set(key, { n: n >= 5 ? 0 : n, until: n >= 5 ? now() + 60e3 : 0 });
@@ -749,13 +950,13 @@ function handle(ws, m) {
       for (const [t, id] of Object.entries(db.sessions)) if (id === a.id && t === m.token) delete db.sessions[t];
       leaveRoom(u, true);
       u.approved = false; u.req = 0; u.ws = null; ws.user = null; save();
-      sendWs(ws, { t: 'auth', reason: 'logout', testPin: db.settings.testPin || '' });
+      sendWs(ws, { t: 'auth', reason: 'logout', testPin: SET(a.tid).testPin || '' });
       return;
     }
     case 'enterReq': {
       if (a.status !== 'active' || u.approved) return send(u, meMsg(u));
       u.req = now();
-      if (db.settings.autoApprove) { u.approved = true; u.req = 0; }
+      if (SET(a.tid).autoApprove) { u.approved = true; u.req = 0; }
       send(u, meMsg(u));
       return;
     }
@@ -772,7 +973,7 @@ function handle(ws, m) {
   switch (m.t) {
     case 'solo': {
       if (r) leaveRoom(u, true);
-      const o = roomOpts(m);
+      const o = roomOpts(m, a.tid);
       if (a.balance < o.minIn) return send(u, { t: 'error', msg: `이 블라인드는 최소 ${o.minIn.toLocaleString()}이 필요해요` });
       const room = new Room('solo', u, o);
       const err = room.sit(u, m.buyIn);
@@ -782,7 +983,7 @@ function handle(ws, m) {
     }
     case 'create': {
       if (r) leaveRoom(u, true);
-      const o = roomOpts(m);
+      const o = roomOpts(m, a.tid);
       if (a.balance < o.minIn) return send(u, { t: 'error', msg: `최소 머니 ${o.minIn.toLocaleString()}보다 보유 칩이 적어요` });
       const room = new Room('friends', u, o);
       const err = room.sit(u, m.buyIn);
@@ -792,8 +993,8 @@ function handle(ws, m) {
     }
     case 'peek': {   // 들어가기 전에 방 설정 보기(블라인드·최소 머니)
       const room = rooms.get(String(m.code || '').toUpperCase());
-      if (!room || room.mode !== 'friends') return send(u, { t: 'error', msg: '방을 찾을 수 없어요' });
-      send(u, { t: 'roomInfo', code: room.code, sb: room.sb, bb: room.bb, minIn: room.minIn, status: room.status, count: room.members.length, maxSeats: MAX_SEATS, mine: room.members.includes(u) });
+      if (!room || room.mode !== 'friends' || room.tid !== a.tid) return send(u, { t: 'error', msg: '방을 찾을 수 없어요' });
+      send(u, { t: 'roomInfo', code: room.code, sb: room.sb, bb: room.bb, minIn: room.minIn, rake: rakeOf(room.tid, room.bb, room.mode), status: room.status, count: room.members.length, maxSeats: MAX_SEATS, mine: room.members.includes(u) });
       break;
     }
     case 'sit': {
@@ -806,7 +1007,7 @@ function handle(ws, m) {
     case 'join': {
       const code = String(m.code || '').toUpperCase();
       const room = rooms.get(code);
-      if (!room || room.mode !== 'friends') return send(u, { t: 'error', msg: '방을 찾을 수 없어요' });
+      if (!room || room.mode !== 'friends' || room.tid !== a.tid) return send(u, { t: 'error', msg: '방을 찾을 수 없어요' });
       if (room.members.includes(u)) { send(u, room.roomMsg(u)); if (room.status === 'playing') room.tick(); return; }
       if (room.status !== 'lobby') return send(u, { t: 'error', msg: '이미 게임이 진행 중인 방이에요' });
       if (room.members.length >= MAX_SEATS) return send(u, { t: 'error', msg: '방이 가득 찼어요' });
@@ -840,9 +1041,9 @@ function handle(ws, m) {
     case 'leave': leaveRoom(u); break;
     case 'daily': {
       const date = kstDate();
-      const board = dayBoard(date);
+      const board = dayBoard(a.tid, date);
       if (board.entries[a.id]) {
-        const info = dailyInfo(a.id);
+        const info = dailyInfo(a.tid, a.id);
         return send(u, { t: 'error', msg: `오늘은 이미 도전했어요 (${info.my ? info.my.rank + '위' : ''})` });
       }
       if (r) leaveRoom(u, true);
@@ -881,13 +1082,4 @@ setInterval(() => {
 }, 20000);
 
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { saveNow(); process.exit(0); });
-// 테스트 기간(2026-10-12 사용자 지시): 운영 서버도 한 번 자동 승인 켬 + 기다리던 가입 승인. 이후엔 관리자 설정을 따름.
-if (!db.settings.mig231) {
-  db.settings.mig231 = true; db.settings.autoApprove = true;
-  for (const a of Object.values(db.accounts)) if (a.status === 'pending') {
-    a.status = 'active'; a.approvedAt = now();
-    if (db.settings.welcomeChips > 0) addMoney(a, db.settings.welcomeChips, 'welcome', '가입 지급(자동 승인)', 'admin');
-  }
-  save();
-}
 server.listen(PORT, () => console.log('로열 홀덤 서버 :' + PORT));
