@@ -133,6 +133,7 @@
   const SLOT_POS = [[50, 86], [11, 54], [10, 39.5], [17, 25.5], [33, 13.5], [67, 13.5], [83, 25.5], [90, 39.5], [89, 54], [50, 12]];
   const SLOT_SETS = { 1: [0], 2: [0, 9], 3: [0, 3, 6], 4: [0, 2, 9, 7], 5: [0, 2, 4, 5, 7], 6: [0, 1, 3, 9, 6, 8], 7: [0, 1, 2, 4, 5, 7, 8], 8: [0, 1, 2, 3, 9, 6, 7, 8], 9: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
   const CENTER = [50, 45];
+  const DEALER_POS = [[62, 71.5], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [59, 21.5], [71, 30.5], [72, 38.5], [71, 53], [50, 24.5]];
   const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
 
@@ -162,14 +163,15 @@
       if (p[1] > 80) return [50, 70];
       return this.lerp(p, CENTER, 0.5);
     },
-    dealerPos(v, seat) {
-      const p = this.slotPos(v, seat);
-      if (p[1] > 80) return [66, 78];
-      if (p[0] === 50) return [60, p[1] + 7];
-      // 옆자리: 아바타 바깥쪽 위 모서리에 붙임(카드·족보·옆자리 SB와 겹치지 않게)
-      if (p[1] < 20) return [p[0] + (p[0] <= 50 ? 10 : -10), p[1] + 3];   // 맨 윗줄: 공개 카드가 바깥쪽이라 안쪽에
-      return [p[0] + (p[0] <= 50 ? -6 : 6), p[1] - 5.2];
+    // D 버튼: 참고 화면처럼 테이블(펠트) 위, 버튼 주인 앞에 놓음.
+    // 자리마다 위치는 화면 겹침 점검(2~9명 × 쇼다운·모두 베팅 × 360/390/1280px)으로 고른 값:
+    // 버튼 주인 쪽이 확실히 더 가깝고, 남의 카드·이름·베팅 칩·보드와 안 겹침(쇼다운 땐 주인 카드가 D 위를 덮음)
+    slotIdx(v, seat) {
+      const n = v.players.length, mi = Math.max(0, this.myIndex(v));
+      const rel = (seat - mi + n) % n;
+      return (SLOT_SETS[n] || SLOT_SETS[9])[rel] ?? rel;
     },
+    dealerPos(v, seat) { return DEALER_POS[this.slotIdx(v, seat)] || this.betPos(v, seat); },
     tablePt(pct) {
       const r = $('#table').getBoundingClientRect();
       return { x: r.left + (r.width * pct[0]) / 100, y: r.top + (r.height * pct[1]) / 100 };
@@ -394,6 +396,8 @@
         }
         b.querySelector('.amt').textContent = fmt(amt);
         b.style.opacity = amt > 0 ? 1 : 0;
+        const blind = v.stage === 'preflop' && amt > 0 ? (i === v.sbIdx && v.sbIdx !== v.bbIdx ? 'SB' : i === v.bbIdx ? 'BB' : '') : '';
+        b.dataset.blind = blind;
       });
     },
 
