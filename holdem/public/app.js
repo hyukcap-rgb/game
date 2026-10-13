@@ -324,6 +324,8 @@
         const changed = !pp || JSON.stringify(pp.lastAction) !== JSON.stringify(la);
         if (v.result && winners.has(p.id)) {
           tag.className = 'tag win show'; tag.textContent = '승리';
+        } else if (v.result && faceUp && !isMe) {
+          tag.className = 'tag';   // 쇼다운: 공개된 카드를 가리지 않게 말풍선 숨김
         } else if (la && !(la.type === 'SB' || la.type === 'BB') || (la && newHand)) {
           tag.className = 'tag ' + la.type + (changed ? '' : ' show');
           tag.textContent = TAG_TXT[la.type] || la.type;

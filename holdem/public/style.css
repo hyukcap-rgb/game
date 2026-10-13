@@ -164,6 +164,12 @@ input { font: inherit; }
 .tag.allin { background: linear-gradient(90deg, #ff4d63, #f59e0b); color: #fff; box-shadow: 0 0 3cqw rgba(224, 56, 77, .7); }
 .tag.SB, .tag.BB { background: rgba(0, 0, 0, .7); color: #cfd3dd; }
 .tag.win { background: linear-gradient(180deg, #ffd978, #d39b33); color: #2a1a00; }
+/* 승리 표시는 카드를 가리지 않게 아바타 아래쪽에 리본처럼(내 자리는 아바타 오른쪽) */
+.seat:not(.me) .tag.win { left: 50%; right: auto; top: 9.6cqw; transform-origin: center; transform: translateX(-50%) scale(0); }
+.seat:not(.me) .tag.win.show { transform: translateX(-50%) scale(1); }
+.seat:not(.me) .tag.win::after { display: none; }
+.seat.me .tag.win { left: calc(50% + 7cqw); top: 2cqw; }
+.seat.me .tag.win::after { display: none; }
 .seat.win .ava img { border-color: var(--gold); animation: winGlow 1s ease-in-out infinite alternate; }
 @keyframes winGlow { from { box-shadow: 0 0 2cqw rgba(242, 195, 91, .5); } to { box-shadow: 0 0 7cqw rgba(242, 195, 91, 1); } }
 .seat .hn { font-size: 2.8cqw; font-weight: 900; color: var(--gold); white-space: nowrap; text-shadow: 0 1px 3px #000; min-height: 1em; }
