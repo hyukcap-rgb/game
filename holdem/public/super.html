@@ -83,6 +83,9 @@ header h1 span { color:var(--violet); }
     <span class="sp"></span>
     <span class="muted" id="liveTxt"></span>
     <button class="btn v sm" id="newBtn">+ 사업장 추가</button>
+    <button class="btn sm" id="backupBtn">⬇ 백업</button>
+    <button class="btn sm" id="restoreBtn">⬆ 되살리기</button>
+    <input type="file" id="restoreFile" accept="application/json,.json" hidden>
     <button class="btn sm" id="logoutBtn">로그아웃</button>
   </header>
   <div class="wrap">
@@ -188,6 +191,32 @@ header h1 span { color:var(--violet); }
     });
   }
   $('#newBtn').onclick = () => editModal(null);
+  // 서버 이전용: 전체 데이터(회원·칩·로그·사업장·설정) 백업 / 되살리기
+  $('#backupBtn').onclick = async () => {
+    try {
+      const r = await fetch('/super/api/backup', { headers: { 'x-admin-token': token || '' } });
+      if (!r.ok) throw new Error('백업 실패');
+      const blob = await r.blob();
+      const m = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = m ? m[1] : 'royal-holdem-backup.json';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast('백업 파일을 내려받았어요');
+    } catch (e) { toast(e.message); }
+  };
+  $('#restoreBtn').onclick = () => $('#restoreFile').click();
+  $('#restoreFile').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let data; try { data = JSON.parse(await f.text()); } catch (err) { return toast('JSON 파일이 아니에요'); }
+    const n = data && data.accounts ? Object.keys(data.accounts).length : 0;
+    if (!confirm(`이 서버의 모든 데이터를 백업 파일(회원 ${n}명)로 바꿀까요? 지금 데이터는 서버에 따로 보관하고, 서버가 잠깐 다시 켜져요.`)) return;
+    try {
+      const r = await fetch('/super/api/restore', { method: 'POST', headers: { 'x-admin-token': token || '', 'content-type': 'application/json' }, body: JSON.stringify(data) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || '되살리기 실패');
+      toast(`되살렸어요(회원 ${j.members}명, 사업장 ${j.tenants}곳). 서버가 다시 켜지면 다시 로그인해 주세요`);
+      setTimeout(logout, 2500);
+    } catch (err) { toast(err.message); }
+  };
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b || !L) return;
     if (b.dataset.copy) { try { await navigator.clipboard.writeText(b.dataset.copy); toast('주소를 복사했어요'); } catch (err) { toast(b.dataset.copy); } return; }

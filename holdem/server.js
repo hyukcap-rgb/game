@@ -95,7 +95,9 @@ function rakeOf(tid, bb, mode) {
   return { pct: L.pct, capBB: L.capBB, cap: Math.round(L.capBB * bb), nfnd: R.nfnd !== false };
 }
 let saveT = null;
+let frozen = false;   // 백업 되살리기 중엔 저장을 멈춤(되살린 파일을 덮어쓰지 않게)
 function save() {
+  if (frozen) return;
   clearTimeout(saveT);
   saveT = setTimeout(() => {
     const cut = new Date(Date.now() - 15 * 86400e3).toISOString().slice(0, 10);
@@ -105,7 +107,7 @@ function save() {
     fs.writeFile(tmp, JSON.stringify(db), (err) => { if (!err) fs.rename(tmp, DB_FILE, () => {}); });
   }, 200);
 }
-function saveNow() { clearTimeout(saveT); try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) { /* */ } }
+function saveNow() { if (frozen) return; clearTimeout(saveT); try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) { /* */ } }
 
 const rid = (n) => crypto.randomBytes(n).toString('base64url');
 const now = () => Date.now();
@@ -557,7 +559,8 @@ function leaveRoom(u, silent) {
 // ---------- HTTP ----------
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '32kb' }));
+const json32 = express.json({ limit: '32kb' });
+app.use((req, res, next) => (req.path === '/super/api/restore' ? next() : json32(req, res, next)));
 app.get('/healthz', (req, res) => res.send('ok'));
 const msgPage = (title, msg) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body style="background:#0b0f17;color:#e8e2d0;font-family:sans-serif;display:grid;place-items:center;min-height:90vh;text-align:center"><div><h2>${title}</h2><p>${msg}</p></div>`;
 // 사업장 찾기: 사업장 도메인 → /s/주소이름/… → 본사
@@ -776,6 +779,25 @@ app.post('/super/api/login', (req, res) => {
   adminFails.delete('super');
   const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: null, sup: true });
   res.json({ token: t });
+});
+// 데이터 옮기기(다른 서버로 이전): 전체 백업 내려받기 / 백업 파일로 되살리기
+app.get('/super/api/backup', superAuth, (req, res) => {
+  saveNow();
+  const name = 'royal-holdem-backup-' + kstDate() + '.json';
+  res.set('content-disposition', 'attachment; filename="' + name + '"');
+  res.type('application/json').send(JSON.stringify(db));
+});
+app.post('/super/api/restore', superAuth, express.json({ limit: '200mb' }), (req, res) => {
+  const b = req.body;
+  if (!b || typeof b !== 'object' || typeof b.accounts !== 'object' || typeof b.tenants !== 'object' || !Array.isArray(b.logs)) return res.status(400).json({ error: '홀덤 백업 파일이 아니에요' });
+  try {
+    fs.writeFileSync(DB_FILE + '.before-restore', JSON.stringify(db));
+    fs.writeFileSync(DB_FILE, JSON.stringify(b));
+  } catch (e) { return res.status(500).json({ error: '저장 실패: ' + e.message }); }
+  frozen = true;
+  res.json({ ok: true, members: Object.keys(b.accounts).length, tenants: Object.keys(b.tenants).length });
+  // 되살린 파일로 다시 시작(Railway가 자동으로 다시 켬)
+  setTimeout(() => process.exit(1), 800);
 });
 function tenantRow(T) {
   const accts = Object.values(db.accounts).filter((a) => a.tid === T.id);
