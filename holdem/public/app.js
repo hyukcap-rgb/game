@@ -166,9 +166,9 @@
       const p = this.slotPos(v, seat);
       if (p[1] > 80) return [66, 78];
       if (p[0] === 50) return [60, p[1] + 7];
-      // 버튼 주인의 카드 바로 아래에 붙여서, 옆자리(SB) 것으로 보이지 않게
-      if (p[1] > 48) return [p[0], p[1] + 10.5];   // 아래쪽 옆자리는 보드 카드와 겹치지 않게 칩 숫자 바로 아래
-      return [p[0] + (p[0] <= 50 ? 9.5 : -9.5), p[1] + 5];
+      // 옆자리: 아바타 바깥쪽 위 모서리에 붙임(카드·족보·옆자리 SB와 겹치지 않게)
+      if (p[1] < 20) return [p[0] + (p[0] <= 50 ? 10 : -10), p[1] + 3];   // 맨 윗줄: 공개 카드가 바깥쪽이라 안쪽에
+      return [p[0] + (p[0] <= 50 ? -6 : 6), p[1] - 5.2];
     },
     tablePt(pct) {
       const r = $('#table').getBoundingClientRect();
@@ -204,6 +204,8 @@
         el.classList.toggle('me', p.id === this.myId);
         el.classList.toggle('side-l', p.id !== this.myId && x <= 50);
         el.classList.toggle('side-r', p.id !== this.myId && x > 50);
+        el.classList.toggle('top', p.id !== this.myId && y < 20);
+        el.classList.toggle('low', p.id !== this.myId && y > 48);   // 아래 옆자리: 보드와 겹치지 않게 카드는 위쪽, 족보는 칩 아래   // 맨 윗줄: 공개 카드는 바깥쪽으로(가운데에서 서로 겹치지 않게)
         const [bx, by] = this.betPos(v, i);
         const b = this.betEls[i];
         b.style.left = bx + '%'; b.style.top = by + '%';
@@ -324,7 +326,7 @@
         const changed = !pp || JSON.stringify(pp.lastAction) !== JSON.stringify(la);
         if (v.result && winners.has(p.id)) {
           tag.className = 'tag win show'; tag.textContent = '승리';
-        } else if (v.result && faceUp && !isMe) {
+        } else if (v.result && faceUp) {
           tag.className = 'tag';   // 쇼다운: 공개된 카드를 가리지 않게 말풍선 숨김
         } else if (la && !(la.type === 'SB' || la.type === 'BB') || (la && newHand)) {
           tag.className = 'tag ' + la.type + (changed ? '' : ' show');
@@ -1206,5 +1208,5 @@
   loadDailyInfo();
 
   // 디버그/테스트용
-  window.__rh = { R, Online, Net, Me, get current() { return current; } };
+  window.__rh = { R, Online, Net, Me, show, get current() { return current; } };
 })();

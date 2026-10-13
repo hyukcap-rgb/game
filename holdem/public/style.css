@@ -84,7 +84,7 @@ input { font: inherit; }
 
 /* ---------- 테이블 ---------- */
 .table-area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
-.table { position: relative; container-type: inline-size; aspect-ratio: 848 / 1264; height: 100%; max-width: 100%; max-height: 100%; }
+.table { position: relative; container-type: inline-size; aspect-ratio: 10 / 18;   /* 자리 배치는 세로로 긴 비율 기준(넓은 화면도 같은 비율) */ height: 100%; max-width: 100%; max-height: 100%; }
 @supports not (aspect-ratio: 1) { .table { width: 100%; } }
 .felt { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; filter: saturate(1.05); }
 
@@ -367,3 +367,16 @@ input { font: inherit; }
 .bi-rake { margin: 4px 0 2px; font-size: 12.5px; color: #f5d78e; text-align: center; opacity: .9; }
 #roomRule small { color: #f5d78e; opacity: .85; font-size: 12px; }
 .site-name { margin: -6px 0 10px; font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: .5px; text-align: center; }
+
+/* 쇼다운 배치: 맨 윗줄 두 사람은 공개 카드를 바깥쪽에, 족보 이름은 카드 아래에 */
+.seat.top.side-l .cards.up { left: auto; right: calc(50% + 4.5cqw); }
+.seat.top.side-r .cards.up { right: auto; left: calc(50% + 4.5cqw); }
+.seat:not(.top):not(.low) .cards.up { top: 4.6cqw; }   /* 윗사람 칩 숫자를 가리지 않게 조금 아래로 */
+.seat.side-l .hn, .seat.side-r .hn { position: absolute; top: 18.6cqw; min-height: 0; z-index: 4; }
+.seat.top .hn { top: 15cqw; }
+.seat.side-l .hn { left: calc(50% + 6.5cqw); }
+.seat.side-r .hn { right: calc(50% + 6.5cqw); }
+.seat.top.side-l .hn { left: auto; right: calc(50% + 4.5cqw); }
+.seat.top.side-r .hn { right: auto; left: calc(50% + 4.5cqw); }
+.seat .hn:not(:empty) { background: rgba(0, 0, 0, .55); padding: .2cqw 1.4cqw; border-radius: 2cqw; }
+.seat.low .hn { position: static; }
