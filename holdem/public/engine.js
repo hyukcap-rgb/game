@@ -173,12 +173,23 @@
       return Math.max(0, x);
     }
 
-    addPlayer(p) {
-      this.players.push({
-        id: p.id, name: p.name, stack: p.stack, isBot: !!p.isBot, avatar: p.avatar || 0,
+    addPlayer(p) { this.players.push(this.mkPlayer(p)); }
+    mkPlayer(p) {
+      return {
+        id: p.id, name: p.name || '', stack: p.stack || 0, isBot: !!p.isBot, avatar: p.avatar || 0,
         style: p.style || null, hole: [], bet: 0, total: 0, folded: true, allIn: false,
         acted: false, inHand: false, lastAction: null, raises: 0, away: false,
-      });
+        empty: !!p.empty,                 // 빈자리(아무도 없음)
+        waitBB: !!p.waitBB,               // 새로 앉음 — 빅블라인드 차례까지 기다림
+        postBB: !!p.postBB,               // 새로 앉음 — BB를 내고 다음 핸드부터(버튼·SB 사이 자리면 기다림)
+      };
+    }
+    // 핸드 사이에 i번 자리에 새 사람을 앉힘(빈자리·AI 자리를 차지)
+    seatPlayer(i, p) {
+      const old = this.players[i];
+      if (old && old.inHand && this.stage !== 'done' && this.stage !== 'idle') return false;   // 폴드했어도 팟에 칩이 걸려 있음
+      this.players[i] = this.mkPlayer(p);
+      return true;
     }
 
     setBlinds(sb, bb) { this.sb = sb; this.bb = bb; }
@@ -196,8 +207,17 @@
     potTotal() { return this.players.reduce((s, p) => s + p.total, 0); }
 
     startHand() {
-      const eligible = (p) => p.stack > 0;
-      const seated = this.players.filter(eligible);
+      // 새로 앉은 사람 규칙(카드룸 표준): ① 빅블라인드 차례까지 기다리거나 ② BB를 내고 바로 참여.
+      // 단, 버튼과 스몰블라인드 사이 자리는 블라인드를 건너뛰고 버튼을 받게 되므로 버튼이 지나갈 때까지 기다림.
+      // 기다리는 사람은 버튼·SB를 받지 않고, BB가 자기에게 오면 BB를 내며 들어옴.
+      const has = (p) => p.stack > 0 && !p.empty;
+      const joiner = (p) => has(p) && (p.waitBB || p.postBB);
+      const regular = (p) => has(p) && !p.waitBB && !p.postBB;
+      if (this.players.filter(regular).length < 2) {
+        // 원래 앉아 있던 사람이 1명 이하 = 새로 시작하는 판: 기다리는 사람도 블라인드 의무 없이 바로 참여
+        for (const p of this.players) { p.waitBB = false; p.postBB = false; }
+      }
+      const seated = this.players.filter(has);
       if (seated.length < 2) return false;
       this.handNo++;
       this.actionSeq = 0;
@@ -207,12 +227,22 @@
       this.runout = false;
       for (const p of this.players) {
         p.hole = []; p.bet = 0; p.total = 0; p.acted = false; p.actedAt = 0; p.lastAction = null; p.raises = 0;
-        p.inHand = eligible(p); p.folded = !p.inHand; p.allIn = false; p.won = 0; p.shown = false; p.showMask = 0;
+        p.inHand = regular(p); p.folded = !p.inHand; p.allIn = false; p.won = 0; p.shown = false; p.showMask = 0; p.posting = false;
       }
+      const n = this.players.length;
       this.dealer = this.nextIdx(this.dealer, (p) => p.inHand);
-      const headsUp = seated.length === 2;
-      this.sbIdx = headsUp ? this.dealer : this.nextIdx(this.dealer, (p) => p.inHand);
-      this.bbIdx = this.nextIdx(this.sbIdx, (p) => p.inHand);
+      this.sbIdx = this.nextIdx(this.dealer, (p) => p.inHand);
+      this.bbIdx = this.nextIdx(this.sbIdx, (p) => p.inHand || joiner(p));
+      const dist = (i) => (((i - this.dealer) % n) + n) % n;
+      this.players.forEach((p, i) => {
+        if (!joiner(p)) return;
+        if (i === this.bbIdx) { p.inHand = true; p.folded = false; p.waitBB = false; p.postBB = false; }
+        else if (p.postBB && !(dist(i) > 0 && dist(i) < dist(this.sbIdx))) { p.inHand = true; p.folded = false; p.postBB = false; p.posting = true; }
+        else if (p.postBB) { p.postBB = false; p.waitBB = true; }   // 버튼과 SB 사이: 버튼이 지나갈 때까지
+        if (!p.inHand) p.lastAction = { type: 'WAIT' };
+      });
+      const headsUp = this.players.filter((p) => p.inHand).length === 2;
+      if (headsUp) { this.sbIdx = this.dealer; this.bbIdx = this.nextIdx(this.dealer, (p) => p.inHand); }
       // 헤즈업으로 바뀌는 핸드에서 같은 사람이 BB를 두 번 연속 내지 않게 버튼을 넘김(TDA)
       if (headsUp && this.lastBB != null && this.players[this.bbIdx].id === this.lastBB) {
         const t = this.bbIdx; this.bbIdx = this.sbIdx; this.sbIdx = t; this.dealer = t;
@@ -220,6 +250,7 @@
       this.lastBB = this.players[this.bbIdx].id;
       this.post(this.sbIdx, this.sb, 'SB');
       this.post(this.bbIdx, this.bb, 'BB');
+      this.players.forEach((p, i) => { if (p.posting && i !== this.bbIdx && i !== this.sbIdx) this.post(i, this.bb, 'BB'); p.posting = false; });   // 새로 앉아 BB를 낸 사람
       this.currentBet = this.bb;
       this.minRaise = this.bb;
       for (let r = 0; r < 2; r++) {
@@ -519,7 +550,7 @@
         players: this.players.map((p, i) => ({
           seat: i, id: p.id, name: p.name, stack: p.stack, bet: p.bet, total: p.total,
           folded: p.folded, allIn: p.allIn, inHand: p.inHand, isBot: p.isBot, avatar: p.avatar,
-          lastAction: p.lastAction, won: p.won || 0, away: !!p.away,
+          lastAction: p.lastAction, won: p.won || 0, away: !!p.away, empty: !!p.empty, waitBB: !!p.waitBB, postBB: !!p.postBB,
           hole: p.id === forId || reveal(p) ? p.hole.slice()
             : p.showMask ? p.hole.map((c, k) => (p.showMask & (1 << k) ? c : '??'))
             : (p.inHand && !p.folded ? ['??', '??'] : []),

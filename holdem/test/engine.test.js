@@ -216,4 +216,88 @@ t('bot simulation', () => {
   console.log('  simulated hands:', hands);
 });
 
+// ---------- 새로 앉은 사람 규칙 ----------
+// 9자리: 0~3번 사람, 나머지 빈자리. 핸드를 모두 폴드로 끝내는 도우미
+function seatGame(stacks) {
+  const g = new H.Game({ seed: 'seat', sb: 50, bb: 100 });
+  for (let i = 0; i < 9; i++) g.addPlayer(stacks[i] ? { id: 'p' + i, name: 'P' + i, stack: stacks[i] } : { id: 'e' + i, empty: true });
+  return g;
+}
+function foldOut(g) { let k = 0; while (g.stage !== 'done') { const L = g.legal(); g.act(g.players[g.toAct].id, L.canCheck ? 'check' : 'fold'); if (++k > 50) throw new Error('loop'); } }
+t('empty seats never dealt, button skips them', () => {
+  const g = seatGame([1e4, 0, 1e4, 0, 1e4]);
+  g.startHand();
+  assert.deepStrictEqual(g.players.filter((p) => p.inHand).map((p) => p.id), ['p0', 'p2', 'p4']);
+  assert(!g.players[g.dealer].empty && !g.players[g.sbIdx].empty && !g.players[g.bbIdx].empty);
+});
+t('waitBB: skipped for button/SB, dealt in exactly when BB reaches them', () => {
+  const g = seatGame([1e4, 1e4, 1e4, 1e4]);
+  g.startHand(); foldOut(g);                      // 버튼 p0, SB p1, BB p2
+  assert.strictEqual(g.dealer, 0);
+  g.seatPlayer(5, { id: 'n5', name: 'N', stack: 1e4, waitBB: true });
+  let entered = -1;
+  for (let h = 0; h < 8; h++) {
+    g.startHand();
+    const n5 = g.players[5];
+    assert(g.dealer !== 5 && g.sbIdx !== 5, '기다리는 사람이 버튼·SB를 받으면 안 됨');
+    if (n5.inHand) { assert.strictEqual(g.bbIdx, 5, 'BB로만 들어와야 함'); entered = h; break; }
+    assert.strictEqual(n5.lastAction.type, 'WAIT');
+    foldOut(g);
+  }
+  assert(entered >= 0, '결국 BB로 들어와야 함');
+});
+t('postBB: seat between button and SB must wait for the button to pass', () => {
+  const g = seatGame([1e4, 0, 1e4, 1e4, 1e4]);   // 0,2,3,4 사람
+  g.startHand(); foldOut(g);                      // 버튼 0
+  // 다음 핸드 버튼 2, SB 3, BB 4 → 2와 3 사이에는 자리가 없음. 0→2 사이 1번은 버튼이 지나간 자리라 바로 참여 가능
+  g.seatPlayer(1, { id: 'n1', name: 'N1', stack: 1e4, postBB: true });
+  g.startHand();
+  assert.strictEqual(g.dealer, 2);
+  assert(g.players[1].inHand, '버튼이 이미 지나간 자리는 BB 내고 바로 참여');
+  assert.strictEqual(g.players[1].bet, 100);
+  foldOut(g);
+  // 이제 버튼 3, SB 4 예정 → 3과 4 사이엔 자리 없음. 버튼(2)과 SB(3) 사이 시험: 새 게임
+  const h = seatGame([1e4, 1e4, 0, 1e4, 1e4]);   // 0,1,3,4
+  h.startHand(); foldOut(h);                      // 버튼 0, SB 1, BB 3
+  // 다음: 버튼 1, SB 3 → 2번 자리는 버튼과 SB 사이
+  h.seatPlayer(2, { id: 'n2', name: 'N2', stack: 1e4, postBB: true });
+  h.startHand();
+  assert.strictEqual(h.dealer, 1); assert.strictEqual(h.sbIdx, 3);
+  assert(!h.players[2].inHand, '버튼과 SB 사이는 BB를 내도 바로 못 들어옴');
+  assert(h.players[2].waitBB, '대신 BB 차례를 기다림');
+  assert.strictEqual(h.players[2].stack, 1e4, '칩을 떼지 않음');
+});
+t('postBB on the natural BB seat just plays the BB (no double post)', () => {
+  const g = seatGame([1e4, 1e4, 0, 1e4]);        // 0,1,3
+  g.startHand(); foldOut(g);                      // 버튼 0, SB 1, BB 3
+  g.seatPlayer(2, { id: 'n2', name: 'N2', stack: 1e4, postBB: true });   // 다음: 버튼 1, SB 3, 그다음 2? → 3 다음은 0. 2는 1과 3 사이 = 버튼·SB 사이
+  g.startHand();
+  assert(!g.players[2].inHand);
+  const k = seatGame([1e4, 1e4, 1e4, 0]);         // 0,1,2
+  k.startHand(); foldOut(k);                       // 버튼 0, SB 1, BB 2
+  k.seatPlayer(3, { id: 'n3', name: 'N3', stack: 1e4, postBB: true });   // 다음: 버튼 1, SB 2, BB → 3
+  k.startHand();
+  assert.strictEqual(k.bbIdx, 3); assert(k.players[3].inHand); assert.strictEqual(k.players[3].bet, 100);
+  assert.strictEqual(k.players.reduce((s, p) => s + p.bet, 0), 150, 'SB+BB만 걸림');
+});
+t('only one regular left: newcomers join without blind obligation', () => {
+  const g = seatGame([1e4]);
+  g.seatPlayer(4, { id: 'n4', name: 'N4', stack: 1e4, waitBB: true });
+  assert(g.startHand(), '새 판처럼 시작');
+  assert(g.players[4].inHand && g.players[0].inHand);
+});
+t('chips conserved with joiners over many hands', () => {
+  const rand = H.mulberry32(7);
+  const g = seatGame([1e4, 0, 1e4, 0, 1e4, 0, 0, 0, 0]);
+  let joined = 0;
+  for (let h = 0; h < 300; h++) {
+    if (h % 7 === 3) { const free = g.players.map((p, i) => (p.empty ? i : -1)).filter((i) => i >= 0); if (free.length) { g.seatPlayer(free[0], { id: 'j' + h, name: 'J', stack: 1e4, [h % 2 ? 'waitBB' : 'postBB']: true }); joined++; } }
+    if (!g.startHand()) break;
+    let guard = 0;
+    while (g.stage !== 'done') { if (++guard > 500) throw new Error('loop'); if (g.runout) { g.runoutStep(); continue; } const d = H.botDecide(g, rand); assert(g.act(g.players[g.toAct].id, d.type, d.amount)); }
+    const tot = g.players.reduce((s, p) => s + p.stack, 0) + g.rakeTotal;
+    assert.strictEqual(tot, 1e4 * (3 + joined));
+  }
+});
+
 console.log('OK', n, 'tests');

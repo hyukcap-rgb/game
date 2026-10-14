@@ -163,7 +163,7 @@
   const SLOT_SETS = { 1: [0], 2: [0, 9], 3: [0, 3, 6], 4: [0, 2, 9, 7], 5: [0, 2, 4, 5, 7], 6: [0, 1, 3, 9, 6, 8], 7: [0, 1, 2, 4, 5, 7, 8], 8: [0, 1, 2, 3, 9, 6, 7, 8], 9: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
   const CENTER = [50, 45];
   const DEALER_POS = [[62, 71.5], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [59, 21.5], [71, 30.5], [72, 38.5], [71, 53], [50, 24.5]];
-  const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB' };
+  const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB', WAIT: '대기' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
 
   // ---------- 렌더러 ----------
@@ -300,10 +300,20 @@
         const el = this.seatEls[i];
         const pp = prev && !newHand ? prev.players[i] : null;
         el.classList.toggle('folded', p.inHand && p.folded);
-        el.classList.toggle('out', !p.inHand && p.stack <= 0);
+        el.classList.toggle('out', !p.inHand && p.stack <= 0 && !p.empty);
         el.classList.toggle('away', !!p.away);
-        el.querySelector('img').src = avatarSrc(p.avatar);
-        el.querySelector('.nm').textContent = p.id === this.myId ? (p.name + ' (나)') : p.name;
+        el.classList.toggle('empty', !!p.empty);
+        const open = !!(v.watch && v.open && v.open.includes(i)), resv = v.reserved === i;
+        let sit = el.querySelector('.sit-btn');
+        if (open || resv) {
+          if (!sit) { sit = document.createElement('button'); sit.className = 'sit-btn'; el.appendChild(sit); sit.onclick = (e) => { e.stopPropagation(); if (!sit.disabled) sitModal(+sit.dataset.i); }; }
+          sit.dataset.i = i; sit.disabled = resv; sit.textContent = resv ? '앉는 중…' : '앉기';
+        } else if (sit) sit.remove();
+        let wb = el.querySelector('.wait-bb');
+        if (p.waitBB || p.postBB) { if (!wb) { wb = document.createElement('div'); wb.className = 'wait-bb'; el.querySelector('.plate').appendChild(wb); } wb.textContent = p.postBB ? '다음 핸드 참여' : 'BB 기다리는 중'; }
+        else if (wb) wb.remove();
+        if (!p.empty) el.querySelector('img').src = avatarSrc(p.avatar); else el.querySelector('img').removeAttribute('src');
+        el.querySelector('.nm').textContent = p.empty ? '빈자리' : p.id === this.myId ? (p.name + ' (나)') : p.name;
         let shownStack = p.stack;
         if (v.result && p.won && (!prev || !prev.result || newHand)) {
           shownStack = p.stack - p.won; // 칩이 날아온 뒤 갱신
@@ -313,7 +323,7 @@
           shownStack = Number(el.dataset.shown || p.stack);
         }
         if (!(v.result && p.won)) el.dataset.shown = p.stack;
-        el.querySelector('.stk').textContent = !p.inHand && p.stack <= 0 ? '칩 없음' : fmt(shownStack);
+        el.querySelector('.stk').textContent = p.empty ? '' : !p.inHand && p.stack <= 0 ? '칩 없음' : fmt(shownStack);
         let rbc = el.querySelector('.rb-count');
         if (p.rebuys) { if (!rbc) { rbc = document.createElement('div'); rbc.className = 'rb-count'; el.querySelector('.plate').appendChild(rbc); } rbc.textContent = `리바인 ${p.rebuys}`; }
         else if (rbc) rbc.remove();
@@ -694,7 +704,9 @@
         const wr = $('#waitRow');
         const me = v.players.find((p) => p.id === R.myId);
         let txt = '';
-        if (me && !me.inHand && me.stack <= 0) txt = '관전 중';
+        if (v.watch) txt = v.reserved >= 0 ? '이번 핸드가 끝나면 자리에 앉아요' : (v.open && v.open.length ? '관전 중 · 빈자리나 AI 자리를 눌러 앉으세요' : '관전 중 · 빈자리가 없어요');
+        else if (me && !me.inHand && me.stack > 0 && (me.waitBB || me.postBB)) txt = me.postBB ? '다음 핸드부터 참여해요 (BB 납부)' : '빅블라인드가 내 자리에 오면 참여해요';
+        else if (me && !me.inHand && me.stack <= 0) txt = '관전 중';
         else if (v.result) txt = '다음 핸드 준비 중…';
         else if (v.runout) txt = '올인! 카드 공개 중…';
         else if (v.toAct >= 0) txt = `${esc(v.players[v.toAct].name)} 차례…`;
@@ -1021,7 +1033,7 @@
   // o: { title, pickBlinds, pickMin, sb, bb, minIn, go:'만들기', onOk(opts) }
   function buyInModal(o) {
     const bal = Me.info ? Me.info.balance : 0;
-    let bb = o.bb || 100, minIn = o.minIn || defMin(bb), amt = 0;
+    let bb = o.bb || 100, minIn = o.minIn || defMin(bb), amt = 0, post = false;
     const fitAmt = (v) => Math.max(minIn, Math.min(bal, Math.round(v / 100) * 100));
     amt = fitAmt(Math.min(bal, Math.max(minIn, (Me.info && Me.info.buyIn) || bb * 100)));
     modal(`<h3>${esc(o.title)}</h3>
@@ -1033,6 +1045,9 @@
         <input type="range" id="biRange">
         <div class="bi-quick" id="biQuick"></div>
         <p class="bi-err" id="biErr"></p>
+        ${o.pickPost ? `<label>언제부터 칠까요?</label><div class="bi-post" id="biPost">
+          <button data-post="0" class="on"><b>빅블라인드 차례까지 기다리기</b><small>추가로 내는 칩 없음 · BB가 내 자리에 오면 참여</small></button>
+          <button data-post="1"><b>BB ${fmt(o.bb)} 내고 다음 핸드부터</b><small>버튼과 SB 사이 자리면 버튼이 지나갈 때까지 기다려요</small></button></div>` : ''}
       </div>
       <div class="btns"><button class="btn primary big" id="biOk">${esc(o.go || '입장')}</button><button class="btn ghost" data-close>취소</button></div>`,
     (el) => {
@@ -1054,12 +1069,23 @@
         if (b.dataset.bb) { bb = +b.dataset.bb; if (minIn < bb * 10 || !o.pickMin) minIn = defMin(bb); amt = fitAmt(Math.max(amt, minIn)); draw(); }
         else if (b.dataset.min) { minIn = +b.dataset.min; amt = fitAmt(Math.max(amt, minIn)); draw(); }
         else if (b.dataset.v) { amt = fitAmt(+b.dataset.v); draw(); }
+        else if (b.dataset.post) { post = b.dataset.post === '1'; el.querySelectorAll('#biPost button').forEach((x) => x.classList.toggle('on', x === b)); }
       };
       el.querySelector('#biRange').oninput = (e) => { amt = fitAmt(+e.target.value); el.querySelector('#biAmt').textContent = fmt(amt); el.querySelector('#biAmt').dataset.bb = `${Math.floor(amt / bb)}BB`; };
-      el.querySelector('#biOk').onclick = () => { closeModal(); o.onOk({ sb: (BLINDS.find((x) => x[1] === bb) || [bb / 2])[0], bb, minIn, buyIn: amt }); };
+      el.querySelector('#biOk').onclick = () => { closeModal(); o.onOk({ sb: (BLINDS.find((x) => x[1] === bb) || [bb / 2])[0], bb, minIn, buyIn: amt, post }); };
       draw();
     });
   }
+  // ---------- 진행 중인 방: 빈자리·AI 자리에 앉기 ----------
+  function sitModal(i) {
+    const v = R.v, room = Online.room;
+    if (!v || !room) return;
+    const p = v.players[i];
+    buyInModal({ title: p && p.isBot ? `${p.name} 자리에 앉기` : '빈자리에 앉기', sb: v.sb, bb: v.bb, minIn: room.minIn, pickPost: true, go: '앉기',
+      onOk: (x) => Net.send({ t: 'takeSeat', seat: i, buyIn: x.buyIn, post: x.post }) });
+  }
+  Net.on('seatTaken', (m) => { if (m.pid !== Online.pid) toast(`${m.name}님이 자리에 앉았어요`); else toast(m.post ? '다음 핸드부터 참여해요' : '빅블라인드 차례에 참여해요'); });
+
   // ---------- 리바인 ----------
   function rebuyModal() {
     const rb = Online.rebuy, v = R.v;
@@ -1091,6 +1117,7 @@
 
   Net.on('roomInfo', (m) => {
     if (m.mine) { Net.send({ t: 'join', code: m.code }); return; }
+    if (m.status === 'playing') { current = Online; R.reset(); Net.send({ t: 'join', code: m.code }); return; }   // 진행 중: 관전으로 들어가 빈자리에 앉기
     if (m.status !== 'lobby') return toast('이미 게임이 진행 중인 방이에요');
     buyInModal({ title: `방 ${m.code} 들어가기`, sb: m.sb, bb: m.bb, minIn: m.minIn, rake: m.rake || null, go: '칩 가져가서 입장', onOk: (x) => { current = Online; Net.send({ t: 'join', code: m.code, buyIn: x.buyIn }); } });
   });
@@ -1138,13 +1165,13 @@
       const rows = L.map((r) => {
         const full = r.count >= r.maxSeats, playing = r.status !== 'lobby';
         const btn = r.mine ? `<button class="btn primary sm" data-join="${r.code}">돌아가기</button>`
-          : playing ? `<button class="btn ghost sm" disabled>게임 중</button>`
+          : playing ? `<button class="btn primary sm" data-join="${r.code}">${r.open ? '관전·앉기' : '관전하기'}</button>`
           : full ? `<button class="btn ghost sm" disabled>가득 참</button>`
           : `<button class="btn primary sm" data-join="${r.code}">입장하기</button>`;
         return `<div class="room-row${r.mine ? ' mine' : ''}">
           <img src="${avatarSrc(r.hostAva)}" alt="">
           <div class="rr-t"><b>${esc(r.host)}<small>님의 방</small></b>
-            <span>👥 <i class="num">${r.count}/${r.maxSeats}</i> · <i class="num">${short(r.sb)}/${short(r.bb)}</i> · 최소 <i class="num">${short(r.minIn)}</i></span></div>
+            <span>👥 <i class="num">${r.count}/${r.maxSeats}</i>${playing && r.open ? ` · 빈자리 <i class="num">${r.open}</i>` : ''} · <i class="num">${short(r.sb)}/${short(r.bb)}</i> · 최소 <i class="num">${short(r.minIn)}</i></span></div>
           <span class="rr-st ${playing ? 'play' : 'wait'}">${playing ? '게임 중' : '대기 중'}</span>${btn}</div>`;
       });
       box.innerHTML = `<div class="rl-head">열린 방 <b class="num">${L.length}</b></div>` + rows.join('');

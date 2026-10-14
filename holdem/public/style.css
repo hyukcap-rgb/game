@@ -409,3 +409,20 @@ input { font: inherit; }
 .btn.sm { padding: 9px 12px; font-size: 13px; border-radius: 11px; flex: none; }
 .btn.primary.sm { box-shadow: 0 3px 0 #136c3d; }
 @media (max-width: 360px) { .rr-st { display: none; } }
+
+/* ---------- 진행 중 들어와 앉기 ---------- */
+.seat.empty .ava img { opacity: 0; }
+.seat.empty .ava { border: .5cqw dashed rgba(255, 255, 255, .25); background: rgba(0, 0, 0, .25); }
+.seat.empty .nm { color: rgba(255, 255, 255, .55); font-weight: 400; }
+.seat.empty { opacity: .9; }
+.seat.empty .cards, .seat.empty .tag { display: none; }
+.sit-btn { position: absolute; top: 4.6cqw; left: 50%; transform: translateX(-50%); z-index: 15; white-space: nowrap; font-weight: 900; font-size: 2.9cqw; padding: 1.2cqw 2.6cqw; border-radius: 99px; color: #052e16; background: linear-gradient(180deg, #4ade80, #16a34a); box-shadow: 0 .8cqw 0 #14532d, 0 0 3cqw rgba(74, 222, 128, .5); pointer-events: auto; animation: sitPulse 1.6s ease-in-out infinite; }
+.sit-btn:disabled { animation: none; background: #334155; color: #cbd5e1; box-shadow: none; }
+@keyframes sitPulse { 50% { box-shadow: 0 .8cqw 0 #14532d, 0 0 6cqw rgba(74, 222, 128, .8); } }
+.wait-bb { font-size: 2.3cqw; color: #93c5fd; background: rgba(30, 58, 138, .55); border-radius: 99px; padding: .2cqw 1.6cqw; margin-top: .4cqw; white-space: nowrap; }
+.tag.WAIT { display: none; }
+.bi-post { display: flex; flex-direction: column; gap: 6px; }
+.bi-post button { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); display: flex; flex-direction: column; gap: 2px; }
+.bi-post button b { font-size: 14px; }
+.bi-post button small { font-size: 11.5px; color: var(--muted); }
+.bi-post button.on { border-color: var(--green); background: rgba(47, 191, 113, .12); }
