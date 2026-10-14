@@ -614,6 +614,8 @@ function ballBg(){
   const cv = document.createElement('canvas'); cv.width = G.cv.width; cv.height = G.cv.height;
   const x = cv.getContext('2d'); x.scale(G.scale, G.scale);
   x.fillStyle = '#211A4A'; x.fillRect(0, 0, BW, BH);
+  x.fillStyle = 'rgba(255,255,255,.07)';   /* 칸 가운데 옅은 점(정지·보이기만): 각도·자리 가늠용 */
+  for(let r = 1; r < BR - 1; r++) for(let c = 0; c < BC; c++){ x.beginPath(); x.arc(c*BS + BS/2, r*BS + BS/2, 2.6, 0, Math.PI*2); x.fill(); }
   x.fillStyle = '#19133C'; x.fillRect(0, BFLOOR, BW, BH - BFLOOR);   /* 발사 자리 아래 땅 */
   G.bgCv = cv; G.bgKey = key; return cv;
 }

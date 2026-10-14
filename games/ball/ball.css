@@ -6,7 +6,7 @@
 .sb{min-height:calc(100dvh - 124px - env(safe-area-inset-bottom,0px))}
 .sb-hud{margin:0}
 .sb-hud .hchip{padding:0 4px}
-.hud-row > .hpause{flex:none; width:44px; height:48px; border-radius:16px; display:grid; place-items:center; color:#fff; background:linear-gradient(180deg,#A98BFF,#6C3CE0); border:2.5px solid #1A0F45; box-shadow:inset 0 2px 0 rgba(255,255,255,.4), 0 3px 0 #1A0F45}
+.hud-row > .hpause{flex:none; width:44px; height:48px; border-radius:16px; display:grid; place-items:center; color:#fff; background:#7C4DEB; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45}
 .hud-row > .hpause svg{width:20px; height:20px; display:block}
 .hud-row > .hpause:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .hchip .hlives{height:auto; padding:0; gap:2px; border:0; background:none}
@@ -18,22 +18,22 @@
 .sb-items{gap:6px}
 .sb-it, .sb-ff{padding:5px 2px; font-size:13.5px; line-height:1.1; min-height:52px}
 /* 아이템마다 색·그림 다르게(노랑 하나로 같던 것 정리): 뚫는 구슬 빨강 · 긴 조준선 하늘 · 한 줄 올리기 초록 · 빠르게 보기 흰 토글 */
-.sb .tool.item.it-pierce{background:linear-gradient(180deg,#FFD9D6,#F59A94); color:#6B1414}
-.sb .tool.item.it-scope{background:linear-gradient(180deg,#DDF1FF,#8CCBF2); color:#0E3F66}
-.sb .tool.item.it-lift{background:linear-gradient(180deg,#DDF6D5,#93D58A); color:#174A12}
+.sb .tool.item.it-pierce{background:#F7B3AD; color:#5E1010}
+.sb .tool.item.it-scope{background:#A9D9F5; color:#0A3558}
+.sb .tool.item.it-lift{background:#B4E2AB; color:#12400E}
 .sb .tool.sb-ff{background:#FFFFFF; color:#1A0F45}
-.sb .tool.sb-ff[aria-pressed="true"]{background:linear-gradient(180deg,#A98BFF,#6C3CE0); color:#fff}
+.sb .tool.sb-ff[aria-pressed="true"]{background:#7C4DEB; color:#fff}
 .sb .tool.item .cnt{font-size:13px; background:#1A0F45}
 .sb-it span, .sb-ff span{white-space:nowrap}
 .sb-ff b{font-family:var(--heavy); font-weight:400}
 .sb-it.on{box-shadow:0 0 0 3px #FFFFFF, 0 0 0 6px #1A0F45; transform:translateY(1px)}
 .sb-aim{display:grid; grid-template-columns:64px 1fr 64px; gap:8px}
-.sb-arr{width:64px; height:56px; border-radius:15px; display:grid; place-items:center; color:var(--ink); background:linear-gradient(#FFFFFF,#E7DDFF); border:2.5px solid var(--outline2); box-shadow:inset 0 -3px 0 rgba(90,60,160,.18), 0 3px 0 var(--outline2); touch-action:none}
+.sb-arr{width:64px; height:56px; border-radius:15px; display:grid; place-items:center; color:var(--ink); background:#F1EBFF; border:2.5px solid var(--outline2); box-shadow:0 3px 0 var(--outline2); touch-action:none}
 .sb-arr svg{width:28px; height:28px}
 .sb-arr.press, .sb-arr:active:not(:disabled){transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
 .sb-arr:disabled{opacity:.5}
 .sb-go{height:56px; border-radius:16px; font-size:20px}
 .sb-go:disabled{filter:grayscale(.55); opacity:.75}
-.sb-go.recall{background:linear-gradient(180deg,#FFFFFF,#E7DDFF); color:#1A0F45}   /* 모두 거두기 */
+.sb-go.recall{background:#F1EBFF; color:#1A0F45}   /* 모두 거두기 */
 .fxfloat.sb-combo{font:28px/1 var(--heavy); color:#FFE27A; -webkit-text-stroke:2px #1A0F45; paint-order:stroke}
 

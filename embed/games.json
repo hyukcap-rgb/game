@@ -24,12 +24,12 @@
     {
       "id": "ball",
       "name": "별빛 구슬",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
       "duel": true,
       "file": "ball.html",
-      "bytes": 319672,
-      "gzip": 104697
+      "bytes": 319566,
+      "gzip": 104729
     },
     {
       "id": "fleet",
