@@ -46,6 +46,17 @@
 - 처음 한 번: `npm install` (esbuild·playwright), 브라우저가 없으면 `npx playwright install chromium`.
 - 화면을 바꿨으면 휴대폰 폭(390px)에서 직접 열어 확인한다: 사이트 `index.html`, 모듈 `embed/<id>.html?mode=menu`.
 
+## 스킬 자동 사용 (2026-10-14 사용자 지시)
+사용자는 스킬 이름을 말하지 않는다. "구슬 게임 화면을 스킬로 다듬어 줘"처럼 말하면 개발팀이 아래 표에서 알맞은 스킬을 **스스로 골라** 쓴다(설치된 것만).
+| 요청 | 쓰는 스킬 |
+|---|---|
+| 화면·디자인 다듬기 | `frontend-design`, `vectorlab-ux-skills:anti-slop`·`spacing`·`typography`·`colour-palette`·`viewports`, `audit-suite:make-interfaces-feel-better` |
+| 화면 검수 | `vectorlab-ux-skills:ux-audit`, `audit-suite:audit-as-design-eng`·`audit-as-ux-eng`·`audit-as-a11y-eng`, `design:design-critique` |
+| 이펙트·움직임 | `audit-suite:web-animation-design`, `vectorlab-ux-skills:motion`·`transitions`·`reduced-motion`, `figma:figma-shaders`·`figma-implement-motion` |
+| 사운드 | `audiorective:audiorective`(새 의존성이 필요하면 먼저 사용자에게 묻는다) |
+- 위 스킬은 **참고 기준**이다. 이 문서의 규칙(오리지널만, 효과·소리는 보이기만, 게임 상태·시계·대전 통신 불변, 해당 게임 폴더만 수정)이 항상 우선한다.
+- 스킬 안내가 우리 구조(React·Tauri 등)와 안 맞는 부분은 건너뛴다.
+
 ## 새 게임 추가
 `games/CLAUDE.md`의 "새 게임 추가" 순서를 따른다(폴더·game.json·NG 정의·CLAUDE.md → build → test).
 
