@@ -28,44 +28,73 @@
 
   // ---------- 사운드 (WebAudio 합성) ----------
   const Sound = {
-    ctx: null, on: store.get('rh_sound', true),
+    ctx: null, out: null, noiseBuf: null, on: store.get('rh_sound', true),
     ensure() {
-      if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } }
+      if (!this.ctx) {
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+        // 마스터 체인: 소리가 한꺼번에 겹쳐도 찢어지지 않게 압축기 → 전체 볼륨
+        const comp = this.ctx.createDynamicsCompressor();
+        comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+        const master = this.ctx.createGain(); master.gain.value = 0.85;
+        comp.connect(master); master.connect(this.ctx.destination);
+        this.out = comp;
+        // 잡음 버퍼는 한 번만 만들어 재사용
+        const len = this.ctx.sampleRate;
+        this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const d = this.noiseBuf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
       if (this.ctx.state === 'suspended') this.ctx.resume();
     },
+    ok() { return this.on && this.ctx && this.ctx.state === 'running'; },
     tone(f, d, type, vol, when, f2) {
-      if (!this.on || !this.ctx) return;
+      if (!this.ok()) return;
       const t = this.ctx.currentTime + (when || 0);
       const o = this.ctx.createOscillator(), g = this.ctx.createGain();
       o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
       if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
-      g.gain.setValueAtTime(vol || 0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t + d + 0.02);
+      // 짧은 어택(5ms)으로 '딱' 하는 클릭 잡음 없이
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(this.out); o.start(t); o.stop(t + d + 0.03);
     },
-    noise(d, vol, freq, when) {
-      if (!this.on || !this.ctx) return;
+    noise(d, vol, freq, when, type, q) {
+      if (!this.ok()) return;
       const t = this.ctx.currentTime + (when || 0);
-      const len = Math.floor(this.ctx.sampleRate * d);
-      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-      const s = this.ctx.createBufferSource(); s.buffer = buf;
-      const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 3000; f.Q.value = 0.8;
-      const g = this.ctx.createGain(); g.gain.value = vol || 0.2;
-      s.connect(f); f.connect(g); g.connect(this.ctx.destination); s.start(t);
+      const s = this.ctx.createBufferSource(); s.buffer = this.noiseBuf;
+      const f = this.ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq || 3000; f.Q.value = q || 0.8;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.2, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      s.connect(f); f.connect(g); g.connect(this.out);
+      s.start(t, Math.random() * 0.5); s.stop(t + d + 0.03);
     },
-    card(w) { this.noise(0.07, 0.35, 2600, w); },
-    flip(w) { this.noise(0.05, 0.25, 4200, w); },
-    chip(w) { this.tone(2900, 0.05, 'triangle', 0.09, w); this.tone(3700, 0.05, 'triangle', 0.06, (w || 0) + 0.035); },
-    check() { this.tone(180, 0.06, 'square', 0.06); this.tone(170, 0.06, 'square', 0.06, 0.09); },
-    fold() { this.noise(0.12, 0.2, 900); },
-    turn() { this.tone(988, 0.09, 'sine', 0.1); this.tone(1319, 0.12, 'sine', 0.08, 0.08); },
-    allin() { this.tone(220, 0.35, 'sawtooth', 0.06, 0, 440); this.tone(330, 0.35, 'sawtooth', 0.04, 0.05, 660); },
-    win() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.12, i * 0.09)); },
-    epic() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.4, 'triangle', 0.13, i * 0.08)); this.noise(0.6, 0.12, 6000, 0.45); },
-    lose() { this.tone(392, 0.2, 'sine', 0.08); this.tone(311, 0.35, 'sine', 0.08, 0.15); },
+    card(w) { this.noise(0.09, 0.22, 3200, w, 'bandpass', 0.6); this.noise(0.04, 0.1, 900, (w || 0) + 0.04, 'lowpass'); },   // 카드 미끄러지는 '스윽'
+    flip(w) { this.noise(0.045, 0.18, 5200, w, 'highpass'); },                                                                // 뒤집는 '착'
+    chip(w) {                                                                                                                 // 칩끼리 부딪히는 '짤랑'
+      const j = 1 + (Math.random() - 0.5) * 0.12;
+      this.tone(3100 * j, 0.06, 'sine', 0.06, w); this.tone(4400 * j, 0.05, 'sine', 0.035, (w || 0) + 0.025);
+      this.noise(0.03, 0.06, 6000, w, 'highpass');
+    },
+    check() { this.tone(140, 0.08, 'sine', 0.16, 0, 90); this.tone(140, 0.08, 'sine', 0.13, 0.11, 90); },                    // 테이블 '톡톡'
+    fold() { this.noise(0.16, 0.14, 1400, 0, 'lowpass'); },                                                                   // 카드 밀어내는 '스스'
+    turn() { this.tone(880, 0.12, 'sine', 0.07); this.tone(1175, 0.16, 'sine', 0.06, 0.09); },
+    allin() {                                                                                                                 // 긴장감 있게 올라가는 소리
+      this.tone(196, 0.5, 'triangle', 0.08, 0, 392); this.tone(294, 0.5, 'triangle', 0.05, 0.06, 587);
+      this.noise(0.4, 0.05, 2500, 0.05, 'bandpass', 0.5);
+    },
+    win() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, 'triangle', 0.08, i * 0.085)); },
+    epic() {
+      [392, 523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.45, 'triangle', 0.08, i * 0.075));
+      this.tone(1568, 0.7, 'sine', 0.05, 0.45);
+      this.noise(0.7, 0.05, 7000, 0.45, 'highpass');
+    },
+    lose() { this.tone(392, 0.22, 'sine', 0.06); this.tone(311, 0.4, 'sine', 0.06, 0.16); },
+    pop() { this.tone(660, 0.08, 'sine', 0.05); this.tone(990, 0.1, 'sine', 0.04, 0.06); },
   };
-  document.addEventListener('pointerdown', () => Sound.ensure(), { passive: true });
+  ['pointerdown', 'touchend', 'keydown'].forEach((ev) => document.addEventListener(ev, () => Sound.ensure(), { passive: true }));
 
   // ---------- 공통 UI ----------
   function show(id) {
@@ -555,15 +584,16 @@
         b.innerHTML = `<div class="t1">${esc(t1)}</div><div class="t2">${esc(t2)}</div>`;
         b.className = 'banner ' + cls;
         requestAnimationFrame(() => b.classList.add('show'));
-        if (myWin) { Sound.win(); this.confetti(cat >= 6 ? 90 : 36); }
+        if (myWin) { if (cat < 6) Sound.win(); this.confetti(cat >= 6 ? 90 : 36); }
         else if (me && me.inHand && !me.folded && res.type === 'showdown') Sound.lose();
         if (cat >= 6) { Sound.epic(); const fl = document.createElement('div'); fl.className = 'flash'; $('#fx').appendChild(fl); if (!myWin) this.confetti(50); }
-        if (navigator.vibrate && myWin) try { navigator.vibrate(cat >= 6 ? [60, 40, 120] : 40); } catch (e) { /* */ }
       }, res.type === 'showdown' ? 900 : 300);
     },
 
     confetti(n) {
       const fx = $('#fx');
+      const tr = fx.getBoundingClientRect();
+      const W = tr.width || 360, H = tr.height || 640;
       const colors = ['#f2c35b', '#ff4d63', '#3b82f6', '#2fbf71', '#fff', '#c084fc'];
       for (let i = 0; i < n; i++) {
         const c = document.createElement('div');
@@ -572,14 +602,16 @@
         c.style.left = 50 + (Math.random() - 0.5) * 20 + '%';
         c.style.top = '35%';
         fx.appendChild(c);
-        const dx = (Math.random() - 0.5) * 700, dy = -200 - Math.random() * 300;
-        const rot = Math.random() * 720;
+        // 테이블 크기 기준으로 퍼지게(작은 폰에서 화면 밖으로 날아가지 않게)
+        const dx = (Math.random() - 0.5) * W * 0.9, dy = -(0.12 + Math.random() * 0.2) * H;
+        const fall = H * (0.55 + Math.random() * 0.15);
+        const rot = (Math.random() - 0.5) * 1080;
         c.animate([
-          { transform: 'translate(0,0) rotate(0)', opacity: 1 },
-          { transform: `translate(${dx * 0.6}px, ${dy}px) rotate(${rot / 2}deg)`, opacity: 1, offset: 0.35 },
-          { transform: `translate(${dx}px, ${dy + 900}px) rotate(${rot}deg)`, opacity: 0 },
-        ], { duration: 1800 + Math.random() * 900, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
-        setTimeout(() => c.remove(), 2800);
+          { transform: 'translate(0,0) rotate(0) scale(.6)', opacity: 1 },
+          { transform: `translate(${dx * 0.6}px, ${dy}px) rotate(${rot / 2}deg) scale(1)`, opacity: 1, offset: 0.35 },
+          { transform: `translate(${dx}px, ${dy + fall}px) rotate(${rot}deg) scale(.9)`, opacity: 0 },
+        ], { duration: 1700 + Math.random() * 800, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+        setTimeout(() => c.remove(), 2600);
       }
     },
 
@@ -609,7 +641,7 @@
       const d = document.createElement('div');
       d.className = 'say'; d.textContent = text;
       this.seatEls[i].appendChild(d);
-      Sound.tone(660, 0.08, 'triangle', 0.06); Sound.tone(880, 0.1, 'triangle', 0.05, 0.07);
+      Sound.pop();
       setTimeout(() => d.remove(), 2700);
     },
 
@@ -633,15 +665,20 @@
       this.L = L;
       const me0 = v.players.find((p) => p.id === R.myId);
       const canReveal = me0 && me0.inHand && me0.hole.length === 2 && me0.hole[0] !== '??' && (me0.folded || (v.stage === 'done' && !(v.result && v.result.hands && v.result.hands[me0.id]))) && (me0.showMask | 0) !== 3;
-      a.classList.toggle('can-reveal', !!canReveal && !(L && !v.result));
-      if (canReveal) {
-        const key = v.hk + ':' + (me0.showMask | 0);
+      // '내 패 공개' 줄은 '다음 핸드 준비 중…' 줄 자리를 대신 써서 버튼 영역 높이가 변하지 않게(테이블이 줄었다 커지며 흔들리던 문제)
+      const rb0 = Online.rebuy, rbCan = !!(rb0 && rb0.can);
+      const showReveal = !!canReveal && !(L && !v.result) && !(Online.waitRebuy > Date.now());
+      a.classList.toggle('can-reveal', showReveal);
+      if (showReveal) {
+        const key = v.hk + ':' + (me0.showMask | 0) + ':' + (rbCan ? 1 : 0);
         const rr = $('#revealRow');
         if (rr.dataset.key !== key) {
           rr.dataset.key = key;
           const mini = (cs) => `<span class="mini">${cs.map((c) => `<div class="card"><div class="inner"><div class="face${c[1] === 'h' || c[1] === 'd' ? ' r' : ''}">${faceHTML(c)}</div></div></div>`).join('')}</span>`;
           const m = me0.showMask | 0;
-          rr.innerHTML = `<button data-mask="1" ${m & 1 ? 'disabled' : ''}>${mini([me0.hole[0]])}공개</button><button data-mask="2" ${m & 2 ? 'disabled' : ''}>${mini([me0.hole[1]])}공개</button><button data-mask="3">${mini(me0.hole)}공개</button>`;
+          rr.innerHTML = `<button data-mask="1" ${m & 1 ? 'disabled' : ''}>${mini([me0.hole[0]])}공개</button><button data-mask="2" ${m & 2 ? 'disabled' : ''}>${mini([me0.hole[1]])}공개</button><button data-mask="3">${mini(me0.hole)}공개</button>` + (rbCan ? `<button class="rb" id="rebuyBtn2">💰 리바인</button>` : '');
+          rr.classList.toggle('with-rb', rbCan);
+          const b2 = $('#rebuyBtn2'); if (b2) b2.onclick = rebuyModal;
         }
       }
       a.classList.toggle('online', !!(this.ctrl && this.ctrl.online && Online.mode !== 'daily'));
