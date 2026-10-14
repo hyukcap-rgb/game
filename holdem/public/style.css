@@ -389,3 +389,23 @@ input { font: inherit; }
 .bet[data-blind="SB"]::after, .bet[data-blind="BB"]::after { content: attr(data-blind); position: absolute; right: -2.2cqw; bottom: -2.2cqw; width: 4.2cqw; height: 4.2cqw; border-radius: 50%; display: grid; place-items: center; font-size: 1.9cqw; font-weight: 900; font-family: 'Noto Sans KR', sans-serif; color: #fff; border: .35cqw solid #fff; box-shadow: 0 .3cqw .6cqw rgba(0,0,0,.5); }
 .bet[data-blind="SB"]::after { background: #2563eb; }
 .bet[data-blind="BB"]::after { background: #dc2626; }
+
+/* ---------- 홈: 친구 대전 열린 방 ---------- */
+.room-cnt { flex: none; font-size: 12px; font-weight: 900; color: #2a1a00; background: linear-gradient(180deg, #ffd978, #d39b33); padding: 4px 9px; border-radius: 99px; white-space: nowrap; }
+.room-list { display: flex; flex-direction: column; gap: 6px; margin: -2px 0 2px; padding: 10px; border-radius: 16px; background: rgba(90, 24, 48, .25); border: 1px solid rgba(255, 120, 160, .18); max-height: 236px; overflow-y: auto; }
+.rl-head { font-size: 12px; color: var(--muted); padding: 0 2px 2px; }
+.rl-head b { color: var(--gold); }
+.room-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.room-row.mine { border: 1px solid rgba(47, 191, 113, .5); }
+.room-row img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(242, 195, 91, .6); flex: none; }
+.rr-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rr-t b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rr-t b small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 2px; }
+.rr-t span { font-size: 11.5px; color: #c8cdda; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rr-t i { font-style: normal; color: var(--gold); }
+.rr-st { flex: none; font-size: 11px; padding: 3px 7px; border-radius: 99px; }
+.rr-st.wait { color: #86efac; background: rgba(47, 191, 113, .15); }
+.rr-st.play { color: #fca5a5; background: rgba(224, 56, 77, .15); }
+.btn.sm { padding: 9px 12px; font-size: 13px; border-radius: 11px; flex: none; }
+.btn.primary.sm { box-shadow: 0 3px 0 #136c3d; }
+@media (max-width: 360px) { .rr-st { display: none; } }

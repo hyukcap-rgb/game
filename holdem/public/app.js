@@ -9,7 +9,6 @@
   // 분양 주소(/s/이름/…)면 그 사업장으로 연결. 로그인 정보도 사업장마다 따로 저장
   const BASE = (location.pathname.match(/^\/s\/[a-z0-9-]{2,30}/) || [''])[0];
   const SESS = 'rh_sess' + (BASE ? ':' + BASE.slice(3) : '');
-  const rakeTxt = (rk) => (rk ? `수수료 ${rk.pct}% · 최대 ${fmt(rk.cap)} (${rk.capBB}BB)${rk.nfnd ? ' · 플랍 전 무료' : ''}` : '수수료 없음');
 
   // ---------- 저장소 ----------
   const store = {
@@ -99,6 +98,7 @@
   // ---------- 공통 UI ----------
   function show(id) {
     $$('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
+    if (id === 'home' && RoomList) RoomList.tick();
   }
   let toastT;
   function toast(msg) {
@@ -542,12 +542,6 @@
           });
         });
         Sound.chip(); Sound.chip(0.12); Sound.chip(0.24);
-        if (res.rake > 0) {
-          const f = document.createElement('div');
-          f.className = 'float-num rake'; f.textContent = '수수료 -' + fmt(res.rake);
-          f.style.left = '50%'; f.style.top = '40%';
-          $('#fx').appendChild(f); setTimeout(() => f.remove(), 2400);
-        }
         this._potGone = hand;
         setTimeout(() => { $('#pot').classList.remove('show'); $$('#sidePots .side-pot').forEach((el) => el.classList.add('gone')); }, 400);
         v.players.forEach((p, i) => {
@@ -782,7 +776,7 @@
 
   function hud(title, v, extra) {
     $('#hudTitle').textContent = title;
-    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)}${v.rake ? ' · 수수료 ' + v.rake.pct + '%' : ''} · ${extra || '#' + v.handNo}`;
+    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)} · ${extra || '#' + v.handNo}`;
   }
   const PHRASES = {
     p1: '빨리빨리~', p2: '아 까비!', p3: '이걸 넘겨?', p4: '나이스!', p5: '블러프지?', p6: '올인 간다!',
@@ -846,6 +840,7 @@
     $('#gateBox').hidden = kind !== 'gate';
     const ready = kind === 'ready';
     $('#meBar').hidden = !ready; $('#modesBox').hidden = !ready; $('#joinRow').hidden = !ready; $('#homeLinks').hidden = !ready;
+    if (RoomList) { RoomList.render(); if (ready) RoomList.tick(); }
   }
   function gate(html) { $('#gateBox').innerHTML = html; homeState('gate'); }
   function renderMe() {
@@ -1000,7 +995,7 @@
     const allSeated = m.members.every((x) => x.seat > 0);
     const canStart = (m.members.length >= 2 || m.fillBots) && allSeated;
     $('#startBtn').disabled = !canStart;
-    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b><br><small>${rakeTxt(m.rake)}</small>`;
+    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b>`;
     const sitBtn = $('#sitBtn');
     sitBtn.hidden = m.mySeat > 0;
     sitBtn.onclick = () => buyInModal({ title: '칩 가져오기', sb: m.sb, bb: m.bb, minIn: m.minIn, rake: m.rake || null, go: '앉기', onOk: (x) => Net.send({ t: 'sit', buyIn: x.buyIn }) });
@@ -1033,7 +1028,6 @@
       <div class="bi">
         ${o.pickBlinds ? '<label>블라인드 (SB / BB)</label><div class="bi-chips" id="biBlinds"></div>' : `<p class="bi-info">블라인드 <b class="num">${fmt(o.sb)} / ${fmt(o.bb)}</b> · 최소 머니 <b class="num">${fmt(minIn)}</b></p>`}
         ${o.pickMin ? '<label>최소 머니 (들어올 때 이만큼은 가져와야 해요)</label><div class="bi-chips" id="biMins"></div>' : ''}
-        <p class="bi-rake" id="biRake"></p>
         <label>가져갈 칩 <small>보유 ${fmt(bal)}</small></label>
         <div class="bi-amt num" id="biAmt"></div>
         <input type="range" id="biRange">
@@ -1045,8 +1039,6 @@
       const draw = () => {
         if (o.pickBlinds) el.querySelector('#biBlinds').innerHTML = BLINDS.map(([a, b]) => `<button data-bb="${b}" class="${b === bb ? 'on' : ''}">${short(a)}/${short(b)}</button>`).join('');
         if (o.pickMin) el.querySelector('#biMins').innerHTML = MIN_INS.filter((x) => x >= bb * 10).map((x) => `<button data-min="${x}" class="${x === minIn ? 'on' : ''}" ${x > bal ? 'disabled' : ''}>${short(x)}</button>`).join('');
-        const rt = Me.info && Me.info.rake && Me.info.rake[bb];
-        el.querySelector('#biRake').textContent = rakeTxt(o.rake !== undefined ? o.rake : rt ? rt[o.mode || 'friends'] : null);
         const ok = bal >= minIn;
         const r = el.querySelector('#biRange');
         r.min = minIn; r.max = Math.max(minIn, bal); r.step = 100; r.value = amt; r.disabled = !ok;
@@ -1127,6 +1119,41 @@
   function startFriends() {
     needApproval(() => buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, mode: 'friends', go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } }));
   }
+  // ---------- 홈: 친구 대전 열린 방 목록 ----------
+  var RoomList = {   // var: show()/homeState()가 먼저 불려도 안전하게
+    list: [], open: false, t: null,
+    tick() {
+      clearTimeout(this.t);
+      const home = $('#home').classList.contains('active');
+      if (home && approved() && !document.hidden) Net.send({ t: 'roomList' });
+      this.t = setTimeout(() => this.tick(), home ? 4000 : 8000);
+    },
+    render() {
+      const L = this.list, box = $('#roomList'), cnt = $('#roomCnt');
+      const show = approved() && !$('#modesBox').hidden;
+      cnt.hidden = !show || !L.length;
+      cnt.textContent = `방 ${L.length}개`;
+      box.hidden = !show || !L.length;
+      if (box.hidden) return;
+      const rows = L.map((r) => {
+        const full = r.count >= r.maxSeats, playing = r.status !== 'lobby';
+        const btn = r.mine ? `<button class="btn primary sm" data-join="${r.code}">돌아가기</button>`
+          : playing ? `<button class="btn ghost sm" disabled>게임 중</button>`
+          : full ? `<button class="btn ghost sm" disabled>가득 참</button>`
+          : `<button class="btn primary sm" data-join="${r.code}">입장하기</button>`;
+        return `<div class="room-row${r.mine ? ' mine' : ''}">
+          <img src="${avatarSrc(r.hostAva)}" alt="">
+          <div class="rr-t"><b>${esc(r.host)}<small>님의 방</small></b>
+            <span>👥 <i class="num">${r.count}/${r.maxSeats}</i> · <i class="num">${short(r.sb)}/${short(r.bb)}</i> · 최소 <i class="num">${short(r.minIn)}</i></span></div>
+          <span class="rr-st ${playing ? 'play' : 'wait'}">${playing ? '게임 중' : '대기 중'}</span>${btn}</div>`;
+      });
+      box.innerHTML = `<div class="rl-head">열린 방 <b class="num">${L.length}</b></div>` + rows.join('');
+    },
+  };
+  Net.on('roomList', (m) => { RoomList.list = m.list || []; RoomList.render(); });
+  $('#roomList').addEventListener('click', (e) => { const b = e.target.closest('[data-join]'); if (b) joinRoom(b.dataset.join); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) RoomList.tick(); });
+
   function joinRoom(code) {
     code = (code || '').trim().toUpperCase();
     if (code.length !== 4) return toast('방 코드 4자리를 입력하세요');
@@ -1246,6 +1273,7 @@
   homeState(profile.token ? 'gate' : 'auth');
   if (profile.token) gate('<div class="spin"></div><p>연결 중…</p>');
   Net.connect();
+  RoomList.tick();
   loadDailyInfo();
 
   // 디버그/테스트용

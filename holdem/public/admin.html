@@ -33,6 +33,17 @@ header .sp { flex:1; }
 .stat.rk b { color:var(--gold); }
 .rk-table input { width:90px; padding:6px 8px; }
 .rk-table td { padding:6px 8px; }
+.rk-state { font-size:12px; padding:4px 10px; border-radius:99px; background:rgba(255,255,255,.06); }
+.rk-state.on { color:#86efac; } .rk-state.off { color:var(--muted); }
+.rk-sum { margin:12px 0 10px; }
+.rk-all { margin-bottom:10px; gap:8px; flex-wrap:wrap; } .rk-all input { width:80px; padding:6px 8px; }
+.rk-chart { display:flex; align-items:flex-end; gap:6px; height:140px; padding-top:16px; }
+.rk-bar { flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; position:relative; min-width:0; }
+.rk-bar i { flex:none; display:block; width:100%; max-width:28px; min-height:2px; background:linear-gradient(180deg,#f2c35b,#b8862b); border-radius:4px 4px 0 0; }
+.rk-bar .v { font-size:10px; color:var(--muted); margin-bottom:2px; white-space:nowrap; }
+.rk-bar small { white-space:nowrap; font-size:10px; color:var(--muted); margin-top:4px; }
+.rk-two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:700px) { .rk-two { grid-template-columns:1fr; } .rk-bar .v { display:none; } .rk-table input { width:58px; padding:6px; } .rk-table td, .rk-table th { padding:6px 4px; font-size:12px; } .rk-table th:nth-child(4), .rk-table td:nth-child(4) { display:none; } }
 .sw { display:flex; gap:16px; flex-wrap:wrap; margin:6px 0 12px; }
 .sw label { display:flex; gap:6px; align-items:center; font-size:13px; color:var(--text); cursor:pointer; }
 .tname { color:var(--gold); }
@@ -118,12 +129,14 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <button data-tab="users">전체 회원</button>
       <button data-tab="logs">칩 로그</button>
       <button data-tab="rooms">게임 방</button>
+      <button data-tab="rake">수수료</button>
       <button data-tab="settings">설정</button>
     </div>
     <section id="tab-wait"></section>
     <section id="tab-users" hidden></section>
     <section id="tab-logs" hidden></section>
     <section id="tab-rooms" hidden></section>
+    <section id="tab-rake" hidden><div id="rkStats"></div><div id="rkForm"></div><div id="rkWho"></div></section>
     <section id="tab-settings" hidden></section>
   </div>
 </div>
@@ -136,6 +149,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
   'use strict';
   const $ = (s) => document.querySelector(s);
   const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const short = (n) => (n >= 1e8 ? +(n / 1e8).toFixed(1) + '억' : n >= 1e4 ? +(n / 1e4).toFixed(1) + '만' : fmt(n));
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ava = (i) => `<img class="ava" src="img/av${(i | 0) % 9}.png" alt="">`;
   const ago = (t) => { if (!t) return '-'; const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; };
@@ -190,11 +204,12 @@ tr:hover td { background:rgba(255,255,255,.02); }
     const w = st.pending + st.entryReq;
     $('#waitBadge').hidden = !w; $('#waitBadge').textContent = w;
     document.title = (w ? `(${w}) ` : '') + (S.tenant ? S.tenant.name + ' ' : '') + '관리자';
-    for (const k of ['wait', 'users', 'logs', 'rooms', 'settings']) $('#tab-' + k).hidden = k !== tab;
+    for (const k of ['wait', 'users', 'logs', 'rooms', 'rake', 'settings']) $('#tab-' + k).hidden = k !== tab;
     if (tab === 'wait') renderWait();
     if (tab === 'users') renderUsers();
     if (tab === 'rooms') renderRooms();
     if (tab === 'settings' && !$('#tab-settings').dataset.done) renderSettings();
+    if (tab === 'rake') renderRake();
   }
 
   function stateCell(u) {
@@ -262,30 +277,62 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <div><label>테스트 PIN (이 PIN이면 누구든 로그인 · 비우면 끔)</label><input id="sTestPin" maxlength="6" inputmode="numeric" value="${esc(s.testPin || '')}" placeholder="끔"></div>
       <div><label>입장 자동 승인</label><select id="sAuto"><option value="0" ${!s.autoApprove ? 'selected' : ''}>끔 — 접속할 때마다 관리자 승인</option><option value="1" ${s.autoApprove ? 'selected' : ''}>켬 — 가입·입장 자동 승인</option></select></div>
     </div><div class="row" style="margin-top:14px"><button class="btn y" id="sSave">저장</button><span class="muted">보유 칩은 게임 안에서만 쓰는 칩이에요. 현금 충전·환전은 지원하지 않아요.</span></div></div>`;
+    $('#sSave').onclick = async () => {
+      try { await api('settings', { welcomeChips: $('#sWelcome').value, buyIn: $('#sBuyIn').value, minBuyIn: $('#sMin').value, autoApprove: $('#sAuto').value === '1', testPin: $('#sTestPin').value.trim() }); toast('저장했어요'); box.dataset.done = ''; poll(); }
+      catch (e) { toast(e.message); }
+    };
+  }
+
+  // ---------- 수수료 탭 ----------
+  function renderRake() {
+    const st = S.stats, days = st.rakeDays || {};
+    const kst = (off) => new Date(Date.now() + 9 * 3600e3 - off * 86400e3).toISOString().slice(0, 10);
+    const last = [...Array(14).keys()].map((k) => kst(13 - k)).map((d) => [d, Math.round(days[d] || 0)]);
+    const sum7 = last.slice(-7).reduce((a, [, v]) => a + v, 0);
+    const max = Math.max(1, ...last.map(([, v]) => v));
+    const R = S.settings.rake;
+    const where = [R.solo && 'AI 대결', R.friends && '친구 대전'].filter(Boolean).join(' · ') || '받는 게임 없음';
+    $('#rkStats').innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">수수료 현황</h2>
+        <span class="rk-state ${R.on ? 'on' : 'off'}">${R.on ? '● 받는 중 · ' + where : '○ 꺼짐'}</span></div>
+      <div class="stats rk-sum">${[['오늘', st.rakeToday], ['어제', days[kst(1)] || 0], ['최근 7일', sum7], ['누적', st.rakeTotal]].map(([k, v]) => `<div class="stat rk"><small>${k}</small><b>${fmt(Math.round(v))}</b></div>`).join('')}</div>
+      <div class="rk-chart">${last.map(([d, v]) => `<div class="rk-bar" title="${d} · ${fmt(v)}"><span class="v">${v ? short(v) : ''}</span><i style="height:${Math.max(2, Math.round(v / max * 96))}px"></i><small>${+d.slice(8)}일</small></div>`).join('')}</div>
+      <p class="muted" style="margin:8px 0 0">최근 14일(한국 시간) · 사람이 이긴 몫에서 뗀 칩만 집계(AI 칩 제외) · 오늘의 토너먼트는 무료</p></div>`;
+    if (!$('#rkForm').dataset.done) renderRakeForm();
+    const payers = S.users.filter((u) => u.rakePaid > 0).sort((a, b) => b.rakePaid - a.rakePaid).slice(0, 15);
+    const rms = S.rooms.filter((r) => r.rake > 0).sort((a, b) => b.rake - a.rake);
+    $('#rkWho').innerHTML = `<div class="rk-two"><div class="card"><h2>회원별 낸 수수료 (상위 15명)</h2>${payers.length ? `<table><tr><th>회원</th><th>낸 수수료</th><th>보유 칩</th></tr>${payers.map((u) => `<tr><td>${esc(u.name)}</td><td class="num">${fmt(u.rakePaid)}</td><td class="num">${fmt(u.balance)}</td></tr>`).join('')}</table>` : '<p class="muted">아직 없어요</p>'}</div>
+      <div class="card"><h2>지금 열린 방 수수료</h2>${rms.length ? `<table><tr><th>방</th><th>블라인드</th><th>수수료</th></tr>${rms.map((r) => `<tr><td>${esc(r.code)} <small class="muted">${r.mode === 'solo' ? 'AI 대결' : '친구 대전'}</small></td><td class="num">${fmt(r.sb)}/${fmt(r.bb)}</td><td class="num">${fmt(Math.round(r.rake))}</td></tr>`).join('')}</table>` : '<p class="muted">수수료가 생긴 방이 없어요</p>'}</div></div>`;
+  }
+  function renderRakeForm() {
+    const box = $('#rkForm'); box.dataset.done = '1';
     // 수수료: 블라인드별 % 와 최대(BB 배수)
-    const R = s.rake;
-    box.insertAdjacentHTML('beforeend', `<div class="card"><h2>수수료 (판마다 팟에서 떼는 칩)</h2>
+    const R = S.settings.rake;
+    box.innerHTML = `<div class="card"><h2>수수료 설정 <small class="muted" style="font-weight:400">판마다 이긴 사람의 팟에서 떼는 칩</small></h2>
       <div class="sw">
         <label><input type="checkbox" id="rOn" ${R.on ? 'checked' : ''}> 수수료 받기</label>
         <label><input type="checkbox" id="rSolo" ${R.solo ? 'checked' : ''}> AI 대결</label>
         <label><input type="checkbox" id="rFriends" ${R.friends ? 'checked' : ''}> 친구 대전</label>
         <label><input type="checkbox" id="rNfnd" ${R.nfnd ? 'checked' : ''}> 플랍 전에 끝나면 안 뗌</label>
       </div>
+      <div class="row rk-all"><span class="muted">모든 블라인드에 한 번에</span><input type="number" id="rAllP" placeholder="%" min="0" max="20" step="0.5"> %
+        <input type="number" id="rAllC" placeholder="최대" min="0" max="1000" step="1"> BB <button class="btn sm" id="rAllGo">일괄 적용</button></div>
       <table class="rk-table"><tr><th>블라인드 (SB/BB)</th><th>수수료 %</th><th>최대 (BB 배수)</th><th>최대 칩</th></tr>
       ${S.blinds.map(([sb, bb]) => { const L = R.levels[bb] || { pct: 5, capBB: 30 }; return `<tr><td class="num">${fmt(sb)} / ${fmt(bb)}</td>
         <td><input type="number" data-rp="${bb}" value="${L.pct}" min="0" max="20" step="0.5"> %</td>
         <td><input type="number" data-rc="${bb}" value="${L.capBB}" min="0" max="1000" step="1"> BB</td>
         <td class="num" data-rcv="${bb}">${fmt(Math.round(L.capBB * bb))}</td></tr>`; }).join('')}</table>
-      <div class="row" style="margin-top:12px"><button class="btn y" id="rSave">수수료 저장</button><span class="muted">0%면 그 블라인드는 수수료 없음 · 오늘의 토너먼트는 무료 · 바꾸면 다음 핸드부터 적용</span></div></div>`);
+      <div class="row" style="margin-top:12px"><button class="btn y" id="rSave">수수료 저장</button><span class="muted">0%면 그 블라인드는 수수료 없음 · 오늘의 토너먼트는 무료 · 바꾸면 다음 핸드부터 적용</span></div></div>`;
+    $('#rAllGo').onclick = () => {
+      const p = $('#rAllP').value, c = $('#rAllC').value;
+      if (p !== '') box.querySelectorAll('[data-rp]').forEach((i) => { i.value = p; });
+      if (c !== '') box.querySelectorAll('[data-rc]').forEach((i) => { i.value = c; i.oninput(); });
+      toast('표에 넣었어요 — [수수료 저장]을 눌러야 적용돼요');
+    };
     box.querySelectorAll('[data-rc]').forEach((i) => i.oninput = () => { const bb = +i.dataset.rc; box.querySelector(`[data-rcv="${bb}"]`).textContent = fmt(Math.round((+i.value || 0) * bb)); });
     $('#rSave').onclick = async () => {
       const levels = {};
       S.blinds.forEach(([, bb]) => { levels[bb] = { pct: +box.querySelector(`[data-rp="${bb}"]`).value, capBB: +box.querySelector(`[data-rc="${bb}"]`).value }; });
       try { await api('settings', { rake: { on: $('#rOn').checked, solo: $('#rSolo').checked, friends: $('#rFriends').checked, nfnd: $('#rNfnd').checked, levels } }); toast('수수료를 저장했어요'); box.dataset.done = ''; poll(); }
-      catch (e) { toast(e.message); }
-    };
-    $('#sSave').onclick = async () => {
-      try { await api('settings', { welcomeChips: $('#sWelcome').value, buyIn: $('#sBuyIn').value, minBuyIn: $('#sMin').value, autoApprove: $('#sAuto').value === '1', testPin: $('#sTestPin').value.trim() }); toast('저장했어요'); box.dataset.done = ''; poll(); }
       catch (e) { toast(e.message); }
     };
   }

@@ -638,7 +638,7 @@ app.get('/admin/api/state', adminAuth, (req, res) => {
       playing: rows.filter((r) => r.room && r.room.status === 'playing').length,
       entryReq: rows.filter((r) => r.req).length,
       totalBalance: accts.reduce((s, a) => s + (a.balance || 0) + (a.inPlay || 0), 0),
-      rakeTotal: T.stats.rake, rakeToday: T.stats.rakeDays[day] || 0,
+      rakeTotal: T.stats.rake, rakeToday: T.stats.rakeDays[day] || 0, rakeDays: T.stats.rakeDays,
     },
     tenant: { id: T.id, name: T.name, slug: T.slug, sup: req.sup },
     blinds: BLINDS,
@@ -1012,6 +1012,17 @@ function handle(ws, m) {
       if (err) send(u, { t: 'error', msg: err });
       room.sendRoom();
       break;
+    }
+    case 'roomList': {   // 홈 화면 '친구 대전' 옆 열린 방 목록(같은 사업장만)
+      const list = [...rooms.values()].filter((x) => x.mode === 'friends' && x.tid === a.tid && x.status !== 'over' && x.members.length)
+        .map((x) => {
+          const h = x.members.find((mm) => mm.id === x.hostId) || x.members[0];
+          return { code: x.code, host: h.acct.name, hostAva: h.acct.avatar, sb: x.sb, bb: x.bb, minIn: x.minIn, status: x.status,
+            count: x.members.length, maxSeats: MAX_SEATS, bots: !!x.fillBots, mine: x.members.includes(u), createdAt: x.createdAt };
+        })
+        .sort((p, q) => (q.mine - p.mine) || ((p.status === 'lobby' ? 0 : 1) - (q.status === 'lobby' ? 0 : 1)) || (q.createdAt - p.createdAt));
+      send(u, { t: 'roomList', list });
+      return;
     }
     case 'peek': {   // 들어가기 전에 방 설정 보기(블라인드·최소 머니)
       const room = rooms.get(String(m.code || '').toUpperCase());
