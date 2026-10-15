@@ -97,6 +97,18 @@ tr:hover td { background:rgba(255,255,255,.02); }
 .setgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
 .setgrid label { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
 .setgrid input[type=number] { width:100%; }
+.hl-table td { vertical-align:top; font-size:13px; }
+.hl-table tr.hl-row { cursor:pointer; }
+.hl-flow { line-height:1.75; }
+.hl-flow .st { display:inline-block; font-size:11px; font-weight:700; color:#2a1a00; background:var(--gold); border-radius:6px; padding:0 6px; margin:0 4px 0 2px; }
+.hl-flow .me { color:var(--gold); font-weight:700; }
+.hl-flow .tag { color:var(--muted); font-size:11px; }
+.hl-flow .warn { color:#fca5b1; font-size:11px; font-weight:700; }
+.cd { display:inline-block; font-family:'Oswald',sans-serif; font-size:12px; background:#f4f1ea; color:#111; border-radius:4px; padding:0 3px; margin:0 1px; line-height:16px; }
+.cd.r { color:#d0182e; }
+.hl-detail { background:#0e1420; border-radius:10px; padding:10px 12px; margin-top:8px; }
+.hl-detail table td, .hl-detail table th { padding:5px 6px; font-size:12.5px; }
+.hl-no { font-family:'Oswald',sans-serif; color:var(--gold); white-space:nowrap; }
 @media (max-width:820px) {
   .stats { grid-template-columns:repeat(2,1fr); }
   .hide-m { display:none; }
@@ -128,6 +140,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <button data-tab="wait" class="on">승인 대기<span class="badge" id="waitBadge" hidden></span></button>
       <button data-tab="users">전체 회원</button>
       <button data-tab="logs">칩 로그</button>
+      <button data-tab="hands">게임 로그</button>
       <button data-tab="rooms">게임 방</button>
       <button data-tab="rake">수수료</button>
       <button data-tab="settings">설정</button>
@@ -135,6 +148,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
     <section id="tab-wait"></section>
     <section id="tab-users" hidden></section>
     <section id="tab-logs" hidden></section>
+    <section id="tab-hands" hidden></section>
     <section id="tab-rooms" hidden></section>
     <section id="tab-rake" hidden><div id="rkStats"></div><div id="rkForm"></div><div id="rkWho"></div></section>
     <section id="tab-settings" hidden></section>
@@ -190,7 +204,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
     if (token) pollT = setTimeout(poll, 2500);
   }
 
-  $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b)); render(); if (tab === 'logs') loadLogs(); };
+  $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.tab; document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b)); render(); if (tab === 'logs') loadLogs(); if (tab === 'hands') loadHands(); };
 
   function render() {
     if (!S) return;
@@ -204,7 +218,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
     const w = st.pending + st.entryReq;
     $('#waitBadge').hidden = !w; $('#waitBadge').textContent = w;
     document.title = (w ? `(${w}) ` : '') + (S.tenant ? S.tenant.name + ' ' : '') + '관리자';
-    for (const k of ['wait', 'users', 'logs', 'rooms', 'rake', 'settings']) $('#tab-' + k).hidden = k !== tab;
+    for (const k of ['wait', 'users', 'logs', 'hands', 'rooms', 'rake', 'settings']) $('#tab-' + k).hidden = k !== tab;
     if (tab === 'wait') renderWait();
     if (tab === 'users') renderUsers();
     if (tab === 'rooms') renderRooms();
@@ -250,7 +264,8 @@ tr:hover td { background:rgba(255,255,255,.02); }
           ${u.status === 'pending' ? `<button class="btn g sm" data-signup="${u.id}" data-ok="1">가입 승인</button>` : ''}
           ${u.req ? `<button class="btn g sm" data-entry="${u.id}" data-ok="1">입장 승인</button>` : ''}
           <button class="btn y sm" data-money="${u.id}">칩 ±</button>
-          <button class="btn sm" data-logs="${u.id}">로그</button>
+          <button class="btn sm" data-logs="${u.id}">칩 로그</button>
+          <button class="btn sm b" data-hands="${u.id}">게임 로그</button>
           ${u.online || u.approved ? `<button class="btn sm" data-act="kick" data-id="${u.id}">강퇴</button>` : ''}
           ${u.status === 'blocked' ? `<button class="btn sm" data-act="unblock" data-id="${u.id}">차단 해제</button>` : u.status === 'active' ? `<button class="btn sm" data-act="block" data-id="${u.id}">차단</button>` : ''}
           <button class="btn sm" data-act="resetPin" data-id="${u.id}">PIN</button>
@@ -274,11 +289,12 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <div><label>가입 승인 때 주는 칩</label><input type="number" id="sWelcome" value="${s.welcomeChips}" min="0" step="1000"></div>
       <div><label>가져가기 기본값(입장 창에 처음 보이는 칩)</label><input type="number" id="sBuyIn" value="${s.buyIn}" min="1000" step="1000"></div>
       <div><label>방 최소 머니의 하한(방장이 이보다 낮게 못 정함)</label><input type="number" id="sMin" value="${s.minBuyIn}" min="200" step="100"></div>
+      <div><label>차례 시간(초) — 시간이 지나면 체크/폴드</label><input type="number" id="sTurn" value="${s.turnSec || 15}" min="5" max="60" step="1"></div>
       <div><label>테스트 PIN (이 PIN이면 누구든 로그인 · 비우면 끔)</label><input id="sTestPin" maxlength="6" inputmode="numeric" value="${esc(s.testPin || '')}" placeholder="끔"></div>
       <div><label>입장 자동 승인</label><select id="sAuto"><option value="0" ${!s.autoApprove ? 'selected' : ''}>끔 — 접속할 때마다 관리자 승인</option><option value="1" ${s.autoApprove ? 'selected' : ''}>켬 — 가입·입장 자동 승인</option></select></div>
     </div><div class="row" style="margin-top:14px"><button class="btn y" id="sSave">저장</button><span class="muted">보유 칩은 게임 안에서만 쓰는 칩이에요. 현금 충전·환전은 지원하지 않아요.</span></div></div>`;
     $('#sSave').onclick = async () => {
-      try { await api('settings', { welcomeChips: $('#sWelcome').value, buyIn: $('#sBuyIn').value, minBuyIn: $('#sMin').value, autoApprove: $('#sAuto').value === '1', testPin: $('#sTestPin').value.trim() }); toast('저장했어요'); box.dataset.done = ''; poll(); }
+      try { await api('settings', { welcomeChips: $('#sWelcome').value, buyIn: $('#sBuyIn').value, minBuyIn: $('#sMin').value, autoApprove: $('#sAuto').value === '1', testPin: $('#sTestPin').value.trim(), turnSec: $('#sTurn').value }); toast('저장했어요'); box.dataset.done = ''; poll(); }
       catch (e) { toast(e.message); }
     };
   }
@@ -353,6 +369,96 @@ tr:hover td { background:rgba(255,255,255,.02); }
     $('#lfReload').onclick = loadLogs;
   }
 
+  // ---------- 게임 로그(최근 7일, 핸드마다) ----------
+  let handFilter = { acct: '', no: '', days: 7 }, handData = [], openHand = null;
+  const ST = { preflop: '프리플랍', flop: '플랍', turn: '턴', river: '리버' };
+  const ACT = { SB: 'SB', BB: 'BB', fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', timebank: '타임뱅크' };
+  const HOW = { timeout: '시간초과', reserve: '폴드예약' };
+  const SUIT = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  const cd = (c) => c ? `<span class="cd${c[1] === 'h' || c[1] === 'd' ? ' r' : ''}">${c[0] === 'T' ? '10' : c[0]}${SUIT[c[1]] || ''}</span>` : '';
+  const cdt = (c) => (c[0] === 'T' ? '10' : c[0]) + (SUIT[c[1]] || '');
+  const sec = (ms) => (ms / 1000).toFixed(1) + 's';
+  const signed = (n) => (n > 0 ? '+' : '') + fmt(n);
+  // 한 줄 진행: 프리플랍 A SB 50, B BB 100, C 콜 100 · 플랍 [..] A 체크 …
+  function flowHtml(h, meName) {
+    let out = '', st = '';
+    for (const a of h.acts) {
+      if (a.deal) { out += ` <span class="st">${ST[a.st]}</span>${a.deal.map(cd).join('')} `; st = a.st; continue; }
+      if (st === '' ) { out += `<span class="st">${ST.preflop}</span>`; st = 'preflop'; }
+      const nm = a.n === meName ? `<span class="me">${esc(a.n)}</span>` : esc(a.n);
+      if (a.a === 'timebank') { out += `${nm} <span class="tag">⏱타임뱅크</span>, `; continue; }
+      const amt = ['fold', 'check'].includes(a.a) ? '' : ' ' + fmt(a.to);
+      out += `${nm} ${ACT[a.a] || a.a}${amt}${a.how ? ` <span class="warn">(${HOW[a.how] || a.how})</span>` : ''}${a.t ? ` <span class="tag">${sec(a.t)}</span>` : ''}, `;
+    }
+    return out.replace(/, $/, '').replace(/,( <span class="st">)/g, '$1');
+  }
+  function flowText(h) {
+    let out = '', st = '';
+    for (const a of h.acts) {
+      if (a.deal) { out += ` [${ST[a.st]} ${a.deal.map(cdt).join(' ')}] `; st = a.st; continue; }
+      if (!st) { out += `[${ST.preflop}] `; st = 'preflop'; }
+      if (a.a === 'timebank') { out += `${a.n} 타임뱅크, `; continue; }
+      out += `${a.n} ${ACT[a.a] || a.a}${['fold', 'check'].includes(a.a) ? '' : ' ' + a.to}${a.how ? '(' + (HOW[a.how] || a.how) + ')' : ''}, `;
+    }
+    return out.replace(/, $/, '').replace(/,( \[)/g, '$1');
+  }
+  function resultTxt(h) {
+    return (h.pots || []).map((p) => `${p.win.join('·')} ${fmt(p.amt)}${p.hand ? ' (' + p.hand + ')' : ''}${p.refund ? ' 반환' : ''}`).join(' / ') + (h.rakeAmt ? ` · 수수료 ${fmt(h.rakeAmt)}` : '');
+  }
+  async function loadHands() {
+    const q = new URLSearchParams({ days: handFilter.days || 7 });
+    if (handFilter.no) q.set('no', handFilter.no); else if (handFilter.acct) q.set('acct', handFilter.acct);
+    let j = { hands: [], total: 0 };
+    $('#tab-hands').innerHTML = '<div class="card"><div class="empty">불러오는 중…</div></div>';
+    try { j = await api('hands?' + q); } catch (e) { toast(e.message); }
+    handData = j.hands; renderHands(j.total);
+  }
+  function renderHands(total) {
+    const users = S ? S.users : [];
+    const me = handFilter.acct ? users.find((u) => String(u.id) === String(handFilter.acct)) : null;
+    const meId = me ? me.id : null;
+    const rows = handData.map((h) => {
+      const mine = meId ? h.players.find((p) => p.acct === meId) : null;
+      const open = openHand === h.no;
+      return `<tr class="hl-row" data-hno="${h.no}"><td><span class="hl-no">#${h.no}</span><div class="muted num">${dt(h.at)}</div><div class="muted">${MODE[h.mode] || h.mode}${h.mode === 'friends' ? ' ' + esc(h.room) : ''} · ${fmt(h.sb)}/${fmt(h.bb)}</div></td>
+        <td class="muted">${h.players.map((p) => `${p.bot ? '🤖' : '👤'}${p.acct === meId ? `<b style="color:var(--gold)">${esc(p.n)}</b>` : esc(p.n)}${p.pos ? `<span class="tag">(${p.pos})</span>` : ''}`).join(' ')}</td>
+        ${meId ? `<td>${mine ? mine.hole.map(cd).join('') : '-'}<div class="muted">${mine && mine.pos ? mine.pos : ''}</div></td>` : ''}
+        <td class="hl-flow">${flowHtml(h, mine ? mine.n : null)}</td>
+        <td>${meId && mine ? `<b class="num ${mine.net > 0 ? 'plus' : mine.net < 0 ? 'minus' : ''}">${signed(mine.net)}</b><div class="muted num">${fmt(mine.start)} → ${fmt(mine.end)}</div>` : ''}<div class="muted">${esc(resultTxt(h))}</div></td></tr>
+        ${open ? `<tr><td colspan="${meId ? 5 : 4}">${detailHtml(h, meId)}</td></tr>` : ''}`;
+    }).join('');
+    $('#tab-hands').innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">게임 로그 <span class="muted">· 최근 ${handFilter.days}일 ${fmt(total || handData.length)}판${handData.length < (total || 0) ? ` (최근 ${fmt(handData.length)}판 표시)` : ''}</span></h2>
+      <div class="row"><select id="hfUser"><option value="">전체 회원</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(handFilter.acct) ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
+      <select id="hfDays">${[1, 3, 7].map((d) => `<option value="${d}" ${+handFilter.days === d ? 'selected' : ''}>최근 ${d}일</option>`).join('')}</select>
+      <input id="hfNo" placeholder="게임번호 #" style="width:110px" value="${esc(handFilter.no)}">
+      <button class="btn sm" id="hfGo">찾기</button><button class="btn sm" id="hfTxt">TXT 저장</button></div></div>
+      <p class="muted" style="margin:0 0 8px">줄을 누르면 참가자 카드·칩 변화·결과를 자세히 볼 수 있어요. 시간초과·폴드예약은 빨간 글씨, 숫자 뒤 s는 핸드 시작 뒤 경과 시간이에요.</p>
+      ${handData.length ? `<table class="hl-table"><tr><th>게임번호 · 시간</th><th>참가자</th>${meId ? '<th>내 카드</th>' : ''}<th>진행</th><th>결과</th></tr>${rows}</table>` : '<div class="empty">기록이 없어요 (기록은 이 기능을 켠 뒤 판부터 남아요)</div>'}</div>`;
+    $('#hfUser').onchange = (e) => { handFilter.acct = e.target.value; handFilter.no = ''; loadHands(); };
+    $('#hfDays').onchange = (e) => { handFilter.days = +e.target.value; loadHands(); };
+    $('#hfGo').onclick = () => { handFilter.no = $('#hfNo').value.replace(/\D/g, ''); loadHands(); };
+    $('#hfNo').onkeydown = (e) => { if (e.key === 'Enter') $('#hfGo').click(); };
+    $('#hfTxt').onclick = () => {
+      const lines = handData.slice().reverse().map((h) => {
+        const mine = meId ? h.players.find((p) => p.acct === meId) : null;
+        return `#${h.no} | ${new Date(h.at).toLocaleString('ko-KR')} | ${MODE[h.mode] || h.mode}${h.mode === 'friends' ? ' ' + h.room : ''} ${h.sb}/${h.bb} | 참가: ${h.players.map((p) => p.n + (p.pos ? '(' + p.pos + ')' : '') + ' ' + p.start + ' [' + p.hole.map(cdt).join(' ') + ']').join(', ')} | ${flowText(h)} | 보드 ${(h.board || []).map(cdt).join(' ')} | 결과: ${resultTxt(h)}${mine ? ' | ' + mine.n + ' ' + signed(mine.net) : ''}`;
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `game-log-${me ? me.name : 'all'}-${new Date().toISOString().slice(0, 10)}.txt`; a.click();
+    };
+    $('#tab-hands').querySelectorAll('tr.hl-row').forEach((tr) => tr.onclick = () => { const n = +tr.dataset.hno; openHand = openHand === n ? null : n; renderHands(total); });
+  }
+  function detailHtml(h, meId) {
+    const dur = h.end ? sec(h.end - h.at) : '-';
+    return `<div class="hl-detail"><div class="row" style="justify-content:space-between"><b>#${h.no} · ${MODE[h.mode] || h.mode} ${esc(h.room)} · ${h.hand}번째 핸드 · 블라인드 ${fmt(h.sb)}/${fmt(h.bb)}${h.rake ? ' · 수수료 ' + h.rake + '%' : ''}</b><span class="muted">${new Date(h.at).toLocaleString('ko-KR')} · ${dur}</span></div>
+      <div style="margin:6px 0">보드 ${(h.board || []).map(cd).join('') || '-'}</div>
+      <table><tr><th>자리</th><th>참가자</th><th>위치</th><th>카드</th><th>시작</th><th>끝</th><th>손익</th><th>족보·상태</th></tr>
+      ${h.players.map((p) => `<tr${p.acct === meId ? ' style="background:rgba(242,195,91,.08)"' : ''}><td class="num">${p.seat + 1}</td><td>${p.bot ? '🤖' : '👤'}${esc(p.n)}</td><td>${p.pos || ''}</td><td>${p.hole.map(cd).join('')}</td>
+        <td class="num">${fmt(p.start)}</td><td class="num">${fmt(p.end)}</td><td class="num ${p.net > 0 ? 'plus' : p.net < 0 ? 'minus' : ''}">${signed(p.net)}</td><td class="muted">${p.hn ? esc(p.hn) : ''}${p.fold ? ' 폴드' : ''}${p.show ? ' 카드공개' : ''}</td></tr>`).join('')}</table>
+      <div class="muted" style="margin-top:6px">팟: ${esc(resultTxt(h))}</div></div>`;
+  }
+
   function modal(html, mount) { $('#mcard').innerHTML = html; $('#modal').classList.add('show'); if (mount) mount($('#mcard')); }
   function closeModal() { $('#modal').classList.remove('show'); }
   $('#modal').onclick = (e) => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); };
@@ -384,6 +490,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
       if (b.dataset.entry) { await api('entry/' + b.dataset.entry, { approve: b.dataset.ok === '1' }); toast(b.dataset.ok === '1' ? '입장을 승인했어요' : '입장을 거절했어요'); return poll(); }
       if (b.dataset.signup) { await api('signup/' + b.dataset.signup, { approve: b.dataset.ok === '1' }); toast(b.dataset.ok === '1' ? '가입을 승인했어요' : '가입을 거절했어요'); return poll(); }
       if (b.dataset.money) return moneyModal(userById(b.dataset.money));
+      if (b.dataset.hands) { handFilter = { acct: b.dataset.hands, no: '', days: 7 }; tab = 'hands'; document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x.dataset.tab === 'hands')); render(); return loadHands(); }
       if (b.dataset.logs) { logFilter = { acct: b.dataset.logs, type: '' }; tab = 'logs'; document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x.dataset.tab === 'logs')); render(); return loadLogs(); }
       if (b.dataset.act) {
         const u = userById(b.dataset.id); const act = b.dataset.act; const body = { action: act };

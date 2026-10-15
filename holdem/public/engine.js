@@ -396,6 +396,7 @@
       p.acted = true;
       p.actedAt = this.currentBet;
       p.lastAction = { type: label, amount: p.bet };
+      this.lastAct = { id: p.id, type: label, to: p.bet, stack: p.stack };   // 게임 기록용(라운드가 끝나면 lastAction이 지워지므로 따로 남김)
       this.actionSeq++;
       this.advance();
       return true;

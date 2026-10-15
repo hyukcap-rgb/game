@@ -79,7 +79,11 @@
     },
     check() { this.tone(140, 0.08, 'sine', 0.16, 0, 90); this.tone(140, 0.08, 'sine', 0.13, 0.11, 90); },                    // 테이블 '톡톡'
     fold() { this.noise(0.16, 0.14, 1400, 0, 'lowpass'); },                                                                   // 카드 밀어내는 '스스'
-    turn() { this.tone(880, 0.12, 'sine', 0.07); this.tone(1175, 0.16, 'sine', 0.06, 0.09); },
+    turn() {                                                                                                                  // 내 차례: 또렷한 3음 차임
+      this.tone(784, 0.14, 'sine', 0.09); this.tone(1047, 0.14, 'sine', 0.08, 0.1); this.tone(1319, 0.26, 'sine', 0.08, 0.2);
+      this.tone(2637, 0.2, 'sine', 0.015, 0.2);
+    },
+    tick(last) { this.tone(last ? 1320 : 990, 0.06, 'sine', last ? 0.09 : 0.06); },                                          // 남은 5초 째깍
     allin() {                                                                                                                 // 긴장감 있게 올라가는 소리
       this.tone(196, 0.5, 'triangle', 0.08, 0, 392); this.tone(294, 0.5, 'triangle', 0.05, 0.06, 587);
       this.noise(0.4, 0.05, 2500, 0.05, 'bandpass', 0.5);
@@ -162,7 +166,8 @@
   const SLOT_POS = [[50, 86], [11, 54], [10, 39.5], [17, 25.5], [33, 13.5], [67, 13.5], [83, 25.5], [90, 39.5], [89, 54], [50, 12]];
   const SLOT_SETS = { 1: [0], 2: [0, 9], 3: [0, 3, 6], 4: [0, 2, 9, 7], 5: [0, 2, 4, 5, 7], 6: [0, 1, 3, 9, 6, 8], 7: [0, 1, 2, 4, 5, 7, 8], 8: [0, 1, 2, 3, 9, 6, 7, 8], 9: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
   const CENTER = [50, 45];
-  const DEALER_POS = [[62, 71.5], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [59, 21.5], [71, 30.5], [72, 38.5], [71, 53], [50, 24.5]];
+  // D는 항상 버튼 주인 앞 + SB 쪽(시계 방향 다음 자리 쪽)으로. 반대쪽(이전 자리 쪽)으로 치우치면 그 사람이 버튼처럼 보임
+  const DEALER_POS = [[37, 73], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [60, 24.5], [71, 31.5], [72, 38.5], [71, 55], [57, 24]];
   const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB', WAIT: '대기' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
 
@@ -178,6 +183,7 @@
       $('#banner').className = 'banner'; $('#pot').classList.remove('show');
       $('#myHand').classList.remove('show'); $('#dealerBtn').classList.remove('show');
       $('#actions').className = 'actions';
+      TurnFx.stop(); this.turnKey = '';
     },
     myIndex(v) { const i = v.players.findIndex((p) => p.id === this.myId); return i; },
     slotPos(v, seat) {
@@ -507,19 +513,23 @@
     renderTurn(v, deadline) {
       this.seatEls.forEach((el, i) => el.classList.toggle('turn', v.toAct === i && !v.result));
       const key = v.hk + ':' + v.actionSeq + ':' + v.toAct;
-      if (key === this.turnKey) return;
-      this.turnKey = key;
-      this.seatEls.forEach((el) => { const c = el.querySelector('circle'); c.style.transition = 'none'; c.style.strokeDashoffset = 0; });
+      const dlChanged = deadline && Math.abs(deadline - (this.deadline || 0)) > 800;   // 타임뱅크로 시간이 늘어남
+      if (key === this.turnKey && !dlChanged) return;
+      const isNewTurn = key !== this.turnKey;
+      this.turnKey = key; this.deadline = deadline || 0;
+      this.seatEls.forEach((el) => { const c = el.querySelector('circle'); c.style.transition = 'none'; c.style.strokeDashoffset = 0; el.classList.remove('hurry'); });
       if (v.toAct >= 0 && deadline) {
         const c = this.seatEls[v.toAct].querySelector('circle');
         const ms = Math.max(0, deadline - Date.now());
+        const full = Online.turnMs || ms;
+        c.style.strokeDashoffset = Math.max(0, Math.min(100, 100 - (ms / full) * 100));   // 타임뱅크·재접속이면 남은 만큼부터
         void c.getBoundingClientRect();
         requestAnimationFrame(() => {
           c.style.transition = `stroke-dashoffset ${ms}ms linear`;
           c.style.strokeDashoffset = 100;
         });
       }
-      if (v.legal) Sound.turn();
+      TurnFx.update(v, deadline, isNewTurn);
     },
 
     showResult(v) {
@@ -660,6 +670,70 @@
     },
   };
 
+  // ---------- 내 차례 알림 ----------
+  // 차례가 오면: 차임 + 진동 + 내 자리 금빛 파동 + 테이블 아래 '내 차례!' 배지 + 버튼 줄 빛 + 남은 시간 막대,
+  // 남은 5초부터 째깍 소리·빨간 막대, 다른 창을 보고 있으면 탭 제목 깜빡임
+  const TurnFx = {
+    key: '', hurryT: null, tickT: null, barRaf: 0, titleT: null, baseTitle: document.title,
+    update(v, deadline, isNew) {
+      const mine = !!(v.legal && !v.result);
+      const bar = $('#turnBar');
+      clearTimeout(this.hurryT); clearInterval(this.tickT); cancelAnimationFrame(this.barRaf);
+      $('#actions').classList.remove('hurry');
+      if (!mine) { this.stop(); return; }
+      if (isNew) this.alert(v);
+      bar.classList.add('show');
+      const ms = deadline ? Math.max(0, deadline - Date.now()) : 0;
+      const full = Online.turnMs || ms || 1;
+      const fill = $('#turnBarFill'), secs = $('#turnSecs');
+      const loop = () => {
+        const left = Math.max(0, (deadline || 0) - Date.now());
+        fill.style.transform = `scaleX(${Math.min(1, left / full)})`;
+        secs.textContent = deadline ? Math.ceil(left / 1000) + '초' : '';
+        if (left > 0) this.barRaf = requestAnimationFrame(loop);
+      };
+      loop();
+      this.renderTb();
+      if (deadline) {
+        const hurry = () => {
+          const me = R.seatEls[R.myIndex(v)];
+          if (me) me.classList.add('hurry');
+          $('#actions').classList.add('hurry');
+          const beat = () => { const left = deadline - Date.now(); if (left <= 0) return clearInterval(this.tickT); Sound.tick(left < 1500); if (navigator.vibrate && left < 1500) navigator.vibrate(30); };
+          beat(); this.tickT = setInterval(beat, 1000);
+        };
+        if (ms <= 5000) hurry(); else this.hurryT = setTimeout(hurry, ms - 5000);
+      }
+    },
+    alert(v) {
+      Sound.turn();
+      if (navigator.vibrate) navigator.vibrate([70, 50, 70]);
+      const me = R.seatEls[R.myIndex(v)];
+      if (me) { me.classList.remove('my-turn'); void me.offsetWidth; me.classList.add('my-turn'); }
+      const a = $('#actions'); a.classList.remove('pulse'); void a.offsetWidth; a.classList.add('pulse');
+      const b = $('#turnBadge'); b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+      clearTimeout(this.badgeT); this.badgeT = setTimeout(() => b.classList.remove('show'), 1600);
+      if (document.hidden) {
+        this.baseTitle = this.baseTitle && !this.baseTitle.startsWith('🔔') ? this.baseTitle : document.title;
+        let on = false; clearInterval(this.titleT);
+        this.titleT = setInterval(() => { on = !on; document.title = on ? '🔔 내 차례!' : this.baseTitle; }, 700);
+      }
+    },
+    renderTb() {
+      const b = $('#tbBtn');
+      const n = Online.tb | 0;
+      b.innerHTML = `⏱ +15초 <small>${n}</small>`;
+      b.disabled = !n || Online.tbUsed;
+    },
+    stop() {
+      $('#turnBar').classList.remove('show');
+      R.seatEls.forEach((el) => el.classList.remove('hurry', 'my-turn'));
+      clearInterval(this.titleT); this.titleT = null;
+      if (this.baseTitle && document.title.startsWith('🔔')) document.title = this.baseTitle;
+    },
+  };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && TurnFx.titleT) { clearInterval(TurnFx.titleT); TurnFx.titleT = null; document.title = TurnFx.baseTitle; } });
+
   // ---------- 액션 패널 ----------
   const Actions = {
     ctrl: null, raising: false, raiseTo: 0, L: null,
@@ -713,11 +787,17 @@
         const rb = Online.rebuy;
         if (Online.waitRebuy > Date.now()) txt = `리바인을 기다리는 중 · ${Math.ceil((Online.waitRebuy - Date.now()) / 1000)}초`;
         else if (rb && rb.can && me && me.stack <= 0) txt = '칩을 모두 잃었어요';
-        const key = txt + '|' + (rb && rb.can ? 1 : 0);
+        // 폴드 예약: 핸드에 남아 있고 아직 내 차례가 아닐 때
+        const canPre = !!(me && me.inHand && !me.folded && !me.allIn && !v.result && !v.runout && v.stage !== 'done' && this.ctrl && this.ctrl.online);
+        const pre = canPre && !!Online.preFold;
+        const key = txt + '|' + (rb && rb.can ? 1 : 0) + '|' + (canPre ? (pre ? 2 : 1) : 0);
         if (wr.dataset.txt !== key) {
-          wr.innerHTML = `<span>${txt}</span>${rb && rb.can ? `<button class="btn gold rb-btn" id="rebuyBtn">💰 리바인</button>` : ''}`;
+          wr.innerHTML = (canPre ? `<button class="pre-btn${pre ? ' on' : ''}" id="preFoldBtn"><i></i>폴드 예약<small>체크 가능하면 체크</small></button>` : '')
+            + `<span>${txt}</span>${rb && rb.can ? `<button class="btn gold rb-btn" id="rebuyBtn">💰 리바인</button>` : ''}`;
           wr.dataset.txt = key;
           const b = $('#rebuyBtn'); if (b) b.onclick = rebuyModal;
+          const pb = $('#preFoldBtn');
+          if (pb) pb.onclick = () => { Online.preFold = !Online.preFold; Net.send({ t: 'pre', fold: Online.preFold }); Sound.pop(); Actions.render(R.v); };
         }
         clearTimeout(Actions._wt);
         if (Online.waitRebuy > Date.now()) Actions._wt = setTimeout(() => R.v && Actions.render(R.v), 1000);
@@ -758,6 +838,7 @@
     },
   };
   $('#foldBtn').onclick = () => Actions.send('fold');
+  $('#tbBtn').onclick = () => { if (!$('#tbBtn').disabled) { Net.send({ t: 'timebank' }); $('#tbBtn').disabled = true; } };
   $('#callBtn').onclick = () => Actions.send('call');
   $('#raiseBtn').onclick = () => {
     const L = Actions.L; if (!L) return;
@@ -838,6 +919,7 @@
   const Me = { info: null, pendingStart: null };
   const Online = {
     online: true, room: null, mode: null, active: false, pid: null,
+    preFold: false, tb: 0, tbUsed: false, turnMs: 15000,
     act(type, amount) { Net.send({ t: 'act', type, amount }); },
     emote(e) { Net.send({ t: 'emote', e }); },
     reveal(mask) { Net.send({ t: 'reveal', mask }); },
@@ -945,6 +1027,7 @@
     R.myId = Online.pid;
     Online.rebuy = m.rebuy || null;
     Online.waitRebuy = m.waitRebuy ? Date.now() + m.waitRebuy : 0;
+    Online.preFold = !!m.preFold; Online.tb = m.tb | 0; Online.tbUsed = !!m.tbUsed; Online.turnMs = m.turnMs || 15000;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
     if (m.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);

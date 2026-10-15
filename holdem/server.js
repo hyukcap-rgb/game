@@ -18,8 +18,11 @@ const MAX_SEATS = 9;
 const MAX_WATCH = 30;   // 한 방에 관전 포함 최대 인원
 const DAILY_STACK = 10000;
 const DAILY_HANDS = Number(process.env.DAILY_HANDS) || 30;
-const TURN_MS = 25000;
+const TURN_SEC_DEF = 15;     // 차례 제한 시간(초) 기본값 — 관리자 설정 '차례 시간'으로 바꿈
 const AWAY_MS = 4000;
+const TB_MS = 15000;         // 타임뱅크 한 번 = +15초(차례마다 1번)
+const TB_MAX = 3, TB_EVERY = 20;   // 타임뱅크는 처음 3개, 20핸드마다 1개 다시 채움(최대 3)
+const HAND_LOG_DAYS = 7;     // 관리자 게임 기록 보관(일)
 const APPROVAL_GRACE_MS = 90e3;   // 잠깐 끊겼다 돌아오면 입장 승인 유지(새로고침·통신 끊김)
 const LEVELS = [[50, 100], [100, 200], [200, 400], [300, 600], [500, 1000], [1000, 2000], [2000, 4000]];
 const levelFor = (handNo) => LEVELS[Math.min(LEVELS.length - 1, Math.floor(handNo / 10))];
@@ -63,7 +66,7 @@ db = Object.assign({ seq: 1, accounts: {}, sessions: {}, logs: [], daily: {}, se
 
 // ---------- 분양(사업장) ----------
 // 사업장마다 회원·보유 칩·칩 로그·게임 방·오늘의 토너먼트·설정(수수료 포함)이 따로예요. 'main' = 본사(기본 주소).
-const DEF_SETTINGS = { welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false, testPin: '1234' };
+const DEF_SETTINGS = { welcomeChips: 10000, buyIn: 10000, minBuyIn: 1000, autoApprove: false, testPin: '1234', turnSec: TURN_SEC_DEF };
 function defRake() {
   const levels = {};
   for (const [, bb] of BLINDS) levels[bb] = { pct: 5, capBB: 30 };   // 기본: 5%, 최대 30BB
@@ -108,6 +111,31 @@ function save() {
     fs.writeFile(tmp, JSON.stringify(db), (err) => { if (!err) fs.rename(tmp, DB_FILE, () => {}); });
   }, 200);
 }
+// ---------- 게임 기록(관리자용, 핸드마다 한 줄) ----------
+// DATA_DIR/hands/날짜(KST).jsonl — 게임번호·시간·방·참가자(카드·시작/끝 칩)·행동 순서·보드·결과. 7일 지나면 지움.
+const HAND_DIR = path.join(DATA_DIR, 'hands');
+fs.mkdirSync(HAND_DIR, { recursive: true });
+const kstDay = (t) => new Date((t || Date.now()) + 9 * 3600e3).toISOString().slice(0, 10);
+let handPruned = '';
+function writeHand(rec) {
+  const day = kstDay(rec.at);
+  fs.appendFile(path.join(HAND_DIR, day + '.jsonl'), JSON.stringify(rec) + '\n', () => {});
+  if (handPruned !== day) {
+    handPruned = day;
+    const cut = kstDay(Date.now() - (HAND_LOG_DAYS + 1) * 86400e3);
+    fs.readdir(HAND_DIR, (e, list) => { for (const f of list || []) if (/^\d{4}-\d{2}-\d{2}\.jsonl$/.test(f) && f.slice(0, 10) < cut) fs.unlink(path.join(HAND_DIR, f), () => {}); });
+  }
+}
+function readHands(days) {
+  const out = [];
+  for (let k = Math.max(1, Math.min(HAND_LOG_DAYS + 1, days)) - 1; k >= 0; k--) {
+    let txt = '';
+    try { txt = fs.readFileSync(path.join(HAND_DIR, kstDay(Date.now() - k * 86400e3) + '.jsonl'), 'utf8'); } catch (e) { continue; }
+    for (const line of txt.split('\n')) { if (!line) continue; try { out.push(JSON.parse(line)); } catch (e) { /* 잘린 줄 */ } }
+  }
+  return out;
+}
+
 function saveNow() { if (frozen) return; clearTimeout(saveT); try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) { /* */ } }
 
 const rid = (n) => crypto.randomBytes(n).toString('base64url');
@@ -281,8 +309,19 @@ class Room {
     } else for (const m of this.members) {
       const stack = this.paid() ? this.seats.get(m.id) : DAILY_STACK;
       g.addPlayer({ id: m.pid, name: m.acct.name, stack, avatar: m.acct.avatar });
-      g.players[g.players.length - 1].acct = m.id;
+      const gp = g.players[g.players.length - 1];
+      gp.acct = m.id; gp.tb = TB_MAX;
     }
+    // 게임 기록: 행동·카드 공개를 받아 적음
+    const origAct = g.act.bind(g), origRun = g.runoutStep.bind(g);
+    g.act = (id, type, amount) => {
+      const st = g.stage;
+      g.lastAct = null;
+      const ok = origAct(id, type, amount);
+      if (ok) this.hlAct(st);
+      return ok;
+    };
+    g.runoutStep = () => { origRun(); this.hlBoard(); };
     if (this.mode !== 'friends') {
       const used = new Set(this.members.map((m) => m.acct.avatar));
       const pool = BOTS.filter((b) => !used.has(b.avatar)).concat(BOTS.filter((b) => used.has(b.avatar)));
@@ -350,7 +389,14 @@ class Room {
     const [sb, bb] = this.mode === 'daily' ? levelFor(g.handNo) : [this.sb, this.bb];
     g.setBlinds(sb, bb);
     g.setRake(rakeOf(this.tid, bb, this.mode));   // 관리자가 바꾸면 다음 핸드부터
+    const before = new Map(g.players.map((p) => [p, p.stack]));
     g.startHand();
+    for (const p of g.players) {
+      p.preFold = false;
+      if (p.acct && p.tb == null) p.tb = TB_MAX;   // 친구 대전·중간에 앉은 사람도 타임뱅크 3개
+      if (p.acct && g.handNo % TB_EVERY === 0) p.tb = Math.min(TB_MAX, (p.tb || 0) + 1);
+    }
+    this.hlBegin(before);
     this.tick();
   }
 
@@ -362,15 +408,15 @@ class Room {
     const g = this.game;
     if (!g || this.status !== 'playing') return;
     if (g.stage === 'done') {
-      if (!this.spokeFor || this.spokeFor !== g.handNo) { this.spokeFor = g.handNo; this.botReactResult(); this.recordRake(); }
-      this.timer = setTimeout(() => this.nextHand(), g.result.type === 'showdown' ? 5200 : 2600);
+      if (!this.spokeFor || this.spokeFor !== g.handNo) { this.spokeFor = g.handNo; this.botReactResult(); this.recordRake(); this.hlEnd(); }
+      this.timer = setTimeout(() => this.nextHand(), g.result.type === 'showdown' ? 4200 : 2000);
       return;
     }
-    if (g.runout) { this.timer = setTimeout(() => { g.runoutStep(); this.tick(); }, 1500); return; }
+    if (g.runout) { this.timer = setTimeout(() => { g.runoutStep(); this.tick(); }, 1200); return; }
     const p = g.players[g.toAct];
     if (p.isBot) {
       const rand = this.mode === 'daily' ? H.mulberry32(H.hashSeed(this.seed + ':bot:' + g.handNo + ':' + g.actionSeq)) : Math.random;
-      const delay = 700 + (this.mode === 'daily' ? rand() : Math.random()) * 900;
+      const delay = 600 + (this.mode === 'daily' ? rand() : Math.random()) * 800;
       this.timer = setTimeout(() => {
         const L = g.legal();
         const d = H.botDecide(g, rand);
@@ -382,15 +428,106 @@ class Room {
       return;
     }
     const m = this.members.find((x) => x.pid === p.id);
-    const ms = !m ? 700 : (!m.ws || p.away) ? AWAY_MS : TURN_MS;
-    this.deadline = now() + ms;
-    if (m && ms === TURN_MS) this.nagT = setTimeout(() => this.botSay(['p1', 'p12'], 0.6), 12000);   // 오래 고민하면 AI가 재촉
-    this.timer = setTimeout(() => {
+    // 폴드 예약: 차례가 오면 기다리지 않고 바로 폴드. 체크할 수 있으면 체크하고 예약은 유지(다음에 베팅이 오면 폴드)
+    if (m && p.preFold && !p.gone) {
       const L = g.legal();
-      g.act(p.id, L && L.canCheck ? 'check' : 'fold');
-      p.away = true;
-      this.tick();
-    }, ms);
+      this.how = 'reserve'; g.act(p.id, 'fold'); this.how = '';
+      if (!L || !L.canCheck) p.preFold = false;
+      return this.schedule();
+    }
+    const turnMs = this.turnMs();
+    const ms = !m || p.gone ? 700 : (!m.ws || p.away) ? AWAY_MS : turnMs;
+    this.deadline = now() + ms;
+    this.tbKey = '';
+    if (m && ms === turnMs && turnMs > 9000) this.nagT = setTimeout(() => this.botSay(['p1', 'p12'], 0.6), Math.round(turnMs * 0.6));   // 오래 고민하면 AI가 재촉
+    this.timer = setTimeout(() => this.timeout(p), ms);
+  }
+  turnMs() { return Math.max(5, Math.min(60, Number(SET(this.tid).turnSec) || TURN_SEC_DEF)) * 1000; }
+  // 시간이 다 되면 체크(할 수 없으면 폴드), 다음부터는 자리비움(4초)
+  timeout(p) {
+    const g = this.game;
+    if (!g || g.players[g.toAct] !== p) return;
+    const L = g.legal();
+    this.how = 'timeout'; g.act(p.id, L && L.canCheck ? 'check' : 'fold'); this.how = '';
+    p.away = true;
+    this.tick();
+  }
+  // 타임뱅크: 내 차례에 +15초(차례마다 1번)
+  timebank(u) {
+    const g = this.game;
+    if (!g || this.status !== 'playing' || !this.deadline) return;
+    const p = g.players[g.toAct];
+    if (!p || p.id !== u.pid || p.away) return;
+    const key = g.handNo + ':' + g.actionSeq;
+    if (this.tbKey === key) return send(u, { t: 'error', msg: '타임뱅크는 차례마다 한 번만 쓸 수 있어요' });
+    if (!(p.tb > 0)) return send(u, { t: 'error', msg: '남은 타임뱅크가 없어요' });
+    p.tb--; this.tbKey = key;
+    this.deadline += TB_MS;
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.timeout(p), Math.max(0, this.deadline - now()));
+    if (this.hl) this.hl.acts.push({ t: now() - this.hl.at, st: g.stage, n: p.name, a: 'timebank' });
+    this.broadcastState();
+  }
+  setPreFold(u, on) {
+    const g = this.game;
+    const p = g && g.players.find((x) => x.id === u.pid);
+    if (!p || this.status !== 'playing' || g.stage === 'done' || !p.inHand || p.folded || p.allIn) return;
+    p.preFold = !!on;
+    if (p.preFold && g.players[g.toAct] === p) { this.schedule(); }   // 이미 내 차례면 바로
+    this.broadcastState();
+  }
+
+  // ---------- 게임 기록 ----------
+  hlBegin(before) {
+    const g = this.game;
+    db.handSeq = (db.handSeq || 0) + 1; save();
+    const pos = (i) => (i === g.dealer ? 'D' : '') + (i === g.sbIdx ? (i === g.dealer ? '/' : '') + 'SB' : i === g.bbIdx ? 'BB' : '');
+    this.hl = {
+      no: db.handSeq, at: now(), tid: this.tid, room: this.code, mode: this.mode, hand: g.handNo, sb: g.sb, bb: g.bb,
+      rake: g.rake ? g.rake.pct : 0,
+      players: g.players.map((p, i) => ({ seat: i, n: p.name, acct: p.acct || null, bot: !!p.isBot, pos: pos(i),
+        start: before.get(p) != null ? before.get(p) : p.stack + p.total, hole: p.hole.slice(), in: !!p.inHand })).filter((x) => x.in),
+      acts: g.players.map((p, i) => (i === g.sbIdx || i === g.bbIdx) && p.lastAction ? { t: 0, st: 'preflop', n: p.name, a: p.lastAction.type, to: p.lastAction.amount } : null).filter(Boolean)
+        .sort((a, b) => (a.a === 'SB' ? -1 : b.a === 'SB' ? 1 : 0)),
+      board: [],
+    };
+    this.hl.players.forEach((x) => delete x.in);
+  }
+  hlAct(st) {
+    const g = this.game, hl = this.hl, la = g.lastAct;
+    if (!hl || !la) return;
+    const p = g.players.find((x) => x.id === la.id);
+    const e = { t: now() - hl.at, st, n: p ? p.name : la.id, a: la.type, to: la.to, left: la.stack };
+    if (this.how) e.how = this.how;
+    hl.acts.push(e);
+    this.hlBoard();
+  }
+  hlBoard() {
+    const g = this.game, hl = this.hl;
+    if (!hl || g.board.length <= hl.board.length) return;
+    const add = g.board.slice(hl.board.length);
+    hl.board = g.board.slice();
+    hl.acts.push({ t: now() - hl.at, st: g.board.length === 3 ? 'flop' : g.board.length === 4 ? 'turn' : 'river', deal: add });
+  }
+  hlEnd() {
+    const g = this.game, hl = this.hl, r = g.result;
+    if (!hl || !r || hl.done) return;
+    hl.done = true;
+    hl.end = now();
+    hl.board = g.board.slice();
+    hl.type = r.type;
+    hl.rakeAmt = r.rake || 0;
+    hl.pots = r.pots.map((x) => ({ amt: x.amount, win: x.winners.map((id) => (g.players.find((p) => p.id === id) || {}).name || id), hand: x.handName || null, refund: !!x.refund }));
+    for (const x of hl.players) {
+      const p = g.players[x.seat];
+      x.end = p.stack; x.net = p.stack - x.start;
+      x.fold = !!p.folded; x.won = p.won || 0;
+      if (r.hands && r.hands[p.id]) x.hn = r.hands[p.id].name;
+      if (p.showMask) x.show = p.showMask;
+    }
+    delete hl.done;
+    writeHand(hl);
+    this.hl = null;
   }
 
   // 수수료 집계: 사람이 이긴 몫에서 뗀 것만 사업장 수수료로(AI 칩은 진짜 칩이 아님)
@@ -540,7 +677,8 @@ class Room {
         view.open = view.watch && !res ? g.players.map((_, i) => i).filter((i) => this.seatOpen(i)) : [];
       }
       send(m, { t: 'state', view, deadline: this.deadline ? this.deadline - now() : 0, handLimit: DAILY_HANDS, mode: this.mode,
-        rebuy, waitRebuy: this.waitUntil > 0 ? this.waitUntil - now() : 0 });
+        rebuy, waitRebuy: this.waitUntil > 0 ? this.waitUntil - now() : 0,
+        preFold: !!(p && p.preFold), tb: p ? (p.tb || 0) : 0, tbUsed: !!this.tbKey && this.tbKey === g.handNo + ':' + g.actionSeq, turnMs: this.turnMs() });
     }
   }
 
@@ -548,7 +686,7 @@ class Room {
     if (this.status !== 'playing' || !this.game) return;
     this.lastActive = now();
     const p = this.game.players.find((x) => x.id === u.pid);
-    if (p) p.away = false;
+    if (p) { p.away = false; p.preFold = false; }
     if (this.game.act(u.pid, type, amount)) this.tick();
   }
   reveal(u, mask) {
@@ -739,6 +877,18 @@ app.get('/admin/api/logs', adminAuth, (req, res) => {
   if (type) list = list.filter((l) => l.type === type);
   res.json({ logs: list.slice(-limit).reverse() });
 });
+// 게임 기록(최근 7일): 회원별 / 게임번호 / 전체
+app.get('/admin/api/hands', adminAuth, (req, res) => {
+  const acct = req.query.acct ? Number(req.query.acct) : null;
+  const no = req.query.no ? Number(String(req.query.no).replace(/\D/g, '')) : null;
+  const days = Math.max(1, Math.min(HAND_LOG_DAYS, Number(req.query.days) || HAND_LOG_DAYS));
+  const limit = Math.min(5000, Number(req.query.limit) || 2000);
+  let list = readHands(days + 1).filter((h) => h.tid === req.tid && h.at >= now() - days * 86400e3);
+  if (no) list = list.filter((h) => h.no === no);
+  else if (acct) list = list.filter((h) => h.players.some((p) => p.acct === acct));
+  const total = list.length;
+  res.json({ total, hands: list.slice(-limit).reverse() });
+});
 app.post('/admin/api/signup/:id', adminAuth, (req, res) => {
   const a = acctIn(req);
   if (!a) return res.status(404).json({ error: '회원이 없어요' });
@@ -825,6 +975,7 @@ app.post('/admin/api/settings', adminAuth, (req, res) => {
       for (const u of users.values()) if (u.req && u.acct.tid === req.tid) approveEntry(u, true);
     }
   }
+  if (b.turnSec != null) { const t = Math.round(Number(b.turnSec)); if (!(t >= 5 && t <= 60)) return res.status(400).json({ error: '차례 시간은 5~60초예요' }); S.turnSec = t; }
   if (b.testPin != null) { const t = String(b.testPin).trim(); if (t && !/^\d{4,6}$/.test(t)) return res.status(400).json({ error: '테스트 PIN은 숫자 4~6자리(비우면 끔)' }); S.testPin = t; }
   // 수수료: 블라인드(BB)별 % 와 최대(BB 배수)
   if (b.rake && typeof b.rake === 'object') {
@@ -1154,6 +1305,8 @@ function handle(ws, m) {
     case 'act': if (r) r.act(u, String(m.type), Number(m.amount)); break;
     case 'reveal': if (r) r.reveal(u, Number(m.mask)); break;
     case 'rebuy': if (r) r.rebuy(u, m.amount); break;
+    case 'pre': if (r) r.setPreFold(u, !!m.fold); break;
+    case 'timebank': if (r) r.timebank(u); break;
     case 'emote': {
       if (!r) return;
       const isEmoji = EMOTES.has(m.e), isPhrase = Object.prototype.hasOwnProperty.call(PHRASES, m.p);
