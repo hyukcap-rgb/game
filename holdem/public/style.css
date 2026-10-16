@@ -83,9 +83,11 @@ input { font: inherit; }
 .hud-sub { font-size: 12px; color: var(--gold); font-family: 'Oswald', 'Noto Sans KR', sans-serif; letter-spacing: .3px; }
 
 /* ---------- 테이블 ---------- */
-.table-area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
-.table { position: relative; container-type: inline-size; aspect-ratio: 10 / 18;   /* 자리 배치는 세로로 긴 비율 기준(넓은 화면도 같은 비율) */ height: 100%; max-width: 100%; max-height: 100%; }
-@supports not (aspect-ratio: 1) { .table { width: 100%; } }
+.table-area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; container-type: size; }
+.table { position: relative; container-type: inline-size; flex: none;
+  /* 테이블 크기는 테이블 영역(.table-area) 크기로만 정함 — 안의 내용·연출·버튼 상태와 상관없이 고정(세로 10:18) */
+  width: min(100cqw, calc(100cqh * 10 / 18)); height: min(100cqh, calc(100cqw * 18 / 10)); }
+@supports not (width: 1cqh) { .table { aspect-ratio: 10 / 18; height: 100%; max-width: 100%; max-height: 100%; } }
 .felt { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; filter: saturate(1.05); }
 
 .pot { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, .55); border: 1px solid rgba(242, 195, 91, .35); padding: .8cqw 3.2cqw .8cqw 1.2cqw; border-radius: 99px; display: flex; align-items: center; gap: 1.6cqw; font-family: 'Oswald', sans-serif; font-size: 4.4cqw; color: var(--gold); opacity: 0; transition: opacity .3s; z-index: 3; }
@@ -221,7 +223,7 @@ input { font: inherit; }
 @keyframes floatUp { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(-50%, -260%); opacity: 0; } }
 
 /* ---------- 액션 바 ---------- */
-.actions { flex: none; padding: 8px 12px calc(10px + var(--safe-b)); min-height: 84px; position: relative; z-index: 10; }
+.actions { flex: none; padding: 8px 12px calc(10px + var(--safe-b)); height: max(84px, calc(74px + var(--safe-b))); position: relative; z-index: 10; }   /* 높이 고정: 내 차례·대기·공개 줄이 바뀌어도 테이블 크기가 그대로 */
 .act-row { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 8px; }
 .act { height: 56px; border-radius: 16px; font-weight: 900; font-size: 16px; line-height: 1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform .1s, filter .2s, opacity .2s; }
 .act small { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 13px; opacity: .85; }
@@ -442,9 +444,8 @@ input { font: inherit; }
 .actions.hurry #turnSecs { color: #ff6b7d; animation: beat 1s ease-in-out infinite; }
 @keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } }
 /* 버튼 줄이 들어올 때 금빛으로 한 번 반짝 */
-.actions.mine.pulse .act-row { animation: actIn .45s cubic-bezier(.2, 1.4, .4, 1); }
-.actions.mine.pulse .act-row::after { content: ''; }
-@keyframes actIn { from { transform: translateY(14px) scale(.96); opacity: 0; filter: drop-shadow(0 0 0 rgba(242, 195, 91, 0)); } 60% { filter: drop-shadow(0 0 14px rgba(242, 195, 91, .9)); } to { transform: none; opacity: 1; filter: drop-shadow(0 0 0 rgba(242, 195, 91, 0)); } }
+
+
 /* 내 자리: 금빛 파동 두 번 */
 .seat.me.my-turn .ava::after, .seat.me.my-turn .ava::before { content: ''; position: absolute; inset: -1cqw; border-radius: 50%; border: .8cqw solid var(--gold); pointer-events: none; animation: ripple 1.1s ease-out 2 both; }
 .seat.me.my-turn .ava::before { animation-delay: .35s; }
@@ -470,5 +471,5 @@ input { font: inherit; }
 .seat.me.my-go.hurry::after { background: linear-gradient(180deg, #ff8a9a, #e0384d); color: #fff; }
 @keyframes goPill { from { transform: scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .seat.me.my-go .ava img, .actions.mine.pulse .act-row, .seat.me.my-turn .ava::after, .seat.me.my-turn .ava::before, .actions.hurry #turnSecs { animation-duration: .01ms; animation-iteration-count: 1; }
+  .seat.me.my-go .ava img, .seat.me.my-turn .ava::after, .seat.me.my-turn .ava::before, .actions.hurry #turnSecs { animation-duration: .01ms; animation-iteration-count: 1; }
 }

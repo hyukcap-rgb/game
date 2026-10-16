@@ -711,7 +711,6 @@
       if (navigator.vibrate) navigator.vibrate([70, 50, 70]);
       const me = R.seatEls[R.myIndex(v)];
       if (me) { me.classList.remove('my-turn'); void me.offsetWidth; me.classList.add('my-turn'); }
-      const a = $('#actions'); a.classList.remove('pulse'); void a.offsetWidth; a.classList.add('pulse');
       if (document.hidden) {
         this.baseTitle = this.baseTitle && !this.baseTitle.startsWith('🔔') ? this.baseTitle : document.title;
         let on = false; clearInterval(this.titleT);
