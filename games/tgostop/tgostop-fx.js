@@ -96,6 +96,9 @@ const TGFX = (() => {
 .gsfx-num{position:absolute; left:${CX}px; top:${CY}px; transform:translate(-50%,-50%); font:900 230px/1 'Noto Sans KR',system-ui,sans-serif; color:#FF5A5F; -webkit-text-stroke:22px ${NAVY}; paint-order:stroke fill; animation:gsfx-tick .7s cubic-bezier(.2,1.4,.4,1) forwards}
 @keyframes gsfx-tick{0%{opacity:0; transform:translate(-50%,-50%) scale(1.8)} 25%{opacity:.95; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-50%) scale(.85)}}
 .gsfx-edge{position:absolute; inset:0; box-shadow:inset 0 0 90px 30px rgba(255,40,60,.55); animation:gsfx-fade .7s ease-out forwards}
+.gsfx-bst{position:absolute; pointer-events:none; transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(.3); opacity:0; animation:gsfx-bst 300ms cubic-bezier(.15,.9,.3,1) forwards; filter:drop-shadow(0 0 10px rgba(255,240,180,.9))}
+.gsfx-bst svg{display:block; width:100%; height:100%}
+@keyframes gsfx-bst{0%{opacity:1; transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(.35)} 45%{opacity:1; transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(1)} 100%{opacity:0; transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(1.18)}}
 .gsfx-land{position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; border:6px solid rgba(255,255,255,.95); animation:gsfx-landring .45s ease-out forwards}
 @keyframes gsfx-landring{0%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(var(--s,18))}}
 @media (prefers-reduced-motion: reduce){ .gsfx-in{animation:gsfx-fade .8s ease-out forwards !important} .gsfx-rays,.gsfx-wind,.gsfx-fly{display:none} }
@@ -221,12 +224,16 @@ const TGFX = (() => {
   /* 장구: 덩(궁편 낮게)·따(채편 날카롭게) */
   function jgD(o = {}){ const v = o.v || .22, t = o.t || 0; aThump({ f:200, f2:92, d:.22, v, t, pan:o.pan }); aNoise({ ft:'bandpass', f:420, q:1.2, d:.12, v:v * .5, t, pan:o.pan }); aNoise({ ft:'bandpass', f:2600, q:1.5, d:.04, v:v * .4, t, pan:o.pan }); }
   function jgT(o = {}){ const v = o.v || .14, t = o.t || 0; aNoise({ ft:'bandpass', f:3300, q:1.4, d:.05, v, t, pan:o.pan }); aTone({ f:1250, f2:700, type:'triangle', d:.045, v:v * .55, t, pan:o.pan }); aThump({ f:440, f2:210, d:.05, v:v * .5, t, pan:o.pan }); }
-  /* 화투 '착!': 찰싹(종이 띠 소음) + 딱(나무 판 클릭) + 둔탁(낮은 쿵) */
+  /* 화투 '딱!' v1.11: 담요 위에 플라스틱 패를 내리치는 소리(직접 합성) — 아주 짧은 딱(높은 클릭) + 패 가장자리 찰싹 + 담요 둔탁. pw 클수록 세고 두 겹 */
   function slap(pw, o = {}){ const v = V(o), t = o.t || 0, pn = o.pan;
-    aNoise({ ft:'bandpass', f:2400 + pw * 350, q:.9, a:.001, d:.04 + pw * .018, v:(.12 + pw * .05) * v, t, pan:pn });
-    aNoise({ ft:'highpass', f:5200, a:.001, d:.018, v:(.06 + pw * .02) * v, t, pan:pn });
-    aThump({ f:250 - pw * 35, f2:65, d:.07 + pw * .05, v:(.2 + pw * .1) * v, t, pan:pn });
-    aTone({ f:1800, f2:900, type:'triangle', d:.025, v:.03 * v, t, pan:pn }); }
+    aNoise({ ft:'highpass', f:6200, a:.0005, d:.012, v:(.16 + pw * .05) * v, t, pan:pn });
+    aNoise({ ft:'bandpass', f:3100 + pw * 250, q:1.6, a:.0008, d:.028 + pw * .01, v:(.15 + pw * .05) * v, t, pan:pn });
+    aTone({ f:2300, f2:1500, type:'triangle', d:.018, v:(.05 + pw * .015) * v, t, pan:pn });
+    aThump({ f:210 - pw * 25, f2:85, d:.05 + pw * .03, v:(.13 + pw * .08) * v, t, pan:pn });
+    aNoise({ ft:'lowpass', f:900, d:.06 + pw * .02, v:(.06 + pw * .03) * v, t:t + .004, pan:pn });
+    if(pw >= 2) aNoise({ ft:'bandpass', f:2600, q:1.4, a:.0008, d:.022, v:.1 * v, t:t + .028, pan:pn }); }
+  /* 휙: 패가 손을 떠나 날아가는 바람 */
+  function swish(o = {}){ aWhoosh({ f:700, f2:3600, a:.03, d:.14, v:(o.v || .07) * V(o), t:o.t || 0, pan:o.pan }); }
   /* 가야금 비슷한 퉁김(살짝 꺾는 음) */
   function gyg(f, o = {}){ const t = o.t || 0, v = (o.v || .1);
     aTone({ f, f2:f * (o.bend || 1.02), slide:.12, type:'triangle', d:o.d || .55, v, t, rev:.3, lp:3000 });
@@ -242,13 +249,19 @@ const TGFX = (() => {
 
   const sounds = {
     /* 카드 부딪힘 1·2·3 */
+    /* 낸 패 꽂힘 1(빈 자리)·2(짝 맞음 '딱!')·3(폭탄·뻑 먹기 '쾅 딱!') */
     gsfxLand1(o){ slap(1, o); },
-    gsfxLand2(o){ slap(2, o); aMarimba(P5(7, 67), { t:.03, v:.1 * V(o), d:.3, pan:o.pan }); jgT({ t:.01, v:.06 * V(o), pan:o.pan }); },
-    gsfxLand3(o){ slap(3, o); buk({ v:.4 * V(o), pan:o.pan }); kkw({ t:.02, v:.06 * V(o), pan:o.pan }); aNoise({ ft:'lowpass', f:2600, f2:200, d:.45, v:.2 * V(o), rev:.35 }); },
-    gsfxFlip(o){ aWhoosh({ f:900, f2:4200, a:.012, d:.09, v:.06, pan:o.pan }); slap(1, { t:.07, pan:o.pan }); aBell({ f:m2f(91), t:.09, d:.25, v:.025, idx:1.2, rev:.3 }); },
+    gsfxLand2(o){ slap(2, o); aTone({ f:1400, f2:1100, type:'triangle', t:.012, d:.04, v:.05 * V(o), pan:o.pan }); },
+    gsfxLand3(o){ slap(3, o); buk({ v:.34 * V(o), pan:o.pan, d:.3 }); aNoise({ ft:'lowpass', f:2400, f2:200, d:.35, v:.16 * V(o), rev:.3 }); kkwM({ t:.03, v:.05 * V(o) }); },
+    gsfxToss(o){ swish(o); },
+    /* 더미 뒤집기: 패 넘기는 '촥' */
+    gsfxFlip(o){ aNoise({ ft:'bandpass', f:2200, f2:4800, q:.9, a:.006, d:.07, v:.08, pan:o.pan }); aNoise({ ft:'highpass', f:5200, t:.05, d:.012, v:.06, pan:o.pan }); swish({ t:.08, v:.05, pan:o.pan }); },
+    /* 먹은 패 쓸어 담기: '스윽' + 패 겹치는 '차라락'(장수만큼) + 마지막 '탁' */
     gsfxGrab(o){ const n = Math.max(1, Math.min(7, o.n || 1)), v = V(o);
-      for(let k = 0; k < n; k++){ aNoise({ ft:'bandpass', f:3000, q:1.2, t:k * .055, d:.03, v:.07 * v }); aMarimba(P5(k + 3, o.op ? 67 : 72), { t:k * .055, v:.11 * v, d:.35 }); }
-      if(n >= 3) aSparkle({ t:n * .055, n:Math.min(6, n), v:.035 * v, root:o.op ? 79 : 84 }); },
+      aWhoosh({ f:500, f2:2400, a:.03, d:.16, v:.05 * v, pan:o.op ? .2 : -.2 });
+      for(let k = 0; k < n; k++){ aNoise({ ft:'bandpass', f:3600 + k * 120, q:1.8, a:.0008, t:.06 + k * .055, d:.02, v:.1 * v }); aNoise({ ft:'highpass', f:6000, t:.06 + k * .055, d:.008, v:.06 * v }); }
+      slap(1, { t:.08 + n * .055, op:o.op });
+      if(n >= 4) aSparkle({ t:.1 + n * .055, n:Math.min(5, n - 2), v:.03 * v, root:o.op ? 79 : 84 }); },
     /* 뻑: 금 가는 소리 + 털썩 + 어긋난 하강 */
     gsfxPpuk(o){ const v = V(o);
       for(let k = 0; k < 4; k++) aNoise({ ft:'bandpass', f:rr(3500, 6500), q:3, t:k * .035, d:.03, v:.09 * v });
@@ -321,10 +334,14 @@ const TGFX = (() => {
     gsfxSun(o){ const v = V(o); jgD({ v:.18 * v }); kkw({ t:.08, v:.06 * v }); arp([0, 2, 4, 7], 72, { t:.1, v:.12 * v }); aBell({ f:m2f(96), t:.35, d:.7, v:.04 * v, rev:.4 }); },
     gsfxSunFlip(o){ aWhoosh({ f:1000, f2:4000, a:.01, d:.08, v:.05 }); slap(1, { t:.06 }); aBell({ f:m2f(88), t:.08, d:.3, v:.03 }); },
     gsfxTurn(o){ aBell({ f:P5(7, 72), d:.5, v:.04, idx:1.1, rev:.35 }); aBell({ f:P5(9, 72), t:.08, d:.6, v:.035, idx:1.1, rev:.35 }); },
-    gsfxDeal(o){ const n = Math.max(4, Math.min(20, o.n || 14)); for(let k = 0; k < n; k++) slap(.6, { t:k * .045, pan:(k % 2 ? .35 : -.35) }); aWhoosh({ f:400, f2:2600, a:.05, d:.25, v:.04 }); }
+    /* 패 돌리기: 한 장마다 '착'(가볍게) — 화면의 장 수·간격과 맞춤 */
+    gsfxDeal(o){ const n = Math.max(4, Math.min(30, o.n || 14)), gp = o.gap || .034;
+      aWhoosh({ f:400, f2:2600, a:.05, d:.22, v:.04 });
+      for(let k = 0; k < n; k++){ const t = .26 + k * gp + rr(-.004, .004), pn = k % 4 < 2 ? -.25 : .3;
+        aNoise({ ft:'highpass', f:5800, a:.0005, t, d:.008, v:.07, pan:pn }); aNoise({ ft:'bandpass', f:2900, q:1.5, a:.0008, t, d:.02, v:.07, pan:pn }); aThump({ f:190, f2:90, t, d:.035, v:.05, pan:pn }); } }
   };
   /* 너무 자주 겹치면 안 되는 소리: 최소 간격(ms) */
-  const gate = { gsfxLand1:35, gsfxLand2:50, gsfxLand3:120, gsfxFlip:45, gsfxGrab:90, gsfxTick:250, gsfxTurn:400, gsfxDeal:500, gsfxSunFlip:60, gsfxSteal:150, gsfxTimeout:600, gsfxBonus:120 };
+  const gate = { gsfxLand1:35, gsfxLand2:50, gsfxLand3:120, gsfxFlip:45, gsfxGrab:90, gsfxTick:250, gsfxTurn:400, gsfxDeal:500, gsfxToss:60, gsfxSunFlip:60, gsfxSteal:150, gsfxTimeout:600, gsfxBonus:120 };
 
   /* =========================================================
      효과 API
@@ -345,7 +362,8 @@ const TGFX = (() => {
         const sq = [0, .05, .08, .12][pw];
         T(() => inner.animate([{ transform:'scale(1)' }, { transform:`scale(${1 + sq * .4},${1 - sq})`, offset:.25 }, { transform:`scale(${1 - sq * .25},${1 + sq * .35})`, offset:.55 }, { transform:'scale(1)' }], { duration:260 + pw * 60, easing:'ease-out', composite:'add' }));
       }
-      /* 충격파 */
+      /* 하얀 '팍' 터짐(패 뒤) + 충격파 */
+      burst(el, c, pw);
       ring(c.x, c.y, pw >= 2 ? '#FFE27A' : '#FFFFFF', Math.max(40, c.w * (.8 + pw * .35)), .32 + pw * .08, 4 + pw * 3);
       if(pw >= 3) ring(c.x, c.y, '#FF9F1C', c.w * 2.2, .55, 12);
       /* 먼지: 카드 아래 양옆으로 퍼짐 */
@@ -355,6 +373,27 @@ const TGFX = (() => {
       if(pw >= 3){ shake(22); flash('#FFF4C2', .28, 180); emit(c.x, c.y, { quantity:1, speed:0, lifespan:280, kind:'glow', tint:['#FFE27A'], scale:{ start:c.w * .35, end:c.w * .7, ease:'expo.out' }, alpha:{ start:.9, end:0 } }); }
     }catch(_){}
   }
+  /* 꽂히는 자리 하얀 '팍' 터짐 그림(v1.11, 직접 그린 뾰족 별 + 속도선). 판 좌표 층에 두어 판과 함께 확대·회전 */
+  function burst(el, c, pw){
+    const b = board(); if(!b || RD()) return;
+    css();
+    /* 판 좌표(offset 사슬, 움직임 무시)로 패 가운데. 바닥 패 묶음(#gsFloor) 바로 앞에 끼워 패 뒤로 별이 삐져나오게 */
+    let q = null, sz;
+    if(el && el.offsetWidth){ let x = el.offsetWidth / 2, y = el.offsetHeight / 2, n = el; while(n && n !== b){ x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; } if(n === b){ q = { x, y }; sz = Math.max(el.offsetWidth, el.offsetHeight) * (1.25 + pw * .3); } }
+    if(!q){ const M = mat(); q = B(c.x, c.y); sz = Math.max(c.w, c.h) / (M ? M.s : 1) * (1.25 + pw * .3); }
+    const fl = document.getElementById('gsFloor');
+    const n = 12 + pw * 2, R = 50, r = 22; let pts = '';
+    for(let i = 0; i < n * 2; i++){ const a = i / (n * 2) * Math.PI * 2 + rr(-.05, .05), rad = i % 2 ? r : R * rr(.78, 1); pts += `${(50 + Math.cos(a) * rad).toFixed(1)},${(50 + Math.sin(a) * rad).toFixed(1)} `; }
+    let lines = ''; for(let i = 0; i < 8; i++){ const a = i / 8 * Math.PI * 2 + rr(-.2, .2); lines += `<path d="M${(50 + Math.cos(a) * 30).toFixed(1)} ${(50 + Math.sin(a) * 30).toFixed(1)}L${(50 + Math.cos(a) * 49).toFixed(1)} ${(50 + Math.sin(a) * 49).toFixed(1)}" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>`; }
+    const d = document.createElement('div');
+    d.className = 'gsfx-bst'; d.setAttribute('aria-hidden', 'true');
+    d.style.cssText = `left:${q.x}px; top:${q.y}px; width:${sz}px; height:${sz}px; --r:${rr(-20, 20).toFixed(0)}deg; animation-duration:${260 + pw * 40}ms`;
+    d.innerHTML = `<svg viewBox="0 0 100 100"><polygon points="${pts}" fill="#fff" stroke="${pw >= 2 ? '#FFD34D' : 'rgba(255,240,190,.9)'}" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="50" r="17" fill="${pw >= 3 ? '#FFE27A' : '#FFFBEA'}"/>${lines}</svg>`;
+    if(fl && fl.parentNode && b.contains(fl)) fl.parentNode.insertBefore(d, fl); else b.appendChild(d);
+    setTimeout(() => T(() => d.remove()), 520);
+  }
+  /* 낸 패가 손을 떠날 때 '휙' */
+  function toss(){ S('gsfxToss', {}); }
   /* 더미에서 뒤집은 카드 */
   function flip(el){
     try{
@@ -558,5 +597,5 @@ const TGFX = (() => {
       document.querySelectorAll('.gsfx-l').forEach(l => T(() => l.remove()));
     }catch(_){}
   }
-  return { land, flip, grab, event, clear, sounds, gate, _P:P, _B:B };
+  return { land, flip, grab, toss, event, clear, sounds, gate, _P:P, _B:B };
 })();

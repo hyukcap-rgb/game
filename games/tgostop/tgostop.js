@@ -16,7 +16,7 @@ NG.tgostop = (() => {
   const INK = '#2B1B12';
   const ID = 'tgostop';
   /* 효과·소리 연출(gostop-fx.js). 없으면 아무것도 안 하는 대역 */
-  const GX = typeof TGFX !== 'undefined' ? TGFX : { land(){}, flip(){}, grab(){}, event(){}, clear(){}, sounds:{}, gate:{} };
+  const GX = typeof TGFX !== 'undefined' ? TGFX : { land(){}, flip(){}, grab(){}, toss(){}, event(){}, clear(){}, sounds:{}, gate:{} };
   /* ---------- 패 ---------- */
   /* 월별 네 장의 종류: g 광 · y 열끗 · hong/cheong/cho 단 · rain 비띠 · p 피 · s 쌍피 */
   const T = [null,
@@ -433,11 +433,13 @@ NG.tgostop = (() => {
     const g = GS(), S = g.S, P = S.P[p], me = p === g.me;
     const name = me ? '나' : esc(g.oppNick), av = maskAv(me);
     const bye = me ? g.bye : g.oppBye, off = !me && g.mode === 'pvp' && g.began && !g.oppHere;
-    const st = [off ? '<b class="off">연결 끊김·자동</b>' : '', bye ? '<b class="bye">나가기 예약</b>' : '', P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
-    return `<div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
+    const st = [off ? '<b class="off" title="연결 끊김 · 자동으로 대신 침">끊김·자동</b>' : '', bye ? '<b class="bye" title="나가기 예약 · 이번 판이 끝나면 나가요">예약</b>' : '', P.go ? `<b class="go">${P.go}고</b>` : '', P.shake ? `<b class="sh">흔들 ${P.shake}</b>` : '', P.ppuk ? `<b class="pp">뻑 ${P.ppuk}</b>` : ''].join('');
+    /* v1.11 캐릭터 메뉴(Figma 개편안): 얼굴+시계 왼쪽 · 이름/포인트/설명/상태 칩 오른쪽 한 덩어리 */
+    return `<span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>
+      <div class="gs-ptx"><div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
       <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt != null ? fmtP(g.oppPt) : '') : '판돈 무제한'}</div>
       <div class="gs-pl gs-sub" ${me ? '' : 'id="gsOH"'}>${me ? (G.adv ? '솔로 ' + G.adv + '판' : g.mode === 'pvp' ? '실시간 대전' : '컴퓨터 대전') : '남은 패 ' + view.h[p].length + '장'}</div>
-      <div class="gs-ps">${st}</div><span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>`;
+      ${st ? `<div class="gs-ps">${st}</div>` : ''}</div>`;
   }
   /* 바닥: 가운데 더미를 둘러싼 12자리(월마다 자리 고정), 같은 월은 살짝 겹쳐 쌓기 */
   /* v1.5: 바닥 12자리 = 두 줄 × 6칸(가운데 더미 자리 비움). 예전 타원 배치는 양 끝 자리끼리 겹쳤음 → 자리 사이 140px(카드 90 + 겹쳐 쌓기 3장까지) */
@@ -467,9 +469,10 @@ NG.tgostop = (() => {
   function infoHtml(view){
     const g = GS(), S = g.S, s = scoreOf(view.c[g.me]), P = S.P[g.me];
     const mul = [P.shake ? '흔들 ×' + Math.pow(2, P.shake) : '', P.go >= 3 ? P.go + '고 ×' + Math.pow(2, P.go - 2) : '', s.yN >= 7 ? '멍따 ×2' : ''].filter(Boolean);
-    return `<div class="gs-ih">내 패</div><div class="gs-ir"><span>광 <b>${s.gN}</b></span><span>열 <b>${s.yN}</b></span><span>띠 <b>${s.tN}</b></span><span>피 <b>${s.piV}</b></span></div>
-      <div class="gs-ir2">${mul.length ? mul.join(' · ') : (s.birds === 3 ? '고도리!' : s.hong === 3 || s.cheong === 3 || s.cho === 3 ? '단 완성!' : '7점 나면 고 · 스톱')}</div>
-`;
+    const tot = s.total, need = P.go ? P.goScore + 1 : 7, left = Math.max(0, need - tot);
+    const head = mul.length ? mul.join(' · ') : s.birds === 3 ? '고도리!' : s.hong === 3 || s.cheong === 3 || s.cho === 3 ? '단 완성!' : left ? `${tot}점 · ${need}점까지 ${left}점` : `${tot}점 · 고? 스톱?`;
+    return `<div class="gs-ih"><span>내 패</span><b>${head}</b></div><div class="gs-ibar"><i style="width:${Math.min(100, tot / need * 100).toFixed(1)}%"></i></div>
+      <div class="gs-ir">${[['광', s.gN], ['열끗', s.yN], ['띠', s.tN], ['피', s.piV]].map(([k, v]) => `<span><small>${k}</small><b>${v}</b></span>`).join('')}</div>`;
   }
   function draw(view){
     const g = GS(); if(!g || !$('#gsb')) return;
@@ -492,26 +495,74 @@ NG.tgostop = (() => {
     clockPaint();
   }
   /* 장면 바꾸기: 카드가 예전 자리에서 새 자리로 날아가게(FLIP). 판이 돌려져 있으면 화면 좌표를 판 좌표로 바꿔 계산 */
+  /* 패 움직임 v1.11(맞고 기본 연출 흐름, 직접 구현): 낸 패는 들어 올려 휙 → 바닥에 내리꽂기(살짝 눌림),
+     더미에서 뒤집은 패는 뒷면(빨강)으로 반쯤 돌다 앞면이 보이며 날아가 꽂힘, 먹은 패는 한 장씩 차르륵 쟁반으로.
+     돌려주는 값 = 꽂히는 순간(ms) → 그때 '착' 소리·충격 그림 */
+  function backCss(){
+    if(document.getElementById('gsBackCss')) return;
+    const st = document.createElement('style'); st.id = 'gsBackCss';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${TGART.VB}">${TGART.back}</svg>`;
+    st.textContent = `.gsb .gs-c.gs-fb::before{content:''; position:absolute; inset:0; z-index:2; pointer-events:none; background:url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 0 0/100% 100% no-repeat; animation:gs-fbk var(--fbd,560ms) linear forwards}
+@keyframes gs-fbk{0%,23%{opacity:1} 24%,100%{opacity:0}}`;
+    document.head.appendChild(st);
+  }
   function flipTo(view, prev, dur){
-    const root = $('#gsb'), g = GS(); if(!root || !g) return;
+    const root = $('#gsb'), g = GS(); if(!root || !g) return 300;
     const org = r => g.rot ? [r.right, r.top] : [r.left, r.top];
     const old = {};
     root.querySelectorAll('[data-cid]').forEach(el => { old[el.dataset.cid] = el.getBoundingClientRect(); });
     const oh = $('#gsOpp .gs-pav'), ohR = oh ? oh.getBoundingClientRect() : null, dk = root.querySelector('[data-cid="deck"]'), dkR = dk ? dk.getBoundingClientRect() : null;
     draw(view);
-    if(FXR.reduce) return;
-    const op = 1 - g.me;
+    if(FXR.reduce) return 300;
+    X(backCss);
+    const op = 1 - g.me, inHand = x => prev && (prev.h[0].includes(x) || prev.h[1].includes(x));
+    const thr = view.flip == null && view.hi ? view.hi.filter(inHand) : [];
+    const fid = view.flip != null ? view.flip : -1;
+    const capNew = new Set(); if(prev) for(const q of [0, 1]) (view.c[q] || []).forEach(x => { if(!(prev.c[q] || []).includes(x)) capNew.add(x); });
+    let imp = 300, ci = 0;
     root.querySelectorAll('[data-cid]').forEach(el => {
       const cid = el.dataset.cid; if(cid === 'deck') return;
+      const id = +cid;
       let o = old[cid];
-      if(!o){ const id = +cid; o = prev && prev.h[op].includes(id) ? ohR : dkR; }
+      if(!o){ o = prev && prev.h[op].includes(id) ? ohR : dkR; }
       if(!o || !o.width) return;
       const n = el.getBoundingClientRect(); if(!n.width) return;
       const [ox, oy] = org(o), [nx, ny] = org(n), sx = ox - nx, sy = oy - ny;
       const dx = g.rot ? sy / g.sc : sx / g.sc, dy = g.rot ? -sx / g.sc : sy / g.sc, s = Math.max(o.width, o.height) / Math.max(n.width, n.height);
       if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < .02) return;
-      try{ el.animate([{ transform:`translate(${dx}px,${dy}px) scale(${s})`, zIndex:60 }, { transform:'none', zIndex:60 }], { duration:dur || 360, easing:'cubic-bezier(.25,.9,.3,1)' }); }catch(_){}
+      const from = `translate(${dx}px,${dy}px) scale(${s})`;
+      try{
+        if(thr.includes(id)){
+          /* 던지기: 반쯤 와서 높이 들림(크게·기울게) → 가속해 내리꽂힘 → 눌렸다 제자리 */
+          const D = 400, tilt = dx > 0 ? -8 : 8;
+          el.animate([
+            { transform:from, zIndex:60, easing:'cubic-bezier(.2,.75,.45,1)' },
+            { transform:`translate(${dx * .4}px,${dy * .4 - 70}px) scale(${1.24 + (s - 1) * .4}) rotate(${tilt}deg)`, zIndex:60, offset:.52, easing:'cubic-bezier(.6,0,1,.7)' },
+            { transform:'scale(.93,.9)', zIndex:60, offset:.86, easing:'ease-out' },
+            { transform:'none', zIndex:60 }], { duration:D });
+          imp = Math.round(D * .86);
+        } else if(id === fid && !old[cid]){
+          /* 더미 뒤집기: 그 자리에서 반 바퀴(뒷면→앞면) → 들려서 날아가 꽂힘 */
+          const D = 580;
+          el.style.setProperty('--fbd', D + 'ms'); el.classList.add('gs-fb'); setTimeout(() => el.classList.remove('gs-fb'), D + 60);
+          el.animate([
+            { transform:from, zIndex:60, easing:'ease-in' },
+            { transform:`translate(${dx}px,${dy - 14}px) scale(${s * .06},${s * 1.06})`, zIndex:60, offset:.24, easing:'ease-out' },
+            { transform:`translate(${dx}px,${dy - 26}px) scale(${s * 1.14})`, zIndex:60, offset:.4, easing:'cubic-bezier(.55,0,1,.7)' },
+            { transform:'scale(.93,.9)', zIndex:60, offset:.88, easing:'ease-out' },
+            { transform:'none', zIndex:60 }], { duration:D });
+          imp = Math.round(D * .88);
+        } else if(capNew.has(id)){
+          /* 먹은 패: 한 장씩 차르륵(살짝 들렸다 쟁반에 미끄러져 앉음) */
+          const dl = ci++ * 55;
+          el.animate([
+            { transform:from, zIndex:60, easing:'cubic-bezier(.3,.8,.4,1)' },
+            { transform:`translate(${dx * .5}px,${dy * .5 - 18}px) scale(${(s + 1) / 2 * 1.06})`, zIndex:60, offset:.5 },
+            { transform:'none', zIndex:60 }], { duration:(dur || 360) + 120, delay:dl, fill:'backwards' });
+        } else el.animate([{ transform:from, zIndex:60 }, { transform:'none', zIndex:60 }], { duration:dur || 360, easing:'cubic-bezier(.25,.9,.3,1)' });
+      }catch(_){}
     });
+    return imp;
   }
   function banner(txt, kind){
     const b = $('#gsBan'); if(!b) return;
@@ -530,8 +581,8 @@ NG.tgostop = (() => {
       if(eat && hc != null && sc.flip == null && pv.h[p].includes(hc)){
         const A = Object.assign({}, pv, { h:[pv.h[0].slice(), pv.h[1].slice()], f:pv.f.concat(hc), hi:[hc], lab:[] });
         A.h[p] = A.h[p].filter(x => x !== hc);
-        flipTo(A, pv, 360);
-        setTimeout(() => X(() => { const el = document.querySelector(`#gsFloor [data-cid="${hc}"]`); if(el) GX.land(el, 3); }), 330);
+        const im0 = flipTo(A, pv, 360);
+        setTimeout(() => X(() => { const el = document.querySelector(`#gsFloor [data-cid="${hc}"]`); if(el) GX.land(el, 3); }), im0);
         X(() => document.querySelectorAll(`#gsFloor [data-cid]`).forEach(el => { const c0 = C[+el.dataset.cid]; if(c0 && C[hc] && c0.m === C[hc].m) el.classList.add('gs-pile'); }));
         await wait(700);
         if(GS() !== g || G.over || g.epoch !== ep) return;
@@ -541,19 +592,22 @@ NG.tgostop = (() => {
       const q = 1 - p, stolen = sc.c[p].filter(x => pv.c[q].includes(x));
       let mid = sc;
       if(stolen.length){ mid = Object.assign({}, sc, { c:[sc.c[0].slice(), sc.c[1].slice()] }); mid.c[p] = mid.c[p].filter(x => !stolen.includes(x)); mid.c[q] = mid.c[q].concat(stolen); }
-      flipTo(mid, pv, eat ? 620 : 340);
+      const imp = flipTo(mid, pv, eat ? 620 : 340);
       const labs = sc.lab || [], lid = sc.flip != null ? sc.flip : sc.hi && sc.hi[0];
       const evs = EVMAP.filter(([l]) => labs.includes(l)).map(x => x[1]);
       const big = evs.includes('bomb') || evs.includes('ppukEat') || evs.includes('jappuk');
       const nm = lid != null && C[lid] ? sc.f.filter(x => C[x] && C[x].m === C[lid].m).length : 0;
-      setTimeout(() => X(() => { const el = lid != null && document.querySelector(`#gsb [data-cid="${lid}"]`); if(!el) return; if(sc.flip != null) GX.flip(el); else GX.land(el, big ? 3 : nm >= 2 ? 2 : 1); }), 300);
+      const lel = () => lid != null && document.querySelector(`#gsb [data-cid="${lid}"]`);
+      if(sc.flip != null) setTimeout(() => X(() => { const el = lel(); if(el) GX.flip(el); }), 40);
+      else X(() => GX.toss());
+      setTimeout(() => X(() => { const el = lel(); if(el) GX.land(el, big ? 3 : nm >= 2 ? 2 : 1); }), imp);
       for(const q of [0, 1]){
         const nw = sc.c[q].filter(x => !pv.c[q].includes(x));
-        if(nw.length) setTimeout(() => X(() => GX.grab(nw.map(x => document.querySelector(`#gsCap${q === g.me ? 'Me' : 'Op'} [data-cid="${x}"]`)).filter(Boolean), q === g.me ? 'me' : 'op')), 400);
+        if(nw.length) setTimeout(() => X(() => GX.grab(nw.map(x => document.querySelector(`#gsCap${q === g.me ? 'Me' : 'Op'} [data-cid="${x}"]`)).filter(Boolean), q === g.me ? 'me' : 'op')), Math.max(400, imp + 60));
       }
-      let w = 470;
+      let w = Math.max(470, imp + 170);
       if(evs.length){
-        setTimeout(() => X(() => GX.event(evs[0], { who })), 330);
+        setTimeout(() => X(() => GX.event(evs[0], { who })), imp + 30);
         if(evs[1]) setTimeout(() => X(() => GX.event(evs[1], { who })), 1050);
         faceFor(p, evs[0] === 'ppuk' ? 'sad' : 'joy', 1800);
         if(evs[0] !== 'ppuk' && evs[0] !== 'bonus') faceFor(1 - p, 'wow', 1500);
@@ -623,22 +677,44 @@ NG.tgostop = (() => {
     g.me = g.seat === g.first ? 0 : 1;   /* S 0번 자리 = 이번 판 선 */
     g.S = gsDeal(seedOf(g.gi)); g.S.first = 0;
     g.rnd = mulberry(seedFrom(seedOf(g.gi) + ':ai:' + g.seat));
-    g.k = 0; g.log = []; g.raw = []; g.own = []; g.src = []; g.busy = true; g.picking = false; g.stepT0 = Date.now() + 700;   /* 패 돌리는 동안은 대신 두기 금지 */
+    g.k = 0; g.log = []; g.raw = []; g.own = []; g.src = []; g.busy = true; g.picking = false; g.stepT0 = Date.now() + DEAL_MS;   /* 패 돌리는 동안은 대신 두기 금지 */
     g.began = true; g.inGame = true; g.ended = false; g.paid = false; g.res = null; g.phase = 'play'; g.epoch = (g.epoch || 0) + 1;
     g.nxSent = false; clearInterval(g.nxIv); g.fpPaid = [0, 0]; g.fpd = 0;
     $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     $('#gsBody').hidden = false; fit();
-    const tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${(g.room || ROOMS[0]).name}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
+    const rm0 = g.room || ROOMS[0], tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${rm0.name}${rm0.stake ? ' · 1점 ' + fmtP(rm0.stake) : ''}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
     const gate = $('#gsGate'); if(gate) gate.remove();
     byeUI();
     draw(liveView());
     /* 패 돌리기 연출 */
-    X(() => { if(!FXR.reduce) document.querySelectorAll('#gsg .gs-c.hd, #gsg .gs-c.fl').forEach((el, i) => el.animate([{ transform:'translateY(-30px) scale(.5)', opacity:0 }, { transform:'none', opacity:1 }], { duration:360, delay:i * 28, easing:'cubic-bezier(.2,1.4,.4,1)', fill:'backwards' })); });
-    X(() => GX.event('deal', { n:18 }));
+    const dealN = dealAnim();
+    X(() => GX.event('deal', { n:dealN, gap:DEAL_GAP / 1000 }));
     if(g.S.over){ setTimeout(() => endGame(), 900); return; }
     const ep = g.epoch;
-    setTimeout(() => { if(GS() === g && g.epoch === ep) nextStep(); }, 700);
+    setTimeout(() => { if(GS() === g && g.epoch === ep) nextStep(); }, DEAL_MS);
+  }
+  /* 패 돌리기 v1.11: 더미 자리에서 바닥·내 손으로 번갈아 한 장씩 휙 날아와 착(앞 장이 끝나기 전에 다음 장) */
+  const DEAL_GAP = 34, DEAL_MS = 1250;
+  function dealAnim(){
+    let n = 0;
+    X(() => {
+      const fl = [...document.querySelectorAll('#gsFloor .gs-c')], hd = [...document.querySelectorAll('#gsHand .gs-c.hd')];
+      if(FXR.reduce){ fl.concat(hd).forEach(el => el.animate([{ opacity:0 }, { opacity:1 }], { duration:300 })); n = 8; return; }
+      const seq = []; for(let i = 0; i < Math.max(fl.length, hd.length); i += 2) seq.push(...fl.slice(i, i + 2), ...hd.slice(i, i + 2));
+      const dk = document.querySelector('#gsb [data-cid="deck"]'), d = dk ? dk.getBoundingClientRect() : null, g = GS();
+      seq.forEach((el, i) => {
+        const r = el.getBoundingClientRect(); let tf = 'translateY(-40px) scale(.6)';
+        if(d && d.width && r.width){
+          const sx = (d.left + d.width / 2) - (r.left + r.width / 2), sy = (d.top + d.height / 2) - (r.top + r.height / 2);
+          const dx = g.rot ? sy / g.sc : sx / g.sc, dy = g.rot ? -sx / g.sc : sy / g.sc, s = Math.max(d.width, d.height) / Math.max(r.width, r.height);
+          tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${i % 2 ? -10 : 10}deg)`;
+        }
+        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:300, delay:i * DEAL_GAP, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
+      });
+      n = seq.length;
+    });
+    return n || 18;
   }
   function nextStep(){
     const g = GS(); if(!g || G.over || g.phase !== 'play') return;
@@ -1379,16 +1455,16 @@ NG.tgostop = (() => {
     st.innerHTML = `<div class="gsg" id="gsg"><div class="gsb" id="gsb">
       <div id="gsBody" hidden>
         <div class="gs-tray op"></div><div class="gs-tray me"></div>
-        <div class="gs-tag" id="gsTag">${BADGE19}<span>고스톱</span></div>
         <div id="gsCapOp"></div>
         <div class="gs-pts op" id="gsPtsOp"></div>
         <div id="gsFloor"></div><div id="gsDeck"></div>
         <div class="gs-pts me" id="gsPtsMe"></div>
         <div id="gsCapMe"></div>
         <div class="gs-side">
+          <div class="gs-tag" id="gsTag">${BADGE19}<span>고스톱</span></div>
           <div class="gs-prof op" id="gsOpp"></div>
           <div class="gs-info" id="gsInfo"></div>
-          <div class="gs-btns"><button id="gsHelpB" aria-label="게임 방법">?</button><button class="out" id="gsOut">${GS() && GS().sess ? '나가기 예약' : '나가기'}</button>${GS() && GS().sess ? '<button class="q" id="gsQuit" aria-label="지금 바로 나가기(기권)">✕</button>' : ''}</div>
+          <div class="gs-btns"><button id="gsHelpB" aria-label="게임 방법">?</button><button class="out" id="gsOut">${GS() && GS().sess ? '나가기 예약' : '나가기'}</button></div>
           <div class="gs-prof me" id="gsMe"></div>
           <div class="gs-msg" id="gsMsg"></div>
         </div>
@@ -1405,7 +1481,6 @@ NG.tgostop = (() => {
     fit();
     $('#gsHelpB').onclick = () => openHelp(ID);
     $('#gsOut').onclick = () => { const g = GS(); if(g && g.sess) toggleBye(); else confirmQuit(); };   /* 대전: 누르면 나가기 예약, 다시 누르면 취소 */
-    const qb = $('#gsQuit'); if(qb) qb.onclick = () => confirmQuit();   /* 바로 나가기(기권 · 남은 판은 상대 쪽에서 자동으로 끝까지) */
     $('#gsAuto').onclick = () => autoHand();
     const go = () => {
       const g = GS(); if(!g || G.over) return;
