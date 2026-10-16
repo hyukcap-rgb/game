@@ -452,17 +452,23 @@ input { font: inherit; }
 .seat.hurry .ava svg circle { stroke: #ff4d63; }
 .seat.hurry .ava img { border-color: #ff4d63 !important; box-shadow: 0 0 5cqw rgba(255, 77, 99, .85) !important; }
 /* 테이블 아래쪽 '내 차례!' 배지 */
-.turn-badge { position: absolute; left: 50%; top: 61%; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 7; pointer-events: none; padding: 1.4cqw 5cqw; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #f2c35b 55%, #c99331); color: #2a1a00; font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-size: 5.6cqw; letter-spacing: .5px; box-shadow: 0 1cqw 3cqw rgba(0, 0, 0, .5), 0 0 6cqw rgba(242, 195, 91, .7); white-space: nowrap; }
-.turn-badge.show { animation: badge 1.6s cubic-bezier(.2, 1.4, .4, 1) forwards; }
-@keyframes badge { 0% { transform: translate(-50%, -30%) scale(.6); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; } 28% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -70%) scale(1); opacity: 0; } }
-/* 폴드 예약 토글 */
-.pre-btn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px 0 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: #e8ebf3; font-size: 14px; font-weight: 700; flex-direction: row; }
-.pre-btn small { font-size: 11px; color: var(--muted); font-weight: 500; }
-.pre-btn i { width: 20px; height: 20px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, .35); display: grid; place-items: center; font-style: normal; flex: none; }
-.pre-btn.on { background: rgba(224, 56, 77, .2); border-color: rgba(255, 77, 99, .7); }
-.pre-btn.on i { background: #e0384d; border-color: #e0384d; }
-.pre-btn.on i::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 900; }
-.pre-btn.on small { color: #fca5b1; }
+/* 체크/폴드 예약 상자(피망 방식): 폴드 버튼 자리에 같은 크기로, 오른쪽엔 상태 글자 */
+.actions.waiting .wait-row { display: grid; grid-template-columns: 1fr 2.4fr; gap: 8px; height: 56px; }
+.pre-box { height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(180deg, #2d3446, #1c2130); box-shadow: 0 4px 0 #111520; color: #e8ebf3; font-size: 15px; font-weight: 900; white-space: nowrap; transition: background .15s, opacity .15s; }
+.pre-box i { width: 20px; height: 20px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, .4); display: grid; place-items: center; font-style: normal; flex: none; }
+.pre-box.on { background: linear-gradient(180deg, #4b5263, #323846); box-shadow: 0 4px 0 #1f232d, 0 0 0 2px #f2c35b inset; }
+.pre-box.on i { background: #f2c35b; border-color: #f2c35b; }
+.pre-box.on i::after { content: '✓'; color: #2a1a00; font-size: 13px; font-weight: 900; }
+.pre-box.off { opacity: .28; box-shadow: none; }
+.wait-msg { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 14px; }
+.wait-msg > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wait-msg .rb-btn { flex: none; padding: 10px 14px; }
+/* 내 차례: 테이블 가운데 글자 대신 내 캐릭터가 알려 줌(보드 카드를 가리지 않게) */
+.seat.me.my-go .ava img { animation: myGo 1.2s ease-in-out infinite; border-color: var(--gold); }
+@keyframes myGo { 0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 2cqw rgba(242, 195, 91, .5); } 50% { transform: translateY(-1cqw) scale(1.05); box-shadow: 0 0 6cqw rgba(242, 195, 91, 1); } }
+.seat.me.my-go::after { content: '내 차례'; position: absolute; left: calc(50% + 7.5cqw); top: 4.5cqw; z-index: 6; padding: .8cqw 2.4cqw; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #f2c35b 55%, #c99331); color: #2a1a00; font-weight: 900; font-size: 3cqw; white-space: nowrap; box-shadow: 0 .6cqw 2cqw rgba(0, 0, 0, .5); pointer-events: none; animation: goPill .35s cubic-bezier(.2, 1.4, .4, 1); }
+.seat.me.my-go.hurry::after { background: linear-gradient(180deg, #ff8a9a, #e0384d); color: #fff; }
+@keyframes goPill { from { transform: scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .turn-badge.show, .actions.mine.pulse .act-row, .seat.me.my-turn .ava::after, .seat.me.my-turn .ava::before, .actions.hurry #turnSecs { animation-duration: .01ms; animation-iteration-count: 1; }
+  .seat.me.my-go .ava img, .actions.mine.pulse .act-row, .seat.me.my-turn .ava::after, .seat.me.my-turn .ava::before, .actions.hurry #turnSecs { animation-duration: .01ms; animation-iteration-count: 1; }
 }

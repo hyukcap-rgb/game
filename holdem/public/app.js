@@ -681,6 +681,7 @@
       clearTimeout(this.hurryT); clearInterval(this.tickT); cancelAnimationFrame(this.barRaf);
       $('#actions').classList.remove('hurry');
       if (!mine) { this.stop(); return; }
+      { const me = R.seatEls[R.myIndex(v)]; if (me) me.classList.add('my-go'); }
       if (isNew) this.alert(v);
       bar.classList.add('show');
       const ms = deadline ? Math.max(0, deadline - Date.now()) : 0;
@@ -711,8 +712,6 @@
       const me = R.seatEls[R.myIndex(v)];
       if (me) { me.classList.remove('my-turn'); void me.offsetWidth; me.classList.add('my-turn'); }
       const a = $('#actions'); a.classList.remove('pulse'); void a.offsetWidth; a.classList.add('pulse');
-      const b = $('#turnBadge'); b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
-      clearTimeout(this.badgeT); this.badgeT = setTimeout(() => b.classList.remove('show'), 1600);
       if (document.hidden) {
         this.baseTitle = this.baseTitle && !this.baseTitle.startsWith('🔔') ? this.baseTitle : document.title;
         let on = false; clearInterval(this.titleT);
@@ -727,7 +726,7 @@
     },
     stop() {
       $('#turnBar').classList.remove('show');
-      R.seatEls.forEach((el) => el.classList.remove('hurry', 'my-turn'));
+      R.seatEls.forEach((el) => el.classList.remove('hurry', 'my-turn', 'my-go'));
       clearInterval(this.titleT); this.titleT = null;
       if (this.baseTitle && document.title.startsWith('🔔')) document.title = this.baseTitle;
     },
@@ -787,18 +786,21 @@
         const rb = Online.rebuy;
         if (Online.waitRebuy > Date.now()) txt = `리바인을 기다리는 중 · ${Math.ceil((Online.waitRebuy - Date.now()) / 1000)}초`;
         else if (rb && rb.can && me && me.stack <= 0) txt = '칩을 모두 잃었어요';
-        // 폴드 예약: 핸드에 남아 있고 아직 내 차례가 아닐 때
+        // 체크/폴드 예약(피망 방식): 버튼 줄과 같은 자리·같은 높이의 상자 하나. 늘 그 자리에 있고 켜고 끌 때 다시 그리지 않아 화면이 움직이지 않음
         const canPre = !!(me && me.inHand && !me.folded && !me.allIn && !v.result && !v.runout && v.stage !== 'done' && this.ctrl && this.ctrl.online);
-        const pre = canPre && !!Online.preFold;
-        const key = txt + '|' + (rb && rb.can ? 1 : 0) + '|' + (canPre ? (pre ? 2 : 1) : 0);
-        if (wr.dataset.txt !== key) {
-          wr.innerHTML = (canPre ? `<button class="pre-btn${pre ? ' on' : ''}" id="preFoldBtn"><i></i>폴드 예약<small>체크 가능하면 체크</small></button>` : '')
-            + `<span>${txt}</span>${rb && rb.can ? `<button class="btn gold rb-btn" id="rebuyBtn">💰 리바인</button>` : ''}`;
-          wr.dataset.txt = key;
-          const b = $('#rebuyBtn'); if (b) b.onclick = rebuyModal;
-          const pb = $('#preFoldBtn');
-          if (pb) pb.onclick = () => { Online.preFold = !Online.preFold; Net.send({ t: 'pre', fold: Online.preFold }); Sound.pop(); Actions.render(R.v); };
+        if (!wr.dataset.built) {
+          wr.dataset.built = '1';
+          wr.innerHTML = `<button class="pre-box" id="preFoldBtn" type="button"><i></i><span>체크/폴드</span></button><div class="wait-msg"><span id="waitTxt"></span><button class="btn gold rb-btn" id="rebuyBtn" hidden>💰 리바인</button></div>`;
+          $('#rebuyBtn').onclick = rebuyModal;
+          $('#preFoldBtn').onclick = () => { if (!Actions.canPre) return; Online.preFold = !Online.preFold; Net.send({ t: 'pre', fold: Online.preFold }); Sound.pop(); Actions.render(R.v); };
         }
+        this.canPre = canPre;
+        const pb = $('#preFoldBtn');
+        pb.classList.toggle('on', canPre && !!Online.preFold);
+        pb.classList.toggle('off', !canPre);
+        pb.disabled = !canPre;
+        $('#waitTxt').innerHTML = txt;
+        $('#rebuyBtn').hidden = !(rb && rb.can);
         clearTimeout(Actions._wt);
         if (Online.waitRebuy > Date.now()) Actions._wt = setTimeout(() => R.v && Actions.render(R.v), 1000);
       }
