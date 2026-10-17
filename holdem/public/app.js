@@ -70,31 +70,48 @@
       s.connect(f); f.connect(g); g.connect(this.out);
       s.start(t, Math.random() * 0.5); s.stop(t + d + 0.03);
     },
-    card(w) { this.noise(0.09, 0.22, 3200, w, 'bandpass', 0.6); this.noise(0.04, 0.1, 900, (w || 0) + 0.04, 'lowpass'); },   // 카드 미끄러지는 '스윽'
-    flip(w) { this.noise(0.045, 0.18, 5200, w, 'highpass'); },                                                                // 뒤집는 '착'
-    chip(w) {                                                                                                                 // 칩끼리 부딪히는 '짤랑'
-      const j = 1 + (Math.random() - 0.5) * 0.12;
-      this.tone(3100 * j, 0.06, 'sine', 0.06, w); this.tone(4400 * j, 0.05, 'sine', 0.035, (w || 0) + 0.025);
-      this.noise(0.03, 0.06, 6000, w, 'highpass');
+    // 카드 돌리기: 짧고 가벼운 '샥'(고음 잡음, 빠른 감쇠)
+    card(w) { this.noise(0.07, 0.16, 5200, w, 'bandpass', 0.9); this.noise(0.035, 0.06, 2400, (w || 0) + 0.025, 'bandpass', 0.7); },
+    flip(w) { this.noise(0.03, 0.14, 6500, w, 'highpass'); this.tone(2200, 0.02, 'sine', 0.012, w); },
+    // 칩 한 번 부딪힘: 금속성 짧은 클릭 + 3~6kHz 울림
+    clack(w, v) {
+      const j = 1 + (Math.random() - 0.5) * 0.18, g = v || 1;
+      this.noise(0.012, 0.22 * g, 7000 * j, w, 'bandpass', 2.5);
+      this.tone(3600 * j, 0.05, 'sine', 0.05 * g, w); this.tone(5150 * j, 0.035, 'sine', 0.03 * g, w);
     },
-    check() { this.tone(140, 0.08, 'sine', 0.16, 0, 90); this.tone(140, 0.08, 'sine', 0.13, 0.11, 90); },                    // 테이블 '톡톡'
-    fold() { this.noise(0.16, 0.14, 1400, 0, 'lowpass'); },                                                                   // 카드 밀어내는 '스스'
-    turn() {                                                                                                                  // 내 차례: 또렷한 3음 차임
-      this.tone(784, 0.14, 'sine', 0.09); this.tone(1047, 0.14, 'sine', 0.08, 0.1); this.tone(1319, 0.26, 'sine', 0.08, 0.2);
-      this.tone(2637, 0.2, 'sine', 0.015, 0.2);
+    // 칩 걸기: 2~3개가 연달아 '착착'
+    chip(w) { const t = w || 0, n = 2 + (Math.random() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) this.clack(t + i * (0.028 + Math.random() * 0.02), 1 - i * 0.2); },
+    // 팟 모으기·받기: 칩 여러 개가 쏟아지듯
+    collect(w) { const t = w || 0; for (let i = 0; i < 9; i++) this.clack(t + i * 0.032 + Math.random() * 0.012, 0.9 - i * 0.07); },
+    check() { this.tone(170, 0.06, 'sine', 0.2, 0, 110); this.noise(0.02, 0.08, 900, 0, 'lowpass'); this.tone(170, 0.06, 'sine', 0.16, 0.12, 110); this.noise(0.02, 0.06, 900, 0.12, 'lowpass'); },   // 테이블 '똑똑'
+    fold() { this.noise(0.14, 0.1, 1800, 0, 'bandpass', 0.6); },                                                             // 카드 밀어내는 '스윽'
+    // 내 차례: 맑은 '띵'(약 2kHz 종소리, 배음 포함)
+    turn() { this.tone(1975, 0.45, 'sine', 0.08); this.tone(3950, 0.25, 'sine', 0.02); this.tone(2963, 0.3, 'sine', 0.015, 0.01); },
+    tick(last) { this.tone(last ? 1480 : 1180, 0.05, 'sine', last ? 0.08 : 0.05); },
+    allin() {
+      this.noise(0.5, 0.06, 1200, 0, 'bandpass', 0.4); this.tone(110, 0.55, 'sine', 0.14, 0, 70);
+      this.collect(0.08);
     },
-    tick(last) { this.tone(last ? 1320 : 990, 0.06, 'sine', last ? 0.09 : 0.06); },                                          // 남은 5초 째깍
-    allin() {                                                                                                                 // 긴장감 있게 올라가는 소리
-      this.tone(196, 0.5, 'triangle', 0.08, 0, 392); this.tone(294, 0.5, 'triangle', 0.05, 0.06, 587);
-      this.noise(0.4, 0.05, 2500, 0.05, 'bandpass', 0.5);
-    },
-    win() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, 'triangle', 0.08, i * 0.085)); },
+    win() { [784, 988, 1175, 1568].forEach((f, i) => { this.tone(f, 0.35, 'sine', 0.07, i * 0.07); this.tone(f * 2, 0.2, 'sine', 0.015, i * 0.07); }); this.collect(0.05); },
     epic() {
-      [392, 523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.45, 'triangle', 0.08, i * 0.075));
-      this.tone(1568, 0.7, 'sine', 0.05, 0.45);
-      this.noise(0.7, 0.05, 7000, 0.45, 'highpass');
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => { this.tone(f, 0.5, 'sine', 0.07, i * 0.07); this.tone(f * 2, 0.3, 'sine', 0.015, i * 0.07); });
+      this.noise(0.8, 0.04, 8000, 0.4, 'highpass');
     },
-    lose() { this.tone(392, 0.22, 'sine', 0.06); this.tone(311, 0.4, 'sine', 0.06, 0.16); },
+    lose() { this.tone(523, 0.18, 'sine', 0.05); this.tone(392, 0.32, 'sine', 0.05, 0.14); },
+    // 행동 음성(피망처럼 '콜!', '체크' …) — 기기의 한국어 음성으로 짧게
+    voiceOn: store.get('rh_voice', true), _voice: null,
+    say(txt) {
+      if (!this.on || !this.voiceOn || !txt || !window.speechSynthesis) return;
+      try {
+        const ss = window.speechSynthesis;
+        if (!this._voice) { const vs = ss.getVoices(); this._voice = vs.find((x) => /^ko/i.test(x.lang)) || null; }
+        if (ss.speaking) ss.cancel();
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = 'ko-KR'; if (this._voice) u.voice = this._voice;
+        u.rate = 1.25; u.pitch = 0.9; u.volume = 0.9;
+        ss.speak(u);
+      } catch (e) { /* 음성이 없는 기기 */ }
+    },
     pop() { this.tone(660, 0.08, 'sine', 0.05); this.tone(990, 0.1, 'sine', 0.04, 0.06); },
   };
   ['pointerdown', 'touchend', 'keydown'].forEach((ev) => document.addEventListener(ev, () => Sound.ensure(), { passive: true }));
@@ -168,8 +185,19 @@
   const CENTER = [50, 45];
   // D는 항상 버튼 주인 앞 + SB 쪽(시계 방향 다음 자리 쪽)으로. 반대쪽(이전 자리 쪽)으로 치우치면 그 사람이 버튼처럼 보임
   const DEALER_POS = [[37, 73], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [60, 24.5], [71, 31.5], [72, 38.5], [71, 55], [57, 24]];
+  const VOICE_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인' };
   const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB', WAIT: '대기' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
+
+  // 칩 더미: 금액을 큰 단위부터 칩 색으로 나눠 최대 6개까지 쌓음(피망처럼 실제 칩이 쌓인 모양)
+  const DENOMS = [[100, '#1f2937'], [25, '#9333ea'], [5, '#16a34a'], [1, '#2563eb'], [0.5, '#e0384d']];   // BB 단위
+  function chipStack(amt, bb) {
+    let left = Math.max(0.5, amt / Math.max(1, bb));
+    const out = [];
+    for (const [d, c] of DENOMS) { while (left >= d - 1e-9 && out.length < 6) { out.push(c); left -= d; } }
+    if (!out.length) out.push(DENOMS[DENOMS.length - 1][1]);
+    return out.reverse().map((c, k) => `<i style="--c:${c};--k:${k}"></i>`).join('');
+  }
 
   // ---------- 렌더러 ----------
   const R = {
@@ -218,7 +246,7 @@
         const el = document.createElement('div');
         el.className = 'seat';
         el.innerHTML = `<div class="cards"></div>
-          <div class="ava"><img alt=""><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16.5" pathLength="100"/></svg></div>
+          <div class="ava"><img alt=""><svg viewBox="0 0 36 36"><circle class="rbg" cx="18" cy="18" r="16.5"/><circle class="rfg" cx="18" cy="18" r="16.5" pathLength="100"/></svg><div class="orbit"><i></i></div></div>
           <div class="plate"><div class="nm"></div><div class="stk"></div></div>
           <div class="tag"></div><div class="hn"></div><div class="shown-tag" hidden>공개</div>`;
         $('#seats').appendChild(el);
@@ -227,7 +255,7 @@
       this.betEls = v.players.map(() => {
         const b = document.createElement('div');
         b.className = 'bet'; b.style.opacity = 0;
-        b.innerHTML = '<span class="chip"></span><span class="amt"></span>';
+        b.innerHTML = '<span class="stack"></span><span class="amt"></span>';
         $('#bets').appendChild(b);
         return b;
       });
@@ -246,7 +274,6 @@
         const [bx, by] = this.betPos(v, i);
         const b = this.betEls[i];
         b.style.left = bx + '%'; b.style.top = by + '%';
-        b.querySelector('.chip').style.setProperty('--c', CHIP_COLORS[i % CHIP_COLORS.length]);
       });
     },
 
@@ -372,7 +399,7 @@
         const la = p.lastAction;
         const changed = !pp || JSON.stringify(pp.lastAction) !== JSON.stringify(la);
         if (v.result && winners.has(p.id)) {
-          tag.className = 'tag win show'; tag.textContent = '승리';
+          tag.className = 'tag win show'; tag.innerHTML = (p.won > 0 ? `<b>+${fmt(p.won)}</b>` : '') + 'WINNER';
         } else if (v.result && faceUp) {
           tag.className = 'tag';   // 쇼다운: 공개된 카드를 가리지 않게 말풍선 숨김
         } else if (la && !(la.type === 'SB' || la.type === 'BB') || (la && newHand)) {
@@ -384,6 +411,7 @@
               if (la.type === 'fold') Sound.fold();
               else if (la.type === 'check') Sound.check();
               else if (la.type === 'allin') Sound.allin();
+              Sound.say(VOICE_TXT[la.type]);
             }
           }
         } else {
@@ -440,6 +468,7 @@
           if (amt > 0) this.flyChip(center(this.seatEls[i].querySelector('.ava')), center(b), CHIP_COLORS[i % CHIP_COLORS.length]);
         }
         b.querySelector('.amt').textContent = fmt(amt);
+        if (b.dataset.amt !== String(amt)) { b.dataset.amt = amt; b.querySelector('.stack').innerHTML = chipStack(amt, v.bb); }
         b.style.opacity = amt > 0 ? 1 : 0;
         const blind = v.stage === 'preflop' && amt > 0 ? (i === v.sbIdx && v.sbIdx !== v.bbIdx ? 'SB' : i === v.bbIdx ? 'BB' : '') : '';
         b.dataset.blind = blind;
@@ -517,17 +546,15 @@
       if (key === this.turnKey && !dlChanged) return;
       const isNewTurn = key !== this.turnKey;
       this.turnKey = key; this.deadline = deadline || 0;
-      this.seatEls.forEach((el) => { const c = el.querySelector('circle'); c.style.transition = 'none'; c.style.strokeDashoffset = 0; el.classList.remove('hurry'); });
-      if (v.toAct >= 0 && deadline) {
-        const c = this.seatEls[v.toAct].querySelector('circle');
+      // 차례 시간: 고리가 줄어들며 파랑 → 보라 → 빨강, 고리 끝에 빛 알갱이가 따라 돎(피망 방식). 모두 transform·색만 바뀌어 화면 크기는 그대로
+      this.seatEls.forEach((el) => { el.classList.remove('hurry', 'timing'); const r = el.querySelector('.ava'); r.style.removeProperty('--ms'); r.style.removeProperty('--dl'); });
+      if (v.toAct >= 0 && deadline && this.seatEls[v.toAct]) {
+        const el = this.seatEls[v.toAct], r = el.querySelector('.ava');
         const ms = Math.max(0, deadline - Date.now());
-        const full = Online.turnMs || ms;
-        c.style.strokeDashoffset = Math.max(0, Math.min(100, 100 - (ms / full) * 100));   // 타임뱅크·재접속이면 남은 만큼부터
-        void c.getBoundingClientRect();
-        requestAnimationFrame(() => {
-          c.style.transition = `stroke-dashoffset ${ms}ms linear`;
-          c.style.strokeDashoffset = 100;
-        });
+        const full = Math.max(ms, Online.turnMs || ms);
+        r.style.setProperty('--ms', full + 'ms'); r.style.setProperty('--dl', -(full - ms) + 'ms');
+        void r.offsetWidth;
+        el.classList.add('timing');
       }
       TurnFx.update(v, deadline, isNewTurn);
     },
@@ -561,18 +588,11 @@
             for (let k = 0; k < 5; k++) this.flyChip(from, to, '#d4a017', null, k * 60 + pi * 120 + wi * 40);
           });
         });
-        Sound.chip(); Sound.chip(0.12); Sound.chip(0.24);
+        Sound.collect();
         this._potGone = hand;
         setTimeout(() => { $('#pot').classList.remove('show'); $$('#sidePots .side-pot').forEach((el) => el.classList.add('gone')); }, 400);
         v.players.forEach((p, i) => {
-          if (p.won > 0) {
-            const pt = this.slotPos(v, i);
-            const f = document.createElement('div');
-            f.className = 'float-num'; f.textContent = '+' + fmt(p.won);
-            f.style.left = pt[0] + '%'; f.style.top = pt[1] + 3 + '%';
-            setTimeout(() => $('#fx').appendChild(f), 500);
-            this.seatEls[i].classList.add('win');
-          }
+          if (p.won > 0) this.seatEls[i].classList.add('win');   // 금액은 WINNER 배지에
         });
       }, res.type === 'showdown' ? 1100 : 450);
 
@@ -1361,8 +1381,15 @@
       <div class="btns"><button class="btn primary big" data-close>계속하기</button><button class="btn ghost" id="reallyExit">나가기</button></div>`,
     (el) => { el.querySelector('#reallyExit').onclick = () => goHome(); });
   };
-  const syncSoundBtn = () => { $('#soundBtn').textContent = Sound.on ? '🔊' : '🔇'; };
-  $('#soundBtn').onclick = () => { Sound.on = !Sound.on; store.set('rh_sound', Sound.on); syncSoundBtn(); };
+  // 소리 버튼: 소리+음성 → 소리만 → 끔
+  const syncSoundBtn = () => { $('#soundBtn').textContent = !Sound.on ? '🔇' : Sound.voiceOn ? '🔊' : '🔉'; };
+  $('#soundBtn').onclick = () => {
+    if (Sound.on && Sound.voiceOn) { Sound.voiceOn = false; toast('효과음만 (음성 끔)'); }
+    else if (Sound.on) { Sound.on = false; toast('소리 끔'); }
+    else { Sound.on = true; Sound.voiceOn = true; toast('효과음 + 음성'); Sound.ensure(); Sound.say('콜'); }
+    store.set('rh_sound', Sound.on); store.set('rh_voice', Sound.voiceOn); syncSoundBtn();
+  };
+  if (window.speechSynthesis) { try { window.speechSynthesis.onvoiceschanged = () => { Sound._voice = null; }; } catch (e) { /* */ } }
   syncSoundBtn();
   window.addEventListener('resize', () => { if (R.v) R.layout(R.v); });
 
