@@ -33,9 +33,6 @@ input { font: inherit; }
 .btn.ghost { background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
 .btn.big { padding: 16px; font-size: 17px; width: 100%; }
 .btn:disabled { filter: grayscale(1) brightness(.6); }
-#soundBtn { position: relative; }
-#soundBtn .vsex { position: absolute; right: -3px; bottom: -3px; font-style: normal; font-size: 10px; font-weight: 800; line-height: 1; padding: 2px 4px; border-radius: 6px; color: #fff; background: #e0457b; pointer-events: none; }
-#soundBtn .vsex.m { background: #2f6fe0; }
 .icon-btn { width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, .06); font-size: 22px; line-height: 1; display: grid; place-items: center; }
 
 /* ---------- 홈 ---------- */

@@ -28,11 +28,11 @@ button small { display: block; color: var(--muted); font-size: 11px; margin-top:
 <script>
 const G = [
   ['칩', [['칩 걸기', 'chip1', 'chip2', 'chip3'], ['칩 쌓기·팟 받기', 'stack1', 'stack2', 'stack3', 'stack4', 'stack5', 'stack6'], ['칩 부딪힘', 'collide1', 'collide2', 'collide3', 'collide4']]],
-  ['카드', [['카드 돌리기', 'deal1', 'deal2', 'deal3', 'deal4', 'deal5', 'deal6', 'deal7', 'deal8'], ['카드 뒤집기', 'flip1', 'flip2', 'flip3', 'flip4'], ['폴드', 'fold1', 'fold2', 'fold3', 'fold4']]],
-  ['테이블·알림', [['체크(똑똑)', 'check_0', 'check_1', 'check_2'], ['내 차례', 'turn'], ['남은 5초', 'tick', 'tick_last'], ['올인', 'allin'], ['버튼', 'pop']]],
+  ['카드', [['카드 돌리기', 'deal1', 'deal2', 'deal3', 'deal4', 'deal5', 'deal6', 'deal7', 'deal8'], ['카드 뒤집기', 'flip1', 'flip2', 'flip3', 'flip4'], ['폴드', 'fold1', 'fold2', 'fold3', 'fold4', 'fold5']]],
+  ['테이블·알림', [['테이블 입장', 'enter'], ['판 시작', 'start'], ['체크(똑똑)', 'check_0', 'check_1', 'check_2'], ['내 차례', 'turn'], ['남은 5초', 'tick', 'tick_last'], ['올인', 'allin'], ['버튼', 'pop']]],
   ['결과', [['승리', 'win'], ['큰 족보', 'epic'], ['짐', 'lose']]],
-  ['행동 음성 — 여자 (AI 성우)', [['콜', 'v_call', 'v_call_2'], ['체크', 'v_check', 'v_check_2'], ['베팅', 'v_bet', 'v_bet_2'], ['레이즈', 'v_raise', 'v_raise_2'], ['올인', 'v_allin', 'v_allin_2'], ['폴드', 'v_fold', 'v_fold_2']]],
-  ['행동 음성 — 남자 (AI 성우)', [['콜', 'v_m_call', 'v_m_call_2'], ['체크', 'v_m_check', 'v_m_check_2'], ['베팅', 'v_m_bet', 'v_m_bet_2'], ['레이즈', 'v_m_raise', 'v_m_raise_2'], ['올인', 'v_m_allin', 'v_m_allin_2'], ['폴드', 'v_m_fold', 'v_m_fold_2']]],
+  ['행동 음성 — 여자 캐릭터 (폭주핑크·에이스·마담)', [['콜', 'v_call', 'v_call_2'], ['체크', 'v_check', 'v_check_2'], ['베팅', 'v_bet', 'v_bet_2'], ['레이즈', 'v_raise', 'v_raise_2'], ['올인', 'v_allin', 'v_allin_2'], ['폴드', 'v_fold', 'v_fold_2']]],
+  ['행동 음성 — 남자 캐릭터 (나머지)', [['콜', 'v_m_call', 'v_m_call_2'], ['체크', 'v_m_check', 'v_m_check_2'], ['베팅', 'v_m_bet', 'v_m_bet_2'], ['레이즈', 'v_m_raise', 'v_m_raise_2'], ['올인', 'v_m_allin', 'v_m_allin_2'], ['폴드', 'v_m_fold', 'v_m_fold_2']]],
   ['AI 효과음 후보 (게임에는 아직 안 씀 — 마음에 들면 위 파일 이름으로 바꿔 넣기)', [['칩 걸기', 'ai_chip'], ['팟 받기', 'ai_stack'], ['카드 돌리기', 'ai_deal'], ['내 차례', 'ai_turn'], ['승리', 'ai_win']]],
 ];
 const base = (location.pathname.match(/^\/s\/[a-z0-9-]{2,30}/) || [''])[0];

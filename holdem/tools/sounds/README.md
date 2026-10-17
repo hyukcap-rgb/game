@@ -7,7 +7,10 @@
 | 파일 | 무엇 | 출처 |
 |---|---|---|
 | `chip1~3` 칩 걸기, `stack1~6` 칩 쌓기·팟 받기, `collide1~4` 칩 부딪힘 | 실제 녹음 | Kenney "Casino Audio" (CC0, 상업 사용 가능, 출처 표시 필요 없음) |
-| `deal1~8` 카드 돌리기, `flip1~4` 뒤집기, `fold1~4` 폴드 | 실제 녹음 | Kenney "Casino Audio" (CC0) |
+| `deal1~8` 카드 돌리기, `flip1~4` 뒤집기 | 실제 녹음 | Kenney "Casino Audio" (CC0) |
+| `fold1~5` 폴드 '쓱' | 실제 카드 미끄러짐(Kenney card-slide) + 부드러운 바람 소리, 앞 '딱' 줄이고 고음 깎음 | `tools/sounds/fold_start.py` |
+| `start` 판 시작 | 실제 카드 섞는 소리(Kenney card-shuffle) + 맑은 2음 '띵' | `tools/sounds/fold_start.py` |
+| `enter` 테이블 입장 | AI 효과음(ElevenLabs, 마림바·차임) | Creative Claw |
 | `check_0~2` 똑똑, `turn` 내 차례, `tick`·`tick_last` 남은 5초, `win`·`epic`·`lose`, `allin`, `pop` | 직접 만든 합성음 | `tools/sounds/synth.py` |
 | `v_call` `v_check` `v_bet` `v_raise` `v_allin` `v_fold` (+ `_2`) | 여자 AI 성우 2가지 말투 | ElevenLabs v4 "Anna Kim"(Creative Claw로 생성) |
 | `v_m_call` … `v_m_fold` (+ `_2`) | 남자 AI 성우 2가지 말투 | ElevenLabs v4 "Chris"(Creative Claw로 생성) |
@@ -15,7 +18,8 @@
 
 - 음성은 음성 인식(Whisper)으로 6단어 중 맞는 단어로 알아듣는지 24개 모두 확인했어요(예전 MeloTTS '폴드'는 '콜'로 잘못 알아들었음).
 - ElevenLabs로 만든 소리를 상업적으로 쓰려면 Creative Claw/ElevenLabs의 상업 이용 조건(유료 요금제 여부)을 확인하세요.
-- 게임 소리 버튼: 🔊여(효과음+여자 음성) → 🔊남(효과음+남자 음성) → 🔉(효과음만) → 🔇(끔).
+- 목소리는 캐릭터를 따라가요: 여자 캐릭터(av3 폭주핑크·av4 에이스·av6 마담)는 여자 성우, 나머지는 남자 성우. 캐릭터마다 높낮이를 조금씩 다르게(`app.js`의 `AV_VOICE`).
+- 게임 소리 버튼: 🔊(효과음+캐릭터 음성) → 🔉(효과음만) → 🔇(끔).
 
 ## 혼자 바꾸는 방법
 ### 1. 행동 음성을 더 좋게 (AI)
