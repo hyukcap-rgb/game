@@ -525,7 +525,7 @@ NG.gostop = (() => {
       try{
         if(thr.includes(id)){
           /* 던지기: 반쯤 와서 높이 들림(크게·기울게) → 가속해 내리꽂힘 → 눌렸다 제자리 */
-          const D = 400, tilt = dx > 0 ? -8 : 8;
+          const D = 260, tilt = dx > 0 ? -8 : 8;
           el.animate([
             { transform:from, zIndex:60, easing:'cubic-bezier(.2,.75,.45,1)' },
             { transform:`translate(${dx * .4}px,${dy * .4 - 70}px) scale(${1.24 + (s - 1) * .4}) rotate(${tilt}deg)`, zIndex:60, offset:.52, easing:'cubic-bezier(.6,0,1,.7)' },
@@ -534,7 +534,7 @@ NG.gostop = (() => {
           imp = Math.round(D * .86);
         } else if(id === fid && !old[cid]){
           /* 더미 뒤집기: 그 자리에서 반 바퀴(뒷면→앞면) → 들려서 날아가 꽂힘 */
-          const D = 580;
+          const D = 380;
           el.style.setProperty('--fbd', D + 'ms'); el.classList.add('gs-fb'); setTimeout(() => el.classList.remove('gs-fb'), D + 60);
           el.animate([
             { transform:from, zIndex:60, easing:'ease-in' },
@@ -545,11 +545,11 @@ NG.gostop = (() => {
           imp = Math.round(D * .88);
         } else if(capNew.has(id)){
           /* 먹은 패: 한 장씩 차르륵(살짝 들렸다 쟁반에 미끄러져 앉음) */
-          const dl = ci++ * 55;
+          const dl = ci++ * 32;
           el.animate([
             { transform:from, zIndex:60, easing:'cubic-bezier(.3,.8,.4,1)' },
             { transform:`translate(${dx * .5}px,${dy * .5 - 18}px) scale(${(s + 1) / 2 * 1.06})`, zIndex:60, offset:.5 },
-            { transform:'none', zIndex:60 }], { duration:(dur || 360) + 120, delay:dl, fill:'backwards' });
+            { transform:'none', zIndex:60 }], { duration:(dur || 300) + 40, delay:dl, fill:'backwards' });
         } else el.animate([{ transform:from, zIndex:60 }, { transform:'none', zIndex:60 }], { duration:dur || 360, easing:'cubic-bezier(.25,.9,.3,1)' });
       }catch(_){}
     });
@@ -572,10 +572,10 @@ NG.gostop = (() => {
       if(eat && hc != null && sc.flip == null && pv.h[p].includes(hc)){
         const A = Object.assign({}, pv, { h:[pv.h[0].slice(), pv.h[1].slice()], f:pv.f.concat(hc), hi:[hc], lab:[] });
         A.h[p] = A.h[p].filter(x => x !== hc);
-        const im0 = flipTo(A, pv, 360);
+        const im0 = flipTo(A, pv, 260);
         setTimeout(() => X(() => { const el = document.querySelector(`#gsFloor [data-cid="${hc}"]`); if(el) GX.land(el, 3); }), im0);
         X(() => document.querySelectorAll(`#gsFloor [data-cid]`).forEach(el => { const c0 = C[+el.dataset.cid]; if(c0 && C[hc] && c0.m === C[hc].m) el.classList.add('gs-pile'); }));
-        await wait(700);
+        await wait(420);
         if(GS() !== g || G.over || g.epoch !== ep) return;
         pv = A;
       }
@@ -583,7 +583,7 @@ NG.gostop = (() => {
       const q = 1 - p, stolen = sc.c[p].filter(x => pv.c[q].includes(x));
       let mid = sc;
       if(stolen.length){ mid = Object.assign({}, sc, { c:[sc.c[0].slice(), sc.c[1].slice()] }); mid.c[p] = mid.c[p].filter(x => !stolen.includes(x)); mid.c[q] = mid.c[q].concat(stolen); }
-      const imp = flipTo(mid, pv, eat ? 620 : 340);
+      const imp = flipTo(mid, pv, eat ? 420 : 260);
       const labs = sc.lab || [], lid = sc.flip != null ? sc.flip : sc.hi && sc.hi[0];
       const evs = EVMAP.filter(([l]) => labs.includes(l)).map(x => x[1]);
       const big = evs.includes('bomb') || evs.includes('ppukEat') || evs.includes('jappuk');
@@ -594,26 +594,26 @@ NG.gostop = (() => {
       setTimeout(() => X(() => { const el = lel(); if(el) GX.land(el, big ? 3 : nm >= 2 ? 2 : 1); }), imp);
       for(const q of [0, 1]){
         const nw = sc.c[q].filter(x => !pv.c[q].includes(x));
-        if(nw.length) setTimeout(() => X(() => GX.grab(nw.map(x => document.querySelector(`#gsCap${q === g.me ? 'Me' : 'Op'} [data-cid="${x}"]`)).filter(Boolean), q === g.me ? 'me' : 'op')), Math.max(400, imp + 60));
+        if(nw.length) setTimeout(() => X(() => GX.grab(nw.map(x => document.querySelector(`#gsCap${q === g.me ? 'Me' : 'Op'} [data-cid="${x}"]`)).filter(Boolean), q === g.me ? 'me' : 'op')), Math.max(240, imp + 40));
       }
-      let w = Math.max(470, imp + 170);
+      let w = Math.max(300, imp + 110);
       if(evs.length){
         setTimeout(() => X(() => GX.event(evs[0], { who })), imp + 30);
-        if(evs[1]) setTimeout(() => X(() => GX.event(evs[1], { who })), 1050);
+        if(evs[1]) setTimeout(() => X(() => GX.event(evs[1], { who })), 720);
         faceFor(p, evs[0] === 'ppuk' ? 'sad' : 'joy', 1800);
         if(evs[0] !== 'ppuk' && evs[0] !== 'bonus') faceFor(1 - p, 'wow', 1500);
         fxBuzz(big ? [40, 30, 60] : [20, 30, 20]);
-        w = evs[1] ? 1650 : evs[0] === 'bonus' ? 750 : 1150;
+        w = evs[1] ? 1150 : evs[0] === 'bonus' ? 480 : 800;
       }
-      if(eat) w = Math.max(w, 1250);
+      if(eat) w = Math.max(w, 850);
       await wait(w);
       if(stolen.length){
         if(GS() !== g || G.over || g.epoch !== ep) return;
-        flipTo(sc, mid, 760);
+        flipTo(sc, mid, 480);
         X(() => GX.event('steal', { who, n:stolen.length }));
         X(() => stolen.forEach(id => { const el = document.querySelector(`#gsCap${p === g.me ? 'Me' : 'Op'} [data-cid="${id}"]`); if(el){ el.classList.add('gs-stl'); setTimeout(() => el.classList.remove('gs-stl'), 1500); } }));
         sfx('gsCap');
-        await wait(950);
+        await wait(600);
       }
       pv = sc;
     }
@@ -626,7 +626,7 @@ NG.gostop = (() => {
     for(const [n, v] of yk){
       X(() => GX.event(n, { who, n:v }));
       faceFor(p, 'joy', 1800);
-      await wait(n === 'gwang' && v >= 5 ? 1600 : 1150);
+      await wait(n === 'gwang' && v >= 5 ? 1100 : 800);
       if(GS() !== g || G.over || g.epoch !== ep) return;
     }
   }
@@ -635,7 +635,7 @@ NG.gostop = (() => {
      한 판 = 결정(step)의 줄. 결정마다 주인(S 자리)이 있다: 패 내기(S.turn) · 고/스톱(S.pendingGS).
      g.k = 지금 결정 번호, g.log[k] = 실제로 둔 수, g.raw[k] = 받은 그대로의 수, g.own[k] = 내 결정이었는지, g.src[k] = 'mine'|'opp'(누구 기록으로 뒀는지).
      대전(g.sess: 사람·AI 대전)에서는 결정마다 8초 시계 — 시간이 다 되면 비풍초똥팔삼 순서로 자동(autoAct, 무작위 없음 → 대신 내 줘도 두 기기가 같은 수). */
-  const TURN_SEC = 8, GS_SEC = 8, SUN_SEC = 5, GRACE = 3, GONE_SEC = 2.5, NEXT_SEC = 6;
+  const TURN_SEC = 8, GS_SEC = 8, SUN_SEC = 5, GRACE = 3, GONE_SEC = 2.5, NEXT_SEC = 4;
   const PRI = [12, 10, 5, 11, 8, 3, 9, 7, 6, 4, 2, 1];   /* 비·풍·초·똥·팔·삼, 그다음 남은 월(큰 월부터) */
   const val = id => { const c = C[id]; return !c ? 0 : c.g ? 5 : c.y ? 4 : c.tt ? 3 : c.pv >= 2 ? 2 : 1; };
   const bestOf = L => L.slice().sort((a, b) => val(b) - val(a) || a - b)[0];
@@ -686,7 +686,7 @@ NG.gostop = (() => {
     setTimeout(() => { if(GS() === g && g.epoch === ep) nextStep(); }, DEAL_MS);
   }
   /* 패 돌리기 v1.11: 더미 자리에서 바닥·내 손으로 번갈아 한 장씩 휙 날아와 착(앞 장이 끝나기 전에 다음 장) */
-  const DEAL_GAP = 34, DEAL_MS = 1250;
+  const DEAL_GAP = 20, DEAL_MS = 780;
   function dealAnim(){
     let n = 0;
     X(() => {
@@ -701,7 +701,7 @@ NG.gostop = (() => {
           const dx = g.rot ? sy / g.sc : sx / g.sc, dy = g.rot ? -sx / g.sc : sy / g.sc, s = Math.max(d.width, d.height) / Math.max(r.width, r.height);
           tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${i % 2 ? -10 : 10}deg)`;
         }
-        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:300, delay:i * DEAL_GAP, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
+        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:220, delay:i * DEAL_GAP, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
       });
       n = seq.length;
     });
@@ -721,7 +721,7 @@ NG.gostop = (() => {
       sfx('gsfxTurn');   /* 내 차례: 소리만(바닥에 큰 원이 남아 보이지 않게) */
     } else {
       setMsg(`<b>${esc(g.oppNick)}</b> ${gs ? '고? 스톱? 고르는 중…' : '차례…'}${g.mode === 'pvp' && !g.oppHere ? ' <small>(연결 끊김 · 자동으로 대신 쳐요)</small>' : ''}`, 'op');
-      if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy) step(k, gs ? { gs:aiGo(S, p, g.ai, g.rnd) ? 1 : 0 } : aiPick(S, p, g.ai, g.rnd), 'ai'); }, gs ? 800 : 650 + g.rnd() * 500);
+      if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy) step(k, gs ? { gs:aiGo(S, p, g.ai, g.rnd) ? 1 : 0 } : aiPick(S, p, g.ai, g.rnd), 'ai'); }, gs ? 500 : 300 + g.rnd() * 300);
       else sync();
     }
   }
@@ -847,7 +847,7 @@ NG.gostop = (() => {
       faceFor(p, x.gs ? 'joy' : 'wow', 1600);
       fxBuzz(x.gs ? [30, 40, 30] : 60);
       draw(liveView());
-      await wait(x.gs ? (S.P[p].go >= 3 ? 1500 : 1150) : 950);
+      await wait(x.gs ? (S.P[p].go >= 3 ? 1050 : 780) : 650);
     } else {
       const scenes = gsApply(S, p, x);
       await playScenes(prev, scenes, p, ep);
@@ -882,7 +882,7 @@ NG.gostop = (() => {
   const SUNW = 124, SUNH = 202, SUNG = 22, SUNX = (BW - (8 * SUNW + 7 * SUNG)) / 2;
   function sunRound(){
     const g = GS(); if(!g || G.over) return;
-    g.sunCards = sunCards(g.sunR); g.sunPicks = []; g.sunBusy = false; g.sunT0 = Date.now() + 700;
+    g.sunCards = sunCards(g.sunR); g.sunPicks = []; g.sunBusy = false; g.sunT0 = Date.now() + 450;
     const box = $('#gsSun'); box.hidden = false;
     const nm = s => s === g.seat ? '나' : esc(g.oppNick);
     box.innerHTML = `<div class="gs-sunh"><b>선 뽑기</b><span>${g.sunR ? '다시 뽑기 · ' : ''}엎어 둔 패 한 장씩 뒤집어 <em>높은 월</em>이 선(먼저 침)</span></div>
@@ -895,7 +895,7 @@ NG.gostop = (() => {
     $('#gsSunX').onclick = () => confirmQuit();
     X(() => { if(!FXR.reduce) box.querySelectorAll('.sunc').forEach((el, i) => el.animate([{ transform:'translateY(-60px) rotate(-8deg)', opacity:0 }, { transform:'none', opacity:1 }], { duration:380, delay:i * 45, easing:'cubic-bezier(.2,1.3,.4,1)', fill:'backwards' })); });
     X(() => GX.event('deal', { n:8 }));
-    const r0 = g.sunR; setTimeout(() => { if(GS() === g && g.phase === 'sun' && g.sunR === r0 && !g.sunPicks.length && !g.sunBusy) sunTurn(); }, 700);
+    const r0 = g.sunR; setTimeout(() => { if(GS() === g && g.phase === 'sun' && g.sunR === r0 && !g.sunPicks.length && !g.sunBusy) sunTurn(); }, 450);
   }
   function sunTurn(){
     const g = GS(), j = g.sunPicks.length, mine = j === g.seat;
@@ -909,7 +909,7 @@ NG.gostop = (() => {
       if(t){ t.firstChild.style.width = (left / SUN_SEC * 100) + '%'; t.classList.toggle('hurry', left < 2); t.dataset.s = Math.ceil(left); }
       if(left <= 0 && mine && !g.sunBusy){ clearInterval(g.sunIv); sunPick(sunAuto(), 'me'); }
     }, 100);
-    if(!mine && g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.phase === 'sun') sunPick(sunAuto(), 'ai'); }, 1000);
+    if(!mine && g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.phase === 'sun') sunPick(sunAuto(), 'ai'); }, 600);
     if(!mine && g.mode === 'pvp') sync();
   }
   function sunAuto(){
@@ -940,7 +940,7 @@ NG.gostop = (() => {
       if(m[0] === m[1]){
         if(mm) mm.innerHTML = `<b>둘 다 ${m[0]}월!</b> 같은 월이라 다시 뽑아요`;
         banner('같은 월! 다시', 'stop');
-        setTimeout(() => { if(GS() === g && g.phase === 'sun'){ g.sunR++; sunRound(); } }, 1600);
+        setTimeout(() => { if(GS() === g && g.phase === 'sun'){ g.sunR++; sunRound(); } }, 1100);
         return;
       }
       g.first = m[0] > m[1] ? 0 : 1;
@@ -949,8 +949,8 @@ NG.gostop = (() => {
       const win = $('#gsSun').querySelector(`[data-i="${g.sunPicks[g.first]}"]`); if(win) win.classList.add('sun');
       X(() => GX.event('sun', { who:meFirst ? 'me' : 'op' }));
       g.phase = 'sunDone';
-      setTimeout(() => { if(GS() === g && g.phase === 'sunDone'){ g.gi = 0; startPlay(); } }, 2000);
-    }, 800);
+      setTimeout(() => { if(GS() === g && g.phase === 'sunDone'){ g.gi = 0; startPlay(); } }, 1200);
+    }, 500);
   }
 
   /* ----- 끝: 한 판 결과 → 대전이면 잠깐 뒤 바로 다음 판(나가기 예약이면 대전 끝) ----- */
@@ -983,7 +983,7 @@ NG.gostop = (() => {
     const who = r.w === g.me ? 'me' : 'op';
     let at = 0;
     if(r.why === '총통' || r.why === '3뻑'){ X(() => GX.event(r.why === '총통' ? 'chongtong' : 'ppuk3', { who })); at = 1300; }
-    (r.mults || []).filter(m => /피박|광박|고박|멍따/.test(m[0])).slice(0, 2).forEach(m => { setTimeout(() => X(() => GX.event('bak', { who, text:m[0].replace(/\(.*\)/, '') })), at); at += 900; });
+    (r.mults || []).filter(m => /피박|광박|고박|멍따/.test(m[0])).slice(0, 2).forEach(m => { setTimeout(() => X(() => GX.event('bak', { who, text:m[0].replace(/\(.*\)/, '') })), at); at += 650; });
     setTimeout(() => { if(GS() === g) X(() => GX.event(draw0 ? 'draw' : win ? 'win' : 'lose', { who })); }, at);
     if(!draw0){ faceFor(r.w, 'joy', 5000); faceFor(1 - r.w, 'sad', 5000); }
     if(g.sess){
