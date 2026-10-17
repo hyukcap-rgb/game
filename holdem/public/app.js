@@ -98,22 +98,74 @@
       this.noise(0.8, 0.04, 8000, 0.4, 'highpass');
     },
     lose() { this.tone(523, 0.18, 'sine', 0.05); this.tone(392, 0.32, 'sine', 0.05, 0.14); },
-    // 행동 음성(피망처럼 '콜!', '체크' …) — 기기의 한국어 음성으로 짧게
-    voiceOn: store.get('rh_voice', true), _voice: null,
-    say(txt) {
-      if (!this.on || !this.voiceOn || !txt || !window.speechSynthesis) return;
-      try {
-        const ss = window.speechSynthesis;
-        if (!this._voice) { const vs = ss.getVoices(); this._voice = vs.find((x) => /^ko/i.test(x.lang)) || null; }
-        if (ss.speaking) ss.cancel();
-        const u = new SpeechSynthesisUtterance(txt);
-        u.lang = 'ko-KR'; if (this._voice) u.voice = this._voice;
-        u.rate = 1.25; u.pitch = 0.9; u.volume = 0.9;
-        ss.speak(u);
-      } catch (e) { /* 음성이 없는 기기 */ }
-    },
+    voiceOn: store.get('rh_voice', true),
     pop() { this.tone(660, 0.08, 'sine', 0.05); this.tone(990, 0.1, 'sine', 0.04, 0.06); },
   };
+  // ---------- 녹음 효과음(파일) ----------
+  // public/snd/: 칩·카드는 실제 녹음(Kenney Casino Audio, CC0), 체크·종소리·차임은 직접 합성해 만든 파일, 행동 음성은 AI 음성(MeloTTS, MIT).
+  // 파일을 처음 터치 때 한 번에 받아 두고, 칠 때마다 여러 버전 중 하나를 골라 높낮이·크기를 살짝 바꿔 틀어서 덜 반복적으로 들림.
+  // 파일이 아직 없거나 못 받으면 예전 합성음으로 자동 대체.
+  const SND = {
+    chip: ['chip1', 'chip2', 'chip3'], stack: ['stack1', 'stack2', 'stack3', 'stack4', 'stack5', 'stack6'], collide: ['collide1', 'collide2', 'collide3', 'collide4'],
+    deal: ['deal1', 'deal2', 'deal3', 'deal4', 'deal5', 'deal6', 'deal7', 'deal8'], flip: ['flip1', 'flip2', 'flip3', 'flip4'], fold: ['fold1', 'fold2', 'fold3', 'fold4'],
+    check: ['check_0', 'check_1', 'check_2'], turn: ['turn'], tick: ['tick'], tick_last: ['tick_last'], win: ['win'], epic: ['epic'], lose: ['lose'], allin: ['allin'], pop: ['pop'],
+    v_call: ['v_call'], v_check: ['v_check'], v_bet: ['v_bet'], v_raise: ['v_raise'], v_allin: ['v_allin'], v_fold: ['v_fold'],
+  };
+  const SND_VOL = { chip: 0.8, stack: 0.85, collide: 0.8, deal: 0.55, flip: 0.5, fold: 0.6, check: 0.9, turn: 0.75, tick: 0.5, tick_last: 0.6, win: 0.7, epic: 0.75, lose: 0.5, allin: 0.8, pop: 0.45, voice: 1.0 };
+  const Syn = {};
+  ['card', 'flip', 'chip', 'collect', 'check', 'fold', 'turn', 'tick', 'allin', 'win', 'epic', 'lose', 'pop'].forEach((k) => { Syn[k] = Sound[k].bind(Sound); });
+  Object.assign(Sound, {
+    buf: {}, loading: false,
+    load() {
+      if (this.loading || !this.ctx) return;
+      this.loading = true;
+      const names = [...new Set(Object.values(SND).flat())];
+      names.forEach((n) => {
+        fetch(BASE + '/snd/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+          .then((ab) => new Promise((res, rej) => this.ctx.decodeAudioData(ab, res, rej)))
+          .then((b) => { this.buf[n] = b; }).catch(() => {});
+      });
+    },
+    // 한 소리 틀기: 버전 하나를 골라, 높낮이 ±jit, 크기 vol
+    play(group, when, vol, jit, gainKey) {
+      if (!this.ok()) return true;
+      const list = (SND[group] || []).filter((n) => this.buf[n]);
+      if (!list.length) return false;
+      const b = this.buf[list[Math.floor(Math.random() * list.length)]];
+      const t = this.ctx.currentTime + (when || 0);
+      const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
+      src.buffer = b;
+      src.playbackRate.value = 1 + (Math.random() - 0.5) * (jit == null ? 0.08 : jit);
+      g.gain.value = (vol == null ? 1 : vol) * (SND_VOL[gainKey || group] || 0.8);
+      src.connect(g); g.connect(this.voiceOut && gainKey === 'voice' ? this.voiceOut : this.out);
+      src.start(t);
+      return true;
+    },
+    card(w) { if (!this.play('deal', w, 1, 0.1)) Syn.card(w); },
+    flip(w) { if (!this.play('flip', w, 1, 0.1)) Syn.flip(w); },
+    chip(w) { if (!this.play('chip', w, 1, 0.12)) Syn.chip(w); },
+    collect(w) { if (!this.play('stack', w, 1, 0.08)) Syn.collect(w); else this.play('collide', (w || 0) + 0.12, 0.6, 0.1); },
+    check() { if (!this.play('check', 0, 1, 0.06)) Syn.check(); },
+    fold() { if (!this.play('fold', 0, 1, 0.1)) Syn.fold(); },
+    turn() { if (!this.play('turn', 0, 1, 0)) Syn.turn(); },
+    tick(last) { if (!this.play(last ? 'tick_last' : 'tick', 0, 1, 0)) Syn.tick(last); },
+    allin() { if (!this.play('allin', 0, 1, 0)) Syn.allin(); else this.play('collide', 0.05, 1, 0.08); },
+    win() { if (!this.play('win', 0, 1, 0)) Syn.win(); else this.play('stack', 0.05, 0.9, 0.08); },
+    epic() { if (!this.play('epic', 0, 1, 0)) Syn.epic(); },
+    lose() { if (!this.play('lose', 0, 1, 0)) Syn.lose(); },
+    pop() { if (!this.play('pop', 0, 1, 0.05)) Syn.pop(); },
+    // 행동 음성: 같은 사람이 연달아 말하면 앞 음성은 끊고 새 음성
+    say(type) {
+      if (!this.on || !this.voiceOn || !type) return;
+      if (this._vsrc) { try { this._vsrc.stop(); } catch (e) { /* */ } this._vsrc = null; }
+      const n = 'v_' + type;
+      if (!this.buf[n] || !this.ok()) return;
+      const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
+      src.buffer = this.buf[n]; g.gain.value = SND_VOL.voice;
+      src.connect(g); g.connect(this.out); src.start(); this._vsrc = src;
+    },
+  });
+  { const e0 = Sound.ensure.bind(Sound); Sound.ensure = function () { e0(); this.load(); }; }
   ['pointerdown', 'touchend', 'keydown'].forEach((ev) => document.addEventListener(ev, () => Sound.ensure(), { passive: true }));
 
   // ---------- 공통 UI ----------
@@ -411,7 +463,7 @@
               if (la.type === 'fold') Sound.fold();
               else if (la.type === 'check') Sound.check();
               else if (la.type === 'allin') Sound.allin();
-              Sound.say(VOICE_TXT[la.type]);
+              if (VOICE_TXT[la.type]) Sound.say(la.type);
             }
           }
         } else {
@@ -1386,10 +1438,9 @@
   $('#soundBtn').onclick = () => {
     if (Sound.on && Sound.voiceOn) { Sound.voiceOn = false; toast('효과음만 (음성 끔)'); }
     else if (Sound.on) { Sound.on = false; toast('소리 끔'); }
-    else { Sound.on = true; Sound.voiceOn = true; toast('효과음 + 음성'); Sound.ensure(); Sound.say('콜'); }
+    else { Sound.on = true; Sound.voiceOn = true; toast('효과음 + 음성'); Sound.ensure(); setTimeout(() => Sound.say('call'), 150); }
     store.set('rh_sound', Sound.on); store.set('rh_voice', Sound.voiceOn); syncSoundBtn();
   };
-  if (window.speechSynthesis) { try { window.speechSynthesis.onvoiceschanged = () => { Sound._voice = null; }; } catch (e) { /* */ } }
   syncSoundBtn();
   window.addEventListener('resize', () => { if (R.v) R.layout(R.v); });
 
@@ -1415,5 +1466,5 @@
   loadDailyInfo();
 
   // 디버그/테스트용
-  window.__rh = { R, Online, Net, Me, show, get current() { return current; } };
+  window.__rh = { R, Online, Net, Me, Sound, show, get current() { return current; } };
 })();

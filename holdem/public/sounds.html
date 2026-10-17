@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>로열 홀덤 효과음 듣기</title>
+<style>
+:root { --bg: #0b0f17; --panel: #141b2a; --line: rgba(255,255,255,.09); --text: #eef0f5; --muted: #8e97ab; --gold: #f2c35b; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, 'Noto Sans KR', sans-serif; font-size: 15px; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+h1 { font-size: 20px; margin: 0 0 4px; } h1 b { color: var(--gold); }
+p.m { color: var(--muted); margin: 0 0 18px; font-size: 13px; line-height: 1.6; }
+h2 { font-size: 14px; color: var(--gold); margin: 22px 0 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 10px; text-align: left; cursor: pointer; }
+button:active { transform: scale(.97); }
+button small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>로열 홀덤 <b>효과음</b></h1>
+  <p class="m">눌러서 들어 보세요. 파일 이름(회색 글자)과 같은 이름으로 <code>public/snd/</code>의 파일을 바꾸면 게임 소리가 바로 바뀌어요. 같은 소리에 번호가 여러 개면 게임에서 번갈아 나와요.</p>
+  <div id="list"></div>
+</div>
+<script>
+const G = [
+  ['칩', [['칩 걸기', 'chip1', 'chip2', 'chip3'], ['칩 쌓기·팟 받기', 'stack1', 'stack2', 'stack3', 'stack4', 'stack5', 'stack6'], ['칩 부딪힘', 'collide1', 'collide2', 'collide3', 'collide4']]],
+  ['카드', [['카드 돌리기', 'deal1', 'deal2', 'deal3', 'deal4', 'deal5', 'deal6', 'deal7', 'deal8'], ['카드 뒤집기', 'flip1', 'flip2', 'flip3', 'flip4'], ['폴드', 'fold1', 'fold2', 'fold3', 'fold4']]],
+  ['테이블·알림', [['체크(똑똑)', 'check_0', 'check_1', 'check_2'], ['내 차례', 'turn'], ['남은 5초', 'tick', 'tick_last'], ['올인', 'allin'], ['버튼', 'pop']]],
+  ['결과', [['승리', 'win'], ['큰 족보', 'epic'], ['짐', 'lose']]],
+  ['행동 음성', [['콜', 'v_call'], ['체크', 'v_check'], ['베팅', 'v_bet'], ['레이즈', 'v_raise'], ['올인', 'v_allin'], ['폴드', 'v_fold']]],
+];
+const base = (location.pathname.match(/^\/s\/[a-z0-9-]{2,30}/) || [''])[0];
+const list = document.getElementById('list');
+let cur = null;
+for (const [title, items] of G) {
+  const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid'; list.appendChild(g);
+  for (const [label, ...files] of items) for (const f of files) {
+    const b = document.createElement('button');
+    b.innerHTML = `${label}${files.length > 1 ? ' ' + (files.indexOf(f) + 1) : ''}<small>${f}.mp3</small>`;
+    b.onclick = () => { if (cur) cur.pause(); cur = new Audio(base + '/snd/' + f + '.mp3'); cur.play(); };
+    g.appendChild(b);
+  }
+}
+</script>
+</body>
+</html>
