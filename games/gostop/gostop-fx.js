@@ -295,12 +295,13 @@ const GSFX = (() => {
   const sounds = {
     /* 카드 부딪힘 1·2·3 */
     /* 낸 패 꽂힘 1(빈 자리)·2(짝 맞음 '딱!')·3(폭탄·뻑 먹기 '쾅 딱!') */
-    gsfxLand1(o){ if(!smp('land1', { pan:o.pan, v:.85 * V(o), rate:rate() })) slap(1, o); },
-    gsfxLand2(o){ if(smp('land2', { pan:o.pan, v:.9 * V(o), rate:rate() })) return; slap(2, o); aTone({ f:1400, f2:1100, type:'triangle', t:.012, d:.04, v:.05 * V(o), pan:o.pan }); },
-    gsfxLand3(o){ if(smp('land2', { pan:o.pan, v:V(o), rate:.9 })){ buk({ v:.3 * V(o), pan:o.pan, d:.3 }); return; } slap(3, o); buk({ v:.34 * V(o), pan:o.pan, d:.3 }); aNoise({ ft:'lowpass', f:2400, f2:200, d:.35, v:.16 * V(o), rev:.3 }); kkwM({ t:.03, v:.05 * V(o) }); },
-    gsfxToss(o){ if(!smp('toss', { pan:o.pan, v:.6 * V(o), rate:rate() })) swish(o); },
+    /* 패 내기 소리 = 회초리 맞듯 짧은 '착!' 한 번(앞에 휙·뒤에 울림 없음). 세기는 크기·높낮이만 */
+    gsfxLand1(o){ if(!smp('land1', { pan:o.pan, v:.8 * V(o), rate:rr(1.02, 1.08) })) slap(1, o); },
+    gsfxLand2(o){ if(smp('land2', { pan:o.pan, v:V(o), rate:rr(.97, 1.02) })) return; slap(2, o); aTone({ f:1400, f2:1100, type:'triangle', t:.012, d:.04, v:.05 * V(o), pan:o.pan }); },
+    gsfxLand3(o){ if(smp('land2', { pan:o.pan, v:V(o), rate:.92 })){ aThump({ f:150, f2:60, d:.12, v:.22 * V(o), pan:o.pan }); return; } slap(3, o); buk({ v:.34 * V(o), pan:o.pan, d:.3 }); aNoise({ ft:'lowpass', f:2400, f2:200, d:.35, v:.16 * V(o), rev:.3 }); kkwM({ t:.03, v:.05 * V(o) }); },
+    gsfxToss(o){},   /* 던질 때 휙 소리 없음(패 소리는 꽂힐 때 한 번만) */
     /* 더미 뒤집기: 패 넘기는 '촥' */
-    gsfxFlip(o){ if(smp('flip', { pan:o.pan, v:.8, rate:rate() })) return; aNoise({ ft:'bandpass', f:2200, f2:4800, q:.9, a:.006, d:.07, v:.08, pan:o.pan }); aNoise({ ft:'highpass', f:5200, t:.05, d:.012, v:.06, pan:o.pan }); swish({ t:.08, v:.05, pan:o.pan }); },
+    gsfxFlip(o){},   /* 더미 뒤집기: 따로 소리 없이 꽂힐 때 '착!' 한 번(land) */
     /* 먹은 패 쓸어 담기: '스윽' + 패 겹치는 '차라락'(장수만큼) + 마지막 '탁' */
     gsfxGrab(o){ const n = Math.max(1, Math.min(7, o.n || 1)), v = V(o);
       if(smp('grab', { pan:o.op ? .2 : -.2, v:(.7 + Math.min(n, 4) * .07) * v, rate:rate() })){ if(n >= 4) aSparkle({ t:.35, n:Math.min(5, n - 2), v:.03 * v, root:o.op ? 79 : 84 }); return; }
