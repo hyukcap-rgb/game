@@ -99,18 +99,20 @@
     },
     lose() { this.tone(523, 0.18, 'sine', 0.05); this.tone(392, 0.32, 'sine', 0.05, 0.14); },
     voiceOn: store.get('rh_voice', true),
+    voiceSex: store.get('rh_vsex', 'f') === 'm' ? 'm' : 'f',
     pop() { this.tone(660, 0.08, 'sine', 0.05); this.tone(990, 0.1, 'sine', 0.04, 0.06); },
   };
   // ---------- 녹음 효과음(파일) ----------
-  // public/snd/: 칩·카드는 실제 녹음(Kenney Casino Audio, CC0), 체크·종소리·차임은 직접 합성해 만든 파일, 행동 음성은 AI 음성(MeloTTS, MIT).
+  // public/snd/: 칩·카드는 실제 녹음(Kenney Casino Audio, CC0), 체크·종소리·차임은 직접 합성해 만든 파일, 행동 음성은 AI 성우(ElevenLabs, Creative Claw로 생성) 여자·남자.
   // 파일을 처음 터치 때 한 번에 받아 두고, 칠 때마다 여러 버전 중 하나를 골라 높낮이·크기를 살짝 바꿔 틀어서 덜 반복적으로 들림.
   // 파일이 아직 없거나 못 받으면 예전 합성음으로 자동 대체.
   const SND = {
     chip: ['chip1', 'chip2', 'chip3'], stack: ['stack1', 'stack2', 'stack3', 'stack4', 'stack5', 'stack6'], collide: ['collide1', 'collide2', 'collide3', 'collide4'],
     deal: ['deal1', 'deal2', 'deal3', 'deal4', 'deal5', 'deal6', 'deal7', 'deal8'], flip: ['flip1', 'flip2', 'flip3', 'flip4'], fold: ['fold1', 'fold2', 'fold3', 'fold4'],
     check: ['check_0', 'check_1', 'check_2'], turn: ['turn'], tick: ['tick'], tick_last: ['tick_last'], win: ['win'], epic: ['epic'], lose: ['lose'], allin: ['allin'], pop: ['pop'],
-    v_call: ['v_call'], v_check: ['v_check'], v_bet: ['v_bet'], v_raise: ['v_raise'], v_allin: ['v_allin'], v_fold: ['v_fold'],
   };
+  // 행동 음성: 여자(f)·남자(m) 성우, 각각 두 가지 말투(_2)를 번갈아 틂
+  ['call', 'check', 'bet', 'raise', 'allin', 'fold'].forEach((t) => { SND['v_' + t] = ['v_' + t, 'v_' + t + '_2']; SND['v_m_' + t] = ['v_m_' + t, 'v_m_' + t + '_2']; });
   const SND_VOL = { chip: 0.8, stack: 0.85, collide: 0.8, deal: 0.55, flip: 0.5, fold: 0.6, check: 0.9, turn: 0.75, tick: 0.5, tick_last: 0.6, win: 0.7, epic: 0.75, lose: 0.5, allin: 0.8, pop: 0.45, voice: 1.0 };
   const Syn = {};
   ['card', 'flip', 'chip', 'collect', 'check', 'fold', 'turn', 'tick', 'allin', 'win', 'epic', 'lose', 'pop'].forEach((k) => { Syn[k] = Sound[k].bind(Sound); });
@@ -158,10 +160,10 @@
     say(type) {
       if (!this.on || !this.voiceOn || !type) return;
       if (this._vsrc) { try { this._vsrc.stop(); } catch (e) { /* */ } this._vsrc = null; }
-      const n = 'v_' + type;
-      if (!this.buf[n] || !this.ok()) return;
+      const list = (SND[(this.voiceSex === 'm' ? 'v_m_' : 'v_') + type] || []).filter((n) => this.buf[n]);
+      if (!list.length || !this.ok()) return;
       const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
-      src.buffer = this.buf[n]; g.gain.value = SND_VOL.voice;
+      src.buffer = this.buf[list[Math.floor(Math.random() * list.length)]]; g.gain.value = SND_VOL.voice;
       src.connect(g); g.connect(this.out); src.start(); this._vsrc = src;
     },
   });
@@ -1433,13 +1435,18 @@
       <div class="btns"><button class="btn primary big" data-close>계속하기</button><button class="btn ghost" id="reallyExit">나가기</button></div>`,
     (el) => { el.querySelector('#reallyExit').onclick = () => goHome(); });
   };
-  // 소리 버튼: 소리+음성 → 소리만 → 끔
-  const syncSoundBtn = () => { $('#soundBtn').textContent = !Sound.on ? '🔇' : Sound.voiceOn ? '🔊' : '🔉'; };
+  // 소리 버튼: 효과음+여자 음성 → 효과음+남자 음성 → 효과음만 → 끔
+  const syncSoundBtn = () => {
+    const b = $('#soundBtn');
+    b.innerHTML = !Sound.on ? '🔇' : !Sound.voiceOn ? '🔉' : `🔊<i class="vsex ${Sound.voiceSex}">${Sound.voiceSex === 'm' ? '남' : '여'}</i>`;
+    b.title = !Sound.on ? '소리 끔' : !Sound.voiceOn ? '효과음만' : Sound.voiceSex === 'm' ? '효과음 + 남자 음성' : '효과음 + 여자 음성';
+  };
   $('#soundBtn').onclick = () => {
-    if (Sound.on && Sound.voiceOn) { Sound.voiceOn = false; toast('효과음만 (음성 끔)'); }
+    if (Sound.on && Sound.voiceOn && Sound.voiceSex === 'f') { Sound.voiceSex = 'm'; toast('효과음 + 남자 음성'); setTimeout(() => Sound.say('call'), 150); }
+    else if (Sound.on && Sound.voiceOn) { Sound.voiceOn = false; toast('효과음만 (음성 끔)'); }
     else if (Sound.on) { Sound.on = false; toast('소리 끔'); }
-    else { Sound.on = true; Sound.voiceOn = true; toast('효과음 + 음성'); Sound.ensure(); setTimeout(() => Sound.say('call'), 150); }
-    store.set('rh_sound', Sound.on); store.set('rh_voice', Sound.voiceOn); syncSoundBtn();
+    else { Sound.on = true; Sound.voiceOn = true; Sound.voiceSex = 'f'; toast('효과음 + 여자 음성'); Sound.ensure(); setTimeout(() => Sound.say('call'), 150); }
+    store.set('rh_sound', Sound.on); store.set('rh_voice', Sound.voiceOn); store.set('rh_vsex', Sound.voiceSex); syncSoundBtn();
   };
   syncSoundBtn();
   window.addEventListener('resize', () => { if (R.v) R.layout(R.v); });
