@@ -148,6 +148,9 @@
       this.sb = opts.sb || 50;
       this.bb = opts.bb || 100;
       this.seed = opts.seed != null ? String(opts.seed) : String(Math.floor(Math.random() * 4294967296));
+      // 화면에 보내는 게임 구분값(gid)은 씨앗과 따로 — 씨앗이 새면 덱 전체(남의 카드·다음 카드)를 계산할 수 있음
+      this.gid = opts.gid != null ? String(opts.gid) : this.seed;
+      this.deckRng = typeof opts.deckRng === 'function' ? opts.deckRng : null;   // 서버: 핸드마다 암호학적 난수로 섞기
       this.players = [];
       this.dealer = -1;
       this.handNo = 0;
@@ -221,7 +224,7 @@
       if (seated.length < 2) return false;
       this.handNo++;
       this.actionSeq = 0;
-      this.deck = makeDeck(mulberry32(hashSeed(this.seed + ':deck:' + this.handNo)));
+      this.deck = makeDeck(this.deckRng ? this.deckRng() : mulberry32(hashSeed(this.seed + ':deck:' + this.handNo)));
       this.board = [];
       this.result = null;
       this.runout = false;
@@ -543,7 +546,7 @@
       if (me && me.inHand && !me.folded && this.board.length >= 3) myHand = handName(evaluate(me.hole.concat(this.board)));
       const toActP = this.toAct >= 0 ? this.players[this.toAct] : null;
       return {
-        stage: this.stage, handNo: this.handNo, hk: this.seed + ':' + this.handNo, board: this.board.slice(),
+        stage: this.stage, handNo: this.handNo, hk: this.gid + ':' + this.handNo, board: this.board.slice(),
         pot: this.potTotal() - streetBets, potTotal: this.potTotal(), pots: this.viewPots(),
         currentBet: this.currentBet, rake: this.rake, dealer: this.dealer, sbIdx: this.sbIdx, bbIdx: this.bbIdx,
         toAct: this.toAct, sb: this.sb, bb: this.bb, runout: this.runout, actionSeq: this.actionSeq,

@@ -289,8 +289,12 @@ class Room {
     if (this.mode === 'friends' && this.members.length < 2 && !this.fillBots) return 'few';
     this.status = 'playing';
     this.waitUntil = 0;
-    this.seed = this.mode === 'daily' ? 'daily:' + this.date : rid(8);
-    const g = (this.game = new H.Game({ seed: this.seed }));
+    // 오늘의 토너먼트: 모두 같은 카드여야 하므로 날짜 + 서버 비밀값(밖에서 날짜만으로 덱을 계산 못 하게)
+    // 그 밖의 방: 핸드마다 암호학적 난수로 섞음(덱을 미리 계산할 방법 없음)
+    if (!db.dailySecret) { db.dailySecret = rid(24); save(); }
+    this.seed = this.mode === 'daily' ? 'daily:' + this.date + ':' + db.dailySecret : rid(16);
+    const deckRng = this.mode === 'daily' ? null : () => () => crypto.randomBytes(4).readUInt32LE(0) / 4294967296;
+    const g = (this.game = new H.Game({ seed: this.seed, gid: rid(6), deckRng }));
     if (this.mode === 'friends') {
       // 친구 대전은 항상 9자리: 사람은 고르게 띄워 앉히고, 나머지는 AI 또는 빈자리(나중에 들어온 사람이 앉을 수 있음)
       const k = this.members.length, at = new Map();
@@ -826,12 +830,12 @@ function checkFail(key) { const f = adminFails.get(key); return f && f.until > n
 function addFail(key) { const f = adminFails.get(key) || { n: 0, until: 0 }; f.n++; if (f.n >= 5) { f.until = now() + 60e3; f.n = 0; } adminFails.set(key, f); }
 app.post('/admin/api/login', (req, res) => {
   const key = 'a:' + req.tid;
-  if (checkFail(key)) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
   const pw = String((req.body || {}).password || '');
   const T = TEN(req.tid);
   const sup = safeEq(pw, ADMIN_PASSWORD);   // 슈퍼 관리자는 모든 사업장 관리자 페이지에 들어갈 수 있음
   const own = !sup && T.adminSalt && safeEq(hashPin(pw, T.adminSalt), T.adminHash);
-  if (!sup && !own) { addFail(key); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
+  // 잠금은 '틀린 시도'만 막음 — 맞는 비밀번호는 잠금 중에도 통과(공격자가 진짜 관리자를 잠그는 DoS 방지)
+  if (!sup && !own) { if (checkFail(key)) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' }); addFail(key); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
   adminFails.delete(key);
   const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: req.tid, sup });
   res.json({ token: t });
@@ -1006,8 +1010,7 @@ function superAuth(req, res, next) {
   next();
 }
 app.post('/super/api/login', (req, res) => {
-  if (checkFail('super')) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
-  if (!safeEq(String((req.body || {}).password || ''), ADMIN_PASSWORD)) { addFail('super'); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
+  if (!safeEq(String((req.body || {}).password || ''), ADMIN_PASSWORD)) { if (checkFail('super')) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' }); addFail('super'); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
   adminFails.delete('super');
   const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: null, sup: true });
   res.json({ token: t });
