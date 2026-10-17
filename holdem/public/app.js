@@ -796,7 +796,7 @@
         this.canPre = canPre;
         const pb = $('#preFoldBtn');
         pb.classList.toggle('on', canPre && !!Online.preFold);
-        pb.classList.toggle('off', !canPre);
+        wr.classList.toggle('no-pre', !canPre);
         pb.disabled = !canPre;
         $('#waitTxt').innerHTML = txt;
         $('#rebuyBtn').hidden = !(rb && rb.can);

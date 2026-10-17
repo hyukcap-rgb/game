@@ -460,7 +460,11 @@ input { font: inherit; }
 .pre-box.on { background: linear-gradient(180deg, #4b5263, #323846); box-shadow: 0 4px 0 #1f232d, 0 0 0 2px #f2c35b inset; }
 .pre-box.on i { background: #f2c35b; border-color: #f2c35b; }
 .pre-box.on i::after { content: '✓'; color: #2a1a00; font-size: 13px; font-weight: 900; }
-.pre-box.off { opacity: .28; box-shadow: none; }
+/* 체크/폴드는 지금 쓸 수 있을 때만(핸드에 남아 있고 내 차례 전). 폴드했거나 핸드가 끝나면 상자 없이 안내 글자만 가운데 */
+.actions.waiting .wait-row.no-pre { grid-template-columns: 1fr; }
+.wait-row.no-pre .pre-box { display: none; }
+/* 내 패 공개 줄이 뜨면 대기 줄은 숨김(두 줄이 겹쳐 버튼 영역 밖으로 밀리던 문제) */
+.actions.waiting.can-reveal .wait-row { display: none; }
 .wait-msg { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 14px; }
 .wait-msg > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wait-msg .rb-btn { flex: none; padding: 10px 14px; }
