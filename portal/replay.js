@@ -167,7 +167,7 @@ HOST.replayFinish = function(win){
   }
   html += resBtns(B);
   function reopen(){ openModal(html); resBind(B); }
-  setTimeout(() => { reopen(); if(win){ if(!NG[id].noConfetti) fxConfetti(); sfx('result'); } else sfx('lose'); }, win ? 500 : 250);
+  setTimeout(() => { reopen(); if(win){ if(!NG[id].noConfetti) fxConfetti(); if(!NG[id].ownEndSfx) sfx('result'); } else if(!NG[id].ownEndSfx) sfx('lose'); }, win ? 500 : 250);
 };
 
 /* ---- 오늘의 문제 결과 창: 친구 기록 나란히 "친구 중 2등 · 토끼 1,240점 · 나 1,100점"(진짜 친구가 없으면 줄 없음) ---- */

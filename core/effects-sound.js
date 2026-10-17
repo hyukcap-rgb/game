@@ -531,6 +531,7 @@ function ambDuck(on){ const A = AUD.amb; if(!A || !AUD.ac) return; A.out.gain.se
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('button, summary, .stile');
   if(!b || b.disabled) return;
+  if(b.closest('[data-own-sfx]')) return;   /* 게임이 직접 소리를 내는 영역(누름 딸깍과 겹치지 않게) */
   if(b.closest('#pad, .fl-sea, .fx-board, .tools, .fx-tool, .bfoot, #bFast, .fl-fire, .snd-row, .sset')) return;
   if(b.matches('#fxSnd, #flSnd, #mSnd, #pSnd, .fl-rb#flSnd')) return;
   if(b.closest('#dock') || b.closest('.tabs')) sfx('tab');

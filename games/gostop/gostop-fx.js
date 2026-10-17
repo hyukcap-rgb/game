@@ -15,7 +15,22 @@ const GSFX = (() => {
   let tickLayer = null;
   const T = (f) => { try{ return f(); }catch(_){ return undefined; } };
   const RD = () => { try{ return !!FXR.reduce; }catch(_){ return true; } };
-  const S = (name, o) => { try{ if(typeof sfx === 'function') sfx(name, o || {}); }catch(_){} };
+  /* 소리 교통정리(v1.15, 소리 검수 tools/gostop-sound-audit.mjs): 큰 소리(이벤트·고/스톱·족보·승패)는 한 번에 하나 —
+     앞 소리가 85% 끝날 때까지 뒤 소리를 미룸(1.2초 넘게 밀리면 버림). '내 차례' 딩은 바로 전에 다른 소리가 났으면 생략 */
+  const BDUR = { gsfxPpuk:.55, gsfxPpuk3:1.2, gsfxPpukEat:1.15, gsfxJappuk:1.15, gsfxJjok:.75, gsfxTtadak:.9, gsfxSseul:.9, gsfxBomb:.5, gsfxShake:.7, gsfxBonus:.4, gsfxSteal:.6,
+    gsfxGo:.8, gsfxStop:1, gsfxGodori:1.1, gsfxHongdan:.9, gsfxCheongdan:.9, gsfxChodan:.9, gsfxGwang:1, gsfxChongtong:1.15, gsfxWin:1.1, gsfxLose:1.3, gsfxDraw:.8, gsfxBak:.5,
+    gsfxSun:.6, gsfxTimeout:.25, gsWin:.5, gsBad:.45, gsBig:.55, gsfxGrab:.42 };   /* 모으기도 끝난 뒤에 고/스톱 알림 */
+  let bigUntil = 0, lastAny = 0;
+  const S = (name, o) => { try{
+    const now = performance.now();
+    if(name === 'gsfxTurn' && (now - lastAny < 700 || now < bigUntil)) return;
+    if(BDUR[name]){
+      if(now < bigUntil - 30){ if(name === 'gsfxGrab') return; const d = bigUntil - now; if(d <= 1200) setTimeout(() => S(name, o), d); return; }   /* 모으기는 미루지 않고 생략(늦게 나면 엉뚱함) */
+      bigUntil = now + BDUR[name] * 850;
+    }
+    lastAny = now;
+    if(typeof sfx === 'function') sfx(name, o || {});
+  }catch(_){} };
   const board = () => document.getElementById('gsb');
   const body = () => document.getElementById('gsBody');
   const rr = (a, b) => a + Math.random() * (b - a);         /* 보이기 전용 난수(게임 상태와 무관) */
@@ -385,7 +400,7 @@ const GSFX = (() => {
     gsfxTimeout(o){ if(smp('timeout', { v:.7 })) return; aTone({ f:880, type:'square', lp:2600, d:.1, v:.05 }); aTone({ f:660, type:'square', lp:2600, t:.12, d:.18, v:.05 }); buk({ t:.12, v:.3 }); aWhoosh({ f:800, f2:3000, t:.2, d:.2, v:.05 }); slap(2, { t:.32 }); },
     gsfxSun(o){ const v = V(o); jgD({ v:.18 * v }); kkw({ t:.08, v:.06 * v }); arp([0, 2, 4, 7], 72, { t:.1, v:.12 * v }); aBell({ f:m2f(96), t:.35, d:.7, v:.04 * v, rev:.4 }); },
     gsfxSunFlip(o){ aWhoosh({ f:1000, f2:4000, a:.01, d:.08, v:.05 }); slap(1, { t:.06 }); aBell({ f:m2f(88), t:.08, d:.3, v:.03 }); },
-    gsfxTurn(o){ aBell({ f:P5(7, 72), d:.5, v:.04, idx:1.1, rev:.35 }); aBell({ f:P5(9, 72), t:.08, d:.6, v:.035, idx:1.1, rev:.35 }); },
+    gsfxTurn(o){ aBell({ f:P5(9, 72), d:.22, v:.035, idx:1.1 }); },   /* 내 차례: 아주 짧은 '띵' 하나(다음 패 소리와 안 겹치게) */
     /* 패 돌리기: 한 장마다 '착'(가볍게) — 화면의 장 수·간격과 맞춤 */
     gsfxDeal(o){ const n = Math.max(4, Math.min(30, o.n || 14)), gp = o.gap || .034;
       if(smp('deal', { v:.75, rate:n < 12 ? 1.15 : 1 })) return;
@@ -400,13 +415,13 @@ const GSFX = (() => {
      효과 API
      ========================================================= */
   /* 카드가 바닥에 '탁' */
-  function land(el, power){
+  function land(el, power, opt){
     try{
       const pw = Math.max(1, Math.min(3, Math.round(power || 1)));
       let c = null;
       if(el && el.getBoundingClientRect){ c = ctr(el); if(!c.w) c = null; }
       if(!c){ const p = P(CX, CY); c = { x:p.x, y:p.y, w:60, h:90 }; }
-      S('gsfxLand' + pw, { pan:pan(c.x) });
+      if(!(opt && opt.mute)) S('gsfxLand' + pw, { pan:pan(c.x) });   /* 같은 순간 이벤트 소리가 나면 패 소리는 빼고 그림만 */
       if(RD()) return;
       const k = K(), bottom = c.y + c.h * .38;
       /* 카드 눌림: 안쪽 그림(svg)만 크기를 바꿔 FLIP(transform)과 left/top을 건드리지 않음 */
@@ -461,11 +476,11 @@ const GSFX = (() => {
     }catch(_){}
   }
   /* 먹은 카드 모으기 */
-  function grab(els, w){
+  function grab(els, w, opt){
     try{
       const list = (Array.isArray(els) ? els : els ? Array.from(els.length != null ? els : [els]) : []).filter(e => e && e.getBoundingClientRect);
       const op = w === 'op';
-      S('gsfxGrab', { n:list.length || 1, op });
+      if(!(opt && opt.mute)) S('gsfxGrab', { n:list.length || 1, op });
       if(RD() || !list.length) return;
       const k = K(), per = Math.max(4, Math.floor(60 / list.length));
       const from = P(CX, CY);
@@ -674,5 +689,5 @@ const GSFX = (() => {
       document.querySelectorAll('.gsfx-l').forEach(l => T(() => l.remove()));
     }catch(_){}
   }
-  return { land, flip, grab, toss, event, clear, sounds, gate, _P:P, _B:B, _smp:() => Object.keys(SMP) };
+  return { land, flip, grab, toss, event, clear, play:S, sounds, gate, _P:P, _B:B, _smp:() => Object.keys(SMP) };
 })();

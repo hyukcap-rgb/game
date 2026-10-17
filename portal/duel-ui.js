@@ -257,7 +257,8 @@ function portalDuelResult(r, a, b, res){
   setTimeout(() => {
     if(G !== g0) return;
     show();
-    if(r1){ fxConfetti(); sfx('fanfare'); } else if(R.tie) sfx('result'); else sfx('lose');
+    if(r1) fxConfetti();
+    if(!(NG[id] && NG[id].ownEndSfx)){ if(r1) sfx('fanfare'); else if(R.tie) sfx('result'); else sfx('lose'); }   /* ownEndSfx: 게임이 이미 승패 소리를 냄 */
     const el = $('#bigScore'), t0 = performance.now(), dur = FXR.reduce ? 0 : 800, pts = P.pts;
     const stepN = t => { if(!el || !el.isConnected) return; const k = dur ? Math.min(1, (t - t0) / dur) : 1; el.textContent = '+' + fmt(Math.round(pts * (1 - Math.pow(1 - k, 3))));
       if(k < 1){ sfx('tick', { p:k }); requestAnimationFrame(stepN); } else { el.classList.add('land'); sfx('ding'); fxPop(el, 'gold'); } };

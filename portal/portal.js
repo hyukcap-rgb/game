@@ -718,7 +718,7 @@ function advFinish(win){
     if(G !== g0) return;
     openModal(html);
     if(win){
-      fxConfetti(); sfx('result');
+      fxConfetti(); if(!NG[id].ownEndSfx) sfx('result');
       document.querySelectorAll('#modal .bigstars .s').forEach((s, k) => setTimeout(() => {
         if(!s.isConnected) return;
         if(s.classList.contains('off')){ sfx('starOff'); return; }
@@ -726,7 +726,7 @@ function advFinish(win){
       }, (0.1 + (k + 1) * 0.22) * 1000 + 180));
       if(first || better) setTimeout(() => { const pl = $('#modal .pill.new'); if(pl){ sfx('newRecord'); fxPop(pl, 'spark'); } }, 1150);
       recFx();   /* 기록 갱신 도장 */
-    } else sfx('lose');
+    } else if(!NG[id].ownEndSfx) sfx('lose');   /* ownEndSfx: 게임이 이미 승패 소리를 냄(두 번 안 나게) */
     resBind(RB);
     setTimeout(() => { const x = $('#advXp'); if(x){ x.style.width = xpTo + '%'; if(xpTo > xpFrom) sfx('xp'); } }, 250);
   }, win ? 500 : 250);
@@ -945,7 +945,7 @@ function examFinish(win){
     if(G !== g0) return;
     openModal(html);
     if(win && !NG[id].noConfetti) fxConfetti();
-    if(win) sfx('result'); else sfx('lose');
+    if(!NG[id].ownEndSfx){ if(win) sfx('result'); else sfx('lose'); }
     resBind(R);
     const el = $('#bigScore');
     if(el){ const t0 = performance.now(), dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900; let lastTk = 0;
