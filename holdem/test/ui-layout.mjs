@@ -1,4 +1,4 @@
-// 화면 겹침 점검: 2~9명 × 모든 D 위치 × 360/390/1280px 에서 쇼다운(모두 카드 공개)·베팅 중(모두 베팅 칩) 화면을 그려
+// 화면 겹침 점검(쇼다운은 모두 이긴 장면 → 모든 자리의 WINNER 배지도 점검): 2~9명 × 모든 D 위치 × 360/390/1280px 에서 쇼다운(모두 카드 공개)·베팅 중(모두 베팅 칩) 화면을 그려
 // 카드·아바타·이름·족보·D·베팅 칩·팟·보드가 서로 겹치는지 검사. 사용: 서버를 켜고(PORT=3960) node test/ui-layout.mjs [스크린샷 폴더]
 import { chromium } from 'playwright';
 const out = process.argv[2] || '.';
@@ -15,7 +15,7 @@ for (const [w, h] of [[360, 740], [390, 844], [1280, 800]]) {
       const deck = ['As','Kd','Qh','Jc','Ts','9d','8h','7c','6s','5d','4h','3c','2s','Ad','Kh','Qc','Js','Td','9h','8c'];
       const names = ['나테스트','에이스','레드','폭주핑크','마담','꼬마천재','카우보이','해피','샤크'];
       const players = [];
-      for (let i = 0; i < n; i++) players.push({ seat: i, id: 'p' + i, name: names[i], stack: 123456, bet: 0, total: 1000, folded: false, allIn: false, inHand: true, isBot: i > 0, avatar: i, lastAction: { type: 'call' }, won: i === 1 ? 5000 : 0, away: false, hole: [deck[i * 2], deck[i * 2 + 1]], showMask: 0, rebuys: 0 });
+      for (let i = 0; i < n; i++) players.push({ seat: i, id: 'p' + i, name: names[i], stack: 123456, bet: 0, total: 1000, folded: false, allIn: false, inHand: true, isBot: i > 0, avatar: i, lastAction: { type: 'call' }, won: 5000, away: false, hole: [deck[i * 2], deck[i * 2 + 1]], showMask: 0, rebuys: 0 });
       R.myId = 'p0';
       if (mode === 'bet') {
         const sbI = n === 2 ? dl : (dl + 1) % n, bbI = n === 2 ? (dl + 1) % n : (dl + 2) % n;
@@ -24,7 +24,7 @@ for (const [w, h] of [[360, 740], [390, 844], [1280, 800]]) {
         return true;
       }
       const v = { stage: 'done', handNo: 7, hk: 'ui:' + n, board: ['2h','7d','9c','Kc','4s'], pot: 0, potTotal: n * 1000, pots: [{ amount: n * 1000, at: null }], currentBet: 0, rake: null, dealer: dl, sbIdx: 0, bbIdx: 0, toAct: -1, sb: 50, bb: 100, runout: false, actionSeq: 1, myHand: null, players, legal: null,
-        result: { type: 'showdown', rake: 0, pots: [{ amount: n * 1000, winners: ['p1'], handName: '투페어', refund: false, at: null }], hands: Object.fromEntries(players.map((p) => [p.id, { name: '투페어', best: [], cat: 2 }])) } };
+        result: { type: 'showdown', rake: 0, pots: [{ amount: n * 1000, winners: players.map((q) => q.id), handName: '투페어', refund: false, at: null }], hands: Object.fromEntries(players.map((p) => [p.id, { name: '투페어', best: [], cat: 2 }])) } };
       R.render(v);
       return true;
     }, [n, dl, mode]);
@@ -61,6 +61,10 @@ for (const [w, h] of [[360, 740], [390, 844], [1280, 800]]) {
       }
       for (const a of parts) for (const o of a.others) for (const bc of board) if (hit(o.r, bc)) issues.push(`${a.name} ${o.k} ↔ 보드`);
       for (const a of parts) for (const o of a.others) for (const b of parts) if (b !== a) for (const o2 of b.others) if (a.i < b.i && hit(o.r, o2.r)) issues.push(`${a.name} ${o.k} ↔ ${b.name} ${o2.k}`);
+      // WINNER 배지가 자기 공개 카드·족보를 가리면 안 됨(모두 이긴 나눠 먹기 장면이라 모든 자리를 한 번에 점검)
+      seats.forEach((s) => { const tg = s.querySelector('.tag.win.show'); if (!tg) return; const t = rect(tg);
+        for (const c of s.querySelectorAll('.cards .card')) if (hit(t, rect(c))) issues.push(s.querySelector('.nm').textContent + ' WINNER ↔ 자기 카드');
+        const hn = s.querySelector('.hn'); if (hn && hn.textContent && hit(t, rect(hn))) issues.push(s.querySelector('.nm').textContent + ' WINNER ↔ 자기 족보'); });
       if (mode === 'bet') return [...new Set(issues.filter((x) => x.startsWith('D')))];
       return [...new Set(issues)];
     }, [mode, dl]);

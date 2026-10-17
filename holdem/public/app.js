@@ -840,9 +840,11 @@
         }
       }
       a.classList.toggle('online', !!(this.ctrl && this.ctrl.online && Online.mode !== 'daily'));
+      const fold = $('#foldBtn'), call = $('#callBtn'), raise = $('#raiseBtn');
       if (L && !v.result) {
-        a.classList.add('mine'); a.classList.remove('waiting');
-        const fold = $('#foldBtn'), call = $('#callBtn'), raise = $('#raiseBtn');
+        a.classList.add('mine'); a.classList.remove('waiting', 'pre');
+        fold.classList.remove('on'); call.classList.remove('on');
+        fold.innerHTML = '폴드';
         fold.disabled = L.canCheck;
         const me = v.players.find((p) => p.id === R.myId);
         if (L.canCheck) call.innerHTML = '체크';
@@ -876,10 +878,19 @@
           $('#preFoldBtn').onclick = () => { if (!Actions.canPre) return; Online.preFold = !Online.preFold; Net.send({ t: 'pre', fold: Online.preFold }); Sound.pop(); Actions.render(R.v); };
         }
         this.canPre = canPre;
-        const pb = $('#preFoldBtn');
-        pb.classList.toggle('on', canPre && !!Online.preFold);
-        wr.classList.toggle('no-pre', !canPre);
-        pb.disabled = !canPre;
+        // 내 차례가 아니어도 베팅 줄(체크/폴드 · 콜/체크 · 레이즈)이 그 자리에 그대로 — 미리 눌러 두는 예약 버튼(피망 방식)
+        a.classList.toggle('pre', canPre);
+        wr.classList.add('no-pre');
+        if (canPre) {
+          const cb = v.currentBet || 0, toCall = Math.max(0, Math.min(cb - (me.bet || 0), me.stack));
+          this.preTo = cb;
+          fold.disabled = false; raise.disabled = true; call.disabled = false;
+          fold.innerHTML = '<i class="ck"></i>체크/폴드';
+          call.innerHTML = '<i class="ck"></i>' + (toCall <= 0 ? '체크' : toCall >= me.stack ? `올인 콜<small>${fmt(toCall)}</small>` : `콜<small>${fmt(toCall)}</small>`);
+          raise.innerHTML = cb > 0 ? '레이즈' : '베팅';
+          fold.classList.toggle('on', !!Online.preFold);
+          call.classList.toggle('on', Online.preCall != null && Online.preCall === cb);
+        } else { fold.classList.remove('on'); call.classList.remove('on'); }
         $('#waitTxt').innerHTML = txt;
         $('#rebuyBtn').hidden = !(rb && rb.can);
         clearTimeout(Actions._wt);
@@ -920,11 +931,23 @@
       this.ctrl.act(type, amount);
     },
   };
-  $('#foldBtn').onclick = () => Actions.send('fold');
+  const isPre = () => $('#actions').classList.contains('pre');
+  $('#foldBtn').onclick = () => {
+    if (!isPre()) return Actions.send('fold');
+    if (!Actions.canPre) return;
+    Online.preFold = !Online.preFold; if (Online.preFold) Online.preCall = null;
+    Net.send({ t: 'pre', fold: Online.preFold }); Sound.pop(); Actions.render(R.v);
+  };
   $('#tbBtn').onclick = () => { if (!$('#tbBtn').disabled) { Net.send({ t: 'timebank' }); $('#tbBtn').disabled = true; } };
-  $('#callBtn').onclick = () => Actions.send('call');
+  $('#callBtn').onclick = () => {
+    if (!isPre()) return Actions.send('call');
+    if (!Actions.canPre) return;
+    const on = Online.preCall != null && Online.preCall === Actions.preTo;
+    Online.preCall = on ? null : Actions.preTo; if (!on) Online.preFold = false;
+    Net.send({ t: 'pre', call: Online.preCall }); Sound.pop(); Actions.render(R.v);
+  };
   $('#raiseBtn').onclick = () => {
-    const L = Actions.L; if (!L) return;
+    const L = Actions.L; if (!L || isPre()) return;
     if (L.minTo >= L.maxTo) return Actions.send('allin');
     if (!Actions.raising) {
       Actions.raising = true; Actions.raiseTo = L.minTo;
@@ -1110,7 +1133,7 @@
     R.myId = Online.pid;
     Online.rebuy = m.rebuy || null;
     Online.waitRebuy = m.waitRebuy ? Date.now() + m.waitRebuy : 0;
-    Online.preFold = !!m.preFold; Online.tb = m.tb | 0; Online.tbUsed = !!m.tbUsed; Online.turnMs = m.turnMs || 15000;
+    Online.preFold = !!m.preFold; Online.preCall = m.preCall == null ? null : m.preCall; Online.tb = m.tb | 0; Online.tbUsed = !!m.tbUsed; Online.turnMs = m.turnMs || 15000;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
     R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
     if (m.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);

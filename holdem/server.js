@@ -396,7 +396,7 @@ class Room {
     const before = new Map(g.players.map((p) => [p, p.stack]));
     g.startHand();
     for (const p of g.players) {
-      p.preFold = false;
+      p.preFold = false; p.preCall = null;
       if (p.acct && p.tb == null) p.tb = TB_MAX;   // 친구 대전·중간에 앉은 사람도 타임뱅크 3개
       if (p.acct && g.handNo % TB_EVERY === 0) p.tb = Math.min(TB_MAX, (p.tb || 0) + 1);
     }
@@ -433,6 +433,15 @@ class Room {
     }
     const m = this.members.find((x) => x.pid === p.id);
     // 폴드 예약: 차례가 오면 기다리지 않고 바로 폴드. 체크할 수 있으면 체크하고 예약은 유지(다음에 베팅이 오면 폴드)
+    // 콜·체크 예약: 예약한 금액(같은 스트리트) 그대로면 바로 콜/체크, 그사이 누가 더 올렸으면 예약 취소하고 평소처럼 기다림
+    if (m && p.preCall && !p.gone) {
+      const pc = p.preCall; p.preCall = null;
+      if (pc.st === g.stage && g.currentBet <= pc.to) {
+        const L = g.legal();
+        this.how = 'reserve'; g.act(p.id, L && L.canCheck ? 'check' : 'call'); this.how = '';
+        return this.schedule();
+      }
+    }
     if (m && p.preFold && !p.gone) {
       const L = g.legal();
       this.how = 'reserve'; g.act(p.id, 'fold'); this.how = '';
@@ -477,7 +486,23 @@ class Room {
     const p = g && g.players.find((x) => x.id === u.pid);
     if (!p || this.status !== 'playing' || g.stage === 'done' || !p.inHand || p.folded || p.allIn) return;
     p.preFold = !!on;
+    if (on) p.preCall = null;
     if (p.preFold && g.players[g.toAct] === p) { this.schedule(); }   // 이미 내 차례면 바로
+    this.broadcastState();
+  }
+
+  // 콜(체크) 예약: to = 지금 스트리트에서 맞출 금액(지금 걸린 최고 베팅과 같아야 함). null이면 끔
+  setPreCall(u, to) {
+    const g = this.game;
+    const p = g && g.players.find((x) => x.id === u.pid);
+    if (!p || this.status !== 'playing' || g.stage === 'done' || !p.inHand || p.folded || p.allIn) return;
+    if (to == null) p.preCall = null;
+    else {
+      to = Math.round(Number(to) || 0);
+      if (to !== g.currentBet) return this.broadcastState();   // 그사이 금액이 바뀜 → 화면만 새로
+      p.preCall = { to, st: g.stage }; p.preFold = false;
+      if (g.players[g.toAct] === p) return this.schedule();
+    }
     this.broadcastState();
   }
 
@@ -670,6 +695,7 @@ class Room {
   broadcastState() {
     const g = this.game;
     const rr = this.rebuyRange();
+    for (const q of g.players) if (q.preCall && (q.preCall.st !== g.stage || g.currentBet > q.preCall.to || q.folded || q.allIn)) q.preCall = null;   // 누가 더 올렸거나 스트리트가 바뀌면 콜 예약 취소
     for (const m of this.members) {
       const p = g.players.find((x) => x.id === m.pid);
       const rebuy = this.paid() ? { min: rr.min, max: rr.max, can: this.rebuyOk(p), balance: m.acct.balance, count: (p && p.rebuys) || 0 } : null;
@@ -682,7 +708,7 @@ class Room {
       }
       send(m, { t: 'state', view, deadline: this.deadline ? this.deadline - now() : 0, handLimit: DAILY_HANDS, mode: this.mode,
         rebuy, waitRebuy: this.waitUntil > 0 ? this.waitUntil - now() : 0,
-        preFold: !!(p && p.preFold), tb: p ? (p.tb || 0) : 0, tbUsed: !!this.tbKey && this.tbKey === g.handNo + ':' + g.actionSeq, turnMs: this.turnMs() });
+        preFold: !!(p && p.preFold), preCall: p && p.preCall ? p.preCall.to : null, tb: p ? (p.tb || 0) : 0, tbUsed: !!this.tbKey && this.tbKey === g.handNo + ':' + g.actionSeq, turnMs: this.turnMs() });
     }
   }
 
@@ -690,7 +716,7 @@ class Room {
     if (this.status !== 'playing' || !this.game) return;
     this.lastActive = now();
     const p = this.game.players.find((x) => x.id === u.pid);
-    if (p) { p.away = false; p.preFold = false; }
+    if (p) { p.away = false; p.preFold = false; p.preCall = null; }
     if (this.game.act(u.pid, type, amount)) this.tick();
   }
   reveal(u, mask) {
@@ -1308,7 +1334,7 @@ function handle(ws, m) {
     case 'act': if (r) r.act(u, String(m.type), Number(m.amount)); break;
     case 'reveal': if (r) r.reveal(u, Number(m.mask)); break;
     case 'rebuy': if (r) r.rebuy(u, m.amount); break;
-    case 'pre': if (r) r.setPreFold(u, !!m.fold); break;
+    case 'pre': if (r) { if ('call' in m) r.setPreCall(u, m.call); else r.setPreFold(u, !!m.fold); } break;
     case 'timebank': if (r) r.timebank(u); break;
     case 'emote': {
       if (!r) return;
