@@ -104,12 +104,12 @@
     {
       "id": "gostop",
       "name": "고스톱",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 1278799,
-      "gzip": 784294
+      "bytes": 1491544,
+      "gzip": 928337
     },
     {
       "id": "crossword",
@@ -314,12 +314,12 @@
     {
       "id": "tgostop",
       "name": "트럼프 고스톱",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "summary": "고스톱(맞고)을 트럼프 52장으로 — 판·연출·대전은 고스톱 그대로, A~Q = 1~12월, K = 보너스패, 연뻑·3연뻑 추가(19세 이상)",
       "duel": true,
       "file": "tgostop.html",
-      "bytes": 703010,
-      "gzip": 347701
+      "bytes": 915782,
+      "gzip": 491438
     },
     {
       "id": "holdem",

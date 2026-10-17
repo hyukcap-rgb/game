@@ -603,8 +603,10 @@ NG.gostop = (() => {
       if(evs.length){
         setTimeout(() => X(() => GX.event(evs[0], { who })), imp + 30);
         if(evs[1]) setTimeout(() => X(() => GX.event(evs[1], { who })), 720);
-        faceFor(p, evs[0] === 'ppuk' ? 'sad' : 'joy', 1800);
-        if(evs[0] !== 'ppuk' && evs[0] !== 'bonus') faceFor(1 - p, 'wow', 1500);
+        /* 표정(상황별): 뻑 = 낸 사람 울상·상대 웃음, 큰 일(폭탄·뻑 먹기·자뻑·쓸) = 낸 사람 웃음·상대 울상, 쪽·따닥·흔들기 = 웃음·놀람, 보너스 = 웃음만 */
+        const hurt = evs.some(e => e === 'bomb' || e === 'ppukEat' || e === 'jappuk' || e === 'sseul');
+        if(evs[0] === 'ppuk'){ faceFor(p, 'sad', 1800); faceFor(1 - p, 'joy', 1500); }
+        else { faceFor(p, 'joy', 1800); if(evs[0] !== 'bonus') faceFor(1 - p, hurt ? 'sad' : 'wow', 1600); }
         fxBuzz(big ? [40, 30, 60] : [20, 30, 20]);
         w = evs[1] ? 1150 : evs[0] === 'bonus' ? 480 : 800;
       }
@@ -614,6 +616,7 @@ NG.gostop = (() => {
         if(GS() !== g || G.over || g.epoch !== ep) return;
         flipTo(sc, mid, 480);
         X(() => GX.event('steal', { who, n:stolen.length }));
+        faceFor(p, 'joy', 1400); faceFor(1 - p, 'sad', 1600);   /* 피를 뺏긴 쪽 울상 */
         X(() => stolen.forEach(id => { const el = document.querySelector(`#gsCap${p === g.me ? 'Me' : 'Op'} [data-cid="${id}"]`); if(el){ el.classList.add('gs-stl'); setTimeout(() => el.classList.remove('gs-stl'), 1500); } }));
         sfx('gsCap');
         await wait(600);
@@ -628,7 +631,7 @@ NG.gostop = (() => {
     if(s1.gN >= 3 && s1.gN > s0.gN) yk.push(['gwang', s1.gN]);
     for(const [n, v] of yk){
       X(() => GX.event(n, { who, n:v }));
-      faceFor(p, 'joy', 1800);
+      faceFor(p, 'joy', 1800); faceFor(1 - p, 'wow', 1600);   /* 족보 완성: 상대는 놀람 */
       await wait(n === 'gwang' && v >= 5 ? 1100 : 800);
       if(GS() !== g || G.over || g.epoch !== ep) return;
     }
@@ -761,7 +764,7 @@ NG.gostop = (() => {
       const fg = el.querySelector('.gs-ring .fg'); if(fg) fg.style.strokeDashoffset = on ? (100 - left / c.sec * 100).toFixed(1) : '100';
       const sec = el.querySelector('.gs-sec'); if(sec) sec.textContent = on ? Math.ceil(left) : '';
       const face = g.face && g.face[p] && g.face[p][1] > now ? g.face[p][0] : null;
-      setMood(el, on ? MOODS[st] : face || '');
+      setMood(el, face && (!on || st === 'calm') ? face : on ? MOODS[st] : '');   /* 시계가 급할 때(놀람·울상)만 시계 표정이 이김 */
     }
   }
   /* 잠깐 표정(큰 일이 생긴 쪽): 시계가 없을 때만 보임 */
@@ -847,7 +850,7 @@ NG.gostop = (() => {
     if(x.gs != null){
       gsGoStop(S, p, !!x.gs);
       X(() => GX.event(x.gs ? 'go' : 'stop', { who, n:S.P[p].go }));
-      faceFor(p, x.gs ? 'joy' : 'wow', 1600);
+      faceFor(p, 'joy', 1600); faceFor(1 - p, x.gs ? 'wow' : 'sad', 1600);   /* 고 = 상대 놀람, 스톱 = 상대 울상 */
       fxBuzz(x.gs ? [30, 40, 30] : 60);
       draw(liveView());
       await wait(x.gs ? (S.P[p].go >= 3 ? 1050 : 780) : 650);

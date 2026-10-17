@@ -35,7 +35,24 @@ const TGFX = (() => {
 .gsfx-in b::before{content:attr(data-t); position:absolute; left:0; top:0; right:0; padding:0 18px; -webkit-text-stroke:0; text-shadow:none; color:transparent;
   background:linear-gradient(180deg,#FFFBE0 0%,#FFE27A 38%,${GOLD} 55%,#FF9F1C 100%); -webkit-background-clip:text; background-clip:text}
 .gsfx-in b::after{content:attr(data-t); position:absolute; left:0; top:0; right:0; padding:0 18px; -webkit-text-stroke:0; text-shadow:none; color:transparent;
-  background:linear-gradient(180deg,rgba(255,255,255,.75) 0 30%,rgba(255,255,255,0) 31%); -webkit-background-clip:text; background-clip:text; opacity:.55}
+  background:linear-gradient(180deg,rgba(255,255,255,.75) 0 30%,rgba(255,255,255,0) 31%), linear-gradient(110deg,rgba(255,255,255,0) 42%,rgba(255,255,255,.95) 50%,rgba(255,255,255,0) 58%);
+  background-size:100% 100%, 300% 100%; background-position:0 0, 115% 0; background-repeat:no-repeat; -webkit-background-clip:text; background-clip:text; opacity:.62; animation:gsfx-glint 1.1s .22s cubic-bezier(.3,.6,.3,1) forwards}
+@keyframes gsfx-glint{to{background-position:0 0, -15% 0}}
+/* v1.14 실감 연출 층: 화면 가장자리 어둡게(집중) · 가로 빛줄기 · 가운데 섬광 · 불덩이 · 연기 */
+.gsfx-vig{position:absolute; inset:-8%; background:radial-gradient(ellipse at ${CX / BW * 100}% ${CY / BH * 100}%, rgba(0,0,0,0) 30%, rgba(5,10,5,.62) 100%); animation:gsfx-vig 1.45s ease-out forwards}
+@keyframes gsfx-vig{0%{opacity:0} 14%{opacity:1} 72%{opacity:.85} 100%{opacity:0}}
+.gsfx-streak{position:absolute; left:${CX}px; top:${CY}px; width:1600px; height:14px; margin:-7px 0 0 -800px; border-radius:50%; mix-blend-mode:screen;
+  background:linear-gradient(90deg,rgba(255,255,255,0),var(--c,#FFE27A) 30%,#fff 50%,var(--c,#FFE27A) 70%,rgba(255,255,255,0)); filter:blur(1.5px) drop-shadow(0 0 16px var(--c,#FFE27A)); animation:gsfx-streak .95s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes gsfx-streak{0%{opacity:0; transform:scaleX(.04) scaleY(.5)} 14%{opacity:1; transform:scaleX(1) scaleY(1.2)} 100%{opacity:0; transform:scaleX(1.12) scaleY(.15)}}
+.gsfx-flare{position:absolute; left:${CX}px; top:${CY}px; width:520px; height:520px; margin:-260px 0 0 -260px; border-radius:50%; mix-blend-mode:screen;
+  background:radial-gradient(circle,#fff 0 7%,var(--c,#FFE27A) 18%,rgba(255,200,80,.25) 40%,rgba(255,200,80,0) 66%); animation:gsfx-flare .8s ease-out forwards}
+@keyframes gsfx-flare{0%{opacity:0; transform:scale(.2)} 12%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(1.5)}}
+.gsfx-fire{position:absolute; width:var(--s,420px); height:var(--s,420px); margin:calc(var(--s,420px) / -2) 0 0 calc(var(--s,420px) / -2); border-radius:50%; filter:blur(9px); mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,253,240,.95) 0 10%,rgba(255,226,122,.9) 22%,rgba(255,150,30,.75) 38%,rgba(230,60,20,.45) 54%,rgba(120,20,10,0) 70%); animation:gsfx-fire var(--d,.8s) cubic-bezier(.1,.8,.3,1) forwards}
+@keyframes gsfx-fire{0%{opacity:1; transform:translate(0,0) scale(.1)} 30%{opacity:1; transform:translate(calc(var(--x,0px) * .6),calc(var(--y,0px) * .6)) scale(.9)} 100%{opacity:0; transform:translate(var(--x,0px),var(--y,0px)) scale(1.3)}}
+.gsfx-smoke{position:absolute; width:var(--s,220px); height:var(--s,220px); margin:calc(var(--s,220px) / -2) 0 0 calc(var(--s,220px) / -2); border-radius:50%; filter:blur(10px);
+  background:radial-gradient(circle,var(--c,rgba(70,60,70,.75)) 0 35%,rgba(70,60,70,0) 70%); animation:gsfx-smoke var(--d,1.5s) ease-out forwards}
+@keyframes gsfx-smoke{0%{opacity:0; transform:translate(0,0) scale(.3)} 18%{opacity:.9} 100%{opacity:0; transform:translate(var(--x,0),var(--y,-90px)) scale(1.6)}}
 .gsfx-in i{display:block; margin-top:6px; font-style:normal; font-size:52px; font-weight:900; color:#fff; padding:6px 26px; border-radius:40px; background:${NAVY}; border:5px solid ${GOLD}; box-shadow:0 7px 0 rgba(10,4,40,.6)}
 /* 색 */
 .gsfx-red b::before{background-image:linear-gradient(180deg,#FFE3E3 0%,#FF7A7A 40%,#E0262F 70%,#9E0F1A 100%)}
@@ -247,23 +264,53 @@ const TGFX = (() => {
   function coins(n, o = {}){ const t = o.t || 0; for(let k = 0; k < n; k++){ const tt = t + k * rr(.035, .07); aTone({ f:m2f(rr(88, 98)), type:'square', lp:4200, d:.05, v:.022, t:tt, pan:rr(-.5, .5) }); aBell({ f:m2f(rr(93, 100)), ratio:2.76, idx:1, d:.18, v:.025, t:tt + .01 }); } }
   function arp(steps, root, o = {}){ steps.forEach((s, i) => aMarimba(P5(s, root), { t:(o.t || 0) + i * (o.gap || .055), v:o.v || .12, d:o.d || .45 })); }
 
+  /* 녹음 효과음(tgostop-snd.js TG_SND, Creative Claw로 만든 소리): 처음 소리 날 때 한 번 디코딩해 두고, 준비되면 합성 대신 재생.
+     크기·좌우는 sfx 버스(음소거·효과음 크기 설정)를 그대로 따름 */
+  const SMP = {}, SMPQ = {};
+  function smpLoad(){
+    try{
+      if(typeof TG_SND === 'undefined' || typeof AUD === 'undefined' || !AUD.ac) return;
+      for(const k in TG_SND){
+        if(SMPQ[k]) continue; SMPQ[k] = 1;
+        const u = TG_SND[k], bin = atob(u.slice(u.indexOf(',') + 1)), a = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+        const p = AUD.ac.decodeAudioData(a.buffer, b => { SMP[k] = b; }, () => {});
+        if(p && p.catch) p.catch(() => {});
+      }
+    }catch(_){}
+  }
+  function smp(k, o = {}){
+    try{
+      smpLoad();
+      const buf = SMP[k]; if(!buf) return false;
+      const ac = AUD.ac, src = ac.createBufferSource(), g = aOut({ pan:o.pan, rev:o.rev });
+      src.buffer = buf; src.playbackRate.value = o.rate || 1;
+      g.gain.value = o.v == null ? 1 : o.v;
+      src.connect(g); src.start(ac.currentTime + (o.t || 0));
+      return true;
+    }catch(_){ return false; }
+  }
+  const rate = () => rr(.95, 1.06);   /* 같은 소리가 기계처럼 똑같이 들리지 않게 살짝 높낮이 */
+
   const sounds = {
     /* 카드 부딪힘 1·2·3 */
     /* 낸 패 꽂힘 1(빈 자리)·2(짝 맞음 '딱!')·3(폭탄·뻑 먹기 '쾅 딱!') */
-    gsfxLand1(o){ slap(1, o); },
-    gsfxLand2(o){ slap(2, o); aTone({ f:1400, f2:1100, type:'triangle', t:.012, d:.04, v:.05 * V(o), pan:o.pan }); },
-    gsfxLand3(o){ slap(3, o); buk({ v:.34 * V(o), pan:o.pan, d:.3 }); aNoise({ ft:'lowpass', f:2400, f2:200, d:.35, v:.16 * V(o), rev:.3 }); kkwM({ t:.03, v:.05 * V(o) }); },
-    gsfxToss(o){ swish(o); },
+    gsfxLand1(o){ if(!smp('land1', { pan:o.pan, v:.85 * V(o), rate:rate() })) slap(1, o); },
+    gsfxLand2(o){ if(smp('land2', { pan:o.pan, v:.9 * V(o), rate:rate() })) return; slap(2, o); aTone({ f:1400, f2:1100, type:'triangle', t:.012, d:.04, v:.05 * V(o), pan:o.pan }); },
+    gsfxLand3(o){ if(smp('land2', { pan:o.pan, v:V(o), rate:.9 })){ buk({ v:.3 * V(o), pan:o.pan, d:.3 }); return; } slap(3, o); buk({ v:.34 * V(o), pan:o.pan, d:.3 }); aNoise({ ft:'lowpass', f:2400, f2:200, d:.35, v:.16 * V(o), rev:.3 }); kkwM({ t:.03, v:.05 * V(o) }); },
+    gsfxToss(o){ if(!smp('toss', { pan:o.pan, v:.6 * V(o), rate:rate() })) swish(o); },
     /* 더미 뒤집기: 패 넘기는 '촥' */
-    gsfxFlip(o){ aNoise({ ft:'bandpass', f:2200, f2:4800, q:.9, a:.006, d:.07, v:.08, pan:o.pan }); aNoise({ ft:'highpass', f:5200, t:.05, d:.012, v:.06, pan:o.pan }); swish({ t:.08, v:.05, pan:o.pan }); },
+    gsfxFlip(o){ if(smp('flip', { pan:o.pan, v:.8, rate:rate() })) return; aNoise({ ft:'bandpass', f:2200, f2:4800, q:.9, a:.006, d:.07, v:.08, pan:o.pan }); aNoise({ ft:'highpass', f:5200, t:.05, d:.012, v:.06, pan:o.pan }); swish({ t:.08, v:.05, pan:o.pan }); },
     /* 먹은 패 쓸어 담기: '스윽' + 패 겹치는 '차라락'(장수만큼) + 마지막 '탁' */
     gsfxGrab(o){ const n = Math.max(1, Math.min(7, o.n || 1)), v = V(o);
+      if(smp('grab', { pan:o.op ? .2 : -.2, v:(.7 + Math.min(n, 4) * .07) * v, rate:rate() })){ if(n >= 4) aSparkle({ t:.35, n:Math.min(5, n - 2), v:.03 * v, root:o.op ? 79 : 84 }); return; }
       aWhoosh({ f:500, f2:2400, a:.03, d:.16, v:.05 * v, pan:o.op ? .2 : -.2 });
       for(let k = 0; k < n; k++){ aNoise({ ft:'bandpass', f:3600 + k * 120, q:1.8, a:.0008, t:.06 + k * .055, d:.02, v:.1 * v }); aNoise({ ft:'highpass', f:6000, t:.06 + k * .055, d:.008, v:.06 * v }); }
       slap(1, { t:.08 + n * .055, op:o.op });
       if(n >= 4) aSparkle({ t:.1 + n * .055, n:Math.min(5, n - 2), v:.03 * v, root:o.op ? 79 : 84 }); },
     /* 뻑: 금 가는 소리 + 털썩 + 어긋난 하강 */
     gsfxPpuk(o){ const v = V(o);
+      if(smp('ppuk', { v:.8 * v })) return;
       for(let k = 0; k < 4; k++) aNoise({ ft:'bandpass', f:rr(3500, 6500), q:3, t:k * .035, d:.03, v:.09 * v });
       aThump({ f:150, f2:50, t:.08, d:.35, v:.32 * v });
       aTone({ f:m2f(70), f2:m2f(58), type:'triangle', t:.12, d:.45, v:.09 * v, lp:2400, rev:.3 }); aTone({ f:m2f(69), f2:m2f(57), type:'triangle', t:.12, d:.45, v:.07 * v, lp:2400 });
@@ -271,32 +318,35 @@ const TGFX = (() => {
     gsfxPpuk3(o){ sounds.gsfxPpuk(o); buk({ t:.05, v:.45 }); buk({ t:.3, v:.4, f:100 }); jing({ t:.35, f:82, v:.16, d:1.2 }); kkw({ t:.05, v:.07 }); kkw({ t:.2, v:.07 }); kkw({ t:.35, v:.08 }); },
     /* 뻑 먹기: 큰 착 + 꽹과리 몰이 + 동전 + 5음계 상승 */
     gsfxPpukEat(o){ const v = V(o);
+      if(smp('jackpot', { v:.85 * v })) return;
       slap(3, o); buk({ v:.42 * v });
       [0, .09, .18, .27].forEach((t, i) => (i % 2 ? kkwM : kkw)({ t:.05 + t, v:.07 * v }));
       arp([0, 1, 2, 3, 4, 5, 7], o.op ? 67 : 72, { t:.12, gap:.05, v:.12 * v });
       coins(o.op ? 5 : 10, { t:.2 });
       aSparkle({ t:.5, n:6, v:.05 * v }); },
     gsfxJappuk(o){ const v = V(o);
+      if(smp('jackpot', { v:.9 * v, rate:1.05 })){ jing({ t:.05, f:110, v:.12 * v }); return; }
       sounds.gsfxPpukEat(o);
       jing({ t:.05, f:110, v:.15 * v });
       [67, 72, 76, 79].forEach((m, i) => aBrass(m2f(m), { t:.45 + i * .08, d:.18, v:.06 * v }));
       [72, 76, 79, 84].forEach(m => aBrass(m2f(m), { t:.8, hold:.2, d:.4, v:.045 * v })); buk({ t:.8, v:.4 * v }); },
     /* 쪽: 입맞춤 같은 '쪽' + 마림바 두 음 */
-    gsfxJjok(o){ const v = V(o); aTone({ f:900, f2:2600, a:.003, d:.05, v:.12 * v }); aNoise({ ft:'highpass', f:3800, d:.02, v:.06 * v }); aMarimba(P5(5, 72), { t:.08, v:.12 * v }); aMarimba(P5(7, 72), { t:.15, v:.12 * v }); aBell({ f:m2f(91), t:.2, d:.4, v:.035 * v, rev:.3 }); },
+    gsfxJjok(o){ const v = V(o); if(smp('jjok', { v:.85 * v })) return; aTone({ f:900, f2:2600, a:.003, d:.05, v:.12 * v }); aNoise({ ft:'highpass', f:3800, d:.02, v:.06 * v }); aMarimba(P5(5, 72), { t:.08, v:.12 * v }); aMarimba(P5(7, 72), { t:.15, v:.12 * v }); aBell({ f:m2f(91), t:.2, d:.4, v:.035 * v, rev:.3 }); },
     /* 따닥: 장구 채 두 번 + 꽹과리 */
-    gsfxTtadak(o){ const v = V(o); jgT({ v:.16 * v }); slap(2, { t:.0 }); jgT({ t:.13, v:.18 * v }); slap(2, { t:.13 }); kkw({ t:.2, v:.06 * v }); arp([2, 4, 5], 72, { t:.24, v:.11 * v }); },
+    gsfxTtadak(o){ const v = V(o); if(smp('ttadak', { v:.9 * v })) return; jgT({ v:.16 * v }); slap(2, { t:.0 }); jgT({ t:.13, v:.18 * v }); slap(2, { t:.13 }); kkw({ t:.2, v:.06 * v }); arp([2, 4, 5], 72, { t:.24, v:.11 * v }); },
     /* 쓸: 길게 쓸고 가는 바람 + 5음계 글리산도 */
-    gsfxSseul(o){ const v = V(o); aWhoosh({ f:250, f2:5200, a:.25, d:.45, v:.11 * v, q:.7 }); aNoise({ ft:'highpass', f:3000, a:.2, d:.4, v:.04 * v });
+    gsfxSseul(o){ const v = V(o); if(smp('sseul', { v:.85 * v })) return; aWhoosh({ f:250, f2:5200, a:.25, d:.45, v:.11 * v, q:.7 }); aNoise({ ft:'highpass', f:3000, a:.2, d:.4, v:.04 * v });
       for(let k = 0; k < 9; k++) gyg(P5(k, 67), { t:.05 + k * .045, v:.06 * v, d:.4 }); aBell({ f:m2f(96), t:.5, d:.8, v:.05 * v, rev:.5 }); },
     /* 폭탄: 깊은 쾅 + 파편 */
-    gsfxBomb(o){ const v = V(o); aThump({ f:130, f2:28, d:.8, v:.48 * v }); aNoise({ ft:'lowpass', f:3200, f2:120, d:1, v:.38 * v, rev:.4 }); aNoise({ ft:'highpass', f:2800, d:.09, v:.14 * v });
+    gsfxBomb(o){ const v = V(o); if(smp('bomb', { v:.9 * v })){ buk({ t:.02, v:.25 * v, f:90 }); return; } aThump({ f:130, f2:28, d:.8, v:.48 * v }); aNoise({ ft:'lowpass', f:3200, f2:120, d:1, v:.38 * v, rev:.4 }); aNoise({ ft:'highpass', f:2800, d:.09, v:.14 * v });
       for(let k = 0; k < 6; k++) aNoise({ ft:'bandpass', f:rr(1500, 4000), q:3, t:.15 + k * rr(.04, .09), d:.03, v:.05 * v }); buk({ t:.02, v:.3 * v, f:90 }); },
     /* 흔들기: 장구 잔가락(빠르게 굴림) */
-    gsfxShake(o){ const v = V(o); for(let k = 0; k < 8; k++) (k % 2 ? jgT : jgD)({ t:k * .055, v:(k % 2 ? .1 : .16) * v, pan:k % 2 ? .3 : -.3 }); kkw({ t:.45, v:.06 * v }); },
-    gsfxBonus(o){ const v = V(o); aCoin({ v:.06 * v }); aSparkle({ t:.08, n:5, v:.05 * v, root:86 }); aTone({ f:600, f2:1800, type:'triangle', d:.25, v:.04 * v }); },
-    gsfxSteal(o){ const v = V(o), n = Math.max(1, Math.min(4, o.n || 1)); aWhoosh({ f:3000, f2:600, a:.02, d:.18, v:.07 * v }); for(let k = 0; k < n; k++){ aTone({ f:m2f(84 + k * 2), type:'square', lp:3500, t:.15 + k * .08, d:.06, v:.035 * v }); aBell({ f:m2f(91 + k * 2), t:.17 + k * .08, d:.25, v:.03 * v }); } },
+    gsfxShake(o){ const v = V(o); if(smp('shake', { v:.85 * v })) return; for(let k = 0; k < 8; k++) (k % 2 ? jgT : jgD)({ t:k * .055, v:(k % 2 ? .1 : .16) * v, pan:k % 2 ? .3 : -.3 }); kkw({ t:.45, v:.06 * v }); },
+    gsfxBonus(o){ const v = V(o); if(smp('bonus', { v:.8 * v })) return; aCoin({ v:.06 * v }); aSparkle({ t:.08, n:5, v:.05 * v, root:86 }); aTone({ f:600, f2:1800, type:'triangle', d:.25, v:.04 * v }); },
+    gsfxSteal(o){ const v = V(o), n = Math.max(1, Math.min(4, o.n || 1)); if(smp('steal', { v:.8 * v })) return; aWhoosh({ f:3000, f2:600, a:.02, d:.18, v:.07 * v }); for(let k = 0; k < n; k++){ aTone({ f:m2f(84 + k * 2), type:'square', lp:3500, t:.15 + k * .08, d:.06, v:.035 * v }); aBell({ f:m2f(91 + k * 2), t:.17 + k * .08, d:.25, v:.03 * v }); } },
     /* n고: 클수록 화려. 3고부터 북이 빨라지며 올라가고 징·나팔 */
     gsfxGo(o){ const n = Math.max(1, o.n || 1), v = V(o);
+      if(smp('go', { v:.85 * v, rate:1 + Math.min(n - 1, 4) * .03 })){ if(n >= 3){ jing({ t:.6, f:98, v:.12 * v }); aSparkle({ t:.7, n:Math.min(8, n + 3), v:.045 * v, root:n >= 5 ? 89 : 84 }); } return; }
       jgD({ v:.2 * v }); jgT({ t:.12, v:.14 * v }); kkw({ t:.2, v:.07 * v });
       aBrass(m2f(67), { t:.1, d:.14, v:.07 * v }); aBrass(m2f(72), { t:.22, d:.3, v:.07 * v });
       if(n >= 2){ kkw({ t:.32, v:.07 * v }); aBrass(m2f(76), { t:.34, d:.35, v:.065 * v }); }
@@ -307,35 +357,37 @@ const TGFX = (() => {
         kkw({ t:.85, v:.08 * v }); kkwM({ t:.95, v:.06 * v }); kkw({ t:1.02, v:.07 * v });
         aSparkle({ t:.9, n:Math.min(8, n + 3), v:.045 * v, root:n >= 5 ? 89 : 84 }); } },
     /* 스톱: 묵직한 쾅(도장) + 낮은 징 + 나무 딱 */
-    gsfxStop(o){ const v = V(o); buk({ v:.48 * v, f:110, f2:35, d:.6 }); aNoise({ ft:'lowpass', f:1800, f2:150, d:.4, v:.22 * v, rev:.3 }); aTone({ f:1100, f2:800, type:'triangle', t:.01, d:.05, v:.07 * v }); jing({ t:.08, f:73, v:.12 * v, d:1 }); },
+    gsfxStop(o){ const v = V(o); if(smp('stop', { v:.9 * v })) return; buk({ v:.48 * v, f:110, f2:35, d:.6 }); aNoise({ ft:'lowpass', f:1800, f2:150, d:.4, v:.22 * v, rev:.3 }); aTone({ f:1100, f2:800, type:'triangle', t:.01, d:.05, v:.07 * v }); jing({ t:.08, f:73, v:.12 * v, d:1 }); },
     /* 고도리: 새 세 마리가 짹짹 + 대금 */
-    gsfxGodori(o){ const v = V(o); for(let b = 0; b < 3; b++){ const pn = -.6 + b * .6; for(let k = 0; k < 3; k++) aTone({ f:rr(2600, 3400), f2:rr(3600, 4400), t:b * .16 + k * .06, d:.045, v:.03 * v, pan:pn, rev:.2 }); }
+    gsfxGodori(o){ const v = V(o); if(smp('godori', { v:.85 * v })) return; for(let b = 0; b < 3; b++){ const pn = -.6 + b * .6; for(let k = 0; k < 3; k++) aTone({ f:rr(2600, 3400), f2:rr(3600, 4400), t:b * .16 + k * .06, d:.045, v:.03 * v, pan:pn, rev:.2 }); }
       [0, 2, 3, 4, 6].forEach((s, i) => flute(P5(s, 72), { t:.12 + i * .1, d:.22, v:.05 * v })); aBell({ f:m2f(91), t:.65, d:.7, v:.04 * v, rev:.5 }); },
     gsfxHongdan(o){ sounds._dan(o, 74); }, gsfxCheongdan(o){ sounds._dan(o, 72); }, gsfxChodan(o){ sounds._dan(o, 69); },
-    _dan(o, root){ const v = V(o); aWhoosh({ f:600, f2:2400, a:.08, d:.3, v:.06 * v }); [0, 1, 2, 4, 3, 5].forEach((s, i) => gyg(P5(s, root), { t:.04 + i * .07, v:.09 * v, bend:i === 5 ? 1.06 : 1.015 })); jgD({ t:.04, v:.14 * v }); jgT({ t:.25, v:.1 * v }); },
+    _dan(o, root){ const v = V(o); if(smp('dan', { v:.85 * v, rate:root === 74 ? 1.06 : root === 69 ? .94 : 1 })) return; aWhoosh({ f:600, f2:2400, a:.08, d:.3, v:.06 * v }); [0, 1, 2, 4, 3, 5].forEach((s, i) => gyg(P5(s, root), { t:.04 + i * .07, v:.09 * v, bend:i === 5 ? 1.06 : 1.015 })); jgD({ t:.04, v:.14 * v }); jgT({ t:.25, v:.1 * v }); },
     /* 광: n장 수만큼 종 + 5광 최고 */
     gsfxGwang(o){ const n = Math.max(3, Math.min(5, o.n || 3)), v = V(o);
+      if(smp('gwang', { v:.85 * v })){ if(n >= 5){ smp('jackpot', { t:.45, v:.7 * v }); jing({ t:.5, f:110, v:.12 * v }); } return; }
       for(let k = 0; k < n; k++) aBell({ f:P5(k * 2, 76), t:k * .1, d:.9, v:.07 * v, idx:1.6, rev:.45 });
       [72, 76, 79].forEach(m => aBrass(m2f(m), { t:n * .1, hold:.15, d:.4, v:.045 * v }));
       if(n >= 4) kkw({ t:n * .1, v:.07 * v });
       if(n >= 5){ jing({ t:.5, f:110, v:.15 * v }); [84, 88, 91, 96].forEach((m, i) => aBrass(m2f(m), { t:.62 + i * .07, d:.25, v:.045 * v })); buk({ t:.5, v:.4 }); aSparkle({ t:.75, n:8, v:.05 }); } },
-    gsfxChongtong(o){ const v = V(o); [0, .12, .24].forEach(t => buk({ t, v:.38 * v })); jing({ t:.36, f:98, v:.16 * v }); [67, 72, 76, 79, 84].forEach((m, i) => aBrass(m2f(m), { t:.36 + i * .06, d:.3, v:.055 * v })); kkw({ t:.36, v:.08 * v }); coins(8, { t:.5 }); },
-    gsfxWin(o){ jgD({ v:.2 }); kkw({ t:.1, v:.07 }); [0, 2, 4, 5, 7].forEach((s, i) => aMarimba(P5(s, 72), { t:.08 + i * .07, v:.13 }));
+    gsfxChongtong(o){ const v = V(o); if(smp('jackpot', { v:.9 * v })){ buk({ v:.35 * v }); return; } [0, .12, .24].forEach(t => buk({ t, v:.38 * v })); jing({ t:.36, f:98, v:.16 * v }); [67, 72, 76, 79, 84].forEach((m, i) => aBrass(m2f(m), { t:.36 + i * .06, d:.3, v:.055 * v })); kkw({ t:.36, v:.08 * v }); coins(8, { t:.5 }); },
+    gsfxWin(o){ if(smp('win', { v:.85 })) return; jgD({ v:.2 }); kkw({ t:.1, v:.07 }); [0, 2, 4, 5, 7].forEach((s, i) => aMarimba(P5(s, 72), { t:.08 + i * .07, v:.13 }));
       [67, 72, 76].forEach((m, i) => aBrass(m2f(m), { t:.45 + i * .1, d:.14, v:.07 })); [72, 76, 79, 84].forEach(m => aBrass(m2f(m), { t:.75, hold:.25, d:.45, v:.05 }));
       buk({ t:.75, v:.38 }); jing({ t:.75, f:131, v:.1 }); aSparkle({ t:.8, n:7, v:.05 }); },
-    gsfxLose(o){ [67, 64, 62, 57, 55].forEach((m, i) => gyg(m2f(m), { t:i * .16, v:.08, bend:.97, d:.6 })); aTone({ f:m2f(43), f2:m2f(40), t:.75, d:.9, v:.1, rev:.3 }); jing({ t:.8, f:65, v:.08, d:1 }); },
+    gsfxLose(o){ if(smp('lose', { v:.8 })) return; [67, 64, 62, 57, 55].forEach((m, i) => gyg(m2f(m), { t:i * .16, v:.08, bend:.97, d:.6 })); aTone({ f:m2f(43), f2:m2f(40), t:.75, d:.9, v:.1, rev:.3 }); jing({ t:.8, f:65, v:.08, d:1 }); },
     gsfxDraw(o){ aTone({ f:520, f2:160, type:'triangle', d:.6, v:.07, rev:.2 }); aTone({ f:530, f2:165, type:'triangle', d:.6, v:.05 }); jgT({ t:.6, v:.1 }); jgD({ t:.7, v:.14 }); },
     gsfxBak(o){ const v = V(o); buk({ v:.42 * v, f:105, f2:38 }); aTone({ f:1000, f2:700, type:'triangle', t:.01, d:.05, v:.06 * v }); kkw({ t:.12, v:.07 * v }); kkwM({ t:.24, v:.06 * v }); kkw({ t:.32, v:.07 * v }); },
     /* 째깍: 남은 초가 적을수록 높고 급함 */
     gsfxTick(o){ const n = Math.max(1, Math.min(3, o.n || 3)), f = [1900, 1500, 1200][n - 1];
       aTone({ f, type:'square', lp:5200, d:.03, v:.05 }); aNoise({ ft:'highpass', f:5000, d:.015, v:.04 }); aTone({ f:f * .5, type:'triangle', t:.005, d:.06, v:.05 });
       if(n === 1){ aTone({ f:f * 1.26, type:'square', lp:5200, t:.12, d:.03, v:.045 }); aThump({ f:160, f2:80, d:.1, v:.15 }); } },
-    gsfxTimeout(o){ aTone({ f:880, type:'square', lp:2600, d:.1, v:.05 }); aTone({ f:660, type:'square', lp:2600, t:.12, d:.18, v:.05 }); buk({ t:.12, v:.3 }); aWhoosh({ f:800, f2:3000, t:.2, d:.2, v:.05 }); slap(2, { t:.32 }); },
+    gsfxTimeout(o){ if(smp('timeout', { v:.7 })) return; aTone({ f:880, type:'square', lp:2600, d:.1, v:.05 }); aTone({ f:660, type:'square', lp:2600, t:.12, d:.18, v:.05 }); buk({ t:.12, v:.3 }); aWhoosh({ f:800, f2:3000, t:.2, d:.2, v:.05 }); slap(2, { t:.32 }); },
     gsfxSun(o){ const v = V(o); jgD({ v:.18 * v }); kkw({ t:.08, v:.06 * v }); arp([0, 2, 4, 7], 72, { t:.1, v:.12 * v }); aBell({ f:m2f(96), t:.35, d:.7, v:.04 * v, rev:.4 }); },
     gsfxSunFlip(o){ aWhoosh({ f:1000, f2:4000, a:.01, d:.08, v:.05 }); slap(1, { t:.06 }); aBell({ f:m2f(88), t:.08, d:.3, v:.03 }); },
     gsfxTurn(o){ aBell({ f:P5(7, 72), d:.5, v:.04, idx:1.1, rev:.35 }); aBell({ f:P5(9, 72), t:.08, d:.6, v:.035, idx:1.1, rev:.35 }); },
     /* 패 돌리기: 한 장마다 '착'(가볍게) — 화면의 장 수·간격과 맞춤 */
     gsfxDeal(o){ const n = Math.max(4, Math.min(30, o.n || 14)), gp = o.gap || .034;
+      if(smp('deal', { v:.75, rate:n < 12 ? 1.15 : 1 })) return;
       aWhoosh({ f:400, f2:2600, a:.05, d:.22, v:.04 });
       for(let k = 0; k < n; k++){ const t = .26 + k * gp + rr(-.004, .004), pn = k % 4 < 2 ? -.25 : .3;
         aNoise({ ft:'highpass', f:5800, a:.0005, t, d:.008, v:.07, pan:pn }); aNoise({ ft:'bandpass', f:2900, q:1.5, a:.0008, t, d:.02, v:.07, pan:pn }); aThump({ f:190, f2:90, t, d:.035, v:.05, pan:pn }); } }
@@ -476,10 +528,10 @@ const TGFX = (() => {
       deco(l, 'gsfx-glow red');
       title(l, '폭탄!', 'gsfx-slam' + o.oc);
       flash('#FFB020', .5, 300); shake(32);
-      ring(P0.x, P0.y, '#FFFFFF', 220 * k, .45, 18); ring(P0.x, P0.y, '#FF6A2B', 340 * k, .75, 22);
+      ring(P0.x, P0.y, 'rgba(255,255,255,.85)', 300 * k, .4, 7); ring(P0.x, P0.y, 'rgba(255,140,60,.6)', 420 * k, .7, 9);   /* 얇은 충격파 */
       emit(P0.x, P0.y, { quantity:40, speed:{ min:250 * k, max:700 * k }, lifespan:{ min:450, max:900 }, kind:'shard', tint:FIRE, scale:{ start:7, end:1 }, gravityY:700, drag:1.2, glow:true });
       { const sm = P(CX, CY + 150); emit(sm.x, sm.y, { quantity:14, x:{ min:-200 * k, max:200 * k }, speed:{ min:40 * k, max:160 * k }, angle:{ min:20, max:160 }, lifespan:{ min:700, max:1200 }, kind:'smoke', tint:['rgba(70,50,60,.4)', 'rgba(120,90,80,.35)'], scale:{ start:12 * k, end:36 * k, ease:'quad.out' }, alpha:{ start:.6, end:0 }, drag:1.8 }); }
-      emit(P0.x, P0.y, { quantity:1, speed:0, lifespan:320, kind:'glow', tint:['#FFB020'], scale:{ start:40 * k, end:90 * k, ease:'expo.out' }, alpha:{ start:1, end:0 } }); },
+    },
     shake(o, l, P0, k){ S('gsfxShake', { op:o.op });
       title(l, '흔들기!', 'gsfx-wob gsfx-green' + o.oc, o.n ? `${o.n}배` : '');
       shake(10); setTimeout(() => shake(10), 220);
@@ -568,11 +620,34 @@ const TGFX = (() => {
     turn(o, l, P0, k){ S('gsfxTurn', {}); const h = P(CX, 760); ring(h.x, h.y, 'rgba(255,240,180,.9)', 260 * k, .6, 6); },
     deal(o, l, P0, k){ S('gsfxDeal', { n:o.n }); emit(P0.x, P0.y, { quantity:14, x:{ min:-300 * k, max:300 * k }, y:{ min:-100 * k, max:100 * k }, speed:{ min:10, max:60 * k }, lifespan:{ min:400, max:800 }, kind:'twinkle', tint:['#FFFFFF', '#FFF2B0'], scale:{ start:4, end:0 }, delay:{ min:0, max:500 }, glow:true }); }
   };
+  /* 실감 연출 층(v1.14): 큰 일일수록 화면 가장자리 어둡게 + 가로 빛줄기 + 섬광, 불·연기·불씨는 이벤트 성격에 맞게 */
+  const CINE = {
+    bomb:{ c:'#FFB020', big:1, fire:1, smoke:'rgba(60,45,40,.8)', ember:FIRE }, chongtong:{ c:'#FFE27A', big:1, fire:1, ember:GOLDS },
+    ppuk3:{ c:'#FF5A5F', big:1, smoke:'rgba(70,40,90,.7)' }, ppukEat:{ c:'#FFE27A', big:1, ember:GOLDS }, jappuk:{ c:'#FFE27A', big:1, ember:GOLDS },
+    ppuk:{ c:'#FF7A7A', smoke:'rgba(90,70,90,.6)' }, jjok:{ c:'#FF9CC4' }, ttadak:{ c:'#FFE27A', ember:GOLDS }, sseul:{ c:'#BFE6FF', smoke:'rgba(230,245,255,.55)' },
+    shake:{ c:'#C9A8FF' }, go:{ c:'#FFE27A', ember:GOLDS }, stop:{ c:'#FF7A7A' }, godori:{ c:'#FFE27A' }, hongdan:{ c:'#FF7A7A' }, cheongdan:{ c:'#9EE7FF' }, chodan:{ c:'#B6F36A' },
+    gwang:{ c:'#FFE27A', ember:GOLDS }, win:{ c:'#FFE27A', big:1, ember:GOLDS }, bak:{ c:'#FF9F1C' }, steal:{ c:'#FF9CC4' }
+  };
+  function cine(l, name, o){
+    const c = CINE[name]; if(!l || !c || RD()) return;
+    const big = c.big || (name === 'go' && (o.n || 1) >= 3) || (name === 'gwang' && (o.n || 3) >= 4);
+    if(big || name === 'ppuk' || name === 'stop') deco(l, 'gsfx-vig');
+    deco(l, 'gsfx-streak', '', `--c:${c.c}`);
+    if(big) deco(l, 'gsfx-flare', '', `--c:${c.c}`);
+    if(c.fire){   /* 불덩이: 크기·방향이 다른 불꽃 덩어리 여러 개를 겹쳐 둥근 원판처럼 보이지 않게 */
+      for(let i = 0; i < 7; i++){ const a = rr(0, Math.PI * 2), d = i ? rr(40, 130) : 0;
+        deco(l, 'gsfx-fire', '', `left:${CX + (i ? rr(-60, 60) : 0)}px; top:${CY + (i ? rr(-40, 40) : 0)}px; --s:${(i ? rr(220, 380) : 460).toFixed(0)}px; --x:${(Math.cos(a) * d).toFixed(0)}px; --y:${(Math.sin(a) * d - 30).toFixed(0)}px; --d:${rr(.6, .95).toFixed(2)}s; animation-delay:${(i * .025).toFixed(3)}s`); }
+    }
+    if(c.smoke) for(let i = 0; i < (big ? 7 : 4); i++) deco(l, 'gsfx-smoke', '', `left:${CX + rr(-220, 220)}px; top:${CY + rr(-40, 90)}px; --s:${rr(160, 300).toFixed(0)}px; --c:${c.smoke}; --x:${rr(-120, 120).toFixed(0)}px; --y:${rr(-160, -40).toFixed(0)}px; --d:${rr(1.1, 1.5).toFixed(2)}s; animation-delay:${(i * .04).toFixed(2)}s`);
+    if(c.ember){ const k = K(), p = P(CX, CY);
+      emit(p.x, p.y, { quantity:big ? 30 : 14, x:{ min:-260 * k, max:260 * k }, y:{ min:-40 * k, max:80 * k }, speed:{ min:30 * k, max:120 * k }, angle:{ min:240, max:300 }, lifespan:{ min:900, max:1500 }, kind:'glow', tint:c.ember, scale:{ start:3.2, end:0, ease:'quad.in' }, gravityY:-90, drag:.6, wob:true, delay:{ min:0, max:300 } }); }
+  }
   /* 타이틀 없이 가볍게 지나가는 이벤트(층 대기열을 쓰지 않음) */
   const LIGHT = { sunFlip:1, turn:1, deal:1 };
 
   function event(name, o){
     try{
+      smpLoad();
       o = Object.assign({}, o || {});
       o.op = who(o) === 'op'; o.oc = o.op ? ' gsfx-op' : '';
       const k = K(), P0 = P(CX, CY);
@@ -587,6 +662,7 @@ const TGFX = (() => {
       }
       const f = EV[name]; if(!f || name[0] === '_') return;
       const l = LIGHT[name] ? null : layer(false);
+      if(l) T(() => cine(l, name, o));   /* 실감 층은 글자보다 뒤에 깔림 */
       f(o, l, P0, k);
     }catch(_){}
   }
@@ -597,5 +673,5 @@ const TGFX = (() => {
       document.querySelectorAll('.gsfx-l').forEach(l => T(() => l.remove()));
     }catch(_){}
   }
-  return { land, flip, grab, toss, event, clear, sounds, gate, _P:P, _B:B };
+  return { land, flip, grab, toss, event, clear, sounds, gate, _P:P, _B:B, _smp:() => Object.keys(SMP) };
 })();
