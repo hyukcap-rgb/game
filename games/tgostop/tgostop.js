@@ -401,6 +401,9 @@ NG.tgostop = (() => {
   const INKM = '#241A3A';
   const OPPC = [['#2E5E8C', '#C93A3A'], ['#5B3F8C', '#D9822B'], ['#2F7A5B', '#C93A6B'], ['#8C3A2E', '#3A6BC9']];
   function maskSvg(kind, mood, tone){
+    /* v1.13: Figma로 그린 캐릭터 그림이 있으면 그것(없으면 아래 SVG 탈) */
+    const FI = typeof TG_FACE !== 'undefined' && TG_FACE[kind === 'me' ? 'me' : 'op'];
+    if(FI && FI[mood || ''] != null) return `<img src="${FI[mood || '']}" alt="" draggable="false">`;
     const me = kind === 'me', face = me ? '#EDBF7A' : '#FBF1E2', cheek = me ? '#D9734A' : '#E0454F';
     const eyes = mood === 'wow' ? `<ellipse cx="37" cy="54" rx="5.2" ry="6.4" fill="${INKM}"/><ellipse cx="63" cy="54" rx="5.2" ry="6.4" fill="${INKM}"/><circle cx="38.6" cy="52" r="1.7" fill="#fff"/><circle cx="64.6" cy="52" r="1.7" fill="#fff"/>`
       : mood === 'sad' ? `<path d="M30 56q7 -5 14 0M56 56q7 -5 14 0" stroke="${INKM}" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="M67 61q2.5 5 0 8q-2.5 -3 0 -8z" fill="#7FC6F0" stroke="${INKM}" stroke-width="1.4"/>`
