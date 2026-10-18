@@ -85,6 +85,8 @@ NG.holdem = (() => {
     score:() => ({ base:0, time:0, extra:0, rows:['홀덤 칩은 홀덤 안에서만 기록돼요', '', ''] }),
     stars:() => 1,
     noConfetti:true,
+    winTitle:'홀덤 · 점수 없는 판',   /* 하루퍼즐 점수가 없는 입구라 '클리어!' 대신(결과 창이 뜨는 경우는 점검 도구가 finish를 부를 때뿐) */
+    loseTitle:'홀덤을 닫았어요',
     bodyClass:'hdmode',
     duelHow:'친구 대전 · 방 코드로 최대 6명 · 19세 이상',
     duelNoPts:true,

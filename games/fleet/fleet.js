@@ -323,10 +323,9 @@ function flCleanup(){
 function flStage(st){
   st.innerHTML = `<div class="flg" id="flg">
     <div class="fl-top pbar">
-      <button class="iconbtn fl-rb" id="flBack" aria-label="그만하기">${FL_I.back}</button>
+      <button class="iconbtn fl-rb" id="flBack" aria-label="그만하기">${typeof ic === 'function' ? ic('back') : FL_I.back}</button>
       <div class="ptitle fl-vs"><b id="flVs"></b><span class="fl-turn" id="flTurn"><i></i>함대 배치</span>${flRuleNames() ? `<span class="fl-cx" aria-label="이번 판 규칙">${flRuleNames()}</span>` : ''}</div>
-      <button class="iconbtn fl-rb" id="flSnd" aria-label="효과음"></button>
-      <button class="iconbtn fl-rb" id="flHelp" aria-label="게임 방법">${FL_I.help}</button>
+      <div class="fl-rbs"><button class="iconbtn fl-rb fl-snd" id="flSnd" aria-label="효과음"></button><button class="iconbtn fl-rb" id="flHelp" aria-label="게임 방법">${typeof ic === 'function' ? ic('help') : FL_I.help}</button></div>
     </div>
     <div id="flBody"></div></div>`;
   $('#flBack').onclick = confirmQuit; $('#flHelp').onclick = () => openHelp('fleet');
@@ -358,8 +357,8 @@ function flRenderPlace(b){
       <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo">${G.mode === 'pvp' && !G.link ? '이대로 · 상대 찾기' : '이대로 출격'}</button></div>
       ${G.mode === 'pvp' && !G.link ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}"><b>${G.slow ? '느긋하게' : '보통'}</b> · 한 차례 ${flTurnSec()}초 <span>바꾸기 ⇄</span></button>` : ''}
     </div>
-    <p class="fl-tip">${G.link ? '<b>방 친구와 해전</b><br>배를 놓고 출격하면 친구가 출격하는 대로 바로 시작해요.' : G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br>컴퓨터 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?')}</p>`;
-  $('#flMy').classList.add('live');
+    <p class="fl-tip">${G.link ? '<b>방 친구와 해전</b><br>배를 놓고 출격하면 친구가 출격하는 대로 바로 시작해요.' : G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br><span class="fl-nw">컴퓨터 함대의 위치는</span> <span class="fl-nw">오늘 친구들과 똑같아요.</span> <span class="fl-nw">누가 더 적게 쏘고</span> <span class="fl-nw">이길까요?</span>')}</p>`;
+  $('#flMy').classList.add('live');   /* 주의: 공용 .live(빨간 '진행 중' 꼬리표, core/base.css)와 이름이 같아 fleet.css에서 되돌려 둠 */
   flPlaceShips(true);
   const go = () => { flSound('fire'); if(G.mode === 'pvp') (G.link ? flRoomJoin() : flSearch()); else flStartBattle(); };
   const shuf = () => { G.my = flRandomFleet(Math.random, G.fx ? G.fx.rocks : undefined); flPlaceShips(true); flSound('splash'); G.my.forEach((sh, k) => setTimeout(() => flSound('aim'), k * 60)); };

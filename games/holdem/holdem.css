@@ -10,3 +10,10 @@ body.hd-full { overflow: hidden; }
 .hd19.sm { width: 22px; height: 22px; border-width: 2px; font-size: 11px; vertical-align: middle; margin-left: 4px; }
 .hd-mgate { text-align: center; }
 .hd-mgate .hd19 { margin-bottom: 6px; }
+
+/* 2026-10-18 디자인 정밀 검수: 여는 중 화면 글꼴을 사이트 글꼴로, 돌아가기 버튼 44px 이상, 19 표시 사이트 글꼴 */
+.hd-load{font-family:var(--font); word-break:keep-all}
+.hd-load b{font-family:var(--disp); font-weight:400; font-size:18px; line-height:1.35}
+.hd-load .b2{min-height:48px; min-width:132px; padding:0 22px; border-radius:16px; font-family:var(--disp); font-size:17px}
+.hd19{font-family:var(--font); line-height:1}
+.hd19.sm{width:26px; height:26px; font-size:13px}
