@@ -64,12 +64,12 @@
     {
       "id": "block",
       "name": "블록 채우기",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
       "duel": true,
       "file": "block.html",
-      "bytes": 329142,
-      "gzip": 108923
+      "bytes": 329148,
+      "gzip": 109010
     },
     {
       "id": "memory",
@@ -114,12 +114,12 @@
     {
       "id": "crossword",
       "name": "가로세로 낱말퀴즈",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "뜻풀이 열쇠를 보고 가로·세로로 엇갈린 한국어 낱말을 맞히는 추리 퍼즐",
       "duel": true,
       "file": "crossword.html",
-      "bytes": 346413,
-      "gzip": 130409
+      "bytes": 346626,
+      "gzip": 130535
     },
     {
       "id": "hidden",
@@ -144,12 +144,12 @@
     {
       "id": "chosung",
       "name": "초성게임",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "summary": "초성과 분류를 보고 낱말을 떠올려 쓰는 추리 게임",
       "duel": true,
       "file": "chosung.html",
-      "bytes": 360564,
-      "gzip": 147832
+      "bytes": 360976,
+      "gzip": 148100
     },
     {
       "id": "wordchain",
@@ -164,22 +164,22 @@
     {
       "id": "mines",
       "name": "지뢰찾기",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "숫자를 보고 밤송이가 숨은 칸을 피해 숲을 모두 여는 찍기 없는 논리 게임",
       "duel": true,
       "file": "mines.html",
-      "bytes": 309487,
-      "gzip": 100974
+      "bytes": 309578,
+      "gzip": 101013
     },
     {
       "id": "omok",
       "name": "오목",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "정확히 5개를 먼저 잇는 오목 — 오늘의 묘수풀이·AI 대국·실시간 1:1 대전",
       "duel": true,
       "file": "omok.html",
-      "bytes": 325431,
-      "gzip": 106981
+      "bytes": 325779,
+      "gzip": 107130
     },
     {
       "id": "parking",
@@ -194,12 +194,12 @@
     {
       "id": "snowball",
       "name": "스노우볼",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "summary": "말랑볼을 굴려 먹고 커져서, 작은 상대를 꿀꺽하는 3분 육성 대결 — 솔로(별 3개)와 30명 배틀로열 대전",
       "duel": true,
       "file": "snowball.html",
-      "bytes": 324418,
-      "gzip": 106086
+      "bytes": 325051,
+      "gzip": 106339
     },
     {
       "id": "flag",
@@ -284,22 +284,22 @@
     {
       "id": "march",
       "name": "행군대작전",
-      "version": "1.9.0",
+      "version": "1.9.1",
       "summary": "병사 1명으로 출발해 갈림길·숫자 상자·보상 통을 지나 병력을 키우고, 예고 공격을 피하며 보스를 쓰러뜨리는 행군 — 솔로(새 기믹·3판마다 보스)와 라이벌 2분 대전",
       "duel": true,
       "file": "march.html",
-      "bytes": 345737,
-      "gzip": 114464
+      "bytes": 345953,
+      "gzip": 114620
     },
     {
       "id": "jigsaw",
       "name": "명화 퍼즐",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "summary": "섞인 명화 조각을 3×3·4×4·5×5로 맞추는 공간지각 퍼즐",
       "duel": true,
       "file": "jigsaw.html",
-      "bytes": 298668,
-      "gzip": 100029
+      "bytes": 299075,
+      "gzip": 100287
     },
     {
       "id": "tidy",

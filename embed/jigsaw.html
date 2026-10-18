@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" data-game="jigsaw" data-ver="1.1.0+1.1.0">
+<html lang="ko" data-game="jigsaw" data-ver="1.1.1+1.1.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -165,19 +165,24 @@
         </div>
         <div class="jg-tools"><button class="jg-look" id="jgPeekBtn">${o.eye}<span>완성 그림 보기</span></button></div>
       </div>`,D(),E(),Z();const F=new Image;F.onload=()=>{const A=$("#jgWrap");A&&A.classList.add("ready"),f.imgOk=!0},F.onerror=()=>{const A=$("#jgWrap");A&&A.classList.add("noimg","ready")},F.src=t(f.art),f.onResize=()=>Z(),addEventListener("resize",f.onResize),G.raf&&cancelAnimationFrame(G.raf),G.raf=requestAnimationFrame(J)},progress(){const u=G&&G.j;return u?u.placed/p(u):0},lossText(){const u=G.j;return`조각 ${u.placed}/${p(u)}개를 제자리에 맞췄어요.`},score(){const u=G.j,f=Math.max(0,Math.min(G.limit,u.sec||elapsed())),k=Math.max(0,350-Math.floor(f*350/G.limit)),x=Math.round(150*Math.min(1,u.min/Math.max(1,u.moves))),F=Math.max(0,x-30*u.hints-Math.min(30,3*u.peeks));return{base:500,time:k,extra:F,rows:["명화 완성","시간 보너스 ("+mmss(f)+")",`바꾼 횟수 ${u.moves}번(최소 ${u.min}번) · 힌트 ${u.hints}번`]}},stars(){const u=G.j;return u.moves<=u.min*1.6+3&&u.hints===0?3:u.moves<=u.min*2.6+5&&u.hints<=1?2:1},starGoal(){const u=G&&G.j;if(!u)return[];const f=Math.floor(u.min*1.6+3);return[{s:3,text:`${f}번 안에 바꾸고 · 힌트 없이`,ok:()=>u.moves<=f&&u.hints===0}]},recMoves(){return G&&G.j?G.j.moves:null},duelPace:[110,.92],duelStat:{unit:"조각",get:()=>({v:G.j.placed,t:p(G.j)})},duelAvoidKey:()=>G&&G.id==="jigsaw"&&G.j?G.j.art:null,css:`
+    /* 밝은 미술관 벽: 공용 HUD 칩의 진한 테두리·아래 그림자가 다른 게임처럼 보이게(어두운 바탕에서는 묻혀 납작해 보였음) */
+    body[data-mode="jigsaw"]{background:
+      radial-gradient(70% 40% at 50% 0%, rgba(255,255,255,.6), rgba(255,255,255,0) 70%),
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,.28) 0 3px, transparent 3.5px) 0 0/44px 44px,
+      linear-gradient(180deg,#F7F0E2 0%,#EBDDC2 60%,#DCC7A0 100%) fixed}
     .ng-jig{display:flex; flex-direction:column; align-items:center; width:100%}
-    .ng-jig .hud-row{width:100%}
+    .ng-jig .hud-row{width:100%; margin:0 0 10px}
     .jg-tbar{margin:0 0 6px}
     .jg-tbar.hurry > i{background:linear-gradient(90deg,#FF7A6B,#E83B3B)}
-    .jg-msg{min-height:22px; margin:0 0 8px; font-size:14px; line-height:1.4; text-align:center; color:#FFF3D0}
+    .jg-msg{min-height:22px; margin:0 0 8px; font-size:15px; line-height:1.4; text-align:center; color:#3A2261}
     .jg-msg b{font-weight:800}
-    .jg-msg b.bad{color:#FF8A7A}
-    .jg-msg span{margin-left:6px; opacity:.8}
+    .jg-msg b.bad{color:#C42B30}
+    .jg-msg span{margin-left:6px; color:#54446E}
     .jg-msg.jg-win{animation:jgWin .5s ease-out}
     @keyframes jgWin{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
     .jg-wrap{--jgs:340px; position:relative; width:var(--jgs); max-width:100%; aspect-ratio:1}
     .jg-board{position:absolute; inset:0; display:grid; grid-template-columns:repeat(var(--n),1fr); grid-template-rows:repeat(var(--n),1fr); gap:3px; padding:6px; box-sizing:border-box; touch-action:none; user-select:none; -webkit-user-select:none;
-      background:linear-gradient(135deg,#B27A14,#E8B84A 45%,#9A6508); border:3px solid #1A0F45; border-radius:10px; box-shadow:0 6px 0 rgba(26,15,69,.28), inset 0 0 0 2px rgba(255,236,170,.55); transition:gap .5s, padding .5s}
+      background:linear-gradient(135deg,#B27A14,#E8B84A 45%,#9A6508); border:3px solid #1A0F45; border-radius:10px; box-shadow:0 5px 0 #1A0F45, 0 14px 22px rgba(90,60,10,.22), inset 0 0 0 2px rgba(255,236,170,.55); transition:gap .5s, padding .5s}
     .jg-p{position:relative; background-color:var(--artc,#8A6A3A); background-image:var(--art); background-repeat:no-repeat; background-size:calc(var(--n) * 100%) calc(var(--n) * 100%); background-position:var(--bx) var(--by);
       border-radius:3px; box-shadow:0 0 0 1px rgba(26,15,69,.55), inset 0 0 0 1px rgba(255,255,255,.18); cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; will-change:transform}
     .jg-wrap:not(.ready) .jg-p{background-image:none; animation:jgShim 1s ease-in-out infinite alternate}
@@ -200,10 +205,10 @@
     .jg-peek[hidden]{display:none}
     .jg-peek.on{opacity:1}
     .jg-peek img{width:100%; height:100%; object-fit:cover; display:block}
-    .jg-peek span{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); padding:3px 12px; border-radius:99px; background:rgba(26,15,69,.75); color:#fff; font-size:12px; white-space:nowrap}
+    .jg-peek span{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); padding:3px 12px; border-radius:99px; background:rgba(26,15,69,.85); color:#fff; font-size:13px; white-space:nowrap}
     .jg-tools{margin-top:10px; display:flex; gap:8px; justify-content:center}
-    .jg-look{display:flex; align-items:center; gap:8px; height:46px; padding:0 18px; border:3px solid #1A0F45; border-radius:14px; background:#FFF8EA; color:#2A1F5C; font:inherit; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 3px 0 rgba(26,15,69,.3)}
-    .jg-look:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(26,15,69,.3)}
+    .jg-look{display:flex; align-items:center; gap:8px; height:46px; padding:0 18px; border:3px solid #1A0F45; border-radius:14px; background:#FFF8EA; color:#2A1F5C; font:inherit; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 3px 0 #1A0F45}
+    .jg-look:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
     .jg-look svg{width:22px; height:22px}
     body.big .jg-msg{font-size:16px} body.big .jg-look{font-size:17px}
     @media (prefers-reduced-motion:reduce){ .jg-p.pop,.jg-msg.jg-win,.jg-wrap:not(.ready) .jg-p{animation:none} .jg-board{transition:none} }

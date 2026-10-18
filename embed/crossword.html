@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" data-game="crossword" data-ver="1.2.1+1.1.0">
+<html lang="ko" data-game="crossword" data-ver="1.2.2+1.1.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1359,7 +1359,7 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-x{width:var(--cw); height:var(--cw); border-radius:calc(var(--cw) * .16); background:rgba(255,255,255,.06)}
 .ng-crossword .cw-c{position:relative; width:var(--cw); height:var(--cw); border-radius:calc(var(--cw) * .16); cursor:pointer; -webkit-tap-highlight-color:transparent;
   background:linear-gradient(180deg,#FFFFFB 0%,#FFF3DE 100%); box-shadow:inset 0 -2px 0 rgba(160,90,20,.16), 0 2px 0 #1A0F45; display:grid; place-items:center; transition:background .12s, transform .12s}
-.ng-crossword .cw-c i{position:absolute; left:2px; top:0; font-style:normal; font-family:var(--disp); font-size:max(12px, calc(var(--cw) * .3)); line-height:1.1; color:#8A5A2E}
+.ng-crossword .cw-c i{position:absolute; left:2px; top:0; font-style:normal; font-family:var(--disp); font-size:max(13px, calc(var(--cw) * .3)); line-height:1.1; color:#7A4A20}
 .ng-crossword .cw-c b{font-family:var(--heavy); font-weight:400; font-size:calc(var(--cw) * .56); line-height:1; color:#1A0F45; padding-top:calc(var(--cw) * .06)}
 .ng-crossword .cw-c.gold{box-shadow:inset 0 0 0 2.5px #F2B705, inset 0 -2px 0 rgba(160,90,20,.16), 0 2px 0 #1A0F45}
 .ng-crossword .cw-c.on{background:linear-gradient(180deg,#FFF6C0,#FFE07A); transform:translateY(-1px)}
@@ -1397,19 +1397,19 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-arr svg{width:20px; height:20px}
 .ng-crossword .cw-arr:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
 .ng-crossword .cw-cl{flex:1; min-width:0; min-height:66px; display:flex; align-items:center; gap:9px; padding:6px 10px 6px 7px; border-radius:14px; background:#FFFDF6; border:2.5px solid #1A0F45; box-shadow:0 3px 0 #1A0F45; font-size:16px; line-height:1.35; color:#2A1A10; user-select:text}
-.ng-crossword .cw-dir{margin-top:2px; height:28px; padding:0 7px; border-radius:99px; border:2px solid #1A0F45; background:#FFF1B8; color:#5A2E0A; font-family:var(--disp); font-size:13px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 0 #1A0F45}
+.ng-crossword .cw-dir{margin-top:2px; min-height:44px; padding:0 9px; border-radius:99px; border:2px solid #1A0F45; background:#FFF1B8; color:#5A2E0A; font-family:var(--disp); font-size:13px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 0 #1A0F45}
 .ng-crossword .cw-dir:active{transform:translateY(1px); box-shadow:none}
 .ng-crossword .cw-strip{display:none; justify-content:center; gap:5px}
 .ng-crossword.cw-kbd .cw-strip{display:flex}
 .ng-crossword .cw-sc{width:44px; height:44px; display:grid; place-items:center; border-radius:9px; background:linear-gradient(180deg,#FFF6C0,#FFE07A); border:2.5px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; font-family:var(--heavy); font-size:24px; color:#1A0F45}
 .ng-crossword .cw-sc.lock{background:linear-gradient(180deg,#E9FBEF,#C9F0D6); color:#13703F}
 .ng-crossword .cw-sc.given{color:#6A4BD8}
-.ng-crossword .cw-tag{flex:none; font-family:var(--heavy); font-weight:400; font-size:14px; padding:2px 8px; border-radius:99px; color:#fff; background:#F07F2E; border:2px solid #1A0F45}
+.ng-crossword .cw-tag{flex:none; font-family:var(--heavy); font-weight:400; font-size:14px; padding:2px 8px; border-radius:99px; color:#fff; background:#B04E0C; border:2px solid #1A0F45}   /* 흰 글자 대비 4.5 이상 */
 .ng-crossword .cw-tag.d1{background:#6A4BD8}
 .ng-crossword .cw-tg{flex:none; display:flex; flex-direction:column; align-items:center; gap:3px}
-.ng-crossword .cw-ct{flex:1; min-width:0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.ng-crossword .cw-ct{flex:1; min-width:0; word-break:keep-all; overflow-wrap:anywhere; text-wrap:pretty; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
 .ng-crossword .cw-ct em{font-style:normal; font-weight:800; color:#13703F}
-.ng-crossword .cw-cl small{font-family:var(--disp); font-size:13px; line-height:1; color:#8A5A2E; white-space:nowrap}
+.ng-crossword .cw-cl small{font-family:var(--disp); font-size:13px; line-height:1; color:#6E4420; white-space:nowrap}
 .ng-crossword .cw-blind{font-style:normal; color:#6A4BD8}
 .ng-crossword .cw-prov{display:inline-block; font-family:var(--disp); font-size:13px; padding:1px 6px; border-radius:99px; background:#EFE7FF; color:#5B3FB5; border:1.5px solid #5B3FB5; vertical-align:1px}
 .ng-crossword .cw-in{display:flex; gap:8px; width:100%}
@@ -1418,7 +1418,7 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-in input::placeholder{color:#8A7058; font-weight:600; letter-spacing:0; font-size:16px}
 .ng-crossword .cw-in input:disabled{background:#F2EEE8}
 .ng-crossword .cw-go{flex:none; width:92px; height:50px; border-radius:16px; border:2.5px solid #1A0F45; font-family:var(--heavy); font-size:20px; color:#fff; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  background:linear-gradient(180deg,#FFB067,#F07F2E); box-shadow:inset 0 -4px 0 rgba(120,50,0,.25), 0 4px 0 #1A0F45; text-shadow:0 2px 0 #9A4610}
+  background:linear-gradient(180deg,#FFB067,#F07F2E); box-shadow:inset 0 -4px 0 rgba(120,50,0,.25), 0 4px 0 #1A0F45; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill}   /* 흰 글자 + 진한 테두리(다른 게임 주 버튼과 같은 꼴) */
 .ng-crossword .cw-go:active{transform:translateY(3px); box-shadow:inset 0 -4px 0 rgba(120,50,0,.25), 0 1px 0 #1A0F45}
 .ng-crossword .cw-go:disabled{opacity:.5; cursor:default}
 .ng-crossword .cw-rules{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:9px 0 0; max-width:100%}
@@ -1428,25 +1428,25 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
 .ng-crossword .cw-more{width:100%; margin-top:12px}
 .ng-crossword .cw-more > summary{list-style:none; display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 14px; border-radius:16px; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  background:rgba(255,255,255,.72); border:2px solid #1A0F45; box-shadow:0 3px 0 rgba(26,15,69,.6); font-family:var(--disp); font-size:15px; color:#7A3F10}
+  background:rgba(255,255,255,.92); border:2px solid #1A0F45; box-shadow:0 3px 0 rgba(26,15,69,.6); font-family:var(--disp); font-size:15px; color:#7A3F10}
 .ng-crossword .cw-more > summary::-webkit-details-marker{display:none}
 .ng-crossword .cw-more > summary::after{content:''; width:8px; height:8px; border-right:2.5px solid #7A3F10; border-bottom:2.5px solid #7A3F10; transform:translateY(-2px) rotate(45deg); transition:transform .15s}
 .ng-crossword .cw-more[open] > summary::after{transform:translateY(2px) rotate(225deg)}
-.ng-crossword .cw-more > summary small{font-size:13px; color:#6A5884}
+.ng-crossword .cw-more > summary small{font-size:13px; color:#54446E}
 .ng-crossword .cw-list{width:100%; margin-top:10px; display:flex; flex-direction:column; gap:10px}
 /* 키보드가 올라온 동안: 열쇠+입력창을 키보드 바로 위에 붙임(top은 visualViewport로 계산) */
 .ng-crossword.cw-kbd .cw-ctl{position:fixed; left:12px; right:12px; width:auto; margin:0; z-index:30; padding:8px; border-radius:18px; background:rgba(255,245,228,.97); box-shadow:0 -4px 16px rgba(26,15,69,.18)}
 .ng-crossword.cw-kbd .cw-board{display:none}
 .ng-crossword.cw-kbd .cw-cl{font-size:17px}
 .ng-crossword.cw-kbd .cw-more{display:none}
-.ng-crossword .cw-lsec{background:rgba(255,255,255,.72); border:2px solid #1A0F45; border-radius:16px; padding:8px 8px 6px; box-shadow:0 3px 0 rgba(26,15,69,.6)}
+.ng-crossword .cw-lsec{background:rgba(255,255,255,.92); border:2px solid #1A0F45; border-radius:16px; padding:8px 8px 6px; box-shadow:0 3px 0 rgba(26,15,69,.6)}
 .ng-crossword .cw-lsec h4{margin:0 0 4px 4px; font-family:var(--heavy); font-weight:400; font-size:16px; color:#7A3F10}
-.ng-crossword .cw-li{display:flex; align-items:baseline; gap:8px; width:100%; text-align:left; padding:7px 6px; border:0; border-top:1px dashed rgba(26,15,69,.15); background:none; font:inherit; font-size:14.5px; line-height:1.35; color:#2A1A10; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-crossword .cw-li{display:flex; align-items:center; gap:8px; width:100%; min-height:44px; text-align:left; padding:7px 6px; word-break:keep-all; text-wrap:pretty; border:0; border-top:1px dashed rgba(26,15,69,.15); background:none; font:inherit; font-size:14.5px; line-height:1.35; color:#2A1A10; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-crossword .cw-li:first-of-type{border-top:0}
-.ng-crossword .cw-li b{flex:none; min-width:22px; font-family:var(--heavy); font-weight:400; color:#F07F2E}
-.ng-crossword .cw-lsec:last-child .cw-li b{color:#6A4BD8}
+.ng-crossword .cw-li b{flex:none; min-width:22px; font-family:var(--heavy); font-weight:400; color:#A34A0C}
+.ng-crossword .cw-lsec:last-child .cw-li b{color:#5236B8}
 .ng-crossword .cw-li span{flex:1; min-width:0}
-.ng-crossword .cw-li small{flex:none; color:#8A5A2E; font-size:13px}
+.ng-crossword .cw-li small{flex:none; color:#6E4420; font-size:13px}
 .ng-crossword .cw-li.cur{background:#FFF1B8; border-radius:10px}
 .ng-crossword .cw-li.done{color:#7FA58E}
 .ng-crossword .cw-li.done em{font-style:normal; font-weight:800; color:#13703F}
