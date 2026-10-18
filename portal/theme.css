@@ -398,3 +398,10 @@ html[data-theme="neon"] body:not([data-mode]) .fchips{background:none}
 html[data-theme="neon"] body:not([data-mode]) .fchips button{outline-offset:2px}
 /* 네온: 모두의 기부 화살표가 안 보이던 것 */
 html[data-theme="neon"] body:not([data-mode]) .pool .ico:last-child{color:#C9CEF7; opacity:1}
+.th body:not([data-mode]) .rmpt{background:var(--t-card2); border-color:var(--t-line)}
+.th body:not([data-mode]) .rmpt b{color:var(--t-ink); font-family:var(--disp)}
+.th body:not([data-mode]) .row .samp{background:var(--t-yel); color:var(--t-yel-ink)}
+.th body:not([data-mode]) .mini:not(.on){background:var(--t-card2); color:var(--t-sub); box-shadow:inset 0 0 0 1.5px var(--t-line)}
+html[data-theme="neon"] body:not([data-mode]) .acard .chn{background:rgba(11,15,42,.88)}
+html[data-theme="ticket"] body:not([data-mode]) .acard .chn{background:rgba(43,27,18,.9)}
+html[data-theme="jelly"] body:not([data-mode]) .acard .chn{background:rgba(42,35,64,.86)}

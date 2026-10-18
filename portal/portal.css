@@ -1006,3 +1006,13 @@ body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .s
 .rp-sec h4, .rp-sec > b:first-child{white-space:nowrap}
 /* 사이트 창 아래 '닫기' 버튼 모양 통일(창마다 분홍·파랑·글자만 제각각) */
 #modal button.closebtn{display:flex; align-items:center; justify-content:center; width:100%; height:48px; margin-top:12px; border-radius:14px; font-family:var(--disp); font-size:17px; color:var(--ink); background:var(--paper2); border:2px solid var(--outline2); box-shadow:0 3px 0 var(--outline2); text-decoration:none}
+/* 검수 3차 마무리(자동 재검수 남은 것) */
+.newb{background:linear-gradient(#D62A40,#B00C28)}
+.acard .chn{background:rgba(26,15,69,.88)}
+.dh-rw .c{background:linear-gradient(#E0267E,#B80F5E)}
+.dchip.easy{background:#13803A}
+.legend3 .lg-n{background:#11713E}
+.qzpromo .qz-subh{color:#F3EEFF}
+.rmpt em{top:-10px; right:2px}
+.rmpts{margin-top:6px}
+.mbtns .closebtn{height:auto; align-self:stretch; margin-top:0}
