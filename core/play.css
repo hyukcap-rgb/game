@@ -402,3 +402,4 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .dpad .dp-ok{font-family:var(--disp); font-size:16px; color:#fff; background:linear-gradient(180deg,#A98BFF,#6C3CE0); text-shadow:0 1px 0 rgba(0,0,0,.25)}
 .tp-sel{outline:3px solid #FFB020; outline-offset:2px; animation:tpsel 1s ease-in-out infinite}
 @keyframes tpsel{50%{outline-color:#FF6FAE}}
+.st:not(.lock){-webkit-text-stroke:3px var(--outline2); paint-order:stroke fill}   /* 2026-10-18 검수: 밝은 게임 색 위 흰 숫자 대비 */

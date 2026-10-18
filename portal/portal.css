@@ -936,3 +936,21 @@ body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .s
   .grow .gr-go.soft{flex-direction:column; gap:1px; min-width:58px; padding:0 8px; height:52px; line-height:1.1}
   .grow .gr-go.soft .freebadge, .grow .gr-go.soft .cost{padding:1px 6px}
 }
+
+/* ===== 테스트팀 정밀 검수 2차(2026-10-18) — 실제 웹폰트로 다시 본 결과 ===== */
+/* 과목 칩(논리·집중…): 줄 높이 1 + 잘라냄 → 한글 획이 위아래로 깎임 */
+.gr-mid .subj, .rprow .rpm b .subj{line-height:1.25; padding:1px 6px 2px}
+/* 오늘의 다음 판 큰 버튼 아래 설명 줄: 획 잘림 */
+.cta-txt small, .cta-txt i{line-height:1.4}
+/* 누르기 작은 버튼 → 40px 이상 */
+.favb{width:40px; height:40px}
+.rmf button{height:40px}
+/* 솔로 카드 제목이 360폭에서 "가로세로 낱말…"로 잘림 → 좁은 폭은 글자를 살짝 줄이고 자간을 좁힘 */
+@media (max-width:380px){ .acard.tile .ac-top b{font-size:15px; letter-spacing:-.3px} }
+/* 대전 방 난이도 칩 글자 대비(흰 글자 13px) */
+.dchip.easy{background:#178A3C} .dchip.normal{background:#1F6FC4} .dchip.hard{background:#C8102E}
+/* 대전 머리 카드의 '인원이 많을수록 커요'(하늘색 칩 위 흰 글자) → 진한 글자 */
+.dh-rw .d{color:#0B2A4A}
+.dh-rw .c{background:linear-gradient(#F0368A,#C8126A)}
+/* 공유 창 '오늘 첫 공유 선물' 초록 글자 대비 */
+.shgift{color:#11713E}
