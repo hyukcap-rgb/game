@@ -283,7 +283,7 @@ NG.wordchain = (() => {
     try{
       const log = $('#wcLog'), form = $('#wcForm'); if(!log || !form) return;
       const vv = window.visualViewport, bottom = vv ? vv.offsetTop + vv.height : innerHeight;
-      const top = log.getBoundingClientRect().top, below = form.offsetHeight + ($('#wcMsg') ? $('#wcMsg').offsetHeight : 0) + 18;
+      const top = log.getBoundingClientRect().top, mg = $('#wcMsg'), below = form.offsetHeight + (mg ? mg.offsetHeight + (parseFloat(getComputedStyle(mg).marginBottom) || 0) : 0) + 18;   /* 아래 안내 줄 + 화면 끝 여백 */
       const h = Math.max(150, Math.min(640, Math.floor(bottom - Math.max(0, top) - below - 8)));
       log.style.height = h + 'px'; log.classList.toggle('short', h < 300);   /* 키보드가 올라와 낮아지면 처음 안내를 작게 */
       log.scrollTop = log.scrollHeight;
@@ -300,7 +300,7 @@ NG.wordchain = (() => {
     if(!m.dw && !cands(m, lastW(m)).length){ lose('kill'); return; }     /* 이을 낱말이 사전에 하나도 없음 = 한방 당함(대전은 dTurnStart가 탈락 처리) */
     m.turn = 'me'; m.tLim = turnLimit(m); m.tStart = nowS(); m.pen = 0; m.lastSec = -1; m.hintShown = null; m.timeShown = false; m.giveArm = false;
     hud();
-    msg(m.rule.rev ? `<b>‘${lastW(m)[0]}’</b><span>(으)로 끝나는 낱말을 넣어요</span>` : `<b>‘${needTxt(m)}’</b><span>(으)로 시작하는 낱말!</span>`, 'go');
+    msg('', 'go');   /* 내 차례 안내는 기록 칸 문장과 입력 칸 안내 글에 이미 있어서 아래 줄은 비운다(같은 말 세 번 X) */
     const inp = $('#wcInput'); if(inp && !G.paused) try{ inp.focus({ preventScroll:true }); }catch(_){}
     sfx('wcTurn');
   }
@@ -757,6 +757,11 @@ body[data-mode="wordchain"]{background:
 .ng-wc .hchip #wcOppAv .wc-hav{width:20px; height:20px}
 .ng-wc .hchip.time.warn{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)}
 .ng-wc .wc-give{flex:.8 1 0}
+/* 정보줄: 상태(이은 낱말·차례 시간·남은 사람)는 납작한 알약, 누르는 단추(힌트·포기)는 도톰하게 떠 있는 단추로 구분 */
+.ng-wc .hud-row > div.hchip{box-shadow:none; background:rgba(255,255,255,.82); border-color:rgba(26,15,69,.55)}
+.ng-wc .hud-row > button.hchip{border-radius:14px; box-shadow:inset 0 2px 0 rgba(255,255,255,.75), 0 4px 0 ${OL}}
+.ng-wc .hud-row > button.hchip:active{transform:translateY(3px); box-shadow:0 1px 0 ${OL}}
+.ng-wc #wcTimeP .hv{gap:1px}   /* "18초"처럼 숫자와 단위를 붙여 보이게 */
 .ng-wc .wc-give.arm{background:linear-gradient(180deg,#FF9A9E,#E5484D)} .ng-wc .wc-give.arm em{color:#fff}
 .ng-wc .wc-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid ${OL}; overflow:hidden}
 .ng-wc .wc-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EF0E2,#14A3A0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
@@ -841,7 +846,7 @@ body[data-mode="wordchain"]{background:
 .ng-wc .wc-go .wc-ic{width:20px; height:20px}
 .ng-wc .wc-go:active{transform:translateY(2px); box-shadow:inset 0 -3px 0 rgba(0,60,55,.25), 0 1px 0 ${OL}}
 .ng-wc[data-turn="ai"] .wc-go, .ng-wc[data-turn="op"] .wc-go, .ng-wc[data-turn=""] .wc-go{filter:grayscale(.7); opacity:.75}
-.ng-wc .wc-msg{min-height:34px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px 8px; margin-top:6px; font-family:var(--disp); font-size:15px; color:#0E5A55; text-align:center}
+.ng-wc .wc-msg{min-height:34px; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px 8px; margin-top:6px; margin-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); font-family:var(--disp); font-size:15px; color:#0E5A55; text-align:center}
 .ng-wc .wc-msg b{font-family:var(--heavy); font-weight:400; font-size:19px; color:#fff; -webkit-text-stroke:5px ${OL}; paint-order:stroke fill; letter-spacing:.3px}
 .ng-wc .wc-msg b.bad{color:#FF8A8F}
 .ng-wc .wc-msg b.win{color:#FFE27A; font-size:22px}

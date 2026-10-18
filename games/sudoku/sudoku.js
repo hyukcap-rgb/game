@@ -19,7 +19,7 @@ function sudStage(st){
     <div class="swrap${S === 6 ? ' w6' : ''}"><div class="board s9${S === 6 ? ' s6' : ''}" id="bd" role="grid" aria-label="스도쿠 판 ${S}×${S}"></div>
       <div class="pcover" id="pcover"><span class="pc-ico">${ico.pause}</span><b>잠깐 쉬는 중</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
     <div class="sud-ctl">
-    <div class="pad9" id="pad" style="grid-template-columns:repeat(${S},minmax(0,1fr))"></div>
+    <div class="pad9${S === 9 ? ' n9' : ''}" id="pad"${S === 9 ? '' : ` style="grid-template-columns:repeat(${S},minmax(0,1fr))"`}></div>
     <div class="tools-row sud-tools">
       <button class="tool" id="tUndo" aria-label="실행 취소">${ico.undo}<span>실행 취소</span></button>
       <button class="tool" id="tErase" aria-label="지우기">${ico.erase}<span>지우기</span></button>

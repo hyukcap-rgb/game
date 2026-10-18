@@ -270,7 +270,7 @@ NG.tidy = (() => {
     const g = $('#tdDyn'); if(g) g.innerHTML = boardSvg(m);
     const tr = $('#tdTray');
     if(tr){
-      const cs = Math.max(22, Math.min(34, Math.floor(m.cs * .52)));
+      const cs = Math.max(18, Math.min(34, Math.floor(m.cs * (m.trayK || .52))));
       const rest = m.P.items.filter(it => !m.pos[it.id]);
       tr.innerHTML = rest.length ? rest.map(it => `<button class="td-tb${m.sel === it.id ? ' on' : ''}" data-id="${it.id}" aria-label="${it.nm}${it.cold ? ' 차가운 물건' : ''}${it.fragile ? ' 깨지는 물건' : ''}${it.heavy ? ' 무거운 물건' : ''}">${traySvg(it, cs, m.sel === it.id)}</button>`).join('') : '<span class="td-empty">다 정리했어요!</span>';
     }
@@ -283,7 +283,17 @@ NG.tidy = (() => {
     const m = S(), box = $('#tdBoard'), root = document.querySelector('.ng-tidy'); if(!box || !root) return;
     const W = Math.min((root.clientWidth || 360) + 12, 480) - 26, P = m.P;
     const cs = Math.max(34, Math.min(66, Math.floor(Math.min(W / P.C, (innerHeight || 740) * .44 / P.R))));
-    m.cs = cs; box.style.width = cs * P.C + 'px'; box.style.height = cs * P.R + 'px';
+    m.cs = cs; m.trayK = .52; box.style.width = cs * P.C + 'px'; box.style.height = cs * P.R + 'px';
+  }
+  /* 화면 높이 맞추기(보이기만): 아래 도구 줄까지 한 화면에 들어오게 판·대기 칸 물건을 조금씩 줄인다 */
+  function fit(){
+    const m = S(), box = $('#tdBoard'), ctl = document.querySelector('.ng-tidy .td-ctl'); if(!box || !ctl) return;
+    const P = m.P, lim = (innerHeight || 740) - 10;
+    for(let i = 0; i < 24 && ctl.getBoundingClientRect().bottom > lim; i++){
+      if(m.cs > 40) m.cs -= 2; else if(m.trayK > .4) m.trayK -= .04; else break;
+      box.style.width = m.cs * P.C + 'px'; box.style.height = m.cs * P.R + 'px';
+      paint();
+    }
   }
 
   /* ----- 조작 ----- */
@@ -479,11 +489,11 @@ NG.tidy = (() => {
           <button class="tool item" id="tdHint" aria-label="힌트">${ICO.hint}<span>힌트</span><b class="cnt">${m.hintLeft}</b></button>
         </div>
       </div>`;
-      layout(); paint();
+      layout(); paint(); fit();
       $('#tdBoard').onclick = boardTap;
       $('#tdTray').onclick = e => { const b = e.target.closest('.td-tb'); if(b) pick(+b.dataset.id); };
       $('#tdTurn').onclick = turn; $('#tdReset').onclick = reset; $('#tdHint').onclick = hint;
-      m.onResize = () => { layout(); paint(); };
+      m.onResize = () => { layout(); paint(); fit(); };
       addEventListener('resize', m.onResize);
       if(G.raf) cancelAnimationFrame(G.raf);
       G.raf = requestAnimationFrame(loop);
@@ -523,7 +533,7 @@ body[data-mode="tidy"]{background:
 @keyframes tidy-drop{from{transform:translateY(-14px) scale(1.08); opacity:.6}}
 .ng-tidy .td-board image{pointer-events:none}
 @keyframes tidy-cheer{40%{scale:1.03}}
-.ng-tidy .td-tray{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center; width:100%; min-height:72px; margin:14px 0 0; padding:10px; border-radius:16px; background:rgba(255,255,255,.55); border:2.5px dashed #B58654}
+.ng-tidy .td-tray{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:stretch; width:100%; min-height:72px; margin:10px 0 0; padding:8px; border-radius:16px; background:rgba(255,255,255,.55); border:2.5px dashed #B58654}
 .ng-tidy .td-tb{appearance:none; border:2.5px solid transparent; background:rgba(255,255,255,.7); border-radius:12px; padding:5px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; cursor:pointer}
 .ng-tidy .td-tb.on{border-color:#3A2412; background:#FFF3C4; box-shadow:0 3px 0 #3A2412; transform:translateY(-2px)}
 .ng-tidy .td-tb svg{display:block}
@@ -532,9 +542,14 @@ body[data-mode="tidy"]{background:
 .ng-tidy .td-chip{font-family:var(--disp); font-size:13.5px; line-height:1; padding:5px 10px; border-radius:99px; border:2px solid #3A2412; background:#fff; color:#4A2E14; box-shadow:0 2px 0 #3A2412; white-space:nowrap}
 .ng-tidy .td-chip.mj{background:#FFE9C2; color:#7A4A12} .ng-tidy .td-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-tidy .td-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
-.ng-tidy .td-ctl{margin-top:0; padding-top:14px}
+.ng-tidy .td-ctl{margin-top:0; padding-top:10px}
 .ng-tidy .td-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-tidy .td-ctl .tool .cnt{font-style:normal} .ng-tidy .td-ctl .tool .cnt:empty{display:none}
+/* 못 누르는 도구 버튼: 흐리게(opacity) 대신 회색 판 + 진한 글자(대비 4.5 이상) */
+.ng-tidy .td-ctl .tool:disabled{opacity:1; background:#F1EBE2; color:#5E4B38; border-color:#A08A72; box-shadow:0 3px 0 #A08A72; cursor:default}
+.ng-tidy .td-ctl .tool:disabled svg{opacity:.7}
+.ng-tidy .td-ctl .tool.item:disabled{background:#F4EDD6; color:#6A4A10}
+.ng-tidy .td-ctl .tool:disabled .cnt{background:#A08A72}
 @media (max-width:370px){ .ng-tidy .td-ctl .tool{font-size:14px; gap:3px} .ng-tidy .td-msg b{font-size:17px} }
 @media (prefers-reduced-motion: reduce){ .ng-tidy .td-it.td-new, .ng-tidy .td-board.cleared, .ng-tidy .td-msg.td-pop, .ng-tidy .td-msg.td-win{animation:none} }
 `,

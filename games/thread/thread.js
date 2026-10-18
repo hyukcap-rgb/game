@@ -596,14 +596,14 @@ body[data-mode="thread"]{background:
 .ng-thread .th-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-thread .th-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#9EC0FF,#3E6FD8); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-thread .th-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
-.ng-thread .th-msg{width:100%; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#2C3E7A; white-space:nowrap; overflow:hidden}
+.ng-thread .th-msg{width:100%; height:38px; margin-top:auto; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#2C3E7A; white-space:nowrap; overflow:hidden}
 .ng-thread .th-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-thread .th-msg b.boss{color:#FFE27A}
 .ng-thread .th-msg b.bad{color:#FF8A8F}
 .ng-thread .th-msg.th-pop, .ng-thread .th-msg.th-win{animation:thread-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-thread .th-msg.th-win b{font-size:24px; color:#FFE27A}
 @keyframes thread-in{from{transform:scale(.6); opacity:0}}
-.ng-thread .th-wrap{margin:auto -6px; display:flex; justify-content:center}
+.ng-thread .th-wrap{margin:0 -6px auto; display:flex; justify-content:center}
 .ng-thread .th-frame{padding:7px; border-radius:20px; background:#22396A; border:3px solid #1A0F45; box-shadow:inset 0 2px 0 rgba(255,255,255,.18), 0 5px 0 #1A0F45, 0 14px 22px rgba(30,40,110,.28);
   outline:2.5px dashed #F2B544; outline-offset:-6px}
 .ng-thread .th-board{position:relative; touch-action:none; border-radius:12px; overflow:hidden; box-shadow:inset 0 0 0 2.5px #1A0F45; cursor:pointer}
@@ -631,6 +631,11 @@ body[data-mode="thread"]{background:
 .ng-thread .th-ctl{margin-top:0; padding-top:14px}
 .ng-thread .th-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-thread .th-ctl .tool .cnt{font-style:normal}
+/* 못 누르는 도구 버튼: 흐리게(opacity) 대신 회색 판 + 진한 글자(대비 4.5 이상) */
+.ng-thread .th-ctl .tool:disabled{opacity:1; background:#E9EDF5; color:#4E5A78; border-color:#8590AA; box-shadow:0 3px 0 #8590AA; cursor:default}
+.ng-thread .th-ctl .tool:disabled svg{opacity:.7}
+.ng-thread .th-ctl .tool.item:disabled{background:#F4EDD6; color:#6A4A10}
+.ng-thread .th-ctl .tool:disabled .cnt{background:#8590AA}
 @media (max-width:370px){ .ng-thread .th-ctl .tool{font-size:14px; gap:3px} .ng-thread .th-msg b{font-size:18px} .ng-thread .th-chip{font-size:13px; padding:4px 7px} }
 @media (prefers-reduced-motion: reduce){ .ng-thread .th-btn, .ng-thread .th-board.in .th-btn, .ng-thread .th-bead.bad, .ng-thread .th-board.cleared .th-hem{animation:none} }
 `,

@@ -207,6 +207,8 @@ NG.parking = (() => {
   }
   /* 출구 표지판이 판 밖으로 나오는 길이(px). 출구가 있는 쪽에만 자리를 비우고, 반대쪽은 거의 붙여서 판을 최대한 크게 */
   const SIGN = 26;
+  /* 좌우 출구 표지판: "출구"를 가로로 쓰는 폭(42px). 판 벽(여백) 위에 걸쳐 놓아 판 밖으로는 SIGN_H − 벽만큼만 나온다 */
+  const SIGN_H = 42, EDGE = 12;
   function exitSides(m){
     const o = { l:0, r:0, t:0, b:0 };
     m.P.goals.forEach(([i, g]) => { const k = m.P.cars[i], lim = k.h ? m.W : m.H; if(!(g + k.len === lim || g === 0)) return;
@@ -216,12 +218,14 @@ NG.parking = (() => {
   function layout(){
     const m = S(), lot = $('#pkLot'), root = document.querySelector('.ng-parking'); if(!lot || !root) return;
     const sd = m.sides || (m.sides = exitSides(m)), wrap = lot.parentNode;
-    const pl = sd.l ? SIGN + 2 : 2, pr = sd.r ? SIGN + 2 : 2, pt = sd.t ? SIGN + 4 : 2, pb = sd.b ? SIGN + 4 : 6;
+    const pad = m.W >= 7 ? 9 : 10, hOut = SIGN_H - pad - 3;   /* 좌우 표지판이 판 밖으로 나오는 길이(벽·테두리 위에 걸침) */
+    const pl = sd.l ? hOut + 2 : 2, pr = sd.r ? hOut + 2 : 2, pt = sd.t ? SIGN + 4 : 2, pb = sd.b ? SIGN + 4 : 6;
     wrap.style.padding = `${pt}px ${pr}px ${pb}px ${pl}px`;
-    const W = Math.min((root.clientWidth || 360) + 24, 492) - pl - pr - 6;   /* 양옆 12px씩 더 씀(.pk-lotw 음수 여백) − 출구 표지판 자리 − 테두리 */
+    /* 양옆 12px씩 더 씀(.pk-lotw 음수 여백) − 출구 표지판 자리 − 테두리. 표지판이 있으면 화면 끝에서 EDGE(12px) 안쪽까지만 */
+    const room = (root.clientWidth || 360) + 24, scr = (document.documentElement.clientWidth || innerWidth || 360) - EDGE * 2;
+    const W = Math.min(room, 492, (sd.l || sd.r) ? scr : 9999) - pl - pr - 6;
     const top = lot.getBoundingClientRect().top + (window.scrollY || 0);
     const Hh = Math.max(260, (innerHeight || 740) - top - 92 - pb);   /* 아래 단추 줄 */
-    const pad = m.W >= 7 ? 9 : 10;
     let cs = Math.floor(Math.min((W - pad * 2) / m.W, (Hh - pad * 2) / m.H, 72));
     cs = Math.max(34, cs);
     m.geo = { cs, pad };
@@ -262,7 +266,7 @@ NG.parking = (() => {
       const gi = +e.dataset.g, [i] = m.P.goals[gi], k = m.P.cars[i], dir = +e.dataset.dir;
       const LW = m.W * g.cs + g.pad * 2, LH = m.H * g.cs + g.pad * 2, span = 2 * g.cs, out = SIGN + 3;
       let x, y, w, h;
-      if(k.h){ w = out; h = span; x = dir > 0 ? LW - 1 : -out + 1; y = Math.max(0, Math.min(LH - span, g.pad + (k.r + .5) * g.cs - span / 2)); }
+      if(k.h){ const ho = SIGN_H - g.pad - 3; w = SIGN_H; h = span; x = dir > 0 ? LW - g.pad - 3 : -ho - 3; y = Math.max(0, Math.min(LH - span, g.pad + (k.r + .5) * g.cs - span / 2)); }
       else { h = out; w = span; y = dir > 0 ? LH - 1 : -out + 1; x = Math.max(0, Math.min(LW - span, g.pad + (k.c + .5) * g.cs - span / 2)); }
       e.style.transform = `translate(${x}px, ${y}px)`; e.style.width = w + 'px'; e.style.height = h + 'px';
     });
@@ -763,14 +767,14 @@ body[data-mode="parking"]{background:
 .ng-parking .pk-barw{position:relative; width:100%; height:10px; margin:10px 0 0; border-radius:99px; background:rgba(26,15,69,.18); border:2px solid #1A0F45; overflow:hidden}
 .ng-parking .pk-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#B9A8FF,#6A4BE0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-parking .pk-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
-.ng-parking .pk-msg{width:100%; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#3A2C86; white-space:nowrap; overflow:hidden}
+.ng-parking .pk-msg{width:100%; height:38px; margin-top:auto; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#3A2C86; white-space:nowrap; overflow:hidden}
 .ng-parking .pk-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-parking .pk-msg b.boss{color:#FFE27A}
 .ng-parking .pk-msg b.bad{color:#FF8A8F}
 .ng-parking .pk-msg.pk-pop, .ng-parking .pk-msg.pk-win{animation:parking-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-parking .pk-msg.pk-win b{font-size:24px; color:#FFE27A}
 @keyframes parking-in{from{transform:scale(.6); opacity:0}}
-.ng-parking .pk-lotw{padding:2px 2px 6px; margin:auto -12px; display:flex; justify-content:center}
+.ng-parking .pk-lotw{padding:2px 2px 6px; margin:0 -12px auto; display:flex; justify-content:center}
 .ng-parking .pk-lot{position:relative; box-sizing:content-box; border-radius:18px; touch-action:none;
   background:repeating-linear-gradient(45deg,#D4CCF5 0 10px,#C6BDEE 10px 20px); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.7), 0 5px 0 #1A0F45, 0 14px 22px rgba(40,20,110,.25)}
@@ -786,11 +790,11 @@ body[data-mode="parking"]{background:
 /* 출구 표지판(판 밖, 2칸 폭): 흰 판 + 빨간(노란) 화살 + "출구" 15px */
 .ng-parking .pk-sign{position:absolute; left:0; top:0; z-index:2; pointer-events:none; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:3px;
   background:#FFF4F5; border:2.5px solid #1A0F45; border-radius:10px; box-shadow:0 3px 0 #1A0F45}
-.ng-parking .pk-sign.h{flex-direction:column; padding:4px 0}
+.ng-parking .pk-sign.h{flex-direction:column; padding:4px 0; gap:2px}
 .ng-parking .pk-sign svg{width:22px; height:22px; flex:none; fill:#FF4D5E; animation:parking-go 1s ease-in-out infinite alternate}
 .ng-parking .pk-sign.v svg{animation-name:parking-gov}
 .ng-parking .pk-sign span{font-family:var(--disp); font-size:15px; line-height:1.05; color:#C8213B; white-space:nowrap}
-.ng-parking .pk-sign.h span{writing-mode:vertical-rl; text-orientation:upright; letter-spacing:1px}
+.ng-parking .pk-sign.h span{letter-spacing:-.5px}
 .ng-parking .pk-sign.yel{background:#FFFBE6}
 .ng-parking .pk-sign.yel svg{fill:#FFD23F}
 .ng-parking .pk-sign.yel span{color:#8A5A00}
@@ -850,6 +854,11 @@ body[data-mode="parking"] .fxfloat.pkf{font-family:var(--heavy); font-weight:400
 .ng-parking .pk-ctl{margin-top:8px}
 .ng-parking .pk-ctl .tool{flex-direction:row; gap:6px; min-height:54px; font-size:16px}
 .ng-parking .pk-ctl .tool .cnt{font-style:normal}
+/* 못 누르는 도구 버튼: 흐리게(opacity) 대신 회색 판 + 진한 글자(대비 4.5 이상) */
+.ng-parking .pk-ctl .tool:disabled{opacity:1; background:#ECE8F4; color:#5A4E78; border-color:#8A7FA8; box-shadow:0 3px 0 #8A7FA8; cursor:default}
+.ng-parking .pk-ctl .tool:disabled svg{opacity:.7}
+.ng-parking .pk-ctl .tool.item:disabled{background:#F4EDD6; color:#6A4A10}
+.ng-parking .pk-ctl .tool:disabled .cnt{background:#8A7FA8}
 /* 대전 결과 창: 풀이 나란히 다시 보기 */
 body[data-mode="parking"] .pk-rp{margin:10px 0 2px; text-align:center}
 body[data-mode="parking"] .pk-rph{margin:0; font-family:var(--disp); font-size:15px; color:#1A0F45}

@@ -366,11 +366,12 @@ NG.rps = (() => {
   function layout(){
     const root = document.querySelector('.ng-rps'); if(!root) return;
     const top = root.getBoundingClientRect().top + (window.scrollY || 0);
-    const h = Math.max(470, Math.min(820, (innerHeight || 740) - top - 10));
+    let pb = 16; try{ const w = root.closest('.wrap'); if(w) pb = parseFloat(getComputedStyle(w).paddingBottom) || 16; }catch(_){}
+    const h = Math.max(470, Math.min(820, (innerHeight || 740) - top - pb - 6));   /* 아래 여백(16px + 홈 막대)만큼 빼서 버튼이 화면 끝에 붙지 않게 */
     root.style.height = h + 'px';
     const a = el('rpArena'); if(!a) return;
-    /* 지령 판이 무대 아래쪽을 COVER px 덮는다(판이 무대에 걸린 간판처럼). 덮인 곳은 땅이라 그림이 가리지 않게 뺀다 */
-    const COVER = 20, band = S() && S().boss ? 26 : 0;
+    /* 지령 판은 무대 바로 아래(10px 틈)에 둔다. 예전에는 무대 아래 테두리를 20px 덮었는데 테두리가 잘려 보여서 0으로 */
+    const COVER = 0, band = S() && S().boss ? 26 : 0;
     const ah = a.clientHeight - COVER - band, aw = a.clientWidth;
     const hs = Math.min(ah * .3, aw * .3, 132), hz = Math.min(ah * .5, aw * .5, 220), mz = Math.min(ah * .3, aw * .28, 118);
     root.style.setProperty('--cover', COVER + 'px');

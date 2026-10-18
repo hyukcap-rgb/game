@@ -30,7 +30,7 @@
 .hchip .hlives i{transition:color .2s, transform .2s}
 .hchip .hlives i.off{transform:scale(.9)}
 #sclock{font-variant-numeric:tabular-nums}
-.swrap{width:min(100%, 390px, calc(100dvh - 380px)); min-width:280px; container-type:inline-size; align-self:center; position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
+.swrap{width:min(100%, 390px, calc(100dvh - 430px)); min-width:280px; container-type:inline-size; align-self:center; position:relative; padding:8px; border-radius:20px; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:3px solid var(--outline); box-shadow:inset 0 0 0 2px rgba(255,255,255,.75), 0 6px 0 var(--outline2), 0 14px 24px rgba(8,2,30,.35)}
 .board.s9{border:2.5px solid #2A1650; border-radius:8px; background:#2A1650; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr)}
 .s9 .cell{background:#FFFFFF; color:#2A1650; font-family:var(--disp); font-size:clamp(20px,6.4vw,30px); font-size:min(30px, 7.2cqw); line-height:1; font-weight:400; transition:background .12s}
 .s9 .cell.user{color:#6C3CE0}
@@ -74,6 +74,15 @@
 .pad9 button{min-height:min(64px,9dvh); border-radius:12px; padding:0; font-family:var(--disp); font-size:clamp(24px,8vw,32px); line-height:1; color:#6C3CE0; background:linear-gradient(180deg,var(--paper) 0%,var(--paper2) 100%); border:2.5px solid var(--outline); box-shadow:inset 0 2px 0 rgba(255,255,255,.8), 0 3px 0 var(--outline2)}
 .pad9 button:active{background:#F3EDFF; transform:translateY(2px); box-shadow:0 1px 0 var(--outline2)}
 .pad9 button.gone{visibility:hidden}
+/* 9개 숫자 키: 휴대폰 폭에서는 두 줄(1~5 / 6~9 가운데)로 키를 폭 36px·높이 44px 이상 크게, 판 아래 남는 높이를 씀 */
+.pad9.n9{grid-template-columns:repeat(9,minmax(0,1fr)); gap:6px}
+@media (max-width:440px){
+  .pad9.n9{grid-template-columns:repeat(10,minmax(0,1fr)); gap:8px 6px}
+  .pad9.n9 button{grid-column:span 2; min-height:min(56px,7dvh); min-height:max(46px, min(56px,7dvh))}
+  .pad9.n9 button:nth-child(6){grid-column:2 / span 2}
+}
+/* 힌트 개수 배지: 흰 글자가 잘 보이게 진한 분홍(대비 4.5 이상) */
+.sud-tools .tool .cnt{background:#B8146A; color:#fff}
 .pad{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:12px}
 .pad button{background:var(--card); border:2px solid var(--line); border-radius:14px; padding:12px 0; font-family:"Jua",system-ui,sans-serif; font-size:24px}
 .pad button:active{background:var(--lemon); color:#26215C}
