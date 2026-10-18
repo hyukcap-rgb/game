@@ -37,7 +37,8 @@ NG.spot = (() => {
       urls.push(u); diffs.push({ cx, cy, r, kind:d.kind }); B.push({ patch:1, href:u, x:cx - side / 2, y:cy - side / 2, w:side, h:side });
     });
     const bg = `<rect width="${W}" height="${H}" fill="${OL}"/><image href="${base + p.file}" x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${iw.toFixed(2)}" height="${ih.toFixed(2)}" preserveAspectRatio="none"/>`;
-    return { theme:id, master:p, bg, A:[], B, diffs, ok:diffs.length === N, tries:1, urls };
+    /* vb = 그림이 실제로 놓인 상자(판 좌표). 화면 틀은 이 비율로 잘라 보여 줘서 위아래(양옆) 빈 띠가 없다(보이기만, 판 좌표는 그대로) */
+    return { theme:id, master:p, bg, A:[], B, diffs, ok:diffs.length === N, tries:1, urls, vb:{ x:ox, y:oy, w:iw, h:ih } };
   }
   const gen = (cfg, rng) => masterGen(cfg, rng, cfg.avoid);
   function objSvg(o){   /* 아래 그림에 얹는 차이 조각(가장자리가 투명한 WebP) */
@@ -98,10 +99,11 @@ NG.spot = (() => {
   function toSrcB(x, y){ if(S().mirror) x = W - x; return [x, y]; }
   function toDispB(x, y){ if(S().mirror) x = W - x; return [x, y]; }
   const picSvg = w => document.querySelector(`.ng-spot #sp${w} svg`);
+  const VB = () => (G && G.m && G.m.vb) || { x:0, y:0, w:W, h:H };   /* 화면에 보이는 판 좌표 상자 */
   function scr(w, x, y){   /* 그림 좌표 → 화면(px) */
     const sv = picSvg(w); if(!sv) return { x:0, y:0 };
-    const r = sv.getBoundingClientRect(); if(w === 'B'){ [x, y] = toDispB(x, y); }
-    return { x:r.left + x / W * r.width, y:r.top + y / H * r.height, k:r.width / W };
+    const r = sv.getBoundingClientRect(), v = VB(); if(w === 'B'){ [x, y] = toDispB(x, y); }
+    return { x:r.left + (x - v.x) / v.w * r.width, y:r.top + (y - v.y) / v.h * r.height, k:r.width / v.w };
   }
 
   const ICO = {
@@ -146,14 +148,14 @@ NG.spot = (() => {
     const pics = $('#spPics'), root = document.querySelector('.ng-spot'); if(!pics || !root) return;
     const Wr = Math.min(root.clientWidth || 360, 520);
     const top = pics.getBoundingClientRect().top + (window.scrollY || 0);
-    const avail = Math.max(300, (innerHeight || 740) - top - 12), gap = 10, bd = 6;
-    let w = Wr, h = (w - bd) * H / W + bd;
-    if(2 * h + gap > avail){ h = (avail - gap) / 2; w = (h - bd) * W / H + bd; }
-    w = Math.floor(Math.max(230, w)); h = Math.floor((w - bd) * H / W + bd);
+    const avail = Math.max(300, (innerHeight || 740) - top - 12), gap = 10, bd = 6, v = VB();
+    let w = Wr, h = (w - bd) * v.h / v.w + bd;
+    if(2 * h + gap > avail){ h = (avail - gap) / 2; w = (h - bd) * v.w / v.h + bd; }
+    w = Math.floor(Math.max(150, w)); h = Math.floor((w - bd) * v.h / v.w + bd);
     pics.style.setProperty('--pw', w + 'px'); pics.style.setProperty('--ph', h + 'px');
     /* 크게 보기: 두 그림 자리(높이 2장 + 사이)를 한 그림이 다 쓰고, 넘치는 폭은 옆으로 밀어 봄(그림 약 2배) */
-    const bw = Math.floor(Math.max(w, Math.min(Wr, 520))), bh = Math.floor(Math.max(2 * h + gap, Math.min(avail, (bw - bd) * H / W * 2.2 + bd)));
-    const sw = Math.floor(Math.max(bw - bd, (bh - bd) * W / H));
+    const bw = Math.floor(Math.max(w, Math.min(Wr, 520))), bh = Math.floor(Math.max(2 * h + gap, Math.min(avail, (bw - bd) * v.h / v.w * 2.2 + bd)));
+    const sw = Math.floor(Math.max(bw - bd, (bh - bd) * v.w / v.h));
     pics.style.setProperty('--bw', bw + 'px'); pics.style.setProperty('--bh', bh + 'px'); pics.style.setProperty('--sw', sw + 'px');
   }
   /* ===== 크게 보기(WP7 4번, S-SPOT-4): 돋보기 단추 또는 그림을 두 번 누르면 위·아래를 한 그림씩 크게, [⇅]로 번갈아 =====
@@ -194,7 +196,7 @@ NG.spot = (() => {
     if(m.big && m.big !== w) return;
     const sv = picSvg(w); if(!sv) return;
     const r = sv.getBoundingClientRect();
-    const dx = (e.clientX - r.left) / r.width * W, dy = (e.clientY - r.top) / r.height * H;
+    const v = VB(), dx = v.x + (e.clientX - r.left) / r.width * v.w, dy = v.y + (e.clientY - r.top) / r.height * v.h;
     const [x, y] = w === 'B' ? toSrcB(dx, dy) : [dx, dy];
     let best = null, bd = 1e9, onFound = false;
     for(const d of m.diffs){
@@ -342,12 +344,13 @@ NG.spot = (() => {
     T(() => finish(false), 1700);
   }
 
+  const vbAttr = m => { const v = m.vb || { x:0, y:0, w:W, h:H }; return `${v.x.toFixed(2)} ${v.y.toFixed(2)} ${v.w.toFixed(2)} ${v.h.toFixed(2)}`; };
   function picA(m){
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="위 그림(원래 그림)"><defs><clipPath id="${m.u}cA"><rect width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#${m.u}cA)">${sceneSvg(m.bg, m.A)}</g><g id="${m.u}MA"></g><g id="${m.u}FA"></g></svg>`;
+    return `<svg viewBox="${vbAttr(m)}" preserveAspectRatio="none" role="img" aria-label="위 그림(원래 그림)"><defs><clipPath id="${m.u}cA"><rect width="${W}" height="${H}"/></clipPath></defs><g clip-path="url(#${m.u}cA)">${sceneSvg(m.bg, m.A)}</g><g id="${m.u}MA"></g><g id="${m.u}FA"></g></svg>`;
   }
   function picB(m){
     const u = m.u, inner = `<use href="#${u}B" clip-path="url(#${u}cB)"/>`;
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath><g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}<g id="${u}FB"></g></svg>`;
+    return `<svg viewBox="${vbAttr(m)}" preserveAspectRatio="none" role="img" aria-label="아래 그림(다른 곳을 찾아요)"><defs><clipPath id="${u}cB"><rect width="${W}" height="${H}"/></clipPath><g id="${u}B">${sceneSvg(m.bg, m.B)}<g id="${u}MB"></g></g></defs>${m.mirror ? `<g transform="matrix(-1 0 0 1 ${W} 0)">${inner}</g>` : inner}<g id="${u}FB"></g></svg>`;
   }
   let UID = 0;
   /* 대전 테마 고르기(rng만, 대전 v3): 엔진이 판마다 새 씨앗(방·판 번호·판 표지)을 주고, 최근 본 테마(duelAvoidKey → G.duel.avoid,
@@ -388,7 +391,7 @@ NG.spot = (() => {
     try{
       const L = fxLayer('A'); if(!L) return;
       const nm = P.me ? '나' : String(P.nick).slice(0, 6), w = 34 + nm.length * 13;
-      const x = Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, d.cx)), y = Math.max(15, d.cy - d.r - 16);
+      const v = VB(), x = Math.max(v.x + w / 2 + 2, Math.min(v.x + v.w - w / 2 - 2, d.cx)), y = Math.max(v.y + 15, d.cy - d.r - 16);
       L.insertAdjacentHTML('beforeend', `<g class="sp-tag" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${P.col}" stroke-width="3"/><path d="${shapeD(P.shape, 5.5)}" transform="translate(${-w / 2 + 14} 0)" fill="${P.col}" stroke="${OL}" stroke-width="1.6"/><text x="${-w / 2 + 25}" y="5" font-size="14" fill="${OL}">${esc(nm)}</text></g>`);
       const g = L.lastElementChild; setTimeout(() => { try{ g.remove(); }catch(_){} }, 1200);
     }catch(_){}
@@ -491,7 +494,7 @@ NG.spot = (() => {
       const g = G.duel ? gen(Object.assign({}, cfg, { theme:duelTheme(cfg, rng) }), rng) : gen(cfg, rng);
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       g.diffs.forEach((d, i) => { d.i = i; d.own = null; });   /* 선점 대전 열쇠 'd' + i */
-      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, master:g.master || null, imgs:(g.urls || []).map(u => { try{ const im = new Image(); im.src = u; return im; }catch(_){ return null; } }), dealAt:Date.now(), bg:g.bg, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
+      G.m = { u:'spu' + (++UID) + '_', theme:g.theme, master:g.master || null, imgs:(g.urls || []).map(u => { try{ const im = new Image(); im.src = u; return im; }catch(_){ return null; } }), dealAt:Date.now(), bg:g.bg, vb:g.vb || null, A:g.A, B:g.B, diffs:g.diffs, N:g.diffs.length, ok:g.ok, big:null, pend:null, endT:0,
         mirror:!!cfg.mirror, blink:!!cfg.blink, secret:!!cfg.secret && !G.duel, cover:null,
         found:0, misses:0, hints:0, streak:0, coolUntil:0, hintLeft:cfg.hints == null ? 3 : cfg.hints,
         lives:G.duel ? 0 : cfg.lives || 0,   /* 기본은 기회 제한 없음(빗나가면 점수·쉬는 시간만). 외줄 타기만 기회 2번 */
@@ -521,7 +524,8 @@ NG.spot = (() => {
     _tapDiffForTest(i, w){ const m = G.m, d = m.diffs[i]; if(!d) return false; m.coolUntil = 0; w = w || 'A'; const q = scr(w, d.cx, d.cy); tapAt(w, { clientX:q.x, clientY:q.y }); return true; },
     _tapMissForTest(){
       const m = G.m; m.coolUntil = 0;
-      for(let y = 20; y < H - 20; y += 13) for(let x = 20; x < W - 20; x += 13){
+      const v = VB();
+      for(let y = v.y + 20; y < v.y + v.h - 20; y += 13) for(let x = v.x + 20; x < v.x + v.w - 20; x += 13){
         if(m.diffs.every(d => Math.hypot(d.cx - x, d.cy - y) > d.r + TOL + 18)){ const q = scr('A', x, y); tapAt('A', { clientX:q.x, clientY:q.y }); return true; }
       }
       return false;
@@ -616,17 +620,17 @@ body[data-mode="spot"]{background:
 .ng-spot .hchip.time.hurry b{text-shadow:0 2px 0 #8E0F2F}
 .ng-spot .hchip.time.hurry em{color:#fff}
 .ng-spot .hchip:is(button){-webkit-tap-highlight-color:transparent}
-.ng-spot .sp-tbar{margin:8px 0 0; height:10px}
+.ng-spot .sp-tbar{margin:8px 0 0; height:10px; flex:none}
 .ng-spot .sp-tbar > i{width:100%; transform-origin:left center; transition:none; background:linear-gradient(180deg,#8EF0E0,#14B8A6)}
 .ng-spot .sp-tbar.hurry > i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
-.ng-spot .sp-row{display:flex; align-items:center; gap:8px; width:100%; height:36px}
+.ng-spot .sp-row{display:flex; align-items:center; gap:8px; width:100%; min-height:44px; margin:6px 0 8px}   /* 돋보기(44px)가 막대·그림 틀에 겹치지 않게 줄 높이를 단추에 맞춤 */
 .ng-spot .hlives{flex:none}
 .ng-spot .hlives[hidden]{display:none}
 .ng-spot .hlives i{display:inline-block}
 .ng-spot .hlives i.lost{animation:spot-lost .5s ease-out}
 .ng-spot .hlives.last{background:#FFE3E3}
 @keyframes spot-lost{0%{transform:scale(1.6); color:#FFE27A} 100%{transform:none}}
-.ng-spot .sp-msg{flex:1; min-width:0; overflow:hidden; height:36px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#145A50; white-space:nowrap}
+.ng-spot .sp-msg{flex:1; min-width:0; overflow:hidden; height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--disp); font-size:15px; color:#145A50; white-space:nowrap}
 .ng-spot .sp-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px}
 .ng-spot .sp-msg b.boss{color:#FFE27A}
 .ng-spot .sp-msg b.bad{color:#FF8A8F}

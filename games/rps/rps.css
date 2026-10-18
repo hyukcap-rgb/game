@@ -2,7 +2,7 @@
 body[data-mode="rps"]{background:
   radial-gradient(90% 46% at 50% 100%, rgba(255,214,168,.55), rgba(255,214,168,0) 70%),
   linear-gradient(180deg,#43316F 0%,#6B4C8E 38%,#B9768A 72%,#E3A27F 100%) fixed}
-html body[data-mode="rps"] .wrap{padding-bottom:8px}
+html body[data-mode="rps"] .wrap{padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px))}   /* 버튼이 화면 아래 끝(홈 막대)에 붙지 않게 16px 이상 */
 .ng-rps{position:relative; display:flex; flex-direction:column; height:640px; -webkit-user-select:none; user-select:none; touch-action:manipulation; --hs:120px; --hz:160px; --hz2:140px; --mz:96px}
 .ng-rps .hud-row{flex:none}
 .ng-rps .hchip .hv svg{width:20px; height:20px}
@@ -98,7 +98,7 @@ html body[data-mode="rps"] .wrap{padding-bottom:8px}
 @keyframes rpEnd{0%{opacity:0; transform:translate(-50%,-50%) scale(.5)}60%{opacity:1; transform:translate(-50%,-50%) scale(1.06)}100%{transform:translate(-50%,-50%) scale(1)}}
 
 /* ---------- 지령 판: 메달(모양+그림) + 글자, 테두리 색 ---------- */
-.ng-rps .rp-sign{flex:none; position:relative; display:flex; align-items:center; gap:12px; height:92px; margin:calc(var(--cover, 20px) * -1) 6px 0; padding:0 16px 16px 10px; border-radius:22px; z-index:5;
+.ng-rps .rp-sign{flex:none; position:relative; display:flex; align-items:center; gap:12px; height:92px; margin:calc(10px - var(--cover, 0px)) 6px 0; padding:0 16px 16px 10px; border-radius:22px; z-index:5;
   background:linear-gradient(180deg,#FFFCF6 0%,var(--ol,#F3EEFF) 100%); border:3px solid #1A0F45; box-shadow:0 5px 0 #1A0F45, 0 10px 18px rgba(40,16,70,.22), inset 0 0 0 3px var(--oc,#D6CCE6)}
 .ng-rps .rp-med{flex:none; width:68px; height:68px; margin-top:-2px; filter:drop-shadow(0 3px 0 rgba(26,15,69,.55))}
 .ng-rps .rp-med svg{width:100%; height:100%; display:block}

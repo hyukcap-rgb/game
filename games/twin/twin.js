@@ -367,7 +367,8 @@ NG.twin = (() => {
     const m = S(), tb = $('#twTable'), root = document.querySelector('.ng-twin'); if(!m || !tb || !root) return;
     const gap = m.three ? 8 : 14, W = Math.min(tb.clientWidth || root.clientWidth || 360, 460);
     const top = tb.getBoundingClientRect().top + (window.scrollY || 0);
-    const avail = Math.max(260, (innerHeight || 740) - top - 10 - (trim || 0));
+    let pb = 18; try{ pb = parseFloat(getComputedStyle(root).paddingBottom) || 18; }catch(_){}   /* 아래 여백 18px + 홈 막대(safe-area): 카드가 화면 끝에 붙지 않게 */
+    const avail = Math.max(260, (innerHeight || 740) - top - pb - (trim || 0));
     let d, pos;
     if(!m.three){
       /* 두 장: 위아래로 쌓기. 폭이 남고 높이가 모자란 화면(360×740 등)은 비스듬히 놓아 카드를 더 크게 */
@@ -915,7 +916,7 @@ body[data-mode="twin"]{background:
   radial-gradient(90% 55% at 50% 0%, rgba(255,255,255,.7), rgba(255,255,255,0) 70%),
   repeating-linear-gradient(90deg, rgba(150,95,40,.035) 0 2px, transparent 2px 120px),
   linear-gradient(180deg,#FCF3E6 0%,#F5E2C8 58%,#EBCFA9 100%) fixed}
-.ng-twin{position:relative; display:flex; flex-direction:column; align-items:center; margin-bottom:-30px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
+.ng-twin{position:relative; display:flex; flex-direction:column; align-items:center; margin-bottom:-44px; padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px)); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none}
 .ng-twin .hud-row{margin:0 0 8px}
 .ng-twin .tw-host{position:relative; display:flex; align-items:center; gap:8px; width:100%; height:46px; margin:0 0 8px}
 .ng-twin .tw-hostbox{flex:none; width:46px; height:46px; display:grid; place-items:center}

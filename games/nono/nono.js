@@ -346,12 +346,16 @@ NG.nono = (() => {
     const ctx = cv.getContext('2d'), N = G.N, W = cv.width, u = W / N;
     ctx.clearRect(0, 0, W, W);
     ctx.fillStyle = '#FFFDF6'; ctx.fillRect(0, 0, W, W);
+    let any = false;
     for(let i = 0; i < N * N; i++){
       if(!isFilled(G.cells[i])) continue;
+      any = true;
       const r = Math.floor(i / N), c = i % N;
       ctx.fillStyle = G.nnWin ? G.nnCol[i] : G.fc && G.fc[i] === 2 ? '#F0602E' : '#3A2A92';
       ctx.fillRect(Math.floor(c * u), Math.floor(r * u), Math.ceil(u), Math.ceil(u));
     }
+    /* 왼쪽 위 칸 = 내가 칠한 그림의 작은 미리보기. 아직 아무것도 안 칠했으면 빈 흰 네모가 튀지 않게 판 색에 녹인다 */
+    try{ const k = cv.parentNode; if(k) k.classList.toggle('empty', !any); }catch(_){}
   }
   function colorAt(i){   /* 완성 그림 색: 위→아래 3색 그라데이션 + 도트 느낌 체크무늬 */
     const N = G.N, r = Math.floor(i / N), c = i % N, t = (r * .78 + Math.abs(c - (N - 1) / 2) * .44) / ((N - 1) || 1);
@@ -657,6 +661,7 @@ NG.nono = (() => {
     if(zoom){ cs = 32; m = fit(cs); }   /* 확대 보기: 칸을 손가락 크기로 키우고 판 틀 안에서 밀어 본다(숫자 줄은 붙어 있음) */
     if(fr){ fr.classList.toggle('zoom', zoom); fr.style.maxHeight = zoom ? (maxH + 16) + 'px' : ''; }
     const zb = $n('#nnZoom'); if(zb){ zb.hidden = !(G.nnZoom || cs < 30); zb.setAttribute('aria-pressed', zoom); }
+    try{ const sg = $n('#nnSeg'); if(sg) sg.style.setProperty('--ns', sg.querySelectorAll('.tool').length); }catch(_){}   /* 도구 버튼 폭을 모두 같게(칠하기 묶음은 버튼 수만큼 늘어남) */
     const { f, rw, ch } = m;
     G.nnCs = cs;
     grid.style.setProperty('--cs', cs + 'px'); grid.style.setProperty('--f', f.toFixed(1) + 'px');
@@ -848,7 +853,7 @@ NG.nono = (() => {
         </div>${rules}
         <div class="nn-frame" id="nnFrame">
           <div class="nn-grid" id="nnGrid" style="--n:${N}">
-            <div class="nn-corner"><canvas id="nnPrev" aria-hidden="true"></canvas></div>
+            <div class="nn-corner empty" title="내가 칠한 그림 미리보기"><canvas id="nnPrev" aria-hidden="true"></canvas></div>
             <div class="nn-cc" id="nnCC">${G.cols.map((a, k) => cl(a, k, '세로줄')).join('')}</div>
             <div class="nn-rc" id="nnRC">${G.rows.map((a, k) => cl(a, k, '가로줄')).join('')}</div>
             <div class="nn-bd" id="bd" role="grid" aria-label="네모 그림 판 ${N}×${N}"></div>
@@ -946,7 +951,8 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 @keyframes nnlastin{from{transform:translateX(-50%) scale(.4)}}
 .ng-nono .nn-grid{display:grid; gap:3px; --cs:24px; --f:13px}
 .ng-nono .nn-corner{display:grid; place-items:center; border-radius:10px; background:#F5E6C8}
-.ng-nono .nn-corner canvas{display:block; border-radius:3px; box-shadow:0 0 0 1.5px var(--grid); image-rendering:pixelated}
+.ng-nono .nn-corner canvas{display:block; border-radius:3px; box-shadow:0 0 0 1.5px var(--grid); image-rendering:pixelated; transition:opacity .25s, box-shadow .25s}
+.ng-nono .nn-corner.empty canvas{opacity:.35; box-shadow:0 0 0 1.5px #C9B48A}
 .ng-nono .nn-cc{display:flex; align-items:stretch}
 .ng-nono .nn-rc{display:flex; flex-direction:column}
 .ng-nono .nn-cl{font-family:var(--disp); font-size:var(--f); line-height:1.06; color:var(--ink); font-variant-numeric:tabular-nums; display:flex; transition:background .12s, color .2s, opacity .2s}
@@ -998,8 +1004,9 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-stamp{position:absolute; left:50%; top:100%; z-index:6; transform:translate(-50%,-50%) rotate(-6deg); font-family:var(--heavy); font-size:clamp(24px,7.5vw,34px); color:#fff; white-space:nowrap; padding:6px 18px; border-radius:16px; background:linear-gradient(180deg,#FF8AC0,#F0368A); border:3px solid var(--grid); box-shadow:0 5px 0 var(--grid); text-shadow:0 2px 0 #8E0F4F; pointer-events:none; animation:nnstamp .45s cubic-bezier(.2,1.8,.4,1) both}
 @keyframes nnstamp{0%{transform:translate(-50%,-50%) rotate(-6deg) scale(2.6); opacity:0}100%{transform:translate(-50%,-50%) rotate(-6deg) scale(1); opacity:1}}
 .ng-nono .nn-ctrl{align-items:stretch; margin:0; padding:0 4px 4px}
-.ng-nono .nn-seg{flex:1 1 0; min-width:0; display:flex; gap:8px}
-.ng-nono .nn-ctrl > .tool{flex:0 0 68px}
+.ng-nono .nn-seg{--ns:2; flex:var(--ns) 1 calc(var(--ns) * 25px + (var(--ns) - 1) * 8px); min-width:0; display:flex; gap:8px}   /* 25px = 도구 버튼 좌우 안쪽 여백+테두리(힌트 버튼의 기본 폭과 맞춤) */
+/* 힌트·확대·채점도 칠하기·✕ 표시와 같은 폭: 칠하기 묶음은 버튼 수(--ns)만큼, 기준 폭 = 묶음 안 틈 합 */
+.ng-nono .nn-ctrl > .tool{flex:1 1 0; min-width:0; min-height:56px; flex-direction:row; gap:6px; font-size:17px}
 .ng-nono .nn-seg .tool{flex:1 1 0; min-width:0; min-height:56px; flex-direction:row; gap:6px; font-size:17px}
 .ng-nono .nn-seg .tool > svg{width:18px; height:18px}
 .ng-nono .nn-sq{width:17px; height:17px; border-radius:4px; flex:none; background:#3A2A92; box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4)}
@@ -1008,7 +1015,7 @@ body[data-mode="nono"]{background:#ECE7FF; background-image:linear-gradient(rgba
 .ng-nono .nn-hint > svg, .ng-nono .nn-zoom > svg{width:24px; height:24px}
 .ng-nono .nn-hint .cnt.off{background:#B9AECB}
 .ng-nono .tool[hidden]{display:none}
-.ng-nono .nn-tip{text-align:center; font-size:13px; color:#6A5884; margin:0 8px; padding:8px 0 4px; line-height:1.4}
+.ng-nono .nn-tip{text-align:center; font-size:14px; color:#4A3A6E; margin:0 8px; padding:8px 0 4px; line-height:1.4}
 .ng-nono .nn-ctrl{margin-top:12px}
 .ng-nono .nn-frame{margin:4px auto 0}   /* 판 바로 아래 조작 줄(S-NONO-3) */
 /* 칠하기/✕ 표시: 고른 쪽 진한 색 + 체크(S-NONO-3) */
