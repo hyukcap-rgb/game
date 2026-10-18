@@ -190,7 +190,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 .th body:not([data-mode]) .modal .big{color:var(--t-yel); -webkit-text-stroke:7px var(--t-ink)}
 .th body:not([data-mode]) .modal.celebrate{background:var(--t-card); color:var(--t-ink); border-color:var(--t-yel)}
 .th body:not([data-mode]) .modal.celebrate .rprec, .th body:not([data-mode]) .modal.celebrate .rpnote{color:var(--t-ink)}
-.th body:not([data-mode]) .mx{color:var(--t-ink)}
+/* .mx 색은 파일 끝 공용 닫기 버튼에서 */
 .th body:not([data-mode]) :is(.b1, .btn.primary, .b2, .btn.secondary, .btn.gold){border:var(--t-bw) solid var(--t-line); text-shadow:none; box-shadow:var(--t-sh-s)}
 .th body:not([data-mode]) :is(.b1, .btn.primary){background:var(--t-acc); color:var(--t-acc-ink)}
 .th body:not([data-mode]) :is(.b2, .btn.secondary){background:var(--t-acc2); color:var(--t-acc2-ink)}
@@ -344,3 +344,7 @@ html[data-theme="neon"] body:not([data-mode]) .modal .st.lock{background:#262D6B
 /* 하늘색(보조) 버튼 위 하트 비용 칩: 흰 글자라 안 보이던 것(네온) → 진한 글자 */
 html[data-theme="neon"] body:not([data-mode]) :is(.b2, .btn.secondary) .cost{color:#0B0F2A; background:rgba(11,15,42,.14)}
 html[data-theme="neon"] body:not([data-mode]) :is(.b2, .btn.secondary) .cost .ico{color:#0B0F2A}
+/* 공용 닫기(✕) 버튼 — 테마 색(2026-10-18) */
+.th body:not([data-mode]) :is(.mx, .modal .amx){color:var(--t-ink); background:var(--t-card2); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
+html[data-theme="neon"] body:not([data-mode]) :is(.mx, .modal .amx){background:#21275C; border-color:#3A44A0; box-shadow:none}
+html[data-theme="jelly"] body:not([data-mode]) :is(.mx, .modal .amx){background:#F1ECFF; border-color:transparent; color:#6A4AE8; box-shadow:none}

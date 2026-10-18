@@ -503,7 +503,7 @@ details.more[open] > summary::after{content:"▴"}
 .frav .ondot{position:absolute; right:-2px; bottom:-1px}
 .dchip{display:inline-block; padding:1px 8px 2px; border-radius:999px; font-family:var(--disp); font-size:13px; line-height:1.35; color:#fff; border:2px solid rgba(26,15,69,.55); white-space:nowrap}
 .dchip.easy{background:#23A548} .dchip.normal{background:#2E8FE8} .dchip.hard{background:#E0243A}
-.mx{position:absolute; top:8px; right:10px; width:40px; height:40px; border-radius:12px; font-size:20px; color:var(--sub); background:transparent; z-index:2}
+.mx{position:absolute; top:8px; right:10px; z-index:2}   /* 모양은 core/base.css 공용 닫기 버튼 */
 .rmlist, .rmroom, .rmmake, .frhub, .frpickg{position:relative; text-align:left}
 .rmlist h3, .rmroom h3, .rmmake h3, .frpickg h3{text-align:left; margin:2px 0 8px}
 .rmlist .kick, .rmroom .kick, .rmmake .kick, .frpickg .kick{text-align:left; margin:0}
@@ -624,7 +624,7 @@ details.more[open] > summary::after{content:"▴"}
 .gr-go.rooms b{font-family:var(--heavy); margin-left:2px}
 .dr-bonus{margin:-4px 0 6px; text-align:center; font-family:var(--disp); font-size:13px; color:#C77700}
 .rmpill[hidden]{display:none}
-.rmroom .mx, .frhub .mx, .rmlist .mx{top:0; right:0}
+.rmroom .mx, .frhub .mx, .rmlist .mx{top:2px; right:0}
 .rmroom h3, .frhub h3{margin-right:48px}
 .frhub h3 small{color:#BFF5DC}
 .frhub h3 small b{color:#fff}
@@ -880,7 +880,7 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 .modal.setm{text-align:left}
 .setsheet{position:relative}
 .setsheet h3{margin-right:48px}
-.setsheet .mx{top:0; right:0}
+.setsheet .mx{top:2px; right:0}
 .setgrp{margin-top:12px}
 .sgt{margin:0 0 6px 4px; font-family:var(--disp); font-size:15px; color:var(--sub)}
 .setbox{background:#fff; border:2.5px solid var(--outline); border-radius:16px; overflow:hidden; box-shadow:0 3px 0 var(--outline2)}

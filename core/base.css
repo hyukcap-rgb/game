@@ -383,3 +383,13 @@ body.big .recl{font-size:18px}
 body.big .ch-tx{font-size:18px}
 body.big .dg-rules li{font-size:17.5px}
 body.big .db-who, body.big .db-val small, body.big .db-sub{font-size:15px}
+
+/* ===== 공용 닫기(✕) 버튼 (2026-10-18 테스트팀 검수) =====
+   창마다 모양이 제각각이던 ✕(맨 글자 · 네모 칸 · 제목 띠 안에 겹침)를 하나로: 40px 동그라미, 글꼴과 상관없이 같은 두께의 X(선 두 개).
+   자리: 제목 띠 오른쪽 바깥, 띠 높이 가운데(제목 띠는 오른쪽을 50px 비운다). */
+.mx, .modal .amx, .drules .x{width:40px; height:40px; padding:0; border-radius:50%; display:grid; place-items:center; font-size:0; line-height:0; color:var(--ink); background:var(--paper2, #fff); border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2); cursor:pointer; -webkit-tap-highlight-color:transparent}
+.mx::before, .mx::after, .modal .amx::before, .modal .amx::after, .drules .x::before, .drules .x::after{content:""; position:absolute; left:50%; top:50%; width:16px; height:2.5px; margin:-1.25px 0 0 -8px; border-radius:2px; background:currentColor; transform:rotate(45deg)}
+.mx::after, .modal .amx::after, .drules .x::after{transform:rotate(-45deg)}
+.mx:active, .modal .amx:active, .drules .x:active{transform:translateY(2px); box-shadow:0 0 0 var(--outline2)}
+.drules .x{width:36px; height:36px}
+.drules h4{padding-right:42px}

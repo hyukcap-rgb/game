@@ -226,7 +226,7 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .drules h4{margin:0 0 6px; display:flex; justify-content:space-between; align-items:center; font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink)}
 .drules h4 em{font-style:normal; font-size:13px; color:#C0392B; font-family:var(--font); font-weight:800}
 .drules .dg-rules{border:0; padding:0; background:none}
-.drules .x{position:absolute; top:6px; right:8px; width:36px; height:36px; border-radius:50%; font-size:18px; color:var(--sub)}
+.drules .x{position:absolute; top:4px; right:6px}
 /* 대전 메뉴(구슬·디펜스 일시정지 버튼 대신) */
 .modal .dmenu-live{display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; padding:4px 10px; border-radius:99px; font-size:13px; font-weight:800; color:#C0392B; background:#FFE3E3; border:1.5px solid #F5B5B5}
 .modal .dmenu-live i{width:8px; height:8px; border-radius:50%; background:#E5484D; animation:pulse 1.4s ease-in-out infinite}
@@ -337,8 +337,8 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 
 /* 판 고르기(솔로 맵): 판 번호 가기 · 몸풀기 꼬리표 · 바닥 고정 판 정보 */
 .modal.amap{padding-bottom:0}
-.modal .amx{position:absolute; top:22px; right:24px; z-index:2; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:18px; color:var(--ink); background:#fff; border:2px solid var(--outline2); box-shadow:0 2px 0 var(--outline2)}
-.amap h3{padding-right:52px; padding-left:52px}
+.modal .amx{position:absolute; top:18px; right:16px; z-index:2}
+.amap h3{margin-right:50px}
 .amgo{display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 8px}
 .amgo label{font-family:var(--disp); font-size:16px; color:var(--ink)}
 .amgo input{width:120px; height:48px; padding:0 8px; border-radius:14px; border:2.5px solid var(--outline2); background:#fff; text-align:center; font-family:var(--heavy); font-size:20px; color:var(--ink); -moz-appearance:textfield}
