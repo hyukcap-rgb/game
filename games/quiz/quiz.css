@@ -31,3 +31,13 @@ body.big .ng-quiz .qz-b{ font-size:18px; } body.big .ng-quiz .qz-hints li{ font-
 @keyframes qzIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
 @keyframes qzPulse{ 0%{ box-shadow:0 0 0 0 rgba(124,92,255,.6); } 100%{ box-shadow:0 0 0 18px rgba(124,92,255,0); } }
 @media (prefers-reduced-motion: reduce){ .ng-quiz .qz-hints li.on, .ng-quiz .qz-play.on{ animation:none; } }
+/* 2026-10-18 글자 줄이기(docs/29): 지난 힌트는 번호만, 안 열린 힌트는 🔒 작은 칸 · 누르면(.all) 모두 펼침 */
+.ng-quiz .qz-hints{ flex-direction:row; flex-wrap:wrap; }
+.ng-quiz .qz-hints li{ display:flex; align-items:center; gap:8px; }
+.ng-quiz .qz-hints li.on:not(.old){ flex:1 1 100%; order:-1; }
+.ng-quiz .qz-hints li .hn{ flex:none; width:22px; height:22px; border-radius:50%; background:#1A1240; color:#fff; font-size:13px; display:grid; place-items:center; }
+.ng-quiz .qz-hints li.old{ padding:6px; cursor:pointer; }
+.ng-quiz .qz-hints li.old .ht{ display:none; }
+.ng-quiz .qz-hints.all li.old{ flex:1 1 100%; padding:8px 12px; }
+.ng-quiz .qz-hints.all li.old .ht{ display:inline; }
+.ng-quiz .qz-hints li.lk{ padding:6px 10px; }

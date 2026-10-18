@@ -499,7 +499,7 @@ NG.chosung = (() => {
     const word = mine && p.got ? p.got : p.n, nick = pl ? pl.nick : '';
     if(card){
       card.style.setProperty('--oc', p.col || '#8E8AA6');
-      card.innerHTML = `<div class="cs-top"><span class="cs-cat ${own ? 'op' : 'sk'}">${own ? (mine ? '내가 맞혔어요!' : esc(nick) + '님 정답!') : '아무도 못 맞혔어요'}</span></div>` + tilesHtml(p, word, 'flip') + glShow(p, word);
+      card.innerHTML = `<div class="cs-top"><span class="cs-cat ${own ? 'op' : 'sk'}">${own ? (mine ? '✔ 나' : '✔ ' + esc(duelShortNick ? duelShortNick(nick) : nick).slice(0, 3)) : '✕'}</span></div>` + tilesHtml(p, word, 'flip') + glShow(p, word);
       card.classList.remove('ok', 'skip', 'op', 'bad'); card.classList.add(mine ? 'ok' : own ? 'op' : 'skip');
     }
     clearInput();

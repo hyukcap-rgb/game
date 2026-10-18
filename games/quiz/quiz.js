@@ -6,10 +6,10 @@
 NG.quiz = (() => {
   const CATS = ['mel', 'snack', 'emoji', 'person'];
   const CAT = {
-    mel:{ name:'멜로디', tag:'🎵 멜로디 듣고 맞히기', q:'이 멜로디의 곡 제목은?', col:'#7C5CFF' },
-    snack:{ name:'추억 간식', tag:'🍦 상표 가리고 맞히기', q:'상표를 가렸어요. 이 간식은?', col:'#FF8A3D' },
-    emoji:{ name:'그림 속담', tag:'🧩 그림 보고 속담', q:'그림이 말하는 속담은?', col:'#22A57A' },
-    person:{ name:'옛 인물', tag:'📜 힌트로 인물 맞히기', q:'이 사람은 누구일까요?', col:'#3D7BE0' }
+    mel:{ name:'멜로디', tag:'🎵 멜로디 듣고 맞히기', q:'이 멜로디의 곡 제목은?', ask:'곡 제목은?', col:'#7C5CFF' },
+    snack:{ name:'추억 간식', tag:'🍦 상표 가리고 맞히기', q:'상표를 가렸어요. 이 간식은?', ask:'이 간식은?', col:'#FF8A3D' },
+    emoji:{ name:'그림 속담', tag:'🧩 그림 보고 속담', q:'그림이 말하는 속담은?', ask:'어떤 속담?', col:'#22A57A' },
+    person:{ name:'옛 인물', tag:'📜 힌트로 인물 맞히기', q:'이 사람은 누구일까요?', ask:'누구일까요?', col:'#3D7BE0' }
   };
   const BEAT = .32;
   const el = id => document.getElementById(id);
@@ -80,15 +80,15 @@ NG.quiz = (() => {
   function drawQ(){
     const m = S(); if(!m) return; const q = m.Q[m.i], C = CAT[q.c];
     el('qzCnt').textContent = m.i + 1; el('qzPts').textContent = fmt(m.pts);
-    el('qzTag').textContent = C.tag; el('qzTag').style.background = C.col;
-    el('qzAsk').textContent = C.q;
+    el('qzTag').textContent = C.tag.split(' ')[0] + ' ' + C.ask; el('qzTag').setAttribute('aria-label', C.tag);   /* 2026-10-18 글자 줄이기(docs/29): 꼬리표 = 그림 + 짧은 질문, 긴 질문 줄은 숨김 */ el('qzTag').style.background = C.col;
+    el('qzAsk').textContent = ''; el('qzAsk').hidden = true; el('qzAsk').setAttribute('aria-label', C.q);
     let body = '';
-    if(q.c === 'mel') body = `<button class="qz-play" id="qzPlay" aria-label="멜로디 다시 듣기"><span>▶</span><b>다시 듣기</b></button><p class="qz-sub">소리가 안 나면 음량을 켜 주세요</p>`;
-    else if(q.c === 'snack') body = `${snackSvg(q.item.sh, q.item.c)}<ol class="qz-hints" id="qzHints"></ol><p class="qz-legal">상표는 각 회사의 것이며 이 퀴즈와 제휴 관계가 없어요</p>`;
+    if(q.c === 'mel') body = `<button class="qz-play" id="qzPlay" aria-label="멜로디 다시 듣기"><span>▶</span><b>다시</b></button>`;
+    else if(q.c === 'snack') body = `${snackSvg(q.item.sh, q.item.c)}<ol class="qz-hints" id="qzHints"></ol><p class="qz-legal">상표는 각 회사 것 · 제휴 아님</p>`;   /* 법무(docs/28) 표기는 판 위에 짧게 유지, 전체 문장은 tips */
     else if(q.c === 'emoji') body = `<div class="qz-emoji" aria-label="속담 그림">${esc(q.item.e)}</div>`;
     else body = `<div class="qz-person" aria-hidden="true">?</div><ol class="qz-hints" id="qzHints"></ol>`;
     el('qzBody').innerHTML = body;
-    el('qzBtns').innerHTML = q.ch.map((t, i) => `<button class="qz-b" data-i="${i}"><i>${'ABCD'[i]}</i><span>${esc(t)}</span></button>`).join('');
+    el('qzBtns').innerHTML = q.ch.map((t, i) => `<button class="qz-b" data-i="${i}"><span>${esc(t)}</span></button>`).join('');
     el('qzBtns').querySelectorAll('.qz-b').forEach(b => b.onclick = () => pick(+b.dataset.i));
     const pb = el('qzPlay'); if(pb) pb.onclick = () => playMel(q);
     m.hs = 0; updHints(true);
@@ -98,7 +98,9 @@ NG.quiz = (() => {
     const m = S(); if(!m) return; const q = m.Q[m.i]; if(!q || !q.item.h) return;
     const n = m.lock ? 3 : hintsShown(m); if(n === m.hs && !force) return;
     m.hs = n; const ol = el('qzHints'); if(!ol) return;
-    ol.innerHTML = q.item.h.map((h, i) => `<li class="${i < n ? 'on' : ''}">${i < n ? esc(h) : '힌트 ' + (i + 1) + ' · 곧 열려요'}</li>`).join('');
+    /* 2026-10-18(docs/29): 가장 최근 힌트만 글로, 지난 힌트는 번호 동그라미(누르면 모두 펼침) · 안 열린 힌트는 🔒 */
+    ol.innerHTML = q.item.h.map((h, i) => i < n ? `<li class="on${i < n - 1 ? ' old' : ''}"><b class="hn" aria-hidden="true">${i + 1}</b><span class="ht">${esc(h)}</span></li>` : `<li class="lk" aria-label="힌트 ${i + 1} 곧 열려요">🔒</li>`).join('');
+    ol.onclick = () => ol.classList.toggle('all');
     if(n > 1 && !force) sfx('qzHint');
   }
   function pick(i){
@@ -155,6 +157,7 @@ NG.quiz = (() => {
       ['힌트는 점점 열려요', '간식·인물 문제는 시간이 지나면 힌트가 하나씩 더 열려요. 힌트를 적게 보고 맞힐수록 점수가 커요.'],
       ['멜로디는 직접 연주해요', '게임이 음표로 직접 연주해요. 다시 듣기를 눌러 몇 번이고 들을 수 있어요.']
     ],
+    tips:[['꼬리표', '🎵 멜로디 · 🍦 추억 간식(상표 가리고) · 🧩 그림 속담 · 📜 옛 인물'], ['다시', '멜로디 다시 듣기'], ['위 칩', '몇 번째 문제 / 전체 · 지금 점수'], ['🔒', '시간이 지나면 열리는 힌트'], ['① ②', '지난 힌트(누르면 모두 펼쳐 보기)'], ['소리', '멜로디가 안 들리면 기기 음량을 켜 주세요'], ['상표', '상표는 각 회사의 것이며 이 퀴즈와 제휴 관계가 없어요']],
     howto:{ lines:['멜로디·간식·속담·인물 4지선다', '빨리 맞힐수록 점수가 커요', '힌트는 시간이 지나면 열려요'] },
     chapters:['추억의 멜로디', '추억의 간식', '그림 속담', '옛 인물', '종합 퀴즈쇼'],
     starRule:'★ 절반 이상 정답 · ★★ 틀린 문제 2개 이하 · ★★★ 모두 정답',
@@ -181,8 +184,8 @@ NG.quiz = (() => {
       const m = S();
       st.innerHTML = `<div class="ng-quiz${m.boss ? ' boss' : ''}">
         <div class="hud-row">
-          <div class="hchip"><span class="hv"><b id="qzCnt">1</b><small>/${m.N}</small></span><em>문제</em></div>
-          <div class="hchip"><span class="hv"><b id="qzPts">0</b></span><em>점수</em></div>
+          <div class="hchip ic"><span class="hv"><b id="qzCnt">1</b><small>/${m.N}</small></span><em>문제</em></div>
+          <div class="hchip ic"><span class="hv"><b id="qzPts">0</b></span><em>점수</em></div>
         </div>
         <div class="qz-card">
           <span class="qz-tag" id="qzTag"></span>

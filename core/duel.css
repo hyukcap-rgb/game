@@ -9,6 +9,8 @@
 .duelbar.v3.two .d2-t{display:flex; flex-direction:column; min-width:0; line-height:1}
 .duelbar.v3.two .d2-t em{font-style:normal; font-family:var(--disp); font-size:13px; line-height:1.05; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
 .duelbar.v3.two .d2.op .d2-t em{color:#FFC2DB}
+/* UI팀 2026-10-18(docs/29): 1:1 막대의 '나'·상대 이름 글자는 숨김(얼굴 그림·색으로 구분, 상대 이름은 제목 'VS 별명'과 결과 창에) */
+.duelbar.v3.two .d2-t em{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 .duelbar.v3.two .d2-t b{font-family:var(--heavy); font-weight:400; font-size:18px; line-height:1.05; color:#fff; white-space:nowrap; font-variant-numeric:tabular-nums}
 .duelbar.v3.two .d2-t b small{font-family:var(--font); font-size:13px; font-weight:800; color:#B9AEE8; margin-left:1px}
 .duelbar.v3.two .d2-t b .tile{display:inline-block; min-width:30px; padding:1px 4px; border-radius:6px; background:#FFE39A; color:#5A3300; text-align:center; font-size:14px}
