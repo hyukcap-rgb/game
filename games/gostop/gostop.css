@@ -496,3 +496,16 @@ body.gs-full{overflow:hidden}
 .gsg:has(> .gs-lobby.up:not([hidden])){overflow:visible}
 /* 19 표시: 사이트 글꼴 */
 .gs19{font-family:var(--font); -webkit-text-stroke:0; paint-order:normal}
+/* 2026-10-18 판 위 글자 줄이기(docs/29): 포인트 얻기 = 2×2 작은 칸, 잠금·남은 패 그림 */
+.gs-earn{display:grid !important; grid-template-columns:1fr 1fr}
+.gs-earn > div{min-width:0}
+.gs-lobby.up .gs-earn{margin-top:16px}
+.gs-lobby.up .gs-earn > div{justify-content:space-between; min-height:44px}
+.gs-lobby.up .gs-earn > div span{flex:none; font-size:16px}
+.gs-lobby.up .gs-earn > div i{font-size:15px}
+.gs-lobby.up .gs-wal em{font-size:15px; color:#B5490F; font-weight:800}
+.gs-lobby.up .gs-wal{margin-bottom:12px}
+.gs-lock{width:1em; height:1em; vertical-align:-2px; margin-right:4px}
+.gs-hico{width:1.1em; height:1.1em; vertical-align:-4px; margin-right:6px}
+.gs-left{white-space:nowrap}
+.gs-side .gs-ih{justify-content:flex-end}

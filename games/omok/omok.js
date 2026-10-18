@@ -339,6 +339,8 @@ NG.omok = (() => {
       fog:{ name:'안개', desc:'상대가 마지막에 둔 자리와 3·3 금지 표시가 보이지 않아요. 판을 잘 살펴요!' }
     }
   };
+  /* 판 위 규칙 꼬리표는 4글자 이하(docs/29) — 전체 이름·설명은 도움말 */
+  const CHIP_SHORT = { white:'백 두기', pre:'깔린 돌' };
   const RULE_TIP = { rock:'바위는 줄을 끊어요', white:'나는 백', tiny:'11×11 판', pre:'돌이 깔린 채 시작', flash:'한 수 15초', bare:'힌트·무르기 없음', tight:'한 번에 끝까지', deep:'더 깊은 수', fog:'마지막 수 표시 없음' };
   /* 자리 k: 1 AI(새 규칙 소개) · 2 묘수 · 3 AI · 4 묘수 · 5 AI(어려움) · 6 묘수(변주 소개) · 7 AI · 8 묘수 · 9 묘수(쉬어가기) · 10 AI(보스) */
   const KIND = [null, 'ai', 'pz', 'ai', 'pz', 'ai', 'pz', 'ai', 'pz', 'pz', 'ai'];
@@ -434,18 +436,18 @@ NG.omok = (() => {
   function drawPreview(){
     const m = S(), el = $('#omPrev'), gd = $('#omGuide'), btn = $('#omPut'), co = $('#omCoord'); if(!el) return;
     const i = m.preview;
-    if(i == null || !myTurn(m)){ el.innerHTML = ''; if(gd) gd.innerHTML = ''; if(btn){ btn.disabled = true; btn.querySelector('small').textContent = ''; } if(co) co.innerHTML = myTurn(m) ? (m.slowable && m.myMoves === 0 ? '자리를 눌러 골라요 · 시계를 누르면 한 수 시간을 바꿔요' : '자리를 눌러 골라요') : (m.over ? '' : '상대 차례'); return; }
+    if(i == null || !myTurn(m)){ el.innerHTML = ''; if(gd) gd.innerHTML = ''; if(btn){ btn.disabled = true; btn.querySelector('small').textContent = ''; } if(co) co.innerHTML = myTurn(m) || m.over ? '' : '상대 차례'; return; }   /* 조작 안내 문장은 도움말 tips로(docs/29) */
     const [x, y] = P(i), W = m.B.n * 10, ban = m.me === BLACK && isForbidden(m.B, i);
     gd.innerHTML = `<path d="M5 ${y}H${W - 5}M${x} 5V${W - 5}" class="om-guide"/>`;
     el.innerHTML = `<g class="om-ghost${ban ? ' ban' : ''}">${stoneSvg(m.me, x, y)}</g><circle cx="${x}" cy="${y}" r="6.3" class="om-ring${ban ? ' ban' : ''}"/>`;
     if(btn){ btn.disabled = ban; btn.querySelector('small').textContent = cellName(m, i); }
-    if(co) co.innerHTML = ban ? '<b class="bad">3·3 금지 자리예요</b>' : '<b>' + cellName(m, i) + '</b> 분홍 자리가 맞으면 [두기] · 한 번 더 눌러도 돼요';
+    if(co) co.innerHTML = ban ? '<b class="bad">3·3 금지</b>' : '';   /* 좌표는 [두기] 단추에 보임 */
   }
   function msg(html, cls){ const e = $('#omMsg'); if(!e) return; e.className = 'om-msg ' + (cls || ''); e.innerHTML = html; }
   function turnMsg(){
     const m = S(); if(m.over) return;
-    if(m.mode === 'pz'){ msg(m.turn === m.me ? `<span><b class="sm">${CNAME(m.me)} 차례</b> · ${m.myMoves + 1}번째 수 / 최대 ${m.maxMoves}수</span>` : '<span>상대가 막는 중…</span>'); return; }
-    if(m.turn === m.me) msg(`<span><b class="sm">내 차례</b> · ${CNAME(m.me)}${m.me === BLACK && !m.fog ? ' · × 자리는 3·3 금지' : ''}</span>`);
+    if(m.mode === 'pz'){ msg(m.turn === m.me ? `<span><b class="sm">내 차례</b></span>` : '<span>상대가 막는 중…</span>'); return; }
+    if(m.turn === m.me) msg(`<span><b class="sm">내 차례</b></span>`);
     else msg(`<span class="om-think">${oppName(m)} 생각 중<i></i><i></i><i></i></span>`);
   }
   function oppName(m){ return m.mode === 'duel' && G.duel ? (G.duel.mode === 'pvp' ? esc(G.duel.opp.nick || '상대') : '컴퓨터') : '컴퓨터' + (m.mode === 'ai' ? '(' + AI_NAME[m.aiLv] + ')' : ''); }
@@ -765,13 +767,14 @@ NG.omok = (() => {
       hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/></svg>',
       back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10H14a6 6 0 0 1 0 12h-3" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/></svg>',
       retry:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round"/><path d="M18.5 2.5v4.5H14" fill="none" stroke="#1A0F45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      moves:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="14.5" r="5.5" fill="#231B3E" stroke="#1A0F45" stroke-width="1.8"/><circle cx="15.5" cy="9.5" r="5.5" fill="#FFFFFF" stroke="#1A0F45" stroke-width="1.8"/><path d="M14 5.5l1.5 1" stroke="#C9C2DE" stroke-width="1.4" stroke-linecap="round"/></svg>',
       zoom:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#E9F4FF" stroke="#1A0F45" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke="#1A0F45" stroke-width="3" stroke-linecap="round"/><path d="M7 10h6M10 7v6" stroke="#1A0F45" stroke-width="2.2" stroke-linecap="round"/></svg>'
     };
-    const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
+    const chips = G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="om-rules" aria-label="켜진 규칙">${m.boss ? '<span class="om-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="om-chip mj">${CHIP_SHORT[k] || CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="om-chip tw">${CHIP_SHORT[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}</div>` : '';
     st.innerHTML = `<div class="ng-omok${pz ? ' is-pz' : ''}${duel ? ' is-duel' : ''}">
       <div class="hud-row">
         ${pz ? `<div class="hchip" aria-label="${m.N}수 안에 이기는 묘수"><span class="hv">${stoneIco(m.me)}<b>${m.N}수</b></span><em>${m.N}수 안에 이기기</em></div>
-          <div class="hchip" aria-label="둔 수"><span class="hv"><b id="omMv">0</b><small>/${m.maxMoves}</small></span><em>둔 수 / 최대</em></div>
+          <div class="hchip" aria-label="둔 수 / 최대"><span class="hv">${ICO.moves}<b id="omMv">0</b><small>/${m.maxMoves}</small></span><em>둔 수 / 최대</em></div>
           <${m.pzSlowable ? 'button type="button"' : 'div'} class="hchip time${m.pzSlow ? ' slow' : ''}" id="omTimeP" aria-label="남은 시간${m.pzSlowable ? ' · 눌러서 느긋하게(2배) 바꾸기' : ''}"><span class="hv">${ICO.clock}<b id="omTime">${mmss(G.limit)}</b></span><em id="omPzT">${m.pzSlowable ? (m.pzSlow ? '느긋하게 ⇄' : '보통 ⇄') : '남은 시간'}</em></${m.pzSlowable ? 'button' : 'div'}>`
         : `<div class="hchip om-side" id="omMe" aria-label="나 · ${CNAME(m.me)}"><span class="hv">${stoneIco(m.me)}<b class="om-opn">나</b></span><em>${CNAME(m.me)} · 0수</em></div>
           <${m.slowable ? 'button type="button"' : 'div'} class="hchip time${m.slow ? ' slow' : ''}" id="omTimeP" aria-label="차례 시간${m.slowable ? ' · 눌러서 30초·60초 바꾸기' : ''}"><span class="hv">${ICO.clock}<b id="omTime">${m.turnLim}초</b></span><em id="omNo">1번째 수</em><i class="om-tbar"><i id="omTurnBar"></i></i></${m.slowable ? 'button' : 'div'}>
@@ -929,6 +932,17 @@ NG.omok = (() => {
         ['시간을 넘기면', '처음 한 번은 대신 둬 줘요. 그다음부터는 "자리 비움"이 보이고, 세 번 연속이면 기권이에요.'],
         ['3·3 금지 자세히', '흑은 열린 3을 두 줄 한꺼번에 만드는 자리에 둘 수 없어요. 4·4와 4·3은 괜찮아요. 백은 금지 자리가 없어요.']
       ]
+    },
+    /* 판 위에서 뺀 안내 문장(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'omok' && G.m, t = [
+        ['고르고 [두기]', '자리를 눌러 분홍 자리를 골라요. 맞으면 [두기]나 같은 자리를 한 번 더 눌러요. [두기] 아래 글자가 좌표예요.'],
+        ['× 자리', '흑은 × 자리에 못 둬요(3·3 금지). 백은 금지가 없어요.'],
+        ['확대', '판을 2배로 키워요. 끌어서 옮겨요.']];
+      if(m && m.mode === 'pz') t.push(['둔 수 / 최대', '내가 둔 수와 최대 수예요. 묘수는 그 수 안에 이겨야 해요.'], ['처음부터', '묘수를 처음부터 다시 풀어요(기회 1번).']);
+      else t.push(['시계', '한 수 남은 시간이에요. 솔로는 첫 수 전에 시계를 누르면 보통 ⇄ 느긋하게(2배)로 바꿔요.'], ['무르기', '내 수와 상대 수를 하나씩 되돌려요.']);
+      if(m) [].concat(m.mj || [], m.tw ? [m.tw] : []).forEach(k => { if(CHIP_SHORT[k]){ const f = CONC.info[k] || CONC.twInfo[k]; t.push([CHIP_SHORT[k], f.name + ' — ' + f.desc]); } });
+      return t;
     },
     helpExtra(){ const m = G && G.id === 'omok' && G.m; if(!m) return []; const tips = [].concat(m.mj || [], m.tw ? [m.tw] : []).map(k => RULE_TIP[k]).filter(Boolean); return tips.length ? [['이번 판 규칙', tips.join(' · ')]] : []; },
     chapters:['나무 그늘 쉼터', '돌담 골목', '달빛 정자', '바람 언덕', '별빛 대국장'],

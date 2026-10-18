@@ -240,7 +240,7 @@ if(MULTI&&!ONLYW&&!ONLYS&&!ONLYT){
     await L[1].pg.screenshot({path:SHOT+'/duel-search.png'});
     const ai=(await Promise.all(L.slice(1).map(x=>until(x,()=>G&&G.duel&&G.duel.mode==='ai'&&G.duel.go,null,20000)))).every(Boolean);
     const lim=await Promise.all(L.slice(1).map(x=>x.pg.evaluate(()=>G.limit)));
-    const nm=await L[1].pg.evaluate(()=>document.querySelector('#ptitle').textContent);
+    const nm=await L[1].pg.evaluate(()=>document.querySelector('#ptitle').textContent+' '+PLAY_SUB);   /* 2026-10-18: 제목은 'VS 별명'만, '컴퓨터 상대'는 도움말 이번 판 글(PLAY_SUB) */
     ok(ai&&lim[1]===lim[0]*2&&/컴퓨터/.test(nm), `v2·느긋하게와 짝 안 됨 → 12초 뒤 컴퓨터 · 느긋하게 제한 시간 ${lim[1]}초(보통 ${lim[0]}초) · 제목 '${nm.replace(/\s+/g,' ').slice(0,40)}'`);
     const steps=[]; for(let i=0;i<10;i++){ steps.push(await L[1].pg.evaluate(()=>[Math.round(elapsed()*10)/10,G.duel.P.ai.st.v||0])); await w(STRESS?1600:1200); }
     const early=steps.filter(s=>s[0]<2.9).every(s=>s[1]===0), ints=steps.every(s=>Number.isInteger(s[1]));
@@ -844,7 +844,7 @@ if(MULTI&&!ONLYW&&!ONLYS&&!ONLYT){
    진짜 1:1 대전 → 결과 창 [이 판 다시 풀기]·[친구에게 보내기] → 다시 푼 판·?ds= 링크(사이트·모듈, 다른 브라우저)로 연 판이 대전 판과 같은지(판 상태 지문 비교).
    다시 풀기는 하트·대전 포인트·대전 기록이 그대로여야 한다. 혼자 의미 없는 대전(duelReplay 꺼짐)은 버튼이 없어야 한다.
    지문 = G의 게임 상태(엔진 칸·시각·컴퓨터 흉내(ai)·만든 시간(genMs) 뺌)를 JSON으로 → 해시 */
-const FP=()=>{const skip=new Set(['id','lv','adv','duel','L','attempt','chal','paws','start','over','limit','paused','pauseAt','pausedMs','cfg','replay','practice','rec','raf','cleanup','lt','pz','done','map0','gift','mtRes']);
+const FP=()=>{const skip=new Set(['id','lv','adv','duel','L','attempt','chal','paws','start','over','limit','paused','pauseAt','pausedMs','cfg','replay','practice','rec','raf','cleanup','lt','pz','done','map0','gift','mtRes','genMs','clockTxt','nnT','nnRes']);   /* genMs·clockTxt·nnT·nnRes: 만든 시간·시계 글·네모 그림 타이머·결과(판 내용 아님) */
   const seen=new WeakSet();let s='';for(const k of Object.keys(G).sort()){if(skip.has(k))continue;try{s+=k+'='+JSON.stringify(G[k],(kk,v)=>{if(typeof v==='function'||v instanceof Node)return undefined;if(typeof v==='number'&&v>1e11)return undefined;if(/^(t0|u|uid|at|ts|last|sec|lt|tAt|t1|ai|genMs|clock|phase|lastSec)$/.test(kk))return undefined;if(kk==='t'&&typeof v==='number')return undefined;/* 실시간 게임의 게임 시계(두더지·가위바위보 m.t) */if(v&&typeof v==='object'){if(seen.has(v))return'~';seen.add(v);}return v;})+';';}catch(_){s+=k+'=?;';}}
   return s;};
 const hs=s=>{if(typeof s!=='string')return String(s);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return h+':'+s.length;};

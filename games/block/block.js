@@ -366,14 +366,14 @@ NG.block = (function(){
     const chips = ruleChips(s.cfg);
     st.innerHTML = `<div class="ng-block">
       <div class="hud-row bk-hud">
-        <div class="hchip bk-goal" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}</div>
+        <div class="hchip bk-goal${multi ? ' ic' : ''}" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}</div>
           <div class="hbar bk-bar"><i id="bkFill"></i></div><em id="bkLbl">${multi ? '모을 목표' : '지운 줄'}</em></div>
         ${G.duel && G.limit ? `<div class="hchip time" id="bkRemP"><span class="hv"><b id="bkRem">${mmss(G.limit)}</b></span><em>남은 시간</em></div>` : '<div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>'}
-        <div class="hchip bk-pts"><span class="hv"><b id="bkPts">0</b></span><em>점수</em></div>
+        <div class="hchip bk-pts"><span class="hv"><span class="ico" aria-hidden="true">${BK_PTS}</span><b id="bkPts">0</b></span><em>점수</em></div>
       </div>
       ${chips ? `<div class="bk-rules" aria-label="이번 판 규칙">${chips}</div>` : ''}
       <div class="bk-board" id="bd"><canvas id="bkCv" aria-label="8×8 블록 판"></canvas><div class="bk-msg" id="bkMsg"></div></div>
-      <p class="bk-tip" id="bkTip">조각을 끌거나, 누르고 판 칸을 눌러요</p>
+      <p class="bk-tip off" id="bkTip" aria-live="polite"></p>
       <div class="bk-tray" id="bkTray" aria-label="놓을 조각 3개">${[0,1,2].map(i => `<div class="bk-slot" data-i="${i}" role="button" aria-label="조각 ${i + 1}"><div class="bk-pc"><canvas></canvas></div></div>`).join('')}</div>
     </div>`;
     const root = st.querySelector('.ng-block');
@@ -511,12 +511,22 @@ NG.block = (function(){
     ice:'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="4" fill="#A9E6F7" stroke="#1A0F45" stroke-width="1.6"/><path d="M5 12 12 5h2.5L5 14.5z" fill="#fff" opacity=".8"/><path d="M4 9l4 1 1.5-3 3 4.5L16 11" fill="none" stroke="#2C5E86" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     gem:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8l4 5-8 10L2 8z" fill="#E23DB0" stroke="#3B0E6E" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 3h4L7 8H2z" fill="#fff" opacity=".6"/></svg>'
   };
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 점수 칩 그림, 규칙 꼬리표 4글자 이하(전체 이름·설명은 도움말 tips) */
+  const BK_PTS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>';
+  const BK_SHORT = { gem:'보석', ice:'얼음', bomb:'폭탄', vine:'덩굴', flash:'빠른 판', duo:'두 개씩', big:'큰 조각', rock:'돌', nopeek:'미리 ✕' };
+  function bkTips(){
+    const t = [['놓기', '아래 조각을 끌어 판에 놓아요. 끌기가 어려우면 조각을 누른 뒤 판 칸을 눌러요.'], ['칩', '왼쪽은 목표(지운 줄·모을 것)와 남은 양, 가운데는 시간, 오른쪽은 점수예요.']];
+    try{ const p = G && G.bk && G.bk.cfg && G.bk.cfg.plan, inf = k => conceptInfo('block', k) || {};
+      if(p){ p.mj.forEach(k => t.push([BK_SHORT[k] || inf(k).name || k, (inf(k).name || k) + ' — ' + (inf(k).desc || '')])); if(p.tw) t.push([BK_SHORT[p.tw] || inf(p.tw).name, (inf(p.tw).name || p.tw) + ' — ' + (inf(p.tw).desc || '')]); }
+      if(G && G.bk && G.bk.cfg && G.bk.cfg.stones && !(p && p.tw === 'rock')) t.push(['돌', '돌 블록 — 판에 미리 놓인 돌도 줄을 채우면 함께 사라져요.']); }catch(_){}
+    return t;
+  }
   function ruleChips(c){
     const p = c.plan; if(!p) return '';
-    const nm = k => (conceptInfo('block', k) || {}).name || k, out = [];
-    p.mj.forEach(k => out.push(`<span class="bk-chip mj">${nm(k)}</span>`));
-    if(p.tw) out.push(`<span class="bk-chip tw">${nm(p.tw)}</span>`);
-    if(c.stones && p.tw !== 'rock') out.push('<span class="bk-chip tw">돌 블록</span>');
+    const nm = k => (conceptInfo('block', k) || {}).name || k, out = [], sh = k => BK_SHORT[k] || nm(k);
+    p.mj.forEach(k => out.push(`<span class="bk-chip mj" title="${nm(k)}">${sh(k)}</span>`));
+    if(p.tw) out.push(`<span class="bk-chip tw" title="${nm(p.tw)}">${sh(p.tw)}</span>`);
+    if(c.stones && p.tw !== 'rock') out.push('<span class="bk-chip tw" title="돌 블록">돌</span>');
     return out.join('');
   }
   function hud(){
@@ -594,7 +604,7 @@ NG.block = (function(){
     const s = S(); s.sel = i == null || !s.tray[i] ? null : i;
     s.slots.forEach((sl, k) => sl.classList.toggle('sel', k === s.sel));
     const tip = document.getElementById('bkTip');
-    if(tip){ tip.textContent = s.sel != null ? '판에서 놓을 칸을 눌러요' : '조각을 끌거나, 누르고 판 칸을 눌러요'; if(s.sel != null) tip.classList.remove('off'); }
+    if(tip){ tip.textContent = s.sel != null ? '칸을 눌러요' : ''; tip.classList.toggle('off', s.sel == null); }
     if(s.sel != null){ sfx('blockPick'); fxBuzz(6); }
   }
   /* 누른 칸 (gx, gy)를 덮는 놓을 자리: 조각 칸 중 조각 가운데에 가까운 칸부터 그 칸이 (gx, gy)에 오게 맞춰 보고, 처음 들어가는 자리 */
@@ -611,7 +621,7 @@ NG.block = (function(){
     if(gx < 0 || gy < 0 || gx >= N || gy >= N) return;
     const i = s.sel, p = s.tray[i]; if(!p){ pickSel(null); return; }
     const at = tapSpot(p, gx, gy);
-    if(!at){ sfx('blockBack'); try{ fxShake(s.slots[i], 4); }catch(_){} const tip = document.getElementById('bkTip'); if(tip) tip.textContent = '거기엔 안 들어가요 · 다른 칸을 눌러요'; return; }
+    if(!at){ sfx('blockBack'); try{ fxShake(s.slots[i], 4); }catch(_){} const tip = document.getElementById('bkTip'); if(tip) { tip.textContent = '안 들어가요'; tip.classList.remove('off'); } return; }
     pickSel(null);
     doPlace(i, at[0], at[1]);
   }
@@ -792,6 +802,7 @@ NG.block = (function(){
     name:'블록 채우기', abil:'공간지각', col:['#FF9E8A','#EF4B3F','#8F1D1A'], time:'약 3분',
     icon:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2.5" y="2.5" width="5.8" height="5.8" rx="1.5"/><rect x="9.1" y="2.5" width="5.8" height="5.8" rx="1.5"/><rect x="2.5" y="9.1" width="5.8" height="5.8" rx="1.5"/><rect x="15.7" y="9.1" width="5.8" height="5.8" rx="1.5" opacity=".6"/><rect x="15.7" y="15.7" width="5.8" height="5.8" rx="1.5" opacity=".6"/><rect x="9.1" y="15.7" width="5.8" height="5.8" rx="1.5" opacity=".6"/></svg>',
     art,
+    tips:() => bkTips(),
     help:[['조각을 끌어다 놓아요','아래 조각 3개 중 하나를 끌어 8×8 판의 빈 곳에 놓아요. 끌기가 어려우면 조각을 누르고 판 칸을 누르세요.'],
       ['줄을 꽉 채우면 사라져요','가로줄이나 세로줄을 빈틈없이 채우면 지워져요. 여러 줄을 한 번에, 또 연달아 지우면 점수가 커져요.'],
       ['목표 줄 수를 채우면 성공','목표만큼 줄을 지우면 클리어! 남은 조각을 놓을 곳이 없으면 끝나요. 조각을 적게 쓸수록 점수와 별이 많아요.']],

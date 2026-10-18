@@ -259,7 +259,7 @@ NG.goback = (() => {
   function stopAll(m){ m.phase = 'end'; m.dl = null; m.ai = null; m.aiF = []; m.pend = null; btns(); }
   function endSolo(win){
     const m = S(); stopAll(m);
-    center({ big:win ? '1등!' : '탈락', who:win ? '끝까지 살아남았어요' : `${m.myCalls}번 외쳤어요`, cls:win ? 'win' : 'lose' });
+    center({ big:win ? '1등!' : '탈락', who:win ? '' : `${m.myCalls}번`, cls:win ? 'win' : 'lose' });
     if(win){ sfx('gbWin'); fx(() => { const q = fxCenter(el('gbFelt')); fxRing(q.x, q.y, '#FFE27A', q.w * .55, .7, 12); fxEmit(q.x, q.y, { quantity:30, speed:{ min:150, max:380 }, lifespan:{ min:600, max:1100 }, kind:'twinkle', tint:['#FFFFFF', '#FFE27A', '#FFC2DD'], scale:{ start:7, end:0 }, gravityY:220, drag:1.1, glow:true }); }); }
     else sfx('gbLose');
     T(() => finish(win), win ? 1500 : 1600);
@@ -336,14 +336,14 @@ NG.goback = (() => {
     if(dir && o.dir){
       const cw = m.dir === 1;
       dir.className = 'gb-dir ' + (cw ? 'cw' : 'ccw') + (o.dir === 'flip' ? ' flip' : '');
-      dir.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><g${cw ? '' : ' transform="matrix(-1 0 0 1 24 0)"'}><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M18.4 2.6l-.6 4.9-4.9-.4" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg><span>${cw ? '시계 방향' : '반대 방향'}</span>`;
+      dir.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><g${cw ? '' : ' transform="matrix(-1 0 0 1 24 0)"'}><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M18.4 2.6l-.6 4.9-4.9-.4" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;   /* 2026-10-18 판 위 글자 최소화: 화살표 그림만(이름은 aria-label·도움말 tips) */
       dir.setAttribute('aria-label', '지금 방향: ' + (cw ? '시계 방향' : '반대 방향'));
     }
   }
   function restartShow(){
     const m = S(); if(!m) return;
     const who = m.cur;
-    center({ big:'다시!', who:`${nmOf(m, who)}부터 고 백 점프!`, cls:'again', dir:true });
+    center({ big:'다시!', who:`${nmOf(m, who)}부터`, cls:'again', dir:true });
     document.querySelectorAll('.ng-gb .gb-bub.on:not(.out)').forEach(b => b.className = 'gb-bub');
     const lg = el('gbLog'); if(lg) lg.innerHTML = ''; m.log = [];
     fx(() => { const s = el('gbArc'); if(s) s.innerHTML = ''; });
@@ -452,6 +452,16 @@ NG.goback = (() => {
         ${[['고', '#20C063', 46], ['백', '#FF8A1A', 80], ['점프', '#A66BFF', 114]].map(([t, c, x]) => `<g transform="translate(${x} 60)"><rect x="-15" y="-11" width="30" height="22" rx="11" fill="#fff" stroke="${c}" stroke-width="3"/><text x="0" y="5" text-anchor="middle" font-size="${t.length > 1 ? 11 : 14}" font-weight="900" fill="${c}" font-family="sans-serif">${t}</text></g>`).join('')}
         ${toyImage('fox', 66, 72, 28, 28)}${toyImage('rabbit', 8, 36, 24, 24)}${toyImage('bear', 128, 36, 24, 24)}${toyImage('cat', 68, 0, 24, 24)}</svg>`;
     },
+    /* 2026-10-18 판 위에서 뺀 안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const out = [
+        ['↻ 화살표', '가운데 화살표 = 지금 차례가 도는 방향(시계 방향 ↻ / 반대 방향 ↺). 백을 외치면 뒤집혀요.'],
+        ['노래', '처음엔 "고 백 점프" 노래가 나오고, 끝나면 표시된 사람부터 시작해요.'],
+        ['위쪽 칸', '남은 사람 · 지금 박자(초, 짧을수록 빨라요) · 내가 외친 수.']
+      ];
+      if(G && G.duel) out.push(['대전', '모두 모이면 노래가 나와요. 컴퓨터 상대는 위 대전 줄에 "컴퓨터"로 보여요.']);
+      return out;
+    },
     help:[
       ['노래가 끝나면 시작', '"고 백 점프 ~ 고 백 점프!" 노래가 끝나면 시작하는 사람부터 고·백·점프 중 하나를 외쳐요(아래 큰 버튼).'],
       ['고 · 백 · 점프', '고는 지금 방향(처음엔 시계 방향)으로 다음 사람. 백은 방향을 바꿔 반대쪽 사람. 점프는 한 사람을 건너뛰고 그다음 사람.'],
@@ -492,18 +502,18 @@ NG.goback = (() => {
       const seats = m.seats.map((pid, i) => { const p = m.P[pid];
         return `<div class="gb-seat${p.me ? ' me' : ''}" id="gbS${i}" style="--sc:${p.col}" role="img">
           <div class="gb-av">${toyImg(p.kind, 'gb-avimg')}</div>
-          <div class="gb-nm"><b>${esc(p.nick)}${p.ai && m.duel ? ' <em>컴퓨터</em>' : ''}</b><span class="gb-lv"></span></div>
+          <div class="gb-nm"><b>${esc(p.nick)}</b><span class="gb-lv"></span></div>
           <div class="gb-bub" id="gbB${i}" aria-hidden="true"></div>
           <div class="gb-stamp" aria-hidden="true"></div></div>`; }).join('');
       st.innerHTML = `<div class="ng-gb" id="gbRoot">
         <div class="hud-row">
           <div class="hchip" aria-label="남은 사람"><span class="hv">${HICO.ppl}<b id="gbAlive">${n}</b><small>/${n}</small></span><em>남은 사람</em></div>
-          <div class="hchip" aria-label="지금 박자"><span class="hv">${HICO.beat}<b id="gbSpd">${m.cfg.w0.toFixed(1)}</b><small>초</small></span><em>박자</em></div>
+          <div class="hchip" aria-label="지금 박자"><span class="hv">${HICO.beat}<b id="gbSpd">${m.cfg.w0.toFixed(1)}</b></span><em>박자</em></div>
           <div class="hchip" aria-label="내가 외친 수"><span class="hv">${HICO.cnt}<b id="gbCnt">0</b></span><em>외친 수</em></div>
         </div>
         <div class="gb-table" id="gbTable">
-          <div class="gb-felt" id="gbFelt"><span class="gb-mark" aria-hidden="true">GO · BACK · JUMP</span>
-            <div class="gb-center" role="status" aria-live="polite"><div class="gb-dir cw" id="gbDir"></div><div class="gb-big" id="gbBig">준비</div><div class="gb-who" id="gbWho">${m.duel ? '모두 모이면 노래가 나와요' : '노래가 끝나면 나부터!'}</div><div class="gb-log" id="gbLog"></div></div></div>
+          <div class="gb-felt" id="gbFelt">
+            <div class="gb-center" role="status" aria-live="polite"><div class="gb-dir cw" id="gbDir"></div><div class="gb-big" id="gbBig">준비</div><div class="gb-who" id="gbWho">${m.duel ? '' : '나부터'}</div><div class="gb-log" id="gbLog"></div></div></div>
           <svg class="gb-arc" id="gbArc" aria-hidden="true"></svg>
           ${seats}
           <div class="gb-note" id="gbNote" role="status"></div>

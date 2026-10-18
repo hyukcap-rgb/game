@@ -10,6 +10,14 @@ NG.flag = (() => {
   const FLAGS2 = ['b', 'w'], FLAGS3 = ['b', 'w', 'y'];
   const WRONG_GAP = .4;   /* 오답 뒤 다음 명령까지(초): 짧게 보여 주고 바로 넘어간다(2026-10-06 사용자 지시) */
   const HOSTS = ['fox', 'rabbit', 'bear', 'panda', 'tiger'];    /* 챕터 진행자(솔로) */
+  const FL_SHORT = { both:'두 개', third:'황기', tight:'외줄' };   /* 판 위 규칙 꼬리표 4글자 이하(docs/29) */
+  function flTips(){
+    const t = [['버튼', '아래 큰 버튼: 깃발 색 + ▲ 올려 / ▼ 내려. 왼쪽은 청기, 오른쪽은 백기(노란 깃발 판은 가운데 황기)예요.'],
+      ['가만히', '이미 그 상태인 명령, "~하지 마", 흉내쟁이 너구리의 명령에는 아무것도 누르지 않는 게 정답이에요.']];
+    try{ const m = G && G.fl; if(m && G.adv){ (m.mj || []).forEach(k => t.push([FL_SHORT[k] || CONC.info[k].name, CONC.info[k].name + ' — ' + CONC.info[k].desc]));
+      if(m.tw) t.push([FL_SHORT[m.tw] || CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].name + ' — ' + CONC.twInfo[m.tw].desc]); } }catch(_){}
+    return t;
+  }
   const HOST_NAME = { fox:'여우 대장', rabbit:'토끼 반장', bear:'곰 선생님', panda:'판다 코치', tiger:'호랑이 단장', mimic:'흉내쟁이 너구리' };
   const HOST_COL = { fox:'#FF7A12', rabbit:'#FF9EC2', bear:'#B06A30', panda:'#2C2838', tiger:'#FF9420' };
   /* 진행자 말투(챕터마다 다르게). 보이기만 하는 글이라 Math.random으로 골라도 된다 */
@@ -252,7 +260,8 @@ NG.flag = (() => {
     let fs = parseFloat(getComputedStyle(c).fontSize) || 32;
     for(let k = 0; k < 8 && c.scrollWidth > w + 1 && fs > 24; k++){ fs -= 2; c.style.fontSize = fs + 'px'; }
   }
-  const whoHtml = (kind, mimic) => `<img src="${mimic ? raccoonSrc() : toySrc(kind)}" alt="" aria-hidden="true"><b>${mimic ? HOST_NAME.mimic : HOST_NAME[kind]}</b>`;
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 진행자 이름은 읽기 프로그램에만(흉내쟁이만 짧게 보임) */
+  const whoHtml = (kind, mimic) => `<img src="${mimic ? raccoonSrc() : toySrc(kind)}" alt="" aria-hidden="true"><b${mimic ? '' : ' class="fl-sr"'}>${mimic ? '흉내쟁이' : HOST_NAME[kind]}</b>`;
   function stamp(ok, label){
     const s = $('#flStamp'); if(!s) return;
     s.className = 'fl-stamp ' + (ok ? 'ok' : 'bad'); s.innerHTML = `<b>${ok ? '✓' : '✕'}</b><span>${label}</span>`;
@@ -492,6 +501,7 @@ NG.flag = (() => {
         ${toyImage('bear', 52, 22, 56, 56)}
         <g transform="translate(116 18)"><rect width="38" height="20" rx="9" fill="#fff"/><path d="M8 18l-4 8 10-7z" fill="#fff"/><text x="19" y="14" font-size="10" font-family="sans-serif" font-weight="700" text-anchor="middle" fill="#2F7BEA">청기↑</text></g></svg>`;
     },
+    tips:() => flTips(),
     help:[
       ['명령을 봐요', '진행자가 "청기 올려", "백기 내려"처럼 명령해요. 말풍선의 글자와 그림(깃발·화살표)을 보고 판단해요. 소리가 없어도 똑같이 할 수 있어요.'],
       ['버튼으로 깃발을', '왼쪽 파란 버튼은 청기, 오른쪽 흰 버튼은 백기예요. ▲는 올리기, ▼는 내리기. 말풍선 아래 막대가 다 줄어들기 전에 눌러요.'],
@@ -538,7 +548,7 @@ NG.flag = (() => {
         <div class="hud-row">
           <div class="hchip" id="flProgP" aria-label="한 명령 수"><span class="hv">${ICO.flag}<b id="flProg">0</b><small>/${m.N}</small></span><em>명령</em></div>
           <div class="hchip" id="flComboP" aria-label="연속 정답"><span class="hv">${ICO.fire}<b id="flCombo">0</b></span><em>연속 정답</em></div>
-          <div class="hchip fl-lifechip" id="flLifeP"><span class="hv hlives" id="flLives" role="img"></span><em>기회</em></div>
+          <div class="hchip fl-lifechip ic" id="flLifeP"><span class="hv hlives" id="flLives" role="img"></span><em>기회</em></div>
         </div>
         <div class="fl-scene" id="flScene">
           ${decoSvg(m.theme)}
@@ -550,7 +560,7 @@ NG.flag = (() => {
           <div class="fl-card" id="flCard" aria-hidden="true"></div>
           <div class="fl-bub" id="flBub" role="status" aria-live="assertive">
             <div class="fl-who" id="flWho">${whoHtml(m.host)}</div>
-            ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="fl-rules" aria-label="켜진 규칙">${m.boss ? '<span class="fl-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="fl-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="fl-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+            ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="fl-rules" aria-label="켜진 규칙">${m.boss ? '<span class="fl-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="fl-chip mj" title="${CONC.info[k].name}">${FL_SHORT[k] || CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="fl-chip tw" title="${CONC.twInfo[m.tw].name}">${FL_SHORT[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
             <div class="fl-cmd" id="flCmd"><span class="fl-cardt">${m.boss ? '대장 판!' : '준비~'}</span></div>
             <div class="fl-foot"><div class="fl-win" id="flWinW"><i id="flWin"></i></div><div class="fl-res info" id="flRes">${m.boss ? '끝까지 집중!' : talk(m.host, 'ready')}</div></div>
             <div class="fl-stamp" id="flStamp" aria-hidden="true"></div>
@@ -561,7 +571,7 @@ NG.flag = (() => {
         </div>
         <div class="fl-deck${m.third ? ' third' : ''}">
           <div class="fl-me">${rigHtml('fox', 'me', m.third, 'flMe')}<span class="fl-metag">나</span></div>
-          ${flagsOf(m).map(f => [1, 0].map(d => `<button class="fl-btn ${f} ${d ? 'up' : 'dn'}" data-f="${f}" data-d="${d}" style="grid-area:${f}${d ? 'u' : 'd'}" aria-label="${FN[f]} ${d ? '올리기' : '내리기'}"><span class="fl-bi">${flagIco(f)}${badge(!!d)}</span><span class="fl-bl">${FN[f]} ${d ? '올려' : '내려'}</span><i class="fl-lamp" aria-hidden="true"></i></button>`).join('')).join('')}
+          ${flagsOf(m).map(f => [1, 0].map(d => `<button class="fl-btn ${f} ${d ? 'up' : 'dn'}" data-f="${f}" data-d="${d}" style="grid-area:${f}${d ? 'u' : 'd'}" aria-label="${FN[f]} ${d ? '올리기' : '내리기'}"><span class="fl-bi">${flagIco(f)}${badge(!!d)}</span><i class="fl-lamp" aria-hidden="true"></i></button>`).join('')).join('')}
         </div>
         <div class="fl-edge" id="flEdge" aria-hidden="true"></div>
         <div class="fl-frame" aria-hidden="true"></div>

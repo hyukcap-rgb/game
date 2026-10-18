@@ -237,14 +237,12 @@ NG.memory = (() => {
     const m = S(); if(!m) return;
     const f = $('#mmFound'); if(f) f.textContent = m.found;
     const fl = $('#mmFlips'); if(fl) fl.textContent = m.flips;
-    const mc = $('#mmMiss'); if(mc && m.missCap){ const left = Math.max(0, m.missCap - m.misses); mc.innerHTML = `실수 <b>${left}</b>번 남음`; mc.classList.toggle('low', left <= 1); }
+    const mc = $('#mmMiss'); if(mc && m.missCap){ const left = Math.max(0, m.missCap - m.misses); mc.innerHTML = `✕ <b>${left}</b>`; mc.setAttribute('aria-label', '실수 ' + left + '번 남음'); mc.classList.toggle('low', left <= 1); }
   }
   function msg(html, cls){ const e = $('#mmMsg'); if(!e) return; e.className = 'mm-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>같은 그림 두 장을 찾아요</span>';
+    return '';   /* 2026-10-18 판 위 글자 최소화(docs/29): 안내·규칙 문장은 도움말 tips로 */
   }
 
   function layout(){
@@ -269,7 +267,7 @@ NG.memory = (() => {
     const b = $('#mmSlow'); if(b){ b.classList.toggle('on', m.slow); b.setAttribute('aria-pressed', m.slow); }
     if(m.phase === 'deal' || m.phase === 'preview'){
       m.preview = m.pv0 * (m.slow ? 2 : 1);
-      if(m.phase === 'preview') msg('<b>기억하세요!</b><span>' + m.preview + '초 동안 보여 줘요</span>', 'mm-remember');
+      if(m.phase === 'preview') msg('<b>기억!</b><span>' + m.preview + '초</span>', 'mm-remember');
     } else toast(m.slow ? '다음 판부터 외우는 시간 ×2' : '다음 판부터 외우는 시간 보통');
   }
   function startPlay(){
@@ -279,7 +277,7 @@ NG.memory = (() => {
     G.start = Date.now(); G.pausedMs = 0;
     m.cards.forEach((_, i) => { const el = cardEl(i); if(el){ el.style.setProperty('--d', (i % m.cols + Math.floor(i / m.cols)) * 18 + 'ms'); el.classList.add('wave'); } setUp(i, false); });
     T(() => document.querySelectorAll('.ng-memory .mm-card.wave').forEach(e => e.classList.remove('wave')), 700);
-    sfx('memoryGo'); msg(m.preview > 0 ? playMsg() : '<b class="boss">미리 보기 없음</b><span>뒤집으며 기억해요</span>');
+    sfx('memoryGo'); msg(m.preview > 0 ? playMsg() : '<b class="boss">미리 보기 없음</b>');
     const b = $('#mmBarWrap'); if(b) b.classList.remove('pv');
   }
   function loop(){
@@ -291,7 +289,7 @@ NG.memory = (() => {
     if(m.phase === 'deal' && t >= DEAL){
       if(m.preview <= 0){ startPlay(); return; }
       m.phase = 'preview'; m.cards.forEach((_, i) => { const el = cardEl(i); if(el) el.style.transitionDelay = ''; setUp(i, true); });
-      sfx('memoryFlip', { n:3 }); msg('<b>기억하세요!</b><span>' + m.preview + '초 뒤에 카드가 덮여요</span>', 'mm-remember');
+      sfx('memoryFlip', { n:3 }); msg('<b>기억!</b><span>' + m.preview + '초</span>', 'mm-remember');
       const b = $('#mmBarWrap'); if(b) b.classList.add('pv');
     }
     if(m.phase === 'preview'){
@@ -396,7 +394,7 @@ NG.memory = (() => {
       const down = m.st.map((s, j) => s === 0 ? j : -1).filter(j => j >= 0);
       if(down.length < 2){ m.lock = false; return; }
       const seen = shuffle(down.filter(j => m.seen.has(j)), m.rng), rest = shuffle(down.filter(j => !m.seen.has(j)), m.rng), pool = seen.concat(rest);
-      msg('<b class="bad">펑!</b><span>시간 −' + BOMB_SEC + '초 · 카드 두 장이 자리를 바꿔요</span>', 'mm-shuffle');
+      msg('<b class="bad">펑!</b><span>−' + BOMB_SEC + '초</span>', 'mm-shuffle');
       T(() => swapCards([[pool[0], pool[1]]], () => { msg(playMsg()); m.lock = false; }), 380);
     }, 330);
   }
@@ -433,7 +431,7 @@ NG.memory = (() => {
     if(down.length < 4){ m.lock = false; return; }
     const pick = shuffle(down.slice(), m.rng), nSwap = Math.min(3, Math.floor(pick.length / 2)), pairs = [];
     for(let k = 0; k < nSwap; k++) pairs.push([pick[2 * k], pick[2 * k + 1]]);
-    msg('<b class="boss">카드가 섞여요!</b><span>움직이는 카드를 잘 보세요</span>', 'mm-shuffle');
+    msg('<b class="boss">섞여요!</b>', 'mm-shuffle');
     swapCards(pairs, () => { msg(playMsg()); m.lock = false; });
   }
 
@@ -452,7 +450,7 @@ NG.memory = (() => {
     const m = S(); if(m.phase !== 'play') return;
     m.phase = 'done'; m.lock = true; m.open = []; m.fail = 'time';
     const e = $('#mmTime'); if(e) e.textContent = '0:00';
-    msg('<b class="bad">시간이 다 됐어요</b><span>남은 짝을 보여 드릴게요</span>', 'mm-fail');
+    msg('<b class="bad">시간 끝</b>', 'mm-fail');
     sfx('memoryTimeUp'); fxBuzz([40, 40, 60]); fxShake($('#bd'), 6);
     showLeft();
     T(() => finish(false), 1500);
@@ -460,7 +458,7 @@ NG.memory = (() => {
   function failMiss(){
     const m = S(); if(m.phase !== 'play') return;
     m.phase = 'done'; m.lock = true; m.open = []; m.fail = 'miss';
-    msg('<b class="bad">실수를 다 썼어요</b><span>남은 짝을 보여 드릴게요</span>', 'mm-fail');
+    msg('<b class="bad">실수 끝</b>', 'mm-fail');
     sfx('memoryTimeUp'); fxBuzz([40, 40, 60]); fxShake($('#bd'), 6);
     showLeft();
     T(() => finish(false), 1500);
@@ -566,7 +564,7 @@ NG.memory = (() => {
   function dBanner(nudge){
     const m = S(), d = m.dd, cur = duelTurn.cur(); if(!cur || d.ended) return;
     const p = dWho(cur), mine = cur === d.me;
-    msg(mine ? `<b class="mm-myturn">내 차례!</b><span>${m.open.length ? '한 장 더 뒤집어요' : '두 장을 뒤집어요'}</span>`
+    msg(mine ? `<b class="mm-myturn">내 차례!</b>`
       : `<span class="mm-tdot" style="--sc:${p.col}">${duelShapeSvg(p.shape, p.col, 16)}</span><b class="mm-otturn">${esc(duelShortNick(p.nick))}님 차례</b>`, nudge ? 'mm-shuffle' : '');
     const bd = $('#bd'); if(bd){ bd.style.setProperty('--tc', p.col); bd.classList.toggle('myturn', mine); bd.classList.add('dturn'); }
   }
@@ -656,6 +654,26 @@ NG.memory = (() => {
         <path d="${starPath(44, 22, 4, 1.8)}" fill="#fff" stroke="#1A0F45" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
     },
     /* 대전 준비 화면 규칙(대전은 미리 보기 없이 번갈아 뒤집어 짝 뺏기) */
+    /* 2026-10-18 판 위에서 뺀 안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'memory' && G.m, out = [];
+      if(m && m.dd){
+        out.push(['차례', '내 차례에 카드 두 장을 뒤집어요. 위 알림 줄에 지금 차례인 사람(내 차례!)이 보이고, 판 테두리가 그 사람 색이 돼요.']);
+        out.push(['위쪽 칸', '내가 가져간 짝 · 차례 남은 시간(초) · 판에 남은 짝 수.']);
+        return out;
+      }
+      out.push(['기억!', '처음 몇 초 동안 모든 카드가 앞면으로 보여요(숫자 = 외우는 초). 그다음 두 장씩 뒤집어 같은 그림을 찾아요.']);
+      out.push(['찾은 짝', '숫자/전체 = 찾은 짝(세 장 짝 판은 세트) 수.']);
+      if(m && m.warm) out.push(['∞ 몸풀기 판', '1판은 시간 걱정 없는 몸풀기 판이에요.']);
+      if(m && m.slowOk) out.push(['느긋 ×2', '느긋하게 외우기: 켜면 외우는 시간이 두 배(이 기기에 기억).']);
+      if(m && m.missCap) out.push(['✕ 숫자', '남은 실수 횟수. 다 쓰고 또 틀리면 끝나요.']);
+      if(m && G.adv){
+        for(const k of m.mj) out.push([CONC.info[k].name, CONC.info[k].desc]);
+        if(m.tw) out.push([CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]);
+        if(m.boss) out.push(['대장 판', '이 챕터의 마지막 큰 판이에요. 끝까지 집중!']);
+      }
+      return out;
+    },
     duelHelp:[
       ['돌아가며 두 장씩', '내 차례에 카드 두 장을 뒤집어요. 남이 뒤집는 카드도 모두에게 보이니 잘 기억해 두세요.'],
       ['맞히면 한 번 더', '같은 그림이면 그 짝을 가져가고 한 번 더 해요. 다르면 다음 사람 차례예요.'],
@@ -765,17 +783,17 @@ NG.memory = (() => {
     render(st){
       const m = S();
       const dtop = m.dd ? `<div class="hud-row mm-hud">
-          <div class="hchip" aria-label="내가 가져간 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>쌍</small></span><em>내 짝</em></div>
-          <div class="hchip time mm-time" id="mmTimeP" aria-label="차례 남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${m.dd.turnSec}</b><small>초</small></span><em>차례 시간</em></div>
-          <div class="hchip" aria-label="남은 짝"><span class="hv"><span class="mm-ic">${ICO.flip}</span><b id="mmLeft">${m.pairs}</b><small>쌍</small></span><em>남은 짝</em></div>
+          <div class="hchip ic" aria-label="내가 가져간 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b></span><em>내 짝</em></div>
+          <div class="hchip time mm-time" id="mmTimeP" aria-label="차례 남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${m.dd.turnSec}</b></span><em>차례 시간</em></div>
+          <div class="hchip ic" aria-label="남은 짝"><span class="hv"><span class="mm-ic">${ICO.flip}</span><b id="mmLeft">${m.pairs}</b></span><em>남은 짝</em></div>
         </div>` : '';
       st.innerHTML = `<div class="ng-memory${m.dd ? ' mm-duel' : ''}">
         ${dtop}${m.dd ? '' : `<div class="hud-row mm-hud">
-          <div class="hchip" aria-label="찾은 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}${m.g === 3 ? '세트' : '쌍'}</small></span><em>찾은 짝</em></div>
-          ${m.warm ? `<div class="hchip time mm-time" aria-label="몸풀기 판 · 시간 넉넉"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b class="mm-easy">넉넉해요</b></span><em>몸풀기 판</em></div>`
+          <div class="hchip ic" aria-label="찾은 짝"><span class="hv"><span class="mm-ic">${ICO.pair}</span><b id="mmFound">0</b><small>/${m.pairs}</small></span><em>찾은 짝</em></div>
+          ${m.warm ? `<div class="hchip time mm-time" aria-label="몸풀기 판 · 시간 넉넉"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b class="mm-easy" aria-hidden="true">∞</b></span><em>몸풀기 판</em></div>`
             : `<div class="hchip time mm-time" id="mmTimeP" aria-label="남은 시간"><span class="hv"><span class="mm-ic">${ICO.clock}</span><b id="mmTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>`}
         </div>`}
-        ${!m.dd && G.adv && (m.mj.length || m.tw || m.boss || m.slowOk) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}${m.slowOk ? `<button type="button" class="mm-chip slow${m.slow ? ' on' : ''}" id="mmSlow" aria-pressed="${m.slow}">느긋하게 외우기 ×2</button>` : ''}</div>` : ''}
+        ${!m.dd && G.adv && (m.mj.length || m.tw || m.boss || m.slowOk) ? `<div class="mm-rules" aria-label="켜진 규칙">${m.boss ? '<span class="mm-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="mm-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="mm-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.missCap ? `<span class="mm-chip miss" id="mmMiss"></span>` : ''}${m.slowOk ? `<button type="button" class="mm-chip slow${m.slow ? ' on' : ''}" id="mmSlow" aria-pressed="${m.slow}" aria-label="느긋하게 외우기 ×2">느긋 ×2</button>` : ''}</div>` : ''}
         <div class="mm-barw${m.warm ? ' warm' : ''}" id="mmBarWrap"><i id="mmBar"></i></div>
         <div class="mm-msg" id="mmMsg"><span>카드를 나눠 주는 중…</span></div>
         <div class="mm-board" id="bd" role="grid" aria-label="카드 판"></div>

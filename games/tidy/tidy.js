@@ -58,6 +58,8 @@ NG.tidy = (() => {
       turn:{ name:'돌리기 제한', desc:'물건을 돌릴 수 있는 횟수가 정해져 있어요. 돌리기 전에 먼저 생각해요.' }
     }
   };
+  /* 판 위 규칙 꼬리표는 4글자 이하(docs/29) — 전체 이름·설명은 도움말 */
+  const CHIP_SHORT = { fragile:'깨짐', heavy:'무거움', turn:'돌림 제한' };
   const RULE_TIP = { hole:'회색 칸은 비워 둬요', cold:'❄ 물건은 파란 칸에만', fragile:'깨지는 물건은 떨어뜨려요', heavy:'무거운 물건은 아래 두 줄', flash:'시간이 짧아요', bare:'힌트 없음', big:'큰 칸', turn:'돌리기 횟수 제한' };
 
   const round5 = v => Math.max(30, Math.round(v / 5) * 5);
@@ -260,10 +262,10 @@ NG.tidy = (() => {
   function msg(html, cls){ const e = $('#tdMsg'); if(!e) return; e.className = 'td-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S(), it = m.sel >= 0 ? m.P.items[m.sel] : null;
-    if(it){ const t = [it.cold ? '❄ 차가운 물건' : '', it.fragile ? '깨지는 물건' : '', it.heavy ? '무거운 물건' : ''].filter(Boolean).join(' · ');
-      return `<b>${it.nm}</b><span>${t ? t + ' · ' : ''}칸을 눌러 놓아요</span>`; }
-    if(m.boss) return '<b class="boss">대장 판</b><span>끝까지 집중!</span>';
-    return '<span>아래 물건을 골라 칸에 놓아요</span>';
+    /* 판 위 안내 문장은 두지 않는다(docs/29): 고른 물건 이름 + 짧은 꼬리표만, 조작 설명은 도움말 tips */
+    if(it){ const t = [it.cold ? '❄' : '', it.fragile ? '깨짐' : '', it.heavy ? '무거움' : ''].filter(Boolean).join(' · ');
+      return `<b>${it.nm}</b>${t ? '<span>' + t + '</span>' : ''}`; }
+    return '';
   }
   function paint(){
     const m = S(); if(!m) return;
@@ -435,6 +437,18 @@ NG.tidy = (() => {
     ],
     howto:{ pic:howPic, lines:['아래 물건을 눌러 골라요', '칸을 눌러 놓고, 돌려서 맞춰요', '빈틈없이 다 넣으면 성공'],
       more:[['누르고 놓기', '물건을 누른 뒤 칸을 누르면 놓여요. 놓인 물건을 누르면 다시 집어요.'], ['돌리기', '[돌리기]는 고른 물건을 시계 방향으로 돌려요.'], ['점수', '빨리 끝내고, 규칙을 어기지 않고, 힌트를 안 쓸수록 높아요.']] },
+    /* 판 위에서 뺀 안내 문장(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'tidy' && G.m, t = [
+        ['놓기', '아래 물건을 골라 칸을 누르면 놓여요. 놓인 물건을 누르면 다시 집어요.'],
+        ['돌리기', '고른 물건을 시계 방향으로 90° 돌려요.'],
+        ['모두 빼기', '놓인 물건을 전부 아래로 빼요.'],
+        ['힌트', '물건 하나를 정답 자리에 놓아 줘요(점수 −50).'],
+        ['❄ · 깨짐 · 무거움', '고른 물건 꼬리표예요. ❄ 차가운 물건(파란 칸에만) · 깨지는 물건(서로 붙이면 안 돼요) · 무거운 물건(아래 두 줄에만).']];
+      if(m) [].concat(m.mj || [], m.tw ? [m.tw] : []).forEach(k => { if(CHIP_SHORT[k]){ const f = CONC.info[k] || CONC.twInfo[k]; t.push([CHIP_SHORT[k], f.name + ' — ' + f.desc]); } });
+      if(m && m.tips.length) t.push(['이번 판', m.tips.join(' · ')]);
+      return t;
+    },
     helpExtra(){ const m = G && G.id === 'tidy' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['서랍 정리', '책상 정리', '냉장고 정리', '옷장 정리', '찬장 정리'],
     starRule:'★ 다 정리하기 · ★★ 힌트 1번 이하, 규칙 어김 6번 이하 · ★★★ 힌트 없이 규칙 어김 2번 이하',
@@ -476,9 +490,9 @@ NG.tidy = (() => {
           <div class="hchip td-done" aria-label="정리한 물건"><span class="hv">${ICO.box}<b id="tdDone">0</b><small>/${P.items.length}개</small></span><em>정리한 물건</em></div>
           <div class="hchip time" id="tdTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="tdTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="td-rules" aria-label="켜진 규칙">${m.boss ? '<span class="td-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="td-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="td-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="td-rules" aria-label="켜진 규칙">${m.boss ? '<span class="td-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="td-chip mj">${CHIP_SHORT[k] || CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="td-chip tw">${CHIP_SHORT[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="td-barw" id="tdBarWrap"><i id="tdBar"></i></div>
-        <div class="td-msg" id="tdMsg"><span>아래 물건을 골라 칸에 놓아요</span></div>
+        <div class="td-msg" id="tdMsg"></div>
         <div class="td-wrap"><div class="td-frame"><div class="td-board" id="tdBoard" role="group" aria-label="${PLACE[m.cfg.place] || '선반'} ${P.R}×${P.C}, 물건 ${P.items.length}개">
           <svg viewBox="0 0 ${P.C * 100} ${P.R * 100}" aria-hidden="true"><g id="tdDyn"></g></svg>
         </div></div></div>

@@ -428,17 +428,29 @@ NG.merge = (() => {
   const cntOK = M => M.grid.reduce((n, t) => n + (t && t !== ST && !t.lk && !t.ice && t.v >= M.target ? 1 : 0), 0);
 
   /* 위 칩 줄(UI팀: "목표 128" · "지금 32" · 이동). 판 종류에 따라 3~4칸 */
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 칩마다 24×24 선 그림 → 이름표는 엔진이 숨기고 도움말 "표시 안내"에 모음 */
+  const MI = d => `<svg class="mci" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const CICO = {
+    goal:MI('<path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/>'),
+    now:MI('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/>'),
+    cnt:MI('<rect x="3" y="7" width="10" height="10" rx="3"/><path d="M15 9.5h4M17 7.5v4M15 16h4"/>'),
+    pts:MI('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>'),
+    ice:MI('<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 6.5l2.5-2M9.5 19.5 12 17.5l2.5 2"/>'),
+    star:MI('<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7l1.5 3.2 3.4.4-2.5 2.3.7 3.4-3.1-1.7-3.1 1.7.7-3.4-2.5-2.3 3.4-.4z"/>'),
+    mv:MI('<path d="M7 4c-2 0-3 2.5-3 5s1 4 3 4 3-1.5 3-4-1-5-3-5zM5 16.5h4M17 8c-2 0-3 2.5-3 5s1 4 3 4 3-1.5 3-4-1-5-3-5zM15 20.5h4"/>'),
+    eye:MI('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')
+  };
   function chipDefs(M){
     const c = M.cfg, a = [];
-    if(c.pts) a.push({ cls:'mgoal', em:'점수 목표', v:fmt(c.pts) }, { id:'mNowP', em:'지금 점수', v:'0' });
-    if(c.target) a.push({ cls:'mgoal', em:'목표', v:c.cnt > 1 ? `${c.target}<small>이상 ×${c.cnt}</small>` : String(c.target) }, { id:'mNow', em:c.cnt > 1 ? '만든 개수' : '지금', v:'' });
-    if(c.ice) a.push({ id:'mIce', cls:'mice-c', em:'얼음 깨기', v:'' });
-    if(c.star) a.push({ id:'mStar', cls:'mstar-c', em:`별 칸 ${c.starV}↑`, v:'' });
+    if(c.pts) a.push({ cls:'mgoal', em:'점수 목표', ico:CICO.goal, v:fmt(c.pts) }, { id:'mNowP', em:'지금 점수', ico:CICO.pts, v:'0' });
+    if(c.target) a.push({ cls:'mgoal', em:c.cnt > 1 ? '목표(이상 ×개수)' : '목표', ico:CICO.goal, v:c.cnt > 1 ? `${c.target}<small>↑×${c.cnt}</small>` : String(c.target) }, { id:'mNow', em:c.cnt > 1 ? '만든 개수' : '지금 가장 큰 타일', ico:c.cnt > 1 ? CICO.cnt : CICO.now, v:'' });
+    if(c.ice) a.push({ id:'mIce', cls:'mice-c', em:'얼음 깨기', ico:CICO.ice, v:'' });
+    if(c.star) a.push({ id:'mStar', cls:'mstar-c', em:`별 칸 ${c.starV}↑`, ico:CICO.star, v:'' });
     if(M.limit) a.push({ id:'mTime', cls:'time', em:'남은 시간', v:mmss(M.limit) });
-    a.push({ id:'mMoves', cls:M.mv ? 'lim' : '', em:M.mv ? '남은 이동' : '이동', v:String(M.mv || 0) });
+    a.push({ id:'mMoves', cls:M.mv ? 'lim' : '', em:M.mv ? '남은 이동' : '이동', ico:CICO.mv, v:String(M.mv || 0) });
     return a;
   }
-  const chipHTML = d => `<div class="hchip ${d.cls || ''}"${d.id ? ` data-k="${d.id}"` : ''}><span class="hv"><b${d.id ? ` id="${d.id}"` : ''}>${d.v}</b></span><em>${d.em}</em></div>`;
+  const chipHTML = d => `<div class="hchip ${d.cls || ''}"${d.id ? ` data-k="${d.id}"` : ''} aria-label="${d.em}"><span class="hv">${d.ico || ''}<b${d.id ? ` id="${d.id}"` : ''}>${d.v}</b></span><em>${d.em}</em></div>`;
   function peekVals(M){ const a = []; for(let j = 0; j < M.peek; j++) a.push(seqAt(M, M.moves + j)[1] < M.p4 ? 4 : 2); return a; }
   function hud(){
     const M = G.M, s = (id, t) => { const e = document.getElementById(id); if(e) e.innerHTML = t; };
@@ -455,7 +467,7 @@ NG.merge = (() => {
     if(M.cfg.rot){
       const d = banNow(M), left = ROT_EVERY - M.moves % ROT_EVERY, bar = document.getElementById('mBan');
       if(bar){ bar.className = 'mban d' + d; bar.setAttribute('aria-label', DIRN[d] + '쪽으로는 밀 수 없어요'); }
-      s('mBanTxt', ARROW[d] + ' 막힘 · ' + left + '번 뒤 바뀜');
+      s('mBanTxt', ARROW[d] + ' ✕ · ' + left); { const e = document.getElementById('mBanTxt'); if(e) e.setAttribute('aria-label', ARROW[d] + ' 막힘 · ' + left + '번 뒤 바뀜'); }
     }
   }
   function mkTile(t, cell, cls){
@@ -500,7 +512,7 @@ NG.merge = (() => {
     flush();
     if(M.cfg.rot && d === banNow(M)){   /* 막힌 길 */
       bump(d); const bar = document.getElementById('mBan');
-      if(bar && !M.banTip){ M.banTip = 1; fxBubble(bar, DIRN[d] + '쪽은 지금 막혔어요'); later(() => { M.banTip = 0; }, 1400); }
+      if(bar && !M.banTip){ M.banTip = 1; fxBubble(bar, DIRN[d] + ' 막힘'); later(() => { M.banTip = 0; }, 1400); }
       return false;
     }
     const res = slideT(M.grid, d);
@@ -628,7 +640,11 @@ NG.merge = (() => {
   /* 판 아래 한 줄 안내: 새 규칙/변주 판이면 그 설명, 아니면 이번 판 목표 문장 */
   function tipHTML(M){
     const c = M.cfg, bits = [];
-    if(c.intro){ const inf = conceptInfo('merge', c.intro); if(inf) return `<b>${c.introKind === 'twist' ? '새 변주' : '새 규칙'}</b>${inf.desc}`; }
+    return '';   /* 2026-10-18 판 위 글자 최소화(docs/29): 목표·규칙 문장은 칩·도움말 tips로(아래 옛 문장은 tips가 씀) */
+  }
+  function tipText(M){
+    const c = M.cfg, bits = [];
+    if(c.intro){ const inf = conceptInfo('merge', c.intro); if(inf) return (c.introKind === 'twist' ? '새 변주: ' : '새 규칙: ') + inf.desc; }
     if(c.stones) bits.push('<u>돌 칸</u>은 안 움직여요');
     if(c.locks && c.locks.length) bits.push('<u>자물쇠</u>는 같은 숫자로 부딪혀 풀어요');
     if(c.ice) bits.push('<u>얼음</u> 옆에서 두 번 합치면 깨져요');
@@ -638,9 +654,8 @@ NG.merge = (() => {
     if(c.tw === 'bare') bits.push('되돌리기 없이');
     if(c.tw === 'four') bits.push('4가 자주 나와요');
     if(c.tw === 'flash') bits.push('별 기준 이동이 짧아요');
-    if(M.limit) return `<b>대전</b>상대보다 먼저 <b class="n">${M.target}</b>${eul(M.target).slice(String(M.target).length)} 만들면 승리 · ${Math.round(M.limit / 60)}분`;
-    const lead = c.boss ? '<b>대장 판</b>' : c.hard ? '<b>어려움</b>' : '';
-    return lead + goalText(Object.assign({}, c, { mv:M.mv })) + (bits.length ? ' · ' + bits.join(' · ') : '');
+    if(M.limit) return `상대보다 먼저 ${eul(M.target)} 만들면 승리 · ${Math.round(M.limit / 60)}분`;
+    return goalText(Object.assign({}, c, { mv:M.mv })) + (bits.length ? ' · ' + bits.join(' · ') : '');
   }
   /* 대전 시계(2분): 시간이 다 되면 그 자리에서 끝(가장 큰 타일로 판정) */
   function duelClock(M){
@@ -698,6 +713,20 @@ NG.merge = (() => {
       more:[['밀기', '판을 손가락으로 밀거나 키보드 화살표를 눌러요. 밀 때마다 빈칸에 2나 4가 하나 새로 나와요.'],
         ['점수', '남긴 이동이 많을수록 점수가 높아요. 되돌리기는 판에 한 번(대전·맨손 판은 없음).'],
         ['대전', '같은 판·같은 새 타일로 128을 먼저 만들면 1등이에요. 2분이 지나면 가장 큰 타일로 순위를 매겨요.']]
+    },
+    /* 2026-10-18 판 위에서 뺀 안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const M = G && G.id === 'merge' && G.M; if(!M) return [];
+      const c = M.cfg, out = [['이번 판 목표', tipText(M)]];
+      if(c.cnt > 1) out.push(['목표 ↑×개수', c.target + ' 이상 타일을 ' + c.cnt + '개 동시에 만들어요.']);
+      if(c.ice) out.push(['얼음', '얼음에 갇힌 타일은 움직이지 않아요. 바로 옆에서 두 번 합치면 깨져요.']);
+      if(c.star) out.push(['별 칸', '별 칸에 ' + c.starV + ' 이상 타일을 올려 두어요.']);
+      if(c.locks && c.locks.length) out.push(['자물쇠', '같은 숫자로 부딪히면 풀리며 합쳐져요.']);
+      if(c.stones) out.push(['돌 칸', '움직이지 않는 칸이에요.']);
+      if(c.rot) out.push(['막힌 길', '화살표 쪽으로는 밀 수 없어요. 숫자 = 바뀔 때까지 남은 이동.']);
+      if(M.peek) out.push(['👁 다음 타일', '판 위 줄에 다음에 나올 새 타일이 보여요.']);
+      if(!M.noUndo) out.push(['되돌림', '되돌리기: 한 번 민 것을 판에 한 번 되돌릴 수 있어요.']);
+      return out;
     },
     help:[['밀어서 모두 움직여요', '밀면 타일이 끝까지 미끄러져요. 키보드 화살표도 돼요.'],
       ['같은 숫자는 하나로', '같은 숫자가 부딪히면 합쳐져 두 배가 돼요.'],
@@ -760,11 +789,11 @@ NG.merge = (() => {
       st.innerHTML = `<div class="ng-merge${c.boss || M.stones ? ' boss' : ''}${M.N === 3 ? ' n3' : ''}" style="--n:${M.N}">
         <div class="hud-row mhud">${chipDefs(M).map(chipHTML).join('')}</div>
         ${chips.length ? `<div class="mchips" aria-label="이번 판 규칙">${chips.join('')}${c.rot ? '<span class="mc x" id="mBanTxt"></span>' : ''}</div>` : ''}
-        ${M.peek ? `<div class="mpeek" aria-label="다음에 나올 새 타일"><em>다음 타일</em><span class="mpks" id="mPeek"></span></div>` : ''}
+        ${M.peek ? `<div class="mpeek" aria-label="다음에 나올 새 타일"><em class="mpe">${CICO.eye}</em><span class="mpks" id="mPeek"></span></div>` : ''}
         <div class="mbwrap"><div class="mboard" id="mBoard" role="application" aria-label="숫자 판. 밀거나 화살표 키로 움직여요">
           <div class="mslots">${slots}</div><div class="mlayer"></div>${badges ? `<div class="mstars" aria-hidden="true">${badges}</div>` : ''}${c.rot ? '<div class="mban" id="mBan"></div>' : ''}</div></div>
         <div class="mtools">
-          <button class="tool item mundo" id="mUndo" aria-label="되돌리기 한 번">${ICON_UNDO}<span>되돌리기</span><b class="cnt">1</b></button>
+          <button class="tool item mundo" id="mUndo" aria-label="되돌리기 한 번">${ICON_UNDO}<span>되돌림</span><b class="cnt">1</b></button>
           <div class="mtip">${tipHTML(M)}</div>
         </div></div>`;
       M.wrap = st.querySelector('.ng-merge'); M.board = st.querySelector('#mBoard'); M.bwrap = st.querySelector('.mbwrap'); M.layer = st.querySelector('.mlayer');
@@ -790,7 +819,7 @@ NG.merge = (() => {
       M.off = () => { removeEventListener('keydown', key); removeEventListener('resize', rs); };
       st.querySelector('#mUndo').onclick = () => undo();
       /* 처음 보는 장치에는 말풍선 한 번 */
-      later(() => {
+      if(0) later(() => {   /* 2026-10-18: 첫 말풍선 안내는 도움말 tips로 옮김 */
         const s = M.layer.querySelector('.stone'), l = M.layer.querySelector('.mt.lk'), ic = M.layer.querySelector('.mt.ice'), sb = M.starEl[0];
         if(ic) fxBubble(ic, '옆에서 두 번 합치면 깨져요'); else if(sb) fxBubble(sb, `별 칸에 ${c.starV} 이상을 올려요`);
         else if(l) fxBubble(l, '같은 숫자로 부딪히면 풀려요'); else if(s) fxBubble(s, '돌 칸: 움직이지 않아요');
@@ -849,6 +878,10 @@ body[data-mode="merge"]{background:
 /* 미리 보기 줄(F): 판 위 40px */
 .ng-merge .mpeek{display:flex; align-items:center; justify-content:center; gap:10px; height:40px; margin:8px 0 0}
 .ng-merge .mpeek em{font-style:normal; font-family:var(--disp); font-size:14px; color:#fff; -webkit-text-stroke:3px #1A0F45; paint-order:stroke fill}
+.ng-merge .mpeek em.mpe{display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:50%; background:#1A0F45; color:#fff; -webkit-text-stroke:0}
+.ng-merge .mpeek em.mpe svg{width:18px; height:18px}
+.ng-merge .mhud .hchip .hv .mci{flex:none; margin-right:3px; opacity:.75}
+.ng-merge .mtip:empty{display:none}
 .ng-merge .mpks{display:flex; gap:6px}
 .ng-merge .mpk{position:relative; display:block; width:34px; height:34px; --ts:34px; opacity:.75}
 .ng-merge .mpk.first{opacity:1; transform:scale(1.08)}

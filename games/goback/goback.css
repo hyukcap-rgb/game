@@ -117,3 +117,5 @@ body.big .ng-gb .gb-lc{font-size:15px}
 body.big .ng-gb .gb-who{font-size:18px}
 @media (max-width:370px){ .ng-gb .gb-big{font-size:42px} .ng-gb .gb-b{height:78px} .ng-gb .gb-b b{font-size:26px} .ng-gb .gb-bub b{font-size:21px} }
 @media (prefers-reduced-motion: reduce){ .ng-gb .gb-av.hop, .ng-gb .gb-big.pop, .ng-gb .gb-bub.on, .ng-gb .gb-felt.thump, .ng-gb .gb-dir.flip svg, .ng-gb .gb-seat.hint .gb-av{animation:none} }
+/* 2026-10-18 판 위 글자 최소화(docs/29): 방향 표시는 화살표 그림만 */
+.ng-gb .gb-dir{padding:4px 7px}

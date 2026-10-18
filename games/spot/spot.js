@@ -134,14 +134,13 @@ NG.spot = (() => {
     const h = $('#spHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const lv = $('#spLives');
     if(lv && !m.lives) lv.hidden = true;
-    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#spMsg'); if(!e) return; e.className = 'sp-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>두 그림에서 다른 곳을 눌러요</span>';
+    /* 2026-10-18 판 위 글자 최소화(docs/29): 평소 안내 문장은 두지 않는다 — 규칙 이름은 꼬리표, 설명은 도움말(tips·helpExtra) */
+    return '';
   }
 
   function layout(){
@@ -235,7 +234,7 @@ NG.spot = (() => {
     }catch(_){}
     hud();
     if(m.found >= m.N){ win(); return; }
-    msg(m.secret ? '<b>찾았어요!</b><span>또 있을까요?</span>' : `<b>찾았어요!</b><span>${m.N - m.found}곳 남았어요</span>`, 'sp-pop');
+    msg(m.secret ? '<b>찾았어요!</b><span>또 있을까요?</span>' : '<b>찾았어요!</b>', 'sp-pop');
     T(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
   }
 
@@ -407,14 +406,13 @@ NG.spot = (() => {
     const P = plOf(owner) || { pid:owner, col:'#8A8FA8', shape:'circle', nick:'상대', me:false };
     ownRingSet(d, P, owner === me);
     claimTag(d, P);
-    const left = m.diffs.filter(x => !x.own).length;
     if(owner === me){
       m.found++; m.streak = 0; clearHint();
       sfx('spotFind', { n:m.found }); fxBuzz(14);
       try{ const q = scr('A', d.cx, d.cy); fxRing(q.x, q.y, '#FF3D7F', d.r * q.k * 1.5, .5, 6); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', '#5EEAD4'], 12, { speed:200, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); const f = $('#spFoundP'); if(f) fxPunch(f, 1.12); }catch(_){}
-      if(m.phase === 'play') msg(`<b>차지!</b><span>${left}곳 남았어요</span>`, 'sp-pop');
+      if(m.phase === 'play') msg('<b>차지!</b>', 'sp-pop');
     } else if(m.phase === 'play'){
-      msg(`<b>${esc(P.nick)}</b><span>차지 · ${left}곳 남았어요</span>`, 'sp-pop');
+      msg('', 'sp-pop');   /* 누가 차지했는지는 그림 위 이름표(claimTag)로 보임 — 판 위 글자 최소화 */
       try{ sfx('toggle'); }catch(_){}
     }
     if(m.phase === 'play') T(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
@@ -477,6 +475,15 @@ NG.spot = (() => {
       },
       lines:['위·아래 그림에서 다른 곳을 눌러요', '빗나가면 15점 깎이고 잠깐 쉬어요', '힌트는 40점 · 두 번 누르면 크게']
     },
+    tips(){ return [
+      ['다른 곳 누르기', '위·아래 어느 그림을 눌러도 돼요. 찾으면 두 그림에 동그라미가 그려져요.'],
+      ['빗나감', '다른 곳이 아닌 데를 누르면 −' + MISS_PTS + '점, 잠깐 누를 수 없어요.'],
+      ['💡 힌트', '못 찾은 곳 근처를 잠깐 보여 줘요(−' + HINT_PTS + '점).'],
+      ['🔍 크게 보기', '돋보기 단추나 빈 곳 두 번 누르기 → 한 그림을 크게, [아래 그림]으로 위·아래 번갈아.'],
+      ['★ 기회', '규칙 판(외줄 타기)에서만 나와요. 빗나갈 때마다 하나씩 꺼져요.']
+    ].concat((() => { const m = G && G.id === 'spot' && G.m; if(!m) return [];   /* 이번 판 규칙(꼬리표 이름 → 뜻) */
+      return (m.mj || []).map(k => CONC.info[k] && ['규칙 · ' + CONC.info[k].name, CONC.info[k].desc]).filter(Boolean)
+        .concat(m.tw && CONC.twInfo[m.tw] ? [['규칙 · ' + CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]] : []); })()); },
     helpExtra(){ const m = G && G.id === 'spot' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['눈 크게 뜨기', '반짝 관찰단', '숨바꼭질 골목', '매의 눈', '명탐정의 방'],
     starRule:'★ 클리어 · ★★ 힌트·빗나감 합쳐 2번 이하 · ★★★ 힌트·빗나감 없이',

@@ -39,6 +39,8 @@ NG.arrow = (() => {
     twists:['flash', 'ghost', 'tight'],
     twInfo:{ ghost:{ name:'순간', desc:'화살표가 0.35초만 보이고 사라져요. 판단 시간은 그대로예요. 눈에 담아 두고 밀어요!' } }
   };
+  /* 판 위 규칙 꼬리표(4글자 이하, 2026-10-18). 원래 이름은 aria-label과 도움말 tips */
+  const CHIP = { side:'자리', word:'글자', stop:'멈춤', pair:'금색', flash:'빠른 판', ghost:'순간', tight:'외줄' };
   const RULE_TIP = { side:'자리 말고 방향', word:'글자를 따라요', stop:'회색은 가만히', pair:'금색 쪽만', flash:'판단 시간이 짧아요', ghost:'잠깐만 보여요', tight:'기회 2번' };
 
   /* ===== 난이도 ===== */
@@ -201,7 +203,7 @@ NG.arrow = (() => {
   const $a = id => document.getElementById(id);
   const safe = fn => { try{ fn(); }catch(_){} };
 
-  function say(html, cls){ const e = $a('arSay'); if(!e) return; e.className = 'ar-say ' + (cls || ''); e.innerHTML = html; }
+  function say(html, cls){ const e = $a('arSay'); if(!e) return; e.className = 'ar-say ' + (cls || '') + (html ? '' : ' idle'); e.innerHTML = html || ''; }   /* 2026-10-18 판 위 글자 최소화: 빈 말이면 말풍선을 숨김(규칙 문장은 도움말 tips) */
   function hostMood(mood, ms){
     const m = S(), im = $a('arHost'); if(!m || !im) return;
     im.src = toySrc(m.host, mood || ''); clearTimeout(m.moodT);
@@ -371,7 +373,7 @@ NG.arrow = (() => {
     ringFlash('rb');
     if(q.ans >= 0) safe(() => { const k = document.querySelector(`.ng-arrow .ar-key[data-d="${q.ans}"]`); if(k) k.classList.add('ans'); });
     sfx(d == null ? 'arrowTime' : 'arrowBad'); fxBuzz([30, 30, 30]);
-    say(`<b class="bd">${whyText(q, d)}</b><span>${m.talk.oops}</span>`, 'pop');   /* 다음 화살표가 0.4초 뒤에 바로 나오므로 이유는 말풍선에 조금 더 남겨 둔다 */ m.sayBusy = elapsed() + 1.1;
+    say(`<b class="bd">${whyText(q, d)}</b>`, 'pop');   /* 다음 화살표가 0.4초 뒤에 바로 나오므로 이유는 말풍선에 조금 더 남겨 둔다 */ m.sayBusy = elapsed() + 1.1;
     hostMood('sad', 800);
     safe(() => {
       fxFlash('#FF4D5E', .1, 240); fxShake($a('arDisc'), 5);
@@ -487,6 +489,14 @@ NG.arrow = (() => {
       lines:['파란 화살표는 그 방향으로 밀어요', '빨간 화살표(↺)는 반대로 밀어요', '틀리면 기회 별이 하나 줄어요'],
       more:null
     },
+    tips(){
+      const m = G && G.id === 'arrow' && G.m, out = [
+        ['밀기', '파랑은 그 방향, 빨강(↺)은 반대로. 화면 어디서든 밀거나 십자 버튼·화살표 키'],
+        ['칩', '푼 문제 수 · 연속 정답(콤보) · 기회 별']
+      ];
+      if(m){ m.mj.forEach(k => out.push([CHIP[k] + ' (' + CONC.info[k].name + ')', RULE_TIP[k]])); if(m.tw) out.push([(CHIP[m.tw] || m.tw) + ' (' + ((conceptInfo('arrow', m.tw) || {}).name || m.tw) + ')', RULE_TIP[m.tw] || '']); if(m.boss) out.push(['대장 판', '끝까지 침착하게']); }
+      return out;
+    },
     helpExtra(){ const m = G && G.id === 'arrow' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['표지판 길', '미로 정원', '거울 터널', '바람개비 언덕', '나침반 탑'],
     starRule:'★ 클리어 · ★★ 실수 1번 · ★★★ 실수 없이',
@@ -503,7 +513,7 @@ NG.arrow = (() => {
       if(cfg.tw && RULE_TIP[cfg.tw]) tips.push(RULE_TIP[cfg.tw]);
       const lives = G.duel ? 3 : cfg.lives || 3;
       const talk = TALK[host] || TALK.whale;
-      const tip = cfg.focus && CONC.info[cfg.focus] ? `<b>새 규칙</b><span>${CONC.info[cfg.focus].name}: ${RULE_TIP[cfg.focus]}</span>` : tips.length ? `<span>${tips.slice(0, 2).join(' · ')}</span>` : `<span>${talk.hi}</span>`;
+      const tip = '';   /* 2026-10-18: 판 위 규칙 문장 없음 → 도움말 '화면 안내'(tips) */
       G.m = { u:++UID, items, N:items.length, i:-1, phase:'intro', next:G.duel ? .7 : (cfg.boss ? 1.7 : 1.1), t0:0, ghosted:false,
         lives, lives0:lives, correct:0, wrong:0, done:0, ratio:0, rtSum:0, rtN:0, combo:0, maxCombo:0, stays:0, slows:0, res:[],
         presses:[], lockUntil:0, sayBusy:0, ghost:!!cfg.ghost, boss:!!cfg.boss, host, talk, tips, tip, tint:TINT[(c - 1) % 5], mj:cfg.mj || [], tw:cfg.tw || null,
@@ -525,13 +535,13 @@ NG.arrow = (() => {
     render(st){
       const m = S(), tn = m.tint, chips = [];
       if(G.adv && m.boss) chips.push('<span class="ar-chip boss">대장 판</span>');
-      if(G.adv){ m.mj.forEach(k => chips.push(`<span class="ar-chip mj">${CONC.info[k].name}</span>`)); if(m.tw) chips.push(`<span class="ar-chip tw">${(conceptInfo('arrow', m.tw) || {}).name || m.tw}</span>`); }
+      if(G.adv){ m.mj.forEach(k => chips.push(`<span class="ar-chip mj" aria-label="${CONC.info[k].name}">${CHIP[k] || CONC.info[k].name}</span>`)); if(m.tw){ const nm = (conceptInfo('arrow', m.tw) || {}).name || m.tw; chips.push(`<span class="ar-chip tw" aria-label="${nm}">${CHIP[m.tw] || nm}</span>`); } }
       safe(() => { const b = document.body.style; b.setProperty('--ar-s1', tn.sky1); b.setProperty('--ar-s2', tn.sky2); b.setProperty('--ar-s3', tn.sky3); b.setProperty('--ar-ring', tn.ring); });
       st.innerHTML = `<div class="ng-arrow${m.boss ? ' boss' : ''}" style="--ring:${tn.ring}" role="application" aria-label="거꾸로 화살표. 화면을 밀거나 십자 버튼, 화살표 키로 답해요">
         <div class="hud-row">
           <div class="hchip" aria-label="푼 문제"><span class="hv">${ICO.sign}<b id="arProg">0</b><small>/${m.N}</small></span><em>문제</em></div>
           <div class="hchip" id="arComboP" aria-label="연속 정답"><span class="hv">${ICO.combo}<b id="arCombo">0</b></span><em>콤보</em></div>
-          <div class="hchip ar-lvchip"><span class="hv hlives" id="arLives" role="img"></span><em>기회</em></div>
+          <div class="hchip ar-lvchip ic"><span class="hv hlives" id="arLives" role="img"></span><em>기회</em></div>
         </div>
         ${chips.length ? `<div class="ar-chips" aria-label="이번 판 규칙">${chips.join('')}</div>` : ''}
         <div class="ar-hostrow">
@@ -560,8 +570,8 @@ NG.arrow = (() => {
       </div>`;
       const root = st.querySelector('.ng-arrow');
       hud();
-      if(m.boss){ say('<b class="bs">대장 판!</b><span>끝까지 침착하게</span>', 'pop'); sfx('arrowBoss'); T(() => hostMood(''), 1600); }
-      else say(`<b>준비</b><span>${m.talk.hi}</span>`);
+      if(m.boss){ say('<b class="bs">대장 판!</b>', 'pop'); sfx('arrowBoss'); T(() => hostMood(''), 1600); }
+      else say('<b>준비</b>');
       /* 조작: 버튼(누르는 순간) · 화면 어디서든 밀기(24px) · 키보드 */
       root.querySelectorAll('.ar-key').forEach(b => {
         let pt = -1e9;   /* 한 동작 = 한 번: 누름(pointerdown) 바로 뒤 따라오는 click은 detail과 상관없이 버림 */

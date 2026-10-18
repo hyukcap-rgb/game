@@ -733,8 +733,9 @@ function duelChipName(c){ c.classList.add('say'); clearTimeout(c._t); c._t = set
 /* 값 칸 문구(짧게): 7/9 · 2,940 · [128] · 4곳 · 3쌍 */
 function duelValShort(id, s, D){
   const S = duelStatOf(id) || {}, unit = S.unit || '';
-  if(D.kind === 'shared') return `${s.v || 0}<small>${unit || '개'}</small>`;
-  if(D.kind === 'turn') return `${s.v || 0}<small>${unit}</small>`;
+  /* UI팀 2026-10-18: 단위 글자(개·문제 등)는 빼고 숫자만 */
+  if(D.kind === 'shared') return `${s.v || 0}`;
+  if(D.kind === 'turn') return `${s.v || 0}`;
   if(S.score || D.kind === 'score') return `${fmt(s.v || 0)}`;
   if(S.tile) return `<span class="tile">${s.v || 2}</span>`;
   if(s.t == null) return `${Math.round((s.pg || 0) * 100)}<small>%</small>`;

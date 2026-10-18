@@ -205,7 +205,7 @@ NG.jigsaw = (() => {
     const h = $('#jgHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0 || m.phase !== 'play'; }
   }
   function msg(html, cls){ const e = $('#jgMsg'); if(e){ e.className = 'jg-msg' + (cls ? ' ' + cls : ''); e.innerHTML = html; } }
-  const playMsg = () => '<b>조각 두 개</b>를 눌러 서로 자리를 바꿔요';
+  const playMsg = () => '';   /* 2026-10-18 판 위 글자 최소화(docs/29): 조작 안내는 도움말 tips로 */
 
   /* ----- 움직임 ----- */
   function flip(el, dx, dy){
@@ -237,7 +237,7 @@ NG.jigsaw = (() => {
     sfx(got ? 'jgLock' : 'jgSwap', { n:m.placed });
     if(got){ try{ fxBuzz([15]); }catch(_){} }
     else msg(playMsg());
-    if(got && m.placed < totalOf(m)) msg(`<b>${m.placed}조각</b> 제자리! 남은 ${totalOf(m) - m.placed}조각`);
+    if(got && m.placed < totalOf(m)) msg(`<b>✓ ${m.placed}/${totalOf(m)}</b>`);
     hud();
     if(m.placed >= totalOf(m)) win();
     return true;
@@ -250,7 +250,7 @@ NG.jigsaw = (() => {
   function tapPiece(pos){
     const m = S(); if(!m || m.phase !== 'play' || lockedAt(m, pos)) return;
     if(m.sel === pos){ clearSel(); sfx('tap'); return; }
-    if(m.sel < 0){ m.sel = pos; const e = cell(pos); if(e) e.classList.add('sel'); sfx('jgPick'); msg('<b>어디와 바꿀까요?</b> 다른 조각을 눌러요'); return; }
+    if(m.sel < 0){ m.sel = pos; const e = cell(pos); if(e) e.classList.add('sel'); sfx('jgPick'); msg(''); return; }
     swap(m.sel, pos);
   }
   const canAct = () => { const m = G && G.j; return !!m && m.phase === 'play' && !G.paused && !(G.duel && !G.duel.go && !G.duel.replay); };
@@ -379,6 +379,9 @@ NG.jigsaw = (() => {
       return `<svg viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="100" fill="#8A5A00"/><rect x="${x0 - 5}" y="${y0 - 5}" width="${K * cs + (K - 1) * gap + 10}" height="${K * cs + (K - 1) * gap + 10}" rx="3" fill="#E8A317" stroke="#1A0F45" stroke-width="2.4"/>
         ${order.map((id, pos) => tile(pos, id)).join('')}</svg>`;
     },
+    tips:[['바꾸기', '조각 하나를 누르고(노란 테두리) 다른 조각을 누르면 서로 자리가 바뀌어요. 끌어서 놓아도 돼요. 제자리에 맞은 조각은 잠겨요.'],
+      ['완성본 (완성 그림 보기)', '원래 그림이 2~3초 보여요. 시간은 계속 가고, 많이 볼수록 점수가 조금 줄어요.'],
+      ['힌트', '틀린 조각 하나를 제자리로 보내 줘요(한 판 3번, 점수 조금 줄어요).']],
     help:[
       ['조각 두 개를 눌러요', '섞인 명화 조각 하나를 누르고, 바꾸고 싶은 다른 조각을 누르면 서로 자리가 바뀌어요. 끌어다 놓아도 돼요.'],
       ['제자리에 맞으면 잠겨요', '조각이 제 자리를 찾으면 반짝이며 잠겨요. 잠긴 조각은 더 움직이지 않아요.'],
@@ -467,7 +470,7 @@ NG.jigsaw = (() => {
           <div class="jg-board" id="jgBoard" role="group" aria-label="${m.n}×${m.n} 명화 조각판">${m.perm.map((_, i) => pieceHtml(m, i)).join('')}</div>
           <div class="jg-peek" id="jgPeek" hidden><img alt="완성된 명화" src="${srcOf(m.art)}"><span>눌러서 닫기</span></div>
         </div>
-        <div class="jg-tools"><button class="jg-look" id="jgPeekBtn">${ICO.eye}<span>완성 그림 보기</span></button></div>
+        <div class="jg-tools"><button class="jg-look" id="jgPeekBtn" aria-label="완성 그림 보기">${ICO.eye}<span>완성본</span></button></div>
       </div>`;
       wire(); hud(); layout();
       const img = new Image();

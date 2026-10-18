@@ -324,7 +324,7 @@ function flStage(st){
   st.innerHTML = `<div class="flg" id="flg">
     <div class="fl-top pbar">
       <button class="iconbtn fl-rb" id="flBack" aria-label="그만하기">${typeof ic === 'function' ? ic('back') : FL_I.back}</button>
-      <div class="ptitle fl-vs"><b id="flVs"></b><span class="fl-turn" id="flTurn"><i></i>함대 배치</span>${flRuleNames() ? `<span class="fl-cx" aria-label="이번 판 규칙">${flRuleNames()}</span>` : ''}</div>
+      <div class="ptitle fl-vs"><b id="flVs"></b><span class="fl-turn" id="flTurn"><i></i>배치</span>${flRuleNames() ? `<span class="fl-cx" aria-label="이번 판 규칙">${flRuleNames()}</span>` : ''}</div>
       <div class="fl-rbs"><button class="iconbtn fl-rb fl-snd" id="flSnd" aria-label="효과음"></button><button class="iconbtn fl-rb" id="flHelp" aria-label="게임 방법">${typeof ic === 'function' ? ic('help') : FL_I.help}</button></div>
     </div>
     <div id="flBody"></div></div>`;
@@ -337,7 +337,7 @@ function flStage(st){
 function flLabels(){ return `<div class="fl-lx">${[...FL_COLS].map(c => `<span>${c}</span>`).join('')}</div><div class="fl-ly">${[...Array(10)].map((_, k) => `<span>${k + 1}</span>`).join('')}</div>`; }
 function flRender(){
   const b = $('#flBody'); if(!b) return;
-  $('#flVs').textContent = G.phase === 'battle' ? '나 vs ' + G.oppNick : G.mode === 'pvp' ? '실시간 1:1 대전' + (G.slow ? ' · 느긋하게' : '') : G.adv ? G.L.name + ' 해전' : G.duel ? '컴퓨터와 해전' : '오늘의 바다';
+  $('#flVs').textContent = G.phase === 'battle' ? '나 vs ' + G.oppNick : G.mode === 'pvp' ? '1:1 대전' : G.adv ? G.adv + '판' : G.duel ? 'VS 컴퓨터' : '오늘의 바다';   /* 2026-10-18 짧게(docs/29) */
   if(G.phase === 'place') flRenderPlace(b);
   else if(G.phase === 'battle') flRenderBattle(b);
   else flRenderSearch(b);
@@ -345,19 +345,18 @@ function flRender(){
 
 /* 배치 화면: 끌어서 이동, 탭하면 회전 */
 function flRenderPlace(b){
-  $('#flTurn').className = 'fl-turn'; $('#flTurn').innerHTML = '<i></i>함대 배치';
+  $('#flTurn').className = 'fl-turn'; $('#flTurn').innerHTML = '<i></i>배치';
   if(G.selShip == null) G.selShip = 0;
   b.innerHTML = `<div class="fl-panel">
-      <button class="btn primary fl-auto" id="flAuto">${FL_I.shuf}<span>자동으로 놓고 출격</span></button>
-      <div class="fl-head"><span><b>우리 함대 배치</b></span><span>끌면 이동 · 누르면 회전</span></div>
+      <button class="btn primary fl-auto" id="flAuto" aria-label="자동으로 놓고 출격">${FL_I.shuf}<span>자동 출격</span></button>
       <div class="fl-board">${flLabels()}<div class="fl-sea" id="flMy"><div class="fl-radar"></div>${flRockLayer()}<div class="fl-ships edit" id="flMyShips"></div></div></div>
       <div class="fl-dpad" role="group" aria-label="고른 배 옮기기">
         <button class="fl-dk" data-d="l" aria-label="왼쪽으로">◀</button><button class="fl-dk" data-d="u" aria-label="위로">▲</button><button class="fl-dk" data-d="d" aria-label="아래로">▼</button><button class="fl-dk" data-d="r" aria-label="오른쪽으로">▶</button><button class="fl-dk rot" data-d="o" aria-label="돌리기">⟳</button>
       </div>
-      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo">${G.mode === 'pvp' && !G.link ? '이대로 · 상대 찾기' : '이대로 출격'}</button></div>
-      ${G.mode === 'pvp' && !G.link ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}"><b>${G.slow ? '느긋하게' : '보통'}</b> · 한 차례 ${flTurnSec()}초 <span>바꾸기 ⇄</span></button>` : ''}
+      <div class="fl-pbtns"><button class="btn secondary fl-sbtn" id="flShuf">${FL_I.shuf}무작위</button><button class="btn secondary fl-sbtn fl-go2" id="flGo" aria-label="${G.mode === 'pvp' && !G.link ? '이 배치로 상대 찾기' : '이 배치로 출격'}">${G.mode === 'pvp' && !G.link ? '상대 찾기' : '출격'}</button></div>
+      ${G.mode === 'pvp' && !G.link ? `<button type="button" class="fl-pace${G.slow ? ' on' : ''}" id="flPace" aria-pressed="${!!G.slow}" aria-label="한 차례 시간 바꾸기"><b>${G.slow ? '느긋하게' : '보통'}</b> ${flTurnSec()}초 <span>⇄</span></button>` : ''}
     </div>
-    <p class="fl-tip">${G.link ? '<b>방 친구와 해전</b><br>배를 놓고 출격하면 친구가 출격하는 대로 바로 시작해요.' : G.mode === 'pvp' ? '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요.' : (G.adv ? flSoloTip() : '<b>오늘의 바다 · 컴퓨터와 해전</b><br><span class="fl-nw">컴퓨터 함대의 위치는</span> <span class="fl-nw">오늘 친구들과 똑같아요.</span> <span class="fl-nw">누가 더 적게 쏘고</span> <span class="fl-nw">이길까요?</span>')}</p>`;
+`;   /* 안내 문장(fl-tip)은 도움말 '화면 안내'(flTips)로 옮김 */
   $('#flMy').classList.add('live');   /* 주의: 공용 .live(빨간 '진행 중' 꼬리표, core/base.css)와 이름이 같아 fleet.css에서 되돌려 둠 */
   flPlaceShips(true);
   const go = () => { flSound('fire'); if(G.mode === 'pvp') (G.link ? flRoomJoin() : flSearch()); else flStartBattle(); };
@@ -435,7 +434,7 @@ function flRenderSearch(b){
   b.innerHTML = `<div class="fl-panel fl-searchp">
       <div class="fl-rbig${G.phase === 'joining' ? ' found' : ''}"><i></i><span class="fl-blip" style="left:30%;top:36%"></span><span class="fl-blip" style="left:68%;top:58%;animation-delay:1.1s"></span><span class="fl-blip" style="left:44%;top:76%;animation-delay:.6s"></span></div>
       <h3 class="fl-st" id="flSt"></h3><p class="fl-sn" id="flSn"></p>
-      <div class="fl-sbtns" id="flSBtns"><button class="btn primary fl-go" id="flAiNow">컴퓨터와 바로 대전</button><button class="btn secondary fl-sbtn" id="flCancel">배치로 돌아가기</button></div>
+      <div class="fl-sbtns" id="flSBtns"><button class="btn primary fl-go" id="flAiNow">컴퓨터와 대전</button><button class="btn secondary fl-sbtn" id="flCancel" aria-label="배치로 돌아가기">배치로</button></div>
     </div>`;
   $('#flAiNow').onclick = flSwitchAI;
   $('#flCancel').onclick = () => { flStopSearch(); if(ROOM) ROOM.presence({ fl:null, ft:null, pr:null }).catch(() => {}); G.phase = 'place'; flRender(); };
@@ -444,12 +443,12 @@ function flRenderSearch(b){
 function flSearchText(){
   const st = $('#flSt'), sn = $('#flSn'); if(!st) return;
   const left = Math.max(0, 20 - Math.floor((Date.now() - (G.mmT0 || Date.now())) / 1000));
-  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = '이 화면에선 다른 선장과 연결할 수 없어요. 지금 배치 그대로 컴퓨터와 겨뤄 보세요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
-  if(G.link && G.phase === 'joining'){ st.textContent = '방 친구를 기다리는 중'; sn.innerHTML = '친구가 배를 놓고 출격하면 바로 시작해요' + (G.oppSeen ? ' · <b>' + flEsc(G.oppNick) + '</b> 선장 들어옴' : ''); const cb = $('#flCancel'); if(cb) cb.style.display = 'none'; return; }
+  if(!ROOM){ st.textContent = '실시간 대전을 쓸 수 없어요'; sn.textContent = ''; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
+  if(G.link && G.phase === 'joining'){ st.textContent = '방 친구를 기다리는 중'; sn.innerHTML = G.oppSeen ? '<b>' + flEsc(G.oppNick) + '</b> 들어옴' : ''; const cb = $('#flCancel'); if(cb) cb.style.display = 'none'; return; }
   if(G.phase === 'joining'){ st.textContent = '상대를 찾았어요!'; sn.innerHTML = `<b>${flEsc(G.oppNick)}</b> 선장과 연결하는 중…`; $('#flSBtns').style.display = 'none'; return; }
-  if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = '계속 기다리면 누가 들어올 때 바로 연결해요. 컴퓨터 대전은 보통 난이도 점수로 계산돼요.'; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
+  if(G.phase === 'nobody'){ st.textContent = '지금 대전할 선장이 없어요'; sn.textContent = ''; $('#flAiNow').textContent = '컴퓨터와 대전 (보통)'; return; }
   st.textContent = '상대 선장을 찾는 중'; const n = flWaitingCount();
-  sn.textContent = `${left}초 · ${n ? '대기 중인 선장 ' + n + '명' : '레이더로 바다를 훑고 있어요'} · 내 이름 ${G.nick}`;
+  sn.textContent = `${left}초${n ? ' · 대기 ' + n + '명' : ''}`;
 }
 function flSearch(){
   G.phase = 'search'; G.mmT0 = Date.now(); flRender();
@@ -591,14 +590,14 @@ function flStartBattle(){
 }
 function flRenderBattle(b){
   b.innerHTML = `<div class="fl-panel" id="flEnP">
-      <div class="fl-head"><span>적 해역 · <b>${flEsc(G.oppNick)}</b></span><span class="fl-fleet" id="flEnFleet"></span></div>
+      <div class="fl-head"><span><b>${flEsc(G.oppNick)}</b></span><span class="fl-fleet" id="flEnFleet"></span></div>
       <div class="fl-board">${flLabels()}<div class="fl-sea" id="flEn"><div class="fl-radar"></div>${flRockLayer()}<div class="fl-ships" id="flEnShips"></div><div class="fl-rdl" id="flRdl"></div>${[...Array(100)].map((_, i) => `<button class="fl-c" data-i="${i}" aria-label="${flName(i)}"></button>`).join('')}</div></div>
-      <div class="fl-bar${G.fx && G.fx.radar ? ' rdr' : ''}"><span class="hchip fl-stat"><span class="hv"><b id="flShots">0</b></span><em>${G.fx && G.fx.tight ? '남은 포탄' : '쏜 포탄'}</em></span><span class="hchip fl-stat"><span class="hv"><b id="flAcc">–</b></span><em>명중률</em></span>
+      <div class="fl-bar${G.fx && G.fx.radar ? ' rdr' : ''}"><span class="hchip fl-stat"><span class="hv"><span class="ico" aria-hidden="true">${FL_HUD.shell}</span><b id="flShots">0</b></span><em>${G.fx && G.fx.tight ? '남은 포탄' : '쏜 포탄'}</em></span><span class="hchip fl-stat"><span class="hv"><span class="ico" aria-hidden="true">${FL_HUD.acc}</span><b id="flAcc">–</b></span><em>명중률</em></span>
         ${G.fx && G.fx.radar ? `<button class="tool toggle fl-rdb" id="flRdr" aria-pressed="false">${FL_I.radar}<span>레이더</span><b class="cnt" id="flRdrN">${G.radarN}</b></button>` : ''}
         <button class="btn primary fl-fire" id="flFire" disabled>${FL_I.target}<span id="flFireL">${G.fx && G.fx.salvo ? '0/3 조준' : '발사'}</span> <small id="flAimT"></small></button></div>
     </div>
     <div class="fl-panel" id="flMeP"><div class="fl-mewrap">
-      <div><div class="fl-head" style="margin-bottom:0"><span><b>우리 함대</b></span></div>
+      <div><div class="fl-head" style="margin-bottom:0"><span><b aria-label="우리 함대">나</b></span></div>
         <div class="fl-board">${flLabels()}<div class="fl-sea small" id="flMy">${flRockLayer()}<div class="fl-ships" id="flMyShips"></div><div class="fl-rdl" id="flMyRdl"></div><div class="fl-xh" id="flXh">${FL_XH}</div>${[...Array(100)].map((_, i) => `<div class="fl-c" data-i="${i}"></div>`).join('')}</div></div></div>
       <div class="fl-side"><div id="flMyList"></div><div class="fl-log" id="flLog"></div></div>
     </div></div>`;
@@ -640,7 +639,7 @@ function flPaintAim(){
 }
 function flFleetUI(){
   const ef = $('#flEnFleet');
-  if(ef && G.fx && G.fx.silent && !G.ending) ef.innerHTML = `<span class="fl-sil" title="침묵 함대: 격침을 알려 주지 않아요">${FL_I.mute}<span>격침 비공개 · 명중 <b>${G.hitsN}</b>/${FL_TOTAL}</span></span>`;
+  if(ef && G.fx && G.fx.silent && !G.ending) ef.innerHTML = `<span class="fl-sil" title="침묵 함대: 격침을 알려 주지 않아요">${FL_I.mute}<span><b>${G.hitsN}</b>/${FL_TOTAL}</span></span>`;
   else if(ef){ const used = G.enSunk.map(sp => sp.idx); ef.innerHTML = FL_SHIPS.map((S, j) => flShipSvg(S.k, S.len, false, 'fl-mini' + (used.includes(j) ? ' dead' : ''), 11)).join(''); }
   const ml = $('#flMyList');
   if(ml) ml.innerHTML = G.my.map(s => `<div class="fl-row${s.hits >= s.len ? ' dead' : ''}">${flShipSvg(s.k, s.len, false, 'fl-mini', 12)}<span>${s.n === '항공모함' ? '항모' : s.n}</span><span class="fl-pips">${[...Array(s.len)].map((_, k) => `<i class="${k < s.hits ? 'x' : ''}"></i>`).join('')}</span></div>`).join('');
@@ -650,7 +649,7 @@ function flStats(){
   if(s) s.textContent = G.fx && G.fx.tight ? Math.max(0, G.fx.tight - n) : n; if(a) a.textContent = n ? Math.round(G.hitsN / n * 100) + '%' : '–';
 }
 function flLog(html){ G.log.unshift(html); G.log = G.log.slice(0, 3); flLogUI(); }
-function flLogUI(){ const l = $('#flLog'); if(l) l.innerHTML = G.log.map(x => `<div>${x}</div>`).join('') || '<div>포격 기록이 여기에 나와요</div>'; }
+function flLogUI(){ const l = $('#flLog'); if(l) l.innerHTML = G.log.map(x => `<div>${x}</div>`).join('') || ''; }
 function flBanner(sel, text, cls, sub, stay){
   const p = $(sel); if(!p) return;
   p.querySelectorAll('.fl-banner').forEach(e => e.remove());
@@ -861,9 +860,27 @@ function flOutOfAmmo(){
   if(!G.fx || !G.fx.tight || flShotN() < G.fx.tight || G.enSunk.length >= FL_SHIPS.length) return false;
   flEnd(false, 'ammo'); return true;
 }
+const FL_SHORT = { salvo:'연발', silent:'침묵', first:'후공', tight:'외줄' };   /* 판 위 꼬리표 4글자 이하(docs/29) */
 function flRuleNames(){
   const fx = G && G.fx; if(!fx) return '';
-  return [...fx.mj, fx.tw].filter(Boolean).map(k => (conceptInfo('fleet', k) || {}).name || k).join(' · ');
+  return [...fx.mj, fx.tw].filter(Boolean).map(k => FL_SHORT[k] || (conceptInfo('fleet', k) || {}).name || k).join(' · ');
+}
+/* 2026-10-18 판 위 글자 최소화(docs/29): 칩 그림 + 판 위에서 뺀 안내 문장(도움말 '화면 안내') */
+const FL_HUD = {
+  shell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 21V10c0-3.5 1.4-6 3-7.5 1.6 1.5 3 4 3 7.5v11z"/><path d="M9 17h6"/></svg>',
+  acc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>'
+};
+function flTips(){
+  const t = [['배치', '배를 끌면 이동, 누르면 회전. 배를 고르고 ◀▲▼▶·⟳로 한 칸씩 옮겨도 돼요. [무작위]는 다시 섞기, [출격]은 이 배치로 시작, [자동 출격]은 알아서 놓고 바로 시작해요.'],
+    ['포격', '적 칸을 눌러 조준하고 [발사](같은 칸을 한 번 더 눌러도 발사). 맞히면 한 번 더 쏴요.'],
+    ['칩', '포탄 = 쏜 포탄(포탄 제한 판은 남은 포탄), 과녁 = 명중률.']];
+  try{
+    if(G && G.mode === 'pvp') t.push(G.link ? ['방 친구와 해전', '배를 놓고 출격하면 친구가 출격하는 대로 바로 시작해요.'] : ['상대 찾기', '20초 안에 상대를 못 찾으면 이 배치 그대로 컴퓨터와 겨룰 수 있어요. [보통 10초 ⇄]를 누르면 한 차례 시간(보통·느긋하게)을 바꿔요.']);
+    else if(G && G.adv && G.fx){ t.push(['이번 판', flSoloTip().replace(/<br>/g, ' · ').replace(/<\/?b>/g, '')]);
+      [...G.fx.mj, G.fx.tw].filter(Boolean).forEach(k => { const c = conceptInfo('fleet', k) || {}; t.push([FL_SHORT[k] || c.name || k, (c.name || k) + ' — ' + (c.desc || '')]); }); }
+    else if(G && !G.duel) t.push(['오늘의 바다', '컴퓨터 함대의 위치는 오늘 친구들과 똑같아요. 누가 더 적게 쏘고 이길까요?']);
+  }catch(_){}
+  return t;
 }
 function flSoloTip(){
   const fx = G.fx; if(!fx) return '';
@@ -1142,6 +1159,7 @@ NG.fleet = {
       ${FL_FLAME.replace('<svg class="fl-flame" ', '<svg x="92" y="30" width="20" height="20" ')}
       <g transform="translate(110 42)"><circle r="11" fill="none" stroke="#FF4D4D" stroke-width="2" stroke-dasharray="10 4"/><path d="M0-15v6M0 9v6M-15 0h6M9 0h6" stroke="#FF4D4D" stroke-width="2" stroke-linecap="round"/></g></svg>`;
   },
+  tips:() => flTips(),
   help:[['함대를 숨겨요','배를 끌어 옮기고, 탭하면 방향이 바뀌어요. 함선은 5척(5·4·3·3·2칸)이고 무작위 배치도 있어요.'],['맞히면 한 번 더','적 해역 칸을 눌러 조준하고 발사해요(같은 칸을 한 번 더 눌러도 발사). 명중(불꽃)하면 계속 쏘고, 빗나가면(물보라) 상대 차례예요. 한 척을 모두 맞히면 격침!'],['먼저 다 격침하면 승리','실시간 대전은 한 차례 10초(느긋하게 30초), 조준해 둔 칸이 있으면 시간이 다 될 때 그 칸에 쏴요. 상대가 없으면 컴퓨터와 붙어요. 적게 쏠수록, 내 배가 많이 남을수록 점수가 높아요.'],['솔로는 5판마다 새 규칙','섬·레이더·연발 포격·침묵 함대, 그리고 빠른 판·안개 같은 변주가 차례로 나와요. 이번 판 규칙은 위쪽 작은 표시에 보여요. 솔로에선 격침한 적 배 둘레가 자동으로 "배 없음"으로 칠해져요(적 배는 서로 붙어 있지 않아요).']],
   /* 도움말 v2(공용 WP3): 첫 화면 3줄(레이더·연발 포격·침묵 함대는 솔로 개념 카드로), 나머지는 '더 알아보기' */
   howto:{

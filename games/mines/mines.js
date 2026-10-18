@@ -239,15 +239,13 @@ NG.mines = (() => {
     const h = $('#mnHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const lv = $('#mnLives');
     if(lv && !m.lives) lv.style.display = 'none';
-    else if(lv){ const left = Math.max(0, m.lives - m.hits); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.hits); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
     document.querySelectorAll('.ng-mines .mn-mode button').forEach(b => { const on = b.dataset.m === m.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   }
   function msg(html, cls){ const e = $('#mnMsg'); if(!e) return; e.className = 'mn-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
-    const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 침착하게!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>숫자 = 둘레 밤송이 수</span>';
+    /* 2026-10-18 판 위 글자 최소화(docs/29): 평소 안내 문장은 두지 않는다 — 규칙 이름은 꼬리표, 설명은 도움말(tips·helpExtra) */
+    return '';
   }
 
   function layout(){
@@ -509,6 +507,15 @@ NG.mines = (() => {
       lines:['밤송이 = 지뢰예요', '숫자 = 둘레 8칸의 밤송이 수', '길게 누르면 깃발을 꽂아요'],
       more:[['기회','밤송이를 열면 기회(★) 하나를 잃고, 세 번이면 끝나요. 대전은 끝나지 않고 2.5초 쉬어요.'],['힌트','막히면 💡힌트가 확실한 칸 하나를 알려 줘요(점수 조금 줄어요).']]
     },
+    tips(){ return [
+      ['숫자', '열린 칸의 숫자 = 둘레 8칸에 숨은 밤송이(지뢰) 수.'],
+      ['열기 · 깃발', '아래 단추로 누르기 모드를 바꿔요. 길게 누르면(0.4초) 반대로 해요.'],
+      ['숫자 누르기', '깃발을 다 꽂은 숫자를 누르면 둘레가 한꺼번에 열려요.'],
+      ['★ 기회', '밤송이를 열면 하나씩 꺼져요. 다 꺼지면 끝(대전은 잠깐 못 눌러요).'],
+      ['💡 힌트', '논리로 확실한 칸 하나를 반짝여 알려 줘요(점수 조금 줄어요).']
+    ].concat((() => { const m = G && G.id === 'mines' && G.m; if(!m) return [];   /* 이번 판 규칙(꼬리표 이름 → 뜻) */
+      return (m.mj || []).map(k => CONC.info[k] && ['규칙 · ' + CONC.info[k].name, CONC.info[k].desc]).filter(Boolean)
+        .concat(m.tw && CONC.twInfo[m.tw] ? [['규칙 · ' + CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]] : []); })()); },
     helpExtra(){ const m = G && G.id === 'mines' && G.m; if(!m) return []; const r = []; if(m.lives === 0) r.push(['대전 규칙', '대전은 기회 제한이 없어요. 대신 밤송이를 열면 ' + STUN + '초 동안 못 누르고 점수가 줄어요.']); if(m.tips.length) r.push(['이번 판 규칙', m.tips.join(' · ')]); return r; },
     chapters:['도토리 언덕', '밤나무 숲', '단풍 골짜기', '버섯 오솔길', '달빛 숲속'],
     starRule:'★ 클리어 · ★★ 힌트·밤송이 1번 이하 · ★★★ 힌트·밤송이 없이',

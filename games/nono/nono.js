@@ -297,6 +297,10 @@ NG.nono = (() => {
   const BULB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a6.8 6.8 0 0 0-4 12.3c.7.5 1.1 1.3 1.1 2.1V18h5.8v-1.1c0-.8.4-1.6 1.1-2.1A6.8 6.8 0 0 0 12 2.5z" fill="#FFD23F" stroke="#1A0F45" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.3 19.3h5.4v1.2a1.8 1.8 0 0 1-1.8 1.8h-1.8a1.8 1.8 0 0 1-1.8-1.8z" fill="#8E6BD1" stroke="#1A0F45" stroke-width="1.3"/><path d="M9.8 7.6a3 3 0 0 1 2.2-1.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>';
   const SQ = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="15" height="15" rx="3.2" fill="#3A2A92" stroke="#1A0F45" stroke-width="1.6"/><path d="M5.5 6.5h6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".45"/></svg>';
   const MIR = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5v17" stroke="currentColor" stroke-width="1.7" stroke-dasharray="2.2 2"/><path d="M7.8 5.5L2.5 10l5.3 4.5zM12.2 5.5l5.3 4.5-5.3 4.5z" fill="currentColor"/></svg>';
+  /* 대전 실수 칩 그림(이름표 숨김용, docs/29): 빨간 ✕ 동그라미 */
+  const MISS = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#FFD3DA" stroke="#1A0F45" stroke-width="1.6"/><path d="M6.8 6.8l6.4 6.4M13.2 6.8l-6.4 6.4" stroke="#D0303A" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  /* 판 위 규칙 꼬리표는 4글자 이하(docs/29) — 전체 이름·설명은 도움말 */
+  const CHIP_SHORT = { mystery:'가린 수', color:'두 색', mirror:'거울', blind:'채점', nodone:'표시 끔', nomark:'✕ 없이', flash:'빠른 판', tight:'외줄', bare:'맨손' };
   const XS = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>';
   const xUri = c => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5.5 5.5l9 9M14.5 5.5l-9 9' stroke='${c}' stroke-width='2.6' stroke-linecap='round'/></svg>`)}")`;
 
@@ -745,6 +749,22 @@ NG.nono = (() => {
       if(!(G && G.id === ID && G.solo && !G.over)) return [];
       return (G.mjOn || []).concat(G.tw ? [G.tw] : []).map(k => { const f = conceptInfo(ID, k) || {}; return [((G.mjOn || []).includes(k) ? '새 규칙 · ' : '변주 · ') + (f.name || k), f.desc || '']; });
     },
+    /* 판 위에서 뺀 안내 문장(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const t = [['끌어서 칠하기', '누르면 한 칸, 끌면 한 줄로 칠해요. 다 채운 줄엔 ✕가 저절로 쳐져요.'],
+        ['칠하기 · 표시', '아래 두 버튼으로 칠하기와 ✕ 표시(비워 둘 칸 메모)를 바꿔요.'],
+        ['힌트', '한 줄을 통째로 알려 줘요(판당 3번).']];
+      if(G && G.id === ID){
+        if(nnDuel()) t.push(['✕ 숫자 칩', '대전에서 틀린 횟수예요. 틀리면 30점 줄고 0.8초 쉬어요.']);
+        if(G.blind) t.push(['채점', '틀려도 바로 알려 주지 않아요. 다 칠하면 [채점]을 눌러요. 칠한 칸을 다시 누르면 지워져요.']);
+        if(G.twoC) t.push(['보라 · 주황', '색을 골라 칠해요. 색이 다른 묶음끼리는 붙어 있을 수 있어요.']);
+        if(G.mir) t.push(['거울', '그림이 좌우 대칭이에요. 오른쪽 세로 숫자는 왼쪽 거울 줄과 같아요.']);
+        if(G.mys) t.push(['?', '?는 길이를 모르는 묶음 하나예요(1칸 이상). 줄을 다 채우면 숫자가 보여요.']);
+        if(G.nodone) t.push(['표시 끔', '이번 판은 줄을 다 채워도 표시가 안 나요.']);
+        if(G.solo) (G.mjOn || []).concat(G.tw ? [G.tw] : []).forEach(k => { const f = conceptInfo(ID, k) || {}; if(CHIP_SHORT[k] && CHIP_SHORT[k] !== f.name) t.push([CHIP_SHORT[k], (f.name || k) + ' — ' + (f.desc || '')]); });
+      }
+      return t;
+    },
     chapters:['모눈 공방', '픽셀 마을', '도트 정원', '타일 궁전', '모자이크 성'],
     starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수·힌트 없이',
     levels:{ easy:cfgFor(5, 180, { fill:.52 }), normal:cfgFor(10, 600, { fill:.5 }), hard:cfgFor(15, 1200, { fill:.48 }) },
@@ -831,24 +851,18 @@ NG.nono = (() => {
         const lab = X.map(x => (x.n || '물음표') + (G.twoC ? (x.c === 2 ? ' 주황' : ' 보라') : '')).join(', ');
         return `<div class="nn-cl" data-k="${k}" aria-label="${kind} ${k + 1}: ${lab || '없음'}">${X.map(x => `<i class="${x.n ? '' : 'q'}${G.twoC ? (x.c === 2 ? ' c2' : ' c1') : ''}"${x.n ? '' : ` data-o="${x.o}"`}>${x.n || '?'}</i>`).join('')}</div>`;
       };
-      const chip = (k, t) => { const inf = conceptInfo(ID, k) || { name:k, desc:'' }; return `<span class="nn-rule ${t}" title="${inf.desc}" aria-label="${t === 'tw' ? '변주' : '규칙'} ${inf.name}: ${inf.desc}">${t === 'tw' ? '⚡' : '★'} ${inf.name}</span>`; };
+      const chip = (k, t) => { const inf = conceptInfo(ID, k) || { name:k, desc:'' }; return `<span class="nn-rule ${t}" title="${inf.desc}" aria-label="${t === 'tw' ? '변주' : '규칙'} ${inf.name}: ${inf.desc}">${t === 'tw' ? '⚡' : '★'} ${CHIP_SHORT[k] || inf.name}</span>`; };
       const rules = G.solo && (G.mjOn.length || G.tw) ? `<div class="nn-rules" id="nnRules">${G.mjOn.map(k => chip(k, 'mj')).join('')}${G.tw ? chip(G.tw, 'tw') : ''}</div>` : '';
       /* 도구 버튼: 칠하기/표시는 켜고 끄기(.tool.toggle), 힌트는 아이템(.tool.item) — 공용 규격 v1 */
       const segBtns = G.twoC
         ? `<button class="tool toggle on" data-m="fill" aria-pressed="true" aria-label="보라색 칠하기"><span class="nn-sq"></span>보라</button><button class="tool toggle" data-m="fill2" aria-pressed="false" aria-label="주황색 칠하기"><span class="nn-sq o"></span>주황</button>`
         : `<button class="tool toggle on" data-m="fill" aria-pressed="true" aria-label="칠하기"><span class="nn-sq"></span>칠하기</button>`;
       const markBtn = `<button class="tool toggle${G.nomark ? ' lock' : ''}" data-m="mark" aria-pressed="false" aria-label="${G.nomark ? '✕ 표시(이번 판은 못 써요)' : '✕ 표시'}"${G.nomark ? ' aria-disabled="true"' : ''}>${XS}표시</button>`;
-      const tip = G.blind ? '틀려도 바로 알려 주지 않아요 · 다 칠하면 [채점]을 눌러요 · 칠한 칸을 다시 누르면 지워져요'
-        : G.twoC ? '색을 골라 칠해요 · 색이 다른 묶음끼리는 붙어 있을 수 있어요'
-        : G.mir ? '그림이 좌우 대칭이에요 · 오른쪽 세로 숫자는 왼쪽 거울 줄과 같아요'
-        : G.mys ? '?는 길이를 모르는 묶음 하나예요(1칸 이상) · 줄을 다 채우면 숫자가 보여요'
-        : G.nodone ? '이번 판은 줄을 다 채워도 표시가 안 나요'
-        : '끌면 한 줄로 칠해요 · 다 채운 줄엔 ✕가 저절로 쳐져요';
       st.innerHTML = `<div class="ng-nono" id="nnRoot">
         <div class="hud-row nn-hud" id="nnHud">
           <div class="hchip" aria-label="${G.blind ? '칠한 칸' : '찾은 칸'}"><span class="hv">${SQ}<b id="nnCnt">0/${G.total}</b></span><em>${G.blind ? '칠한 칸' : '찾은 칸'}</em></div>
           <div class="hchip time" id="nnTimeP" aria-label="남은 시간"><span class="hv">${WATCH}<b id="nnClock">${mmss(G.limit || 0)}</b></span><em>남은 시간</em></div>
-          ${nnDuel() ? `<div class="hchip" id="nnMisC" aria-label="실수 0번"><span class="hv"><b id="nnMis">0</b></span><em>실수</em></div>`
+          ${nnDuel() ? `<div class="hchip" id="nnMisC" aria-label="실수 0번"><span class="hv">${MISS}<b id="nnMis">0</b></span><em>실수</em></div>`
             : `<div class="hchip nn-lv" id="nnLivesC"><span class="hv"><span class="hlives" id="nnLives" aria-label="남은 기회"></span></span><em>기회</em></div>`}
         </div>${rules}
         <div class="nn-frame" id="nnFrame">
@@ -865,7 +879,6 @@ NG.nono = (() => {
           ${N >= 12 ? `<button class="tool toggle nn-zoom" id="nnZoom" aria-pressed="false" aria-label="판 확대해서 보기" hidden>${ZOOM}<span>확대</span></button>` : ''}
           ${G.blind ? `<button class="tool nn-check" id="nnChk" aria-label="채점: 다 칠했으면 눌러요" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>채점</span></button>` : ''}
         </div>
-        <p class="nn-tip" id="nnTip">${tip}</p>
       </div>`;
       const bd = $n('#bd'), frag = document.createDocumentFragment();
       G.nnEls = []; G.nnBase = [];

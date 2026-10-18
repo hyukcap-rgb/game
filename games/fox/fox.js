@@ -22,17 +22,22 @@ function fxStamp(){
   setTimeout(() => { sfx('fStamp'); const p = fxCenter(d); fxRing(p.x, p.y, '#FF5C8A', p.w * .9, .6, 10); }, 330);
 }
 
+/* 2026-10-18 판 위 글자 최소화(docs/29): 칩 이름표 대신 그림 */
+const FX_HUD = {
+  fox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 4l4.5 4h7L20 4l-1 9-7 7-7-7z"/><circle cx="9.5" cy="12" r=".9" fill="currentColor"/><circle cx="14.5" cy="12" r=".9" fill="currentColor"/></svg>',
+  score:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>'
+};
+const fxHi = k => `<span class="ico" aria-hidden="true">${FX_HUD[k]}</span>`;
 function foxStage(st){
   st.innerHTML = `<div class="fxg" id="fxg">
     <div class="hud-row fx-hud">
-      <span class="hchip"><span class="hv"><b id="fxCnt" class="num">0/${G.total || G.N}</b></span><em>여우</em></span>
+      <span class="hchip"><span class="hv">${fxHi('fox')}<b id="fxCnt" class="num">0/${G.total || G.N}</b></span><em>여우</em></span>
       <span class="hchip time"><span class="hv"><b id="sclock" class="num">00:00</b></span><em>시간</em></span>
-      <span class="hchip"><span class="hv"><b id="fxScore" class="num">0</b></span><em>점수</em></span>
+      <span class="hchip"><span class="hv">${fxHi('score')}<b id="fxScore" class="num">0</b></span><em>점수</em></span>
       <span class="hchip"><span class="hv"><span class="hlives fx-lives" id="fxLives" role="img" aria-label="남은 기회"></span></span><em>기회</em></span>
     </div>${foxRuleChips()}
     <div class="fx-card" id="fxCard"><div class="fx-board" id="bd" role="grid" aria-label="여우 자리 찾기 판"><div class="fx-wait">문제를 만드는 중…</div></div></div>
     <div class="fx-ctl">
-    <p class="fx-tip">한 번 누르면 ✕ · 빠르게 두 번 누르면 여우 · ✕를 다시 누르면 지워져요. 끌면 ✕를 여러 칸에 칠해요.</p>
     <div class="tools-row fx-tools">
       <button class="tool item fx-tool hint" id="fxHint" aria-label="힌트"><span class="ico" aria-hidden="true">${FX_ICON.bulb}</span><span>힌트</span><b class="cnt" id="fxHintN">${itemN('foxHint')}</b></button>
       <button class="tool item fx-tool auto" id="fxAuto" aria-label="자동 ✕"><span class="ico" aria-hidden="true">${FX_ICON.auto}</span><span>자동 ✕</span><b class="cnt" id="fxAutoN">${itemN('foxAuto')}</b></button>
@@ -335,14 +340,25 @@ function foxAdvInit(){
 const fxBlk = i => !!(G.blk && G.blk[i]);
 const fxPer = () => 500 / ((G.total || G.N) - (G.given ? G.given.length : 0));   /* 여우 1마리 점수(미리 놓인 여우 빼고 500점을 나눔) */
 const fxXCount = () => G.cells.reduce((a, s) => a + (s === 1), 0);
+const FX_SHORT = { rock:'바위', clue:'숫자', twin:'쌍둥이', thin:'긴 구역', flash:'번개', crumble:'와르르', tight:'외줄', fewx:'✕ 아낌', bare:'맨손' };
+function foxTips(){
+  const t = [['누르기', '한 번 누르면 ✕ · 빠르게 두 번(0.3초 안에) 누르면 여우 · ✕를 조금 뒤에 다시 누르면 지워져요.'], ['끌기', '손가락으로 끌면 ✕를 여러 칸에 칠해요(✕ 위에서 시작하면 지워요).'],
+    ['힌트 · 자동 ✕ · 되돌리기', '힌트는 가장 작은 구역의 여우 1마리, 자동 ✕는 여우 때문에 못 오는 칸에 ✕를 칠해요. 한 판에 한 번씩. 되돌리기는 방금 한 것을 취소해요.']];
+  try{ if(G && G.fx){ const nm = key => (conceptInfo('fox', key) || {}).name || key;
+    const ds = key => (conceptInfo('fox', key) || {}).desc || '';
+    G.fx.mj.forEach(m => t.push([FX_SHORT[m] || nm(m), nm(m) + ' — ' + ds(m)]));
+    if(G.fx.tw) t.push([FX_SHORT[G.fx.tw] || nm(G.fx.tw), nm(G.fx.tw) + ' — ' + ds(G.fx.tw) + (G.fx.tw === 'fewx' ? ' 꼬리표 옆 숫자 = 더 칠할 수 있는 ✕ 수.' : '')]); } }catch(_){}
+  return t;
+}
 function foxRuleChips(){
   if(!G.fx) return '';
   const nm = key => (conceptInfo('fox', key) || {}).name || key;
-  const chips = G.fx.mj.map(m => `<span class="fx-rule">${nm(m)}${m === 'twin' ? ' · 2마리씩' : ''}</span>`);
-  if(G.fx.tw) chips.push(`<span class="fx-rule tw">${nm(G.fx.tw)}${G.fx.tw === 'fewx' ? ` · 남은 <b id="fxXLeft" class="num"></b>` : ''}</span>`);
+  const sh = key => FX_SHORT[key] || nm(key);   /* 판 위 꼬리표는 4글자 이하(docs/29), 전체 이름은 title·도움말 */
+  const chips = G.fx.mj.map(m => `<span class="fx-rule" title="${nm(m)}">${sh(m)}</span>`);
+  if(G.fx.tw) chips.push(`<span class="fx-rule tw" title="${nm(G.fx.tw)}">${sh(G.fx.tw)}${G.fx.tw === 'fewx' ? ` <b id="fxXLeft" class="num"></b>` : ''}</span>`);
   return chips.length ? `<div class="fx-rules" aria-label="이번 판 규칙">${chips.join('')}</div>` : '';
 }
-function foxXLeft(){ const el = $('#fxXLeft'); if(el && G.xMax) el.textContent = Math.max(0, G.xMax - fxXCount()) + '개'; }
+function foxXLeft(){ const el = $('#fxXLeft'); if(el && G.xMax) el.textContent = Math.max(0, G.xMax - fxXCount()); }
 /* 도움말: 이번 판에 켜진 규칙·변주 설명을 덧붙임 */
 function foxHelpExtra(){
   if(!(G && G.id === 'fox' && G.fx && !G.over)) return [];
@@ -440,6 +456,7 @@ NG.fox = {
     rows:['여우 찾기' + (G.hintUsed ? ' (힌트 ' + G.hintUsed + '마리 제외)' : ''), '시간 보너스 (' + mmss(sec) + ')', '남은 기회 별 ' + G.paws + '개'] }; },
   stars(){ const miss = (G.pawMax || 3) - G.paws; return miss === 0 && !G.hintUsed ? 3 : miss <= 1 ? 2 : 1; },
   helpExtra:() => foxHelpExtra(),
+  tips:() => foxTips(),
   bodyClass:'fxmode', noConfetti:true,
   duelPace:[150,.72],
   duelStat:{ unit:'마리', lfMax:3,  get:() => ({ v:G.placed || 0, t:G.N, lf:G.paws }) }

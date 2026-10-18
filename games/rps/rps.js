@@ -153,7 +153,9 @@ NG.rps = (() => {
     }
   };
   const RULE_TIP = { hide:'그림 지령: 글자 없이 그림만', not:'하지 마라: 맞는 손이 두 개', two:'두 손: 화살표 쪽 손 기준', last:'아까처럼: 앞 지령 그대로', flash:'빠른 판: 판단 시간이 짧아요', swap:'자리 바꾸기: 버튼 순서가 바뀌어요', tight:'외줄 타기: 기회 2개' };
-  const tagName = k => (CONC.info[k] || CONC.twInfo[k] || {}).name || k;
+  /* 판 위 꼬리표는 4글자 이하(2026-10-18 글자 줄이기, docs/29) — 긴 이름만 줄임, 설명은 tips */
+  const TAG_SHORT = { swap:'자리 바꿈' };
+  const tagName = k => TAG_SHORT[k] || (CONC.info[k] || CONC.twInfo[k] || {}).name || k;
 
   /* ---------- 진행 ---------- */
   const S = () => G && G.m;
@@ -166,7 +168,7 @@ NG.rps = (() => {
     const m = S(); if(!m) return;
     const c = el('rpCnt'); if(c) c.textContent = Math.min(m.N, m.i + (m.phase === 'fb' || m.phase === 'end' ? 1 : 0));
     const cb = el('rpCombo'); if(cb) cb.textContent = m.combo;
-    const lv = el('rpLives'); if(lv){ lv.innerHTML = '기회 ' + Array.from({ length:m.maxLives }, (_, i) => `<i class="${i < m.lives ? '' : 'off'}${i === m.lives && m.lostAt ? ' lost' : ''}">★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '개'); }
+    const lv = el('rpLives'); if(lv){ lv.innerHTML = Array.from({ length:m.maxLives }, (_, i) => `<i class="${i < m.lives ? '' : 'off'}${i === m.lives && m.lostAt ? ' lost' : ''}">★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '개'); }
   }
   function setHost(mood){
     const m = S(), im = el('rpHost'); if(!m || !im) return;
@@ -218,7 +220,7 @@ NG.rps = (() => {
       const h = perm[p]; if(+b.dataset.h === h && !anim) return;
       b.dataset.h = h; b.className = 'rp-b h' + h;
       b.querySelector('img').src = handSrc(h, '#FF6F9F', true);
-      b.querySelector('span').textContent = HN[h];
+      b.title = HN[h];   /* 2026-10-18 버튼 글자 뺌(손 그림만, 이름은 aria-label·title·도움말) */
       b.setAttribute('aria-label', HN[h] + ' 내기 (' + (p + 1) + ')');
       if(anim) fx(() => { if(!FXR.reduce && b.animate) b.animate([{ transform:'rotateY(90deg) scale(.9)' }, { transform:'rotateY(0) scale(1)' }], { duration:220, easing:'cubic-bezier(.2,1.4,.4,1)' }); });
     });
@@ -232,7 +234,7 @@ NG.rps = (() => {
     else document.querySelectorAll('.ng-rps .rp-b.ok').forEach(b => b.classList.remove('ok'));   /* 틀린 표시(정답 알려 주기)는 다음 손이 나올 때까지 남겨 둔다 */
     setHost('');
     fx(() => { const my = el('rpMy'); if(my && my.classList.contains('on')) my.className = 'rp-my out'; const ck = el('rpClash'); if(ck) ck.className = 'rp-clash'; });
-    setOpp(q, true); signWait('가위 바위…');
+    setOpp(q, true); signWait('· · ·');   /* 2026-10-18 글자 줄이기: '가위 바위…' 글자 대신 점(설명은 tips) */
     const w = el('rpWin'); if(w){ w.className = 'rp-win'; w.firstElementChild.style.transform = 'scaleX(1)'; }
     sfx('rpsPump'); hud();
   }
@@ -425,6 +427,15 @@ NG.rps = (() => {
       ['막 누르면 손해', '틀리거나 시간이 지나면 기회 별이 하나 줄어요. 별이 다 없어지면 끝. 침착하게 바로 판단할수록 점수가 높아요.'],
       ['솔로: 새 지령', '그림 지령·하지 마라·두 손·아까처럼 같은 새 규칙과 빠른 판·자리 바꾸기·외줄 타기 같은 변주가 나와요.']
     ],
+    /* 화면 안내(2026-10-18 판 위 글자 줄이기, docs/29) */
+    tips:() => [
+      ['지령 판', '이겨라·져라·비겨라가 글자와 그림으로 나와요. 왕관 = 이겨라, 눈물 = 져라, 악수 = 비겨라, 되돌이 화살표 = 아까처럼, 금지 표시 = 하지 마라. 판 안의 막대가 다 줄기 전에 눌러요.'],
+      ['손 버튼', '아래 큰 버튼 세 개(가위·바위·보) 중 지령에 맞는 손을 눌러요. 키보드는 1·2·3 / A·S·D / ←↓→(화면 순서).'],
+      ['· · ·', '진행자가 주먹을 흔드는 동안(가위 바위…)에는 눌러도 무시돼요. 손이 나온 뒤에 눌러요.'],
+      ['천천히!', '0.25초 안에 3번 넘게 누르면 0.5초 동안 잠겨요(벌점은 없어요).'],
+      ['별', '기회 별. 틀리거나 시간이 지나면 하나씩 줄고, 다 없어지면 끝.'],
+      ['꼬리표', Object.values(RULE_TIP).join(' · ')]
+    ],
     helpExtra(){ const m = G && G.id === 'rps' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['골목 대결', '운동장', '놀이공원', '지령 본부', '가위바위보 왕좌'],
     starRule:'★ 클리어 · ★★ 틀린 지령 1개 이하 · ★★★ 틀린 지령 없이',
@@ -476,7 +487,7 @@ NG.rps = (() => {
           <div class="rp-end" id="rpEnd" role="status"></div>
         </div>
         <div class="rp-sign wait" id="rpSign" role="status" aria-live="polite"><div class="rp-med" id="rpMed"></div><div class="rp-tx"><span class="rp-sub" id="rpSub"></span><b id="rpTxt"></b></div><div class="rp-win" id="rpWin" aria-hidden="true"><i></i></div></div>
-        <div class="rp-btns" id="rpBtns" data-perm="0,1,2">${[0, 1, 2].map(p => `<button class="rp-b h${p}" data-p="${p}" data-h="${p}" aria-label="${HN[p]} 내기 (${p + 1})"><img src="${handSrc(p, '#FF6F9F', true)}" alt="" draggable="false"><span>${HN[p]}</span></button>`).join('')}</div>
+        <div class="rp-btns" id="rpBtns" data-perm="0,1,2">${[0, 1, 2].map(p => `<button class="rp-b h${p}" data-p="${p}" data-h="${p}" title="${HN[p]}" aria-label="${HN[p]} 내기 (${p + 1})"><img src="${handSrc(p, '#FF6F9F', true)}" alt="" draggable="false"></button>`).join('')}</div>
       </div>`;
       document.querySelectorAll('.ng-rps .rp-b').forEach(b => { b.onpointerdown = e => { e.preventDefault(); press(+b.dataset.p); }; b.onclick = e => { if(e.detail === 0) press(+b.dataset.p); }; });
       const sg = el('rpSign'); if(sg) sg.addEventListener('animationend', () => sg.classList.remove('pop'));

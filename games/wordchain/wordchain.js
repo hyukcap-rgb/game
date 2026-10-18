@@ -211,7 +211,7 @@ NG.wordchain = (() => {
   }
   function bubble(x, n){
     const m = S(), by = x.by;
-    if(by === 'start') return `<div class="wc-start" data-n="${n}"><small>시작 낱말</small><div class="wc-ws">${tilesHtml(x.w, false, true)}</div></div>`;
+    if(by === 'start') return `<div class="wc-start" data-n="${n}" aria-label="시작 낱말"><small>시작</small><div class="wc-ws">${tilesHtml(x.w, false, true)}</div></div>`;
     const who = by === 'me' ? '나' : m.dw && x.pid ? esc(duelShortNick(dWho(x.pid).nick)) + (x.pid === 'ai' ? ' (컴퓨터)' : '') : by === 'op' ? esc(m.oppNick || '상대') : (m.aiName || '컴퓨터');
     const sc = m.dw && x.pid && by !== 'me' ? ` style="--sc:${dWho(x.pid).col}"` : '';
     return `<div class="wc-b ${by === 'me' ? 'me' : 'ai'}${sc ? ' seat' : ''}" data-n="${n}"${sc}><span class="wc-av">${avHtml(by, x.pid)}</span><div class="wc-bw"><small>${who}${x.kill ? ' · <b class="kill">끝내기 낱말!</b>' : ''}</small><div class="wc-ws">${tilesHtml(x.w, true, true)}</div></div></div>`;
@@ -271,9 +271,9 @@ NG.wordchain = (() => {
       log.classList.toggle('fresh', on);
       let g = log.querySelector('.wc-guide');
       if(!on){ if(g) g.remove(); return; }
-      const txt = m.turn === 'me' ? (m.rule.rev ? `<b>‘${lastW(m)[0]}’</b>(으)로 <b>끝나는</b> 낱말을 넣어요` : `<b>‘${needTxt(m)}’</b>(으)로 시작하는 낱말을 넣어요`) : m.turn ? '상대가 먼저 이어요' : '곧 시작해요';
-      const goal = m.duelOn ? `차례에 못 이으면 탈락 · 끝까지 남으면 1등 (모두 ${m.dTurns}개씩 이으면 글자 점수)` :`${m.cfg.goal}개를 이으면 성공 · 상대가 못 이으면 끝내기 승리`;
-      const html = `<p class="wc-gt">${txt}</p><p class="wc-gs">${goal}</p>`;
+      /* 2026-10-18 판 위 글자 최소화(docs/29): 이을 글자만 크게, 목표·탈락 규칙 문장은 도움말 tips로 */
+      const txt = m.turn === 'me' ? (m.rule.rev ? `<b>‘${lastW(m)[0]}’</b>(으)로 <b>끝</b>` : `<b>‘${needTxt(m)}’</b>(으)로 시작`) : m.turn ? '<span aria-label="상대가 먼저 이어요">⏳</span>' : '⏳';
+      const html = `<p class="wc-gt">${txt}</p>`;
       if(!g){ log.insertAdjacentHTML('beforeend', `<div class="wc-guide">${html}</div>`); }
       else if(g.innerHTML !== html){ g.innerHTML = html; log.appendChild(g); }
     }catch(_){}
@@ -642,6 +642,16 @@ NG.wordchain = (() => {
         ['대전: 2~5명 돌아가며', '차례대로 이어요. 시간 안에 못 잇거나, 포기하거나, 이을 낱말이 없거나, 규칙 실수를 두 번 하면 탈락. 끝까지 남은 사람이 1등이고, 모두 정한 수만큼 이으면 글자 점수로 순위를 매겨요. 느긋하게는 차례 36초.']
       ]
     },
+    tips(){ return [
+      ['이을 글자', '입력 칸 왼쪽 주황 글자로 시작하는 낱말을 넣고 [잇기]. 두음법칙도 돼요(력→역, 리→이).'],
+      ['목표', '위 낱말 칩의 수(예: 0/10)만큼 이으면 성공. 상대가 이을 낱말이 없으면 끝내기 승리!'],
+      ['차례 시간', '내 차례마다 시계가 줄어요. 시간이 다 되면 져요.'],
+      ['💡 힌트', '이을 수 있는 낱말의 앞 글자와 글자 수를 알려 줘요(−30점).'],
+      ['🏳 포기', '두 번 누르면 포기해요.'],
+      ['대전', '차례에 못 이으면 탈락, 끝까지 남은 사람이 1등. 모두 정한 수만큼 이으면 글자 수 점수로 순위.']
+    ].concat((() => { const m = G && G.id === ID && G.m; if(!m) return [];   /* 이번 판 규칙(꼬리표 이름 → 뜻) */
+      return (m.mj || []).map(k => CONC.info[k] && ['규칙 · ' + CONC.info[k].name, CONC.info[k].desc]).filter(Boolean)
+        .concat(m.tw && CONC.twInfo[m.tw] ? [['규칙 · ' + CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]] : []); })()); },
     helpExtra(){ const m = G && G.id === ID && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ') + (m.rule.ban.length ? ` (금지 글자: ${m.rule.ban.join(', ')})` : '') + (m.rule.gold.length ? ` (황금 글자: ${m.rule.gold.join(', ')} · ${m.rule.goldNeed}개)` : '')]]; },
     chapters:['말놀이 마당', '이야기 골목', '낱말 숲', '글자 바다', '사전 궁전'],
     starRule:'★ 성공 · ★★ 힌트 없이 · ★★★ 힌트 없이 + 끝내기 승리 또는 세 글자 이상 낱말 5개',
@@ -687,10 +697,10 @@ NG.wordchain = (() => {
     _dict:{ W, NCORE, IDX, starts, dueum, cands, follow, check, aiPick, setup }, _stage:stageCfg,
     render(st){
       const m = S(), duel = m.duelOn;
-      const chips = (G.adv && (m.mj.length || m.tw || m.boss)) ? `<div class="wc-rules">${m.boss ? '<span class="wc-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="wc-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="wc-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}${m.rule.ban.length ? `<span class="wc-chip ban">✕ ${m.rule.ban.join('·')}</span>` : ''}${m.rule.gold.length ? `<span class="wc-chip gold" id="wcGold"></span>` : ''}${m.rule.tight ? '<span class="wc-chip tw" id="wcMiss"></span>' : ''}</div>` : '';
+      const chips = (G.adv && (m.mj.length || m.tw || m.boss)) ? `<div class="wc-rules">${m.boss ? '<span class="wc-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="wc-chip mj" aria-label="${CONC.info[k].name}">${({ rev:'거꾸로' })[k] || CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="wc-chip tw" aria-label="${CONC.twInfo[m.tw].name}">${({ shrink:'시간 ↓' })[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}${m.rule.ban.length ? `<span class="wc-chip ban">✕ ${m.rule.ban.join('·')}</span>` : ''}${m.rule.gold.length ? `<span class="wc-chip gold" id="wcGold"></span>` : ''}${m.rule.tight ? '<span class="wc-chip tw" id="wcMiss"></span>' : ''}</div>` : '';
       st.innerHTML = `<div class="ng-wc" id="wcStage">
         <div class="hud-row">
-          <div class="hchip" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="hv">${duel ? toyImg('fox', 'wc-hav') : ICO.word}<b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></span><em>${duel ? '내 낱말' : '이은 낱말'}</em></div>
+          <div class="hchip${duel ? ' ic' : ''}" aria-label="${duel ? '내가 이은 낱말' : '이은 낱말'}"><span class="hv">${duel ? toyImg('fox', 'wc-hav') : ICO.word}<b id="wcCnt">0</b><small>/${duel ? m.dTurns : m.cfg.goal}</small></span><em>${duel ? '내 낱말' : '이은 낱말'}</em></div>
           <div class="hchip time" id="wcTimeP" aria-label="내 차례 남은 시간"><span class="hv">${ICO.clock}<b id="wcTime">${m.cfg.limit}</b><small>초</small></span><em>차례 시간</em></div>
           ${duel ? `<div class="hchip" aria-label="남은 사람"><span class="hv">${ICO.vs}<b id="wcAlive">${G.duel.pl.length}</b><small>명</small></span><em>남은 사람</em></div>`
             : `<button class="hchip item" id="wcHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>`}

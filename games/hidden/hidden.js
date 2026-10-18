@@ -139,20 +139,18 @@ NG.hidden = (() => {
     if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.misses); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
   }
   function msg(html, cls){ const e = $('#hdMsg'); if(!e) return; e.className = 'hd-msg ' + (cls || ''); e.innerHTML = html; }
-  function playMsg(){
-    const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>' + m.sc.T.name + '에서 아래 물건을 찾아 눌러요</span>';
-  }
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 평소 알림 줄은 비워 둔다(장면 이름·규칙 설명은 도움말 tips·"이번 판"으로) */
+  function playMsg(){ return ''; }
+  /* 판 위 규칙 꼬리표는 4글자 이하 짧은 이름(긴 이름·설명은 도움말) */
+  const RULE_SHORT = { shadow:'그림자', many:'거울', swim:'흑백', night:'손전등', flash:'빠른 판', tiny:'더 많이', bare:'맨손', order:'차례로', tight:'외줄' };
   function chipHtml(L, li){
     const m = S(), done = L.got >= L.need, cur = m.order && li === curLi(m);
     if(SHR()){   /* 선점 대전: 차지한 사람 자리 색으로 칠하고 줄 긋기 + 자리 모양 표식 */
       const o = m.items.find(x => x.li === li), P = o && m.own[o.i] ? plOf(m.own[o.i]) : null;
-      if(P) return `<div class="hd-chip done own" style="--oc:${P.col}" data-li="${li}" role="listitem" aria-label="${nmOf(L.k)} ${P.me ? '내가' : esc(P.nick) + '님이'} 차지"><span class="hd-ci">${iconSvg(L.k, false)}</span><span class="hd-cn">${nmOf(L.k)}</span><em class="sh">${shapeIco(P.shape, P.col)}</em></div>`;
+      if(P) return `<div class="hd-chip done own" style="--oc:${P.col}" data-li="${li}" role="listitem" aria-label="${nmOf(L.k)} ${P.me ? '내가' : esc(P.nick) + '님이'} 차지"><span class="hd-ci">${iconSvg(L.k, false)}</span><span class="hd-cn" aria-hidden="true"></span><em class="sh">${shapeIco(P.shape, P.col)}</em></div>`;
     }
     const nm = m.shadow && !done ? '???' : nmOf(L.k);
-    return `<div class="hd-chip${done ? ' done' : ''}${cur ? ' cur' : ''}${m.order && !done && !cur ? ' wait' : ''}" data-li="${li}" role="listitem" aria-label="${m.shadow && !done ? '그림자 물건' : nmOf(L.k)}${L.need > 1 ? ' ' + L.got + '/' + L.need + '개' : ''}${done ? ' 찾음' : ''}"><span class="hd-ci">${iconSvg(L.k, m.shadow && !done)}</span><span class="hd-cn">${nm}</span>${L.need > 1 ? `<em>${done ? '✔' : '×' + (L.need - L.got)}</em>` : done ? '<em class="ok">✔</em>' : ''}</div>`;
+    return `<div class="hd-chip${done ? ' done' : ''}${cur ? ' cur' : ''}${m.order && !done && !cur ? ' wait' : ''}" data-li="${li}" role="listitem" aria-label="${m.shadow && !done ? '그림자 물건' : nmOf(L.k)}${L.need > 1 ? ' ' + L.got + '/' + L.need + '개' : ''}${done ? ' 찾음' : ''}"><span class="hd-ci">${iconSvg(L.k, m.shadow && !done)}</span><span class="hd-cn">${done ? '' : nm}</span>${L.need > 1 ? `<em>${done ? '✔' : '×' + (L.need - L.got)}</em>` : done ? '<em class="ok">✔</em>' : ''}</div>`;
   }
   /* 찾을 목록: 한 줄 가로 칸(넘치면 옆으로 밀기). 아직 못 찾은 물건이 앞에 오고, 찾은 물건은 뒤로 → 보이는 칸이 늘 남은 물건 */
   function drawList(){
@@ -210,7 +208,7 @@ NG.hidden = (() => {
     if(m.night && Math.hypot(p[0] - m.light[0], p[1] - m.light[1]) > LIGHT_R){ setLight(p[0], p[1]); sfx('hdLight'); return; }
     if(SHR()){ const o = hitAt(p[0], p[1], true); if(o) claimTap(o); else miss(p[0], p[1], cx, cy); return; }
     const o = hitAt(p[0], p[1]);
-    if(o && m.order && o.li !== curLi(m)){ msg('<b class="boss">차례가 아니에요</b><span>반짝이는 물건부터 찾아요</span>', 'hd-pop'); T_(() => { if(m.phase === 'play') msg(playMsg()); }, 900); return; }
+    if(o && m.order && o.li !== curLi(m)){ msg('<b class="boss">차례 아님</b>', 'hd-pop'); T_(() => { if(m.phase === 'play') msg(playMsg()); }, 900); return; }
     if(o) found(o); else miss(p[0], p[1], cx, cy);
   }
   function found(o){
@@ -231,7 +229,7 @@ NG.hidden = (() => {
     if(m.combo >= 3) try{ fxCombo(m.combo); }catch(_){}
     clearHint();
     if(m.found >= totalOf(m)){ win(); return; }
-    if(m.phase === 'play') msg(L.got >= L.need ? `<b>${nmOf(L.k)}</b><span>찾았어요! 남은 물건 ${totalOf(m) - m.found}개</span>` : `<b>${nmOf(L.k)}</b><span>${L.need - L.got}개 더 있어요</span>`, 'hd-pop');
+    if(m.phase === 'play') msg(L.got >= L.need ? `<b>${nmOf(L.k)}</b><span>✔</span>` : `<b>${nmOf(L.k)}</b><span>+${L.need - L.got}</span>`, 'hd-pop');
   }
   /* 양이를 찾으면 작게 폴짝(보이기만, 판 상태와 상관없음) */
   function yangHop(){ try{ const g = document.querySelector('.ng-hidden .hd-yang'); if(g){ g.classList.remove('hop'); void g.getBoundingClientRect(); g.classList.add('hop'); } }catch(_){} }
@@ -316,7 +314,7 @@ NG.hidden = (() => {
   function claimTag(o, P){
     try{
       const m = S(), ml = $('#hdMarks'); if(!ml) return;
-      const nm = P.me ? '나' : String(P.nick).slice(0, 6), w = 34 + nm.length * 13, sc = 1 / m.view.z;
+      const nm = P.me ? '나' : '', w = nm ? 34 + nm.length * 13 : 28, sc = 1 / m.view.z;   /* 2026-10-18: 남의 이름표는 자리 모양만(별명은 알림 줄) */
       const [px, py] = posOf(o, elapsed()), x = Math.max(w / 2 * sc + 2, Math.min(W - w / 2 * sc - 2, px)), y = Math.max(16 * sc, py - (o.r + 22) * Math.min(1, sc * 1.4));
       const g = document.createElementNS(SVGNS, 'g'); g.setAttribute('class', 'hd-tag'); g.setAttribute('transform', `translate(${r1(x)} ${r1(y)}) scale(${r1(sc * 100) / 100})`);
       g.innerHTML = `<rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${P.col}" stroke-width="3"/><path d="${shapeD(P.shape, 5.5)}" transform="translate(${-w / 2 + 14} 0)" fill="${P.col}" stroke="#1A0F45" stroke-width="1.6"/><text x="${-w / 2 + 25}" y="5" font-size="14" fill="#1A0F45">${esc(nm)}</text>`;
@@ -325,7 +323,7 @@ NG.hidden = (() => {
   }
   function takenMsg(own){
     const m = S(), P = plOf(own);
-    msg(`<b>이미 차지</b><span>${P ? esc(P.nick) + '님이 먼저 찾았어요' : '먼저 찾은 사람이 있어요'}</span>`, 'hd-pop');
+    msg(`<b>이미 차지</b>${P ? `<span class="hd-msh">${shapeIco(P.shape, P.col)}</span>` : ''}`, 'hd-pop');
     T_(() => { if(m.phase === 'play') msg(playMsg()); }, 900);
   }
   /* 누르기: 아직 주인 없는 물건이면 차지 시도(내 화면에는 바로 점선 → 0.4초 확인 뒤 진하게). 남의 것은 아무 일 없음(벌칙 없음) */
@@ -355,9 +353,9 @@ NG.hidden = (() => {
       m.streak = 0; m.combo++; m.found++; clearHint();
       try{ const [px, py] = posOf(o, elapsed()), q = screenOf(px, py); fxBurst(q.x, q.y, ['#FF3D7F', '#FFE27A', '#FFFFFF', o.F], 12, { speed:220, size:4.5, kinds:['star', 'dot', 'spark'], up:90, g:420, glow:true, dur:.6 }); fxRing(q.x, q.y, '#FFE27A', 56, .5, 7); }catch(_){}
       sfx('hdFind', { n:Math.min(8, m.combo - 1) }); fxBuzz(12);
-      if(m.phase === 'play') msg(`<b>${nmOf(L.k)}</b><span>차지! 남은 물건 ${left}개</span>`, 'hd-pop');
+      if(m.phase === 'play') msg(`<b>${nmOf(L.k)}</b><span>✔</span>`, 'hd-pop');
     } else if(m.phase === 'play'){
-      msg(`<b>${esc(P.nick)}</b><span>${nmOf(L.k)} 차지 · 남은 물건 ${left}개</span>`, 'hd-pop');
+      msg(`<span class="hd-msh">${shapeIco(P.shape, P.col)}</span><b aria-label="${esc(String(P.nick))}">✔</b>`, 'hd-pop');   /* 2026-10-18: 별명 대신 모양만(글자 줄이기) */
       try{ sfx('toggle'); }catch(_){}
     }
     if(m.phase === 'play') T_(() => { if(m.phase === 'play') msg(playMsg()); }, 1300);
@@ -415,7 +413,7 @@ NG.hidden = (() => {
   function lose(text, why){
     const m = S(); if(m.phase !== 'play') return;
     m.phase = 'done'; m.fail = why;
-    msg('<b class="bad">' + text + '</b><span>남은 물건 ' + (totalOf(m) - m.found) + '개</span>', 'hd-pop');
+    msg('<b class="bad">' + text + '</b>', 'hd-pop');
     sfx('hdTimeUp'); fxBuzz([40, 40, 60]);
     try{ fxShake($('#hdWrap'), 6); }catch(_){}
     /* 못 찾은 물건 자리 보여 주기 */
@@ -429,6 +427,7 @@ NG.hidden = (() => {
   function zoomTipOff(){ const t = $('#hdZtip'); if(t){ t.classList.add('off'); setTimeout(() => { try{ t.remove(); }catch(_){} }, 300); } try{ store.set('hp:hidden:ztip', 9); }catch(_){} }
   function zoomTip(){
     try{
+      return;   /* 2026-10-18 판 위 글자 최소화: 말풍선 대신 도움말 tips '크게 보기' */
       const m = S(), n = +store.get('hp:hidden:ztip', 0) || 0; if(m.night || n >= 3 || !$('#hdWrap')) return;
       store.set('hp:hidden:ztip', n + 1);
       const t = document.createElement('div'); t.id = 'hdZtip'; t.className = 'hd-ztip'; t.innerHTML = '돋보기로<br>크게 볼 수 있어요'; t.setAttribute('aria-hidden', 'true');
@@ -508,6 +507,22 @@ NG.hidden = (() => {
       ];
     },
     helpExtra(){ const m = G && G.id === 'hidden' && G.h; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
+    /* 2026-10-18 판 위에서 뺀 안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'hidden' && G.h, out = [];
+      if(m && m.sc) out.push(['장면', m.sc.T.name + '에서 양이와 아래 목록의 물건을 찾아 눌러요.']);
+      out.push(['아래 목록', '그림에서 잘라 낸 물건 그림과 이름이에요. 찾은 칸은 ✔ 표시만 남아요(대전은 차지한 사람 색·모양).']);
+      out.push(['크게 보기', '오른쪽 아래 돋보기 단추(×2·×4·×8·×12)나 두 손가락으로 크게 볼 수 있어요. 크게 본 채로 끌면 옮겨 가요.']);
+      out.push(['💡 힌트', '남은 물건 하나의 근처를 잠깐 밝혀요(−40점).']);
+      out.push(['빗나가면', '점수가 15점 줄고 잠깐 못 눌러요(빨간 ✕와 "잠깐!" 막대).']);
+      if(m && G.adv){
+        for(const k of m.mj) out.push([RULE_SHORT[k] || CONC.info[k].name, CONC.info[k].name + ' · ' + (CONC.info[k].desc || RULE_TIP[k] || '')]);
+        if(m.tw) out.push([RULE_SHORT[m.tw] || CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].name + ' · ' + (CONC.twInfo[m.tw].desc || RULE_TIP[m.tw] || '')]);
+        if(m.boss) out.push(['대장 판', '이 챕터의 마지막 큰 판이에요. 끝까지 집중!']);
+      }
+      if(G && G.duel) out.push(['대전', '먼저 누른 사람이 그 물건을 차지해요. 다른 사람이 차지하면 위 알림 줄에 그 사람 모양과 별명이 잠깐 보여요.']);
+      return out;
+    },
     chapters:['동아시아 산책', '열대와 사막', '피라미드와 런던', '지중해 골목', '세계 일주'],
     starRule:'★ 클리어 · ★★ 힌트 1번·실수 4번 이하 · ★★★ 힌트 없이 실수 1번 이하',
     levels:{
@@ -600,7 +615,7 @@ NG.hidden = (() => {
           <div class="hchip time" id="hdTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="hdTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
           <button class="hchip item" id="hdHint" aria-label="힌트"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em>힌트</em></button>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="hd-rules" aria-label="켜진 규칙">${m.boss ? '<span class="hd-chipr boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="hd-chipr mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="hd-chipr tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="hd-rules" aria-label="켜진 규칙">${m.boss ? '<span class="hd-chipr boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="hd-chipr mj" aria-label="${CONC.info[k].name}">${RULE_SHORT[k] || CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="hd-chipr tw" aria-label="${CONC.twInfo[m.tw].name}">${RULE_SHORT[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar hd-tbar" id="hdBarWrap"><i id="hdBar"></i></div>
         <div class="hd-row"><div class="hlives" id="hdLives" role="img" hidden></div><div class="hd-msg" id="hdMsg">${playMsg()}</div></div>
         <div class="hd-wrap in" id="hdWrap">
@@ -652,6 +667,9 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-msg b{font-family:var(--heavy); font-weight:400; font-size:20px; color:#fff; -webkit-text-stroke:5px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; flex:none}
 .ng-hidden .hd-msg b.boss{color:#FFE27A}
 .ng-hidden .hd-msg b.bad{color:#FF8A8F}
+.ng-hidden .hd-msh{display:inline-flex; width:22px; height:22px; flex:none}
+.ng-hidden .hd-msh svg{width:100%; height:100%}
+.ng-hidden .hd-cn:empty{min-height:13px}
 .ng-hidden .hd-msg.hd-pop, .ng-hidden .hd-msg.hd-win{animation:hidden-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-hidden .hd-msg.hd-win b{font-size:24px; color:#FFE27A}
 @keyframes hidden-in{from{transform:scale(.6); opacity:0}}

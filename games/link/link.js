@@ -244,14 +244,12 @@ NG.link = (() => {
     const f = $('#lkFound'); if(f) f.textContent = m.found;
     const h = $('#lkHint'); if(h){ h.querySelector('b').textContent = m.hintLeft; h.disabled = m.hintLeft <= 0; }
     const x = $('#lkMix'); if(x){ x.querySelector('b').textContent = m.mixLeft; x.disabled = m.mixLeft <= 0; }
-    const lv = $('#lkLives'); if(lv && !m.lives) lv.hidden = true; else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    const lv = $('#lkLives'); if(lv && !m.lives) lv.hidden = true; else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', left === 1); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#lkMsg'); if(!e) return; e.className = 'lk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>같은 그림을 두 번까지 꺾어 이어요</span>';
+    return '';   /* 2026-10-18 판 위 글자 최소화(docs/29): 안내·규칙 문장은 도움말 tips로 */
   }
 
   function layout(){
@@ -317,7 +315,7 @@ NG.link = (() => {
     if(m.frozenUntil && Date.now() < m.frozenUntil) return;   /* 대전: 틀린 뒤 1초는 못 누름 */
     if(m.ice && m.ice.has(i)){   /* 얼음 덮인 타일은 못 고름(실수 아님) */
       const el = cellEl(i); try{ if(el) fxShake(el, 3); }catch(_){}
-      sfx('linkIceNo'); msg('<b class="ice">꽁꽁 얼었어요</b><span>' + Math.max(1, Math.ceil((m.ice.get(i) - Date.now()) / 1000)) + '초 뒤 녹아요 · 옆 짝을 지우면 바로</span>', 'lk-pop');
+      sfx('linkIceNo'); msg('<b class="ice">꽁꽁</b><span>' + Math.max(1, Math.ceil((m.ice.get(i) - Date.now()) / 1000)) + '초</span>', 'lk-pop');
       T(() => { if(m.phase === 'play') msg(playMsg()); }, 1100);
       return;
     }
@@ -339,7 +337,7 @@ NG.link = (() => {
       const bd = $('#bd'); if(bd) bd.classList.add('frozen');
       T(() => { const b2 = $('#bd'); if(b2) b2.classList.remove('frozen'); }, FREEZE_MS);
     }
-    msg('<b class="bad">' + (diff ? '다른 그림이에요' : '길이 막혔어요') + '</b><span>' + (left < 0 ? '−25점 · 1초 쉬어요' : left ? '기회 ' + left + '번 남음' : '기회를 다 썼어요') + '</span>', 'lk-pop');
+    msg('<b class="bad">' + (diff ? '다른 그림' : '길이 막힘') + '</b><span>' + (left < 0 ? '−25 · 1초' : '★ ' + left) + '</span>', 'lk-pop');
     const hs = document.querySelectorAll('.ng-link .hlives i'), lost = left >= 0 && hs[left]; if(lost){ lost.classList.add('lost'); const q = fxCenter(lost); fxBurst(q.x, q.y, ['#FFB020', '#FFE27A', '#fff'], 10, { speed:200, size:4, kinds:['dot','spark'], up:60, g:500, dur:.6 }); }
     if(m.tick){ m.pen += m.tick; const tp = $('#lkTimeP'); if(tp){ const q = fxCenter(tp); fxFloat(q.x, q.y + 30, '−' + m.tick + '초', 'bad'); } }
     hud();
@@ -423,7 +421,7 @@ NG.link = (() => {
   }
   function autoMix(){
     const m = S(); m.lock = true; m.autoMix++;
-    msg('<b class="boss">이을 짝이 없어요</b><span>타일을 섞을게요</span>', 'lk-pop');
+    msg('<b class="boss">짝 없음</b><span>섞기</span>', 'lk-pop');
     T(() => { mixBoard(); m.lock = false; T(() => { if(m.phase === 'play') msg(playMsg()); }, 1200); }, 650);
   }
   function useMix(){
@@ -473,7 +471,7 @@ NG.link = (() => {
   function lose(text, why){
     const m = S(); if(m.phase !== 'play') return;
     m.phase = 'done'; m.lock = true; m.fail = why;
-    msg('<b class="bad">' + text + '</b><span>남은 짝 ' + (m.pairs - m.found) + '개</span>', 'lk-pop');
+    msg('<b class="bad">' + text + '</b>', 'lk-pop');
     sfx('linkTimeUp'); fxBuzz([40, 40, 60]); fxShake($('#bd'), 6);
     document.querySelectorAll('.ng-link .lk-cell.tile').forEach(e => e.classList.add('left'));
     T(() => finish(false), 1400);
@@ -489,7 +487,7 @@ NG.link = (() => {
     const mv = findMove(m); if(!mv) return;
     m.coach = [mv[0], mv[1]];
     m.coach.forEach((j, n) => { const el = cellEl(j); if(el){ el.classList.add('coach'); if(!n) el.insertAdjacentHTML('beforeend', FINGER); } });
-    msg('<span>반짝이는 <em class="lk-em">같은 그림 두 개</em>를 차례로 눌러요</span>');
+    /* 반짝임 + 손가락만(안내 문장은 도움말 tips) */
   }
   function coachOff(){
     const m = S(); if(!m || !m.coach) return;
@@ -579,7 +577,7 @@ NG.link = (() => {
   }
   function iceApply(it){
     const m = S(), now = Date.now();
-    if(it.shuf){ msg('<b class="ice">섞기 공격!</b><span>판이 섞였어요</span>', 'lk-pop'); mixBoard(); }
+    if(it.shuf){ msg('<b class="ice">섞기 공격!</b>', 'lk-pop'); mixBoard(); }
     const pick = icePick(m.b, m.ice, it.n, it.key, m.seed);
     pick.forEach(i => { m.ice.set(i, now + ICE_MS); if(m.sel === i){ setSel(i, false); m.sel = null; } const el = cellEl(i); if(el) el.outerHTML = cellHtml(i); });
     m.iceGot += pick.length;
@@ -718,6 +716,22 @@ NG.link = (() => {
     /* 도움말 v2: 그림 + 3줄(더 알아보기 = help) */
     howto:{ pic:howPic, lines:['같은 그림 두 개를 눌러요', '선이 두 번까지 꺾여 이어지면 사라져요', '판을 다 비우면 성공'] },
     helpExtra(){ const m = G && G.id === 'link' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
+    /* 2026-10-18 판 위에서 뺀 안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'link' && G.m, out = [
+        ['잇기', '같은 그림 타일 두 개를 차례로 눌러요. 선이 두 번까지 꺾여 이어지면 사라져요. 처음엔 지울 수 있는 짝이 반짝이고 손가락이 가리켜요.'],
+        ['💡 힌트', '지울 수 있는 짝 하나를 점선 길로 보여 줘요(−40점).'],
+        ['섞기', '남은 타일 자리를 섞어요(−25점). 짝이 하나도 없으면 저절로 섞여요.']
+      ];
+      if(m && !m.duel) out.push(['★ 기회', '다른 그림이나 막힌 짝을 고르면 별 하나를 잃어요. 별을 다 잃으면 끝나요.']);
+      if(m && m.duel) out.push(['대전', '틀리면 −25점 + 1초 쉬어요. 3초 안에 연달아 지우면 상대 판에 얼음을 보내요. 얼음 타일은 잠깐 못 고르고, 옆 짝을 지우면 바로 녹아요.']);
+      if(m && G.adv){
+        for(const k of m.mj) out.push([CONC.info[k].name, CONC.info[k].desc]);
+        if(m.tw) out.push([CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]);
+        if(m.boss) out.push(['대장 판', '이 챕터의 마지막 큰 판이에요. 끝까지 집중!']);
+      }
+      return out;
+    },
     chapters:['꽃밭 산책','과일 장터','별빛 정원','바닷가 마을','눈꽃 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·섞기·실수 1번 이하 · ★★★ 힌트·섞기·실수 없이',
     get levels(){ return lvTable(); },   /* 2026-10-07부터 짧은 판(LV_NEW), 그 전 날짜는 LV_OLD */
@@ -768,7 +782,7 @@ NG.link = (() => {
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="lk-rules" aria-label="켜진 규칙">${m.boss ? '<span class="lk-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="lk-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="lk-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="hbar lk-tbar" id="lkBarWrap"><i id="lkBar"></i></div>
-        <div class="lk-row">${m.duel ? '' : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"><span>타일을 놓는 중…</span></div></div>
+        <div class="lk-row">${m.duel ? '' : '<div class="hlives" id="lkLives" role="img"></div>'}<div class="lk-msg" id="lkMsg"></div></div>
         <div class="lk-wrap"><div class="lk-board in" id="bd" role="grid" aria-label="타일 판"><svg class="lk-path" id="lkPath" aria-hidden="true"></svg></div></div>
       </div>`;
       build(); wire(); hud();

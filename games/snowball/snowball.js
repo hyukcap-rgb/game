@@ -185,7 +185,7 @@ NG.snowball = (() => {
       }
       if(S.gold && Math.hypot(S.gold.x - p.x, S.gold.y - p.y) < r + 18){
         p.mass += RULE.GOLD_MASS; p.golds++; p.eaten.object += RULE.GOLD_MASS; S.gold = null;
-        if(p.me){ addFloat(p.x, p.y, `+${RULE.GOLD_MASS} 황금 눈사람!`, '#B07A00'); fx(() => sfx('snGold')); }
+        if(p.me){ addFloat(p.x, p.y, `+${RULE.GOLD_MASS}!`, '#B07A00'); fx(() => sfx('snGold')); }
       }
       if(p.mass > p.peak){ p.peak = p.mass; p.peakAt = S.t; }
     }
@@ -289,8 +289,8 @@ NG.snowball = (() => {
   function openRevive(d){
     S.reviveLeft = RULE.REVIVE_WINDOW;
     const box = $s('.snb-rv'); if(!box) return;
-    box.querySelector('.rv-t').textContent = d.why === 'absorb' ? `${d.by.name}에게 흡수됐어요` : '녹아서 사라졌어요';
-    box.querySelector('.rv-d').textContent = `광고를 보면 ${Math.max(RULE.START_MASS, Math.round(d.mass * RULE.REVIVE_KEEP))} 질량(직전의 30%)으로 한 번 부활해요. 부활 후 3초 무적.`;
+    box.querySelector('.rv-t').textContent = d.why === 'absorb' ? `${d.by.name}에게 흡수` : '녹았어요';
+    box.querySelector('.rv-d').innerHTML = `${I_MASS}${Math.max(RULE.START_MASS, Math.round(d.mass * RULE.REVIVE_KEEP))} · 무적 3초`;   /* 긴 설명은 도움말 tips */
     box.hidden = false;
     fx(() => { const cv = box.querySelector('.rv-ball'), c = cv.getContext('2d'); c.setTransform(2, 0, 0, 2, 0, 0); c.clearRect(0, 0, 96, 104); drawBall(c, 48, 60, 34, S.me.skin, 'scared', S.me.stickers, null, false); });
   }
@@ -586,7 +586,7 @@ NG.snowball = (() => {
         arrows.push({ x:q.x, y:q.y, d, txt:`Lv ${snLv(q.mass)} · ${Math.round(d * .02)}m`, bg:'#FF8A3D', fg:'#2A1300' });
       }
       arrows.sort((u, v) => u.d - v.d); arrows.length = Math.min(arrows.length, 2);   /* 가까운 위험 2개만(화면이 덮이지 않게) */
-      if(S.gold){ const d = Math.hypot(S.gold.x - me.x, S.gold.y - me.y); arrows.push({ x:S.gold.x, y:S.gold.y, txt:`황금 눈사람 · ${Math.round(d * .02)}m`, bg:'#FFD43B', fg:'#3A2A00' }); }
+      if(S.gold){ const d = Math.hypot(S.gold.x - me.x, S.gold.y - me.y); arrows.push({ x:S.gold.x, y:S.gold.y, txt:`${Math.round(d * .02)}m`, bg:'#FFD43B', fg:'#3A2A00' }); }
       const top = S.safeTop, bot = H - S.safeBot;
       for(const a of arrows){
         const p = toScreen(a.x, a.y); if(p.x > 0 && p.x < W && p.y > top && p.y < bot) continue;
@@ -601,6 +601,17 @@ NG.snowball = (() => {
     }
   }
 
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 이름표 대신 작은 그림. 설명은 도움말 tips */
+  const SI = (d, c) => `<svg class="sn-i" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="${c || 'currentColor'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const I_DIA = SI('<circle cx="12" cy="12" r="8.5"/><path d="M5 12h14M8 10l-3 2 3 2M16 10l3 2-3 2"/>');
+  const I_MASS = SI('<path d="M6.5 9h11l2.5 11H4z"/><circle cx="12" cy="6" r="2.4"/>');
+  const I_UP = SI('<path d="M12 19V6M6.5 11.5 12 6l5.5 5.5"/>');
+  const I_CLK = SI('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
+  const I_PPL = SI('<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M15.5 14.2A4.6 4.6 0 0 1 21 19"/>');
+  const I_TOP = SI('<path d="M4 18h16M5 16 4 7l4.5 3.5L12 5l3.5 5.5L20 7l-1 9z"/>');
+  const I_GOLD = '<svg class="sn-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="15.5" r="6" fill="#FFD43B" stroke="#8A6200" stroke-width="1.6"/><circle cx="12" cy="7.5" r="4" fill="#FFD43B" stroke="#8A6200" stroke-width="1.6"/></svg>';
+  const I_MELT = SI('<path d="M12 3.5c3 4.2 5.5 7.2 5.5 10.3a5.5 5.5 0 0 1-11 0C6.5 10.7 9 7.7 12 3.5z"/>');
+  const DOT = c => `<i class="sn-dot" style="background:${c}"></i>`;
   function hud(dt){
     S.hudT -= dt; if(S.hudT > 0) return; S.hudT = .1;
     const me = S.me, lv = snLv(me.mass), cur = massFor(lv), nx = massFor(Math.min(RULE.MAX_LV, lv + 1));
@@ -608,43 +619,41 @@ NG.snowball = (() => {
     q('.sn-lv').textContent = lv; q('.sn-dia').textContent = meters(me.mass).toFixed(1) + 'm'; q('.sn-mass').textContent = Math.round(me.mass).toLocaleString();
     const frac = lv >= RULE.MAX_LV ? 1 : (me.mass - cur) / (nx - cur);
     q('.sn-bar i').style.width = (Math.max(0, Math.min(1, frac)) * 100).toFixed(1) + '%';
-    q('.sn-next').innerHTML = lv >= RULE.MAX_LV ? '<b>최대 레벨</b>' : `Lv ${lv + 1}까지 <b>${Math.ceil(nx - me.mass).toLocaleString()}</b>`;
+    q('.sn-next').innerHTML = lv >= RULE.MAX_LV ? '<b>MAX</b>' : `${I_UP}<b>${Math.ceil(nx - me.mass).toLocaleString()}</b>`;
     q('.sn-frac').textContent = `${Math.round(me.mass).toLocaleString()} / ${Math.round(nx).toLocaleString()}`;
     const left = Math.max(0, RULE.MATCH - S.t), mm = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     let html;
     if(S.battle){
       const alive = S.players.filter(p => p.alive).sort((a, b) => b.mass - a.mass), mi = alive.indexOf(me);
       const rows = alive.slice(0, 5).map((p, i) => [i + 1, p]); if(mi >= 5) rows.push([mi + 1, me]);
-      html = `<div class="sn-bh"><span>${mm} 남음</span><span>생존 ${alive.length}/${S.total}</span></div>` + rows.map(([k, p]) => {
+      html = `<div class="sn-bh"><span aria-label="남은 시간">${I_CLK}${mm}</span><span aria-label="생존">${I_PPL}${alive.length}/${S.total}</span></div>` + rows.map(([k, p]) => {
         let bg = '#FF8CC0', fg = '#3B2150';
         if(!p.me){ const r = REL[me.alive ? relation(me, p).k : 'same']; bg = r.pill; fg = r.fg; }
-        return `<div class="sn-br"><span class="k">${k}</span><span class="n${p.me ? ' me' : ''}">${esc(p.name)}</span><span class="chip" style="background:${bg};color:${fg}">Lv ${snLv(p.mass)}</span></div>`;
+        return `<div class="sn-br"><span class="k">${k}</span><span class="n${p.me ? ' me' : ''}">${esc(p.name)}</span><span class="chip" style="background:${bg};color:${fg}" aria-label="레벨">${snLv(p.mass)}</span></div>`;
       }).join('');
     } else {
-      const st = starOf(lv), goal = st >= 3 ? '★★★ 확보' : st === 2 ? '다음 ★★★ Lv 25' : st === 1 ? '다음 ★★ Lv 18' : '첫 ★ Lv 10';
-      html = `<div class="sn-bh"><span>${mm} 남음</span><span>솔로</span></div><div class="sn-st">${'★'.repeat(st)}<i>${'★'.repeat(3 - st)}</i></div><div class="sn-g">${goal}</div><div class="sn-g">최고 Lv ${snLv(me.peak)}</div>`;
+      const st = starOf(lv), goal = st >= 3 ? '★★★ ✓' : st === 2 ? '★★★ Lv 25' : st === 1 ? '★★ Lv 18' : '★ Lv 10';
+      html = `<div class="sn-bh"><span aria-label="남은 시간">${I_CLK}${mm}</span></div><div class="sn-st">${'★'.repeat(st)}<i>${'★'.repeat(3 - st)}</i></div><div class="sn-g" aria-label="다음 별">${goal}</div><div class="sn-g" aria-label="최고 레벨">${I_TOP}${snLv(me.peak)}</div>`;
     }
     q('.sn-board').innerHTML = html;
     const ban = q('.sn-ban');
     ban.classList.toggle('hot', !!(me.alive && S.meThreat > 0));
-    if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}% · 얼른 빠져나가요!`; }
-    else if(S.t >= RULE.SUNRISE_AT){ ban.hidden = false; ban.textContent = me.alive && Math.hypot(me.x, me.y) > S.safeR ? '햇볕 구역! 녹고 있어요 −3%/초' : `해돋이 진행 중 · 안전 구역 ${Math.round(S.safeR / WORLD_R * 100)}%`; }
-    else if(S.t >= RULE.SUNRISE_WARN){ ban.hidden = false; ban.textContent = `해돋이 ${Math.ceil(RULE.SUNRISE_AT - S.t)}초 후 · 맵이 좁아져요`; }
-    else if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}% · 얼른 빠져나가요!`; }
-    else if(me.invuln > 0){ ban.hidden = false; ban.textContent = `부활 무적 ${me.invuln.toFixed(1)}초`; }
+    if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}%!`; }
+    else if(S.t >= RULE.SUNRISE_AT){ ban.hidden = false; ban.textContent = me.alive && Math.hypot(me.x, me.y) > S.safeR ? '햇볕! −3%/초' : `해돋이 · 안전 ${Math.round(S.safeR / WORLD_R * 100)}%`; }
+    else if(S.t >= RULE.SUNRISE_WARN){ ban.hidden = false; ban.textContent = `해돋이 ${Math.ceil(RULE.SUNRISE_AT - S.t)}초`; }
+    else if(me.alive && S.meThreat > 0){ ban.hidden = false; ban.textContent = `먹히는 중 ${Math.round(Math.min(1, S.meThreat / RULE.ABSORB_OVERLAP) * 100)}%!`; }
+    else if(me.invuln > 0){ ban.hidden = false; ban.textContent = `무적 ${me.invuln.toFixed(1)}`; }
     else ban.hidden = true;
     for(const el of q('.sn-chips').children){
       const F = FOOD[el.dataset.t], ok = lv >= F.lv; el.classList.toggle('locked', !ok);
-      el.querySelector('b').textContent = ok ? `+${F.mass}` : `Lv ${F.lv}`;
+      el.querySelector('b').textContent = ok ? `+${F.mass}` : `Lv${F.lv}`;
     }
-    const nl = CHIPS.map(([t]) => FOOD[t]).find(F => lv < F.lv);
-    q('.sn-unlock').textContent = nl ? `다음 해금: ${nl.label} · ${nl.lv - lv}레벨 남음` : '모든 사물 해금!';
-    const melt = me.idle ? '<b class="d">멈춰서 녹는 중</b>' : '멈추면 조금씩 녹아요';
+    const melt = me.idle ? `<b class="d" aria-label="멈춰서 녹는 중">${I_MELT}−0.5%</b>` : '';
     if(S.battle && me.alive){
       let pr = 0, sm = 0, dg = 0;
       for(const o of S.players){ if(!o.alive || o.me || Math.hypot(o.x - me.x, o.y - me.y) > 1200) continue; const k = relation(me, o).k; if(k === 'prey') pr++; else if(k === 'danger') dg++; else sm++; }
-      q('.sn-status').innerHTML = `<span>근처 <b class="p">사냥 ${pr}</b> · 비슷 ${sm} · <b class="d">위험 ${dg}</b></span><span>${melt}</span>`;
-    } else q('.sn-status').innerHTML = `<span>황금 눈사람 ${S.gold ? '등장!' : Math.max(0, Math.ceil(S.nextGold - S.t)) + '초 후'}</span><span>${melt}</span>`;
+      q('.sn-status').innerHTML = `<span aria-label="근처 사냥 ${pr} 비슷 ${sm} 위험 ${dg}">${DOT('#2E8BE6')}<b class="p">${pr}</b> ${DOT('#A898B8')}${sm} ${DOT('#FF8A3D')}<b class="d">${dg}</b></span><span>${melt}</span>`;
+    } else q('.sn-status').innerHTML = `<span aria-label="황금 눈사람">${I_GOLD}${S.gold ? '!' : Math.max(0, Math.ceil(S.nextGold - S.t)) + 's'}</span><span>${melt}</span>`;
     const bb = q('.sn-boost'); bb.disabled = me.mass <= RULE.BOOST_MIN; bb.classList.toggle('on', !!me.boosting);
     mini();
   }
@@ -669,7 +678,7 @@ NG.snowball = (() => {
       <div class="sn-top">
         <div class="sn-me sn-pan">
           <div class="sn-row"><div class="sn-l" aria-label="크기 레벨"><small>Lv</small><b class="sn-lv">1</b></div>
-            <div class="sn-meta"><span>지름 <b class="sn-dia">0.5m</b></span><span>질량 <b class="sn-mass">20</b></span></div></div>
+            <div class="sn-meta"><span aria-label="지름">${I_DIA}<b class="sn-dia">0.5m</b></span><span aria-label="질량">${I_MASS}<b class="sn-mass">20</b></span></div></div>
           <div class="sn-bar"><i></i></div>
           <div class="sn-bf"><span class="sn-next"></span><span class="sn-frac"></span></div>
         </div>
@@ -677,14 +686,13 @@ NG.snowball = (() => {
       </div>
       <div class="sn-ban" hidden></div>
       <div class="sn-bot sn-pan">
-        <div class="sn-cap"><span>지금 먹을 수 있는 것</span><span class="sn-unlock"></span></div>
-        <div class="sn-chips">${CHIPS.map(([t, l]) => `<div class="sn-chip" data-t="${t}"><canvas width="44" height="44"></canvas><span>${l}</span><b></b></div>`).join('')}</div>
+        <div class="sn-chips">${CHIPS.map(([t, l]) => `<div class="sn-chip" data-t="${t}" aria-label="${l}" title="${l}"><canvas width="44" height="44"></canvas><b></b></div>`).join('')}</div>
         <div class="sn-ctl"><div class="sn-joy" role="slider" aria-label="이동 레버: 끌어서 방향 정하기"><i class="sn-knob"></i></div>
           <div class="sn-mid"><div class="sn-status"></div><canvas class="sn-mini" width="144" height="144" aria-label="미니맵"></canvas></div>
-          <button class="sn-boost" type="button" aria-label="부스트"><span>부스트</span><small>질량 −20/초</small></button></div>
+          <button class="sn-boost" type="button" aria-label="부스트(질량 −20/초)"><span>부스트</span></button></div>
       </div>
       <div class="snb-rv" hidden><div class="rv-box"><canvas class="rv-ball" width="192" height="208" aria-hidden="true"></canvas><b class="rv-t">흡수됐어요</b><div class="rv-n"><span>5</span></div><p class="rv-d"></p>
-        <div class="rv-b"><button class="rv-btn rv-no" type="button">결과 보기</button><button class="rv-btn rv-yes" type="button">광고 보고 부활</button></div></div></div>
+        <div class="rv-b"><button class="rv-btn rv-no" type="button">결과 보기</button><button class="rv-btn rv-yes" type="button" aria-label="광고 보고 부활">광고 부활</button></div></div></div>
     </div>`;
     S.root = st.querySelector('.snb');
     const cv = S.root.querySelector('.sn-cv'); S.cv = cv; S.ctx = cv.getContext('2d');
@@ -795,11 +803,13 @@ NG.snowball = (() => {
 .snb .sn-cap{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:13px; font-weight:700}
 .snb .sn-cap span:first-child{color:var(--sub)}
 .snb .sn-unlock{color:var(--pkt); text-align:right; white-space:nowrap}
-.snb .sn-chips{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px}
-.snb .sn-chip{background:#FFF0F6; border-radius:14px; padding:4px 1px 3px; display:flex; flex-direction:column; align-items:center; gap:0; min-width:0; font-size:13px; color:var(--ink); box-shadow:inset 0 0 0 2px #FFE0EE}
-.snb .sn-chip canvas{width:20px; height:20px}
-.snb .sn-chip span{max-width:100%; white-space:nowrap; letter-spacing:-.6px; line-height:1.3}   /* '반짝 결정'이 두 줄로 꺾여 칩 높이가 달라지지 않게 */
-.snb .sn-chip b{font-family:var(--disp); font-weight:400; font-size:13px; line-height:1.3; color:var(--pkt)}
+.snb .sn-chips{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px}
+.snb .sn-chip{background:#FFF0F6; border-radius:14px; padding:4px 3px 3px; display:flex; flex-direction:column; align-items:center; gap:0; min-width:0; font-size:13px; color:var(--ink); box-shadow:inset 0 0 0 2px #FFE0EE}
+.snb .sn-chip canvas{width:26px; height:26px}
+.snb .sn-i{width:14px; height:14px; flex:none; vertical-align:-2px; margin-right:2px}
+.snb .sn-meta span, .snb .sn-bh span, .snb .sn-g, .snb .sn-next{display:inline-flex; align-items:center; gap:1px}
+.snb .sn-dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 2px 0 4px; box-shadow:0 0 0 1.5px #fff; vertical-align:-1px}
+.snb .sn-chip b{font-family:var(--disp); font-weight:400; font-size:13px; color:var(--pkt)}
 .snb .sn-chip.locked{background:#F7F2FA; box-shadow:inset 0 0 0 2px #E6DAF0; color:var(--sub)}
 .snb .sn-chip.locked canvas{opacity:.4; filter:grayscale(1)}
 .snb .sn-chip.locked b{color:var(--sub); font-family:var(--font); font-size:13px; font-weight:700}
@@ -867,6 +877,18 @@ NG.snowball = (() => {
       ['상대는 링과 표정으로', '지름이 1.2배 이상 크고, 작은 공이 절반 넘게 덮이면 꿀꺽(질량 70% 획득)! 닿기만 해선 안 먹혀요 — 덮이기 시작하면 빨간 고리가 차오르니 얼른 빠져나가요. 파란 링·겁먹은 얼굴 = 먹을 수 있음, 회색 = 비슷(부딪히면 튕김), 주황 링·자신만만 = 위험. 머리 위 ×숫자는 나와의 크기 비율이에요.'],
       ['3분과 해돋이', '2:00부터 해가 떠서 1분 동안 맵이 30%까지 좁아져요. 햇볕(주황) 구역에선 초마다 3%씩 녹아요. 솔로는 3:00에 끝난 순간 레벨로 별, 대전은 1명 남거나 3:00에 끝나요.']
     ],
+    tips:() => {
+      const t = [
+        ['위 왼쪽 판', 'Lv(크기 레벨) · 지름 · 질량 · 막대 아래 ↑숫자 = 다음 레벨까지 남은 질량'],
+        ['아래 칩', '먹이 그림 · +숫자 = 먹으면 늘어나는 질량, 회색 Lv숫자 = 그 레벨부터 먹을 수 있음(눈송이 · 반짝 결정 · 컵케이크 · 곰인형 · 푸드트럭)'],
+        ['물방울', '멈춰서 녹는 중(초마다 0.5%). 멈추면 조금씩 녹아요'],
+        ['부스트', '1.8배 빠르게, 질량을 초당 20 써요(스페이스 키도 됨)'],
+        ['위쪽 띠', '먹히는 중 % · 해돋이(맵이 좁아짐) · 햇볕(−3%/초) · 무적 남은 초']
+      ];
+      if(S && S.battle) t.splice(1, 0, ['순위판', '시계 = 남은 시간 · 사람 = 생존/전체 · 이름 옆 숫자 = 그 상대 레벨(파랑 = 먹을 수 있음, 회색 = 비슷, 주황 = 위험)'], ['색 점', '근처 상대 수: 파랑 사냥 · 회색 비슷 · 주황 위험'], ['부활', '2:00 전 탈락이면 광고를 보고 한 번 부활(직전 질량 30%, 3초 무적)']);
+      else t.splice(1, 0, ['오른쪽 판', '시계 = 남은 시간 · 별 = 지금 레벨로 받는 별 · ★ Lv = 다음 별 기준 · 왕관 = 최고 레벨'], ['황금 눈사람', '금색 눈사람 그림 옆 = 다음 등장까지 초(먹으면 +300)']);
+      return t;
+    },
     helpExtra:() => S && S.battle ? [['대전 판정', `나 + 봇 ${RULE.BOTS}명. 흡수당하거나 녹으면 탈락, 2:00 전 탈락이면 5초 안에 한 번 부활(질량 30%, 3초 무적). 순위는 늦게 탈락할수록 높고, 끝까지 남으면 질량 순. ${RULE.WIN_RANK}위 안에 들면 승리예요.`]] : [],
     chapters:['딸기 언덕', '민트 숲', '레몬 광장', '복숭아 마을', '포도 성'],
     starRule:'3:00 끝난 순간 레벨: ★ Lv 10 · ★★ Lv 18 · ★★★ Lv 25 (Lv 30이면 바로 퍼펙트)',

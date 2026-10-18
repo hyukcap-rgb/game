@@ -344,8 +344,9 @@ NG.twin = (() => {
   /* 말풍선 기본 문구: 규칙 알림이 짧으면 둘을 같이, 길면 카드마다 번갈아(말풍선이 잘리지 않게) */
   function sayIdle(){
     const m = S(); if(!m || m.phase === 'done') return;
-    const n = Math.max(0, m.i), tip = !m.tips.length ? '' : m.tips.slice(0, 2).join(' · ').length <= 16 ? m.tips.slice(0, 2).join(' · ') : m.tips[n % m.tips.length];
-    say(m.boss ? '<b class="boss">대장 판</b><span>' + (tip || '끝까지 침착하게!') + '</span>' : '<span>' + (tip || m.H.hi) + '</span>');
+    /* 2026-10-18 판 위 글자 줄이기(docs/29): 말풍선엔 규칙 이름(4글자 이하)만, 설명 문장은 도움말(tips·이번 판 규칙) */
+    const tags = (m.tagN || []).slice(0, 2).join(' · ');
+    say(m.boss ? '<b class="boss">대장 판</b>' + (tags ? '<span>' + tags + '</span>' : '') : tags ? '<span>' + tags + '</span>' : '');
   }
   function hostMood(mood, ms){
     const m = S(), im = $('#twHostImg'); if(!m || !im) return;
@@ -359,7 +360,7 @@ NG.twin = (() => {
     const c = $('#twCombo'); if(c) c.textContent = m.combo;
     const mi = $('#twMine'); if(mi) mi.textContent = m.party ? ptMine() : 0;
     const lv = $('#twLives');
-    if(lv){ lv.innerHTML = '기회 ' + Array.from({ length:m.maxLives }, (_, n) => `<i${n >= m.lives ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', m.lives === 1); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '번'); }
+    if(lv){ lv.innerHTML = Array.from({ length:m.maxLives }, (_, n) => `<i${n >= m.lives ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', m.lives === 1); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '번'); }
   }
 
   /* 카드 크기: 화면 높이에 맞춰(스크롤 없이) */
@@ -677,7 +678,7 @@ NG.twin = (() => {
       m.phase = 'show'; m.ticked = false; m.barCls = ''; m.t0 = now();
       if(B.shown !== s.i){ if(B.shown < 0) layoutCards(); B.shown = s.i; ptDraw(true); sfx('twinDeal'); }   /* 첫 판: 대전 막대(미니 카드 줄)가 붙은 뒤 다시 재어 한 화면에 */
       const b = $('#twBar'); if(b) b.className = 'tw-wbar';
-      say(`<span>${s.i ? '다음 카드! ' : ''}가운데와 내 카드의 쌍둥이</span>`);
+      say(s.i ? '<b class="ok">다음!</b>' : '');
       ptMinis(); hud();
       return;
     }
@@ -706,7 +707,7 @@ NG.twin = (() => {
           ptOwnMark(jc, pl); const e = symEl(0, jc); if(e) e.classList.add('show');
           mark(1, jm, 'ans'); const e2 = symEl(1, jm); if(e2) e2.classList.add('show');
           thread('ans');
-          say(`<b class="op" style="--oc:${pl ? pl.col : '#8A8FA8'}">${pl ? esc(typeof duelShortNick === 'function' ? duelShortNick(pl.nick) : pl.nick) : '상대'}</b><span>님이 먼저!</span>`, 'pop');
+          say(`<b class="op" style="--oc:${pl ? pl.col : '#8A8FA8'}">${pl ? esc(typeof duelShortNick === 'function' ? duelShortNick(pl.nick) : pl.nick) : '상대'}</b><span>먼저!</span>`, 'pop');
           if(!wasMine) sfx('twinLate');
           hostMood('sad', 700);
         } else {
@@ -730,8 +731,8 @@ NG.twin = (() => {
   function ptDraw(anim){
     const m = S(), tb = $('#twTable'); if(!tb || !m.cur) return;
     const cs = m.cur.cards;
-    tb.innerHTML = cardHtml(cs[0], 0, 'ctr' + (anim ? ' in' : ''), 0, '', '<b class="tw-lab ctr" aria-hidden="true">가운데 · 모두 같아요</b>') +
-      cardHtml(cs[1], 1, 'mine' + (anim ? ' in' : ''), anim ? 70 : 0, '', '<b class="tw-lab me" aria-hidden="true">내 카드</b>');
+    tb.innerHTML = cardHtml(cs[0], 0, 'ctr' + (anim ? ' in' : ''), 0, '', '<b class="tw-lab ctr" aria-hidden="true">가운데</b>') +
+      cardHtml(cs[1], 1, 'mine' + (anim ? ' in' : ''), anim ? 70 : 0, '', '<b class="tw-lab me" aria-hidden="true">나</b>');
     tb.classList.remove('solved', 'covered', 'slow');
   }
   /* 누르기: 쌍둥이면 차지 시도(내 화면에는 바로 차지로 보이고, 더 이른 기록이 오면 엔진이 바꿈). 틀리면 1초 못 누름 */
@@ -756,7 +757,7 @@ NG.twin = (() => {
       const ed = $('#twEdge'); if(ed){ ed.classList.remove('on'); void ed.offsetWidth; ed.classList.add('on'); }
       const g = m.i; T(() => { const mk = document.querySelector('.ng-twin .tw-mk.x'); if(mk && S().i === g) mk.remove(); const e2 = symEl(ci, j); if(e2) e2.classList.remove('bad'); }, PT_LOCK);
     }catch(_){}
-    T(() => { const q = S(); if(q.phase === 'show' && q.i === m.i) say('<span>가운데와 내 카드의 쌍둥이</span>'); }, PT_LOCK + 50);
+    T(() => { const q = S(); if(q.phase === 'show' && q.i === m.i) say(''); }, PT_LOCK + 50);
   }
   /* 컴퓨터 상대: 판마다 판 씨앗 난수로 찾을지·몇 초 뒤에 찾을지(같은 판 = 같은 결과). 찾는 시간은 사람 흉내 모형(그림 수·크기 차이) */
   function ptAi(s){
@@ -834,6 +835,14 @@ NG.twin = (() => {
       },
       lines:['두 카드에 같은 그림이 딱 하나', '크기·방향이 달라도 같은 그림', '색이 다르면 가짜! 막 누르면 손해']
     },
+    /* 화면 안내(2026-10-18 판 위 글자 줄이기, docs/29): 판 위 말풍선에서 뺀 문장 */
+    tips:() => [
+      ['카드', '두 카드에 똑같은 그림이 딱 하나 있어요. 찾으면 어느 카드에서든 눌러요.'],
+      ['말풍선', '이번 판 규칙 이름만 보여요: ' + Object.keys(RULE_TIP).map(k => ((CONC.info[k] || CONC.twInfo[k] || {}).name || k) + ' = ' + RULE_TIP[k]).join(' · ') + '.'],
+      ['점선', '틀리거나 시간이 지나면 점선 테두리 그림이 정답(쌍둥이)이에요.'],
+      ['천천히!', '마구 누르면 잠깐 멈춰요.'],
+      ['대전', '가운데 카드는 모두 같고, 내 카드는 사람마다 달라요. 가운데 카드와 내 카드의 쌍둥이를 먼저 누른 사람이 그 카드를 차지해요(내 것 = 차지한 수). 틀리면 1초 쉬어요.']
+    ],
     helpExtra(){ const m = G && G.id === 'twin' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['장난감 상자', '소풍 바구니', '별빛 서랍', '거울 방', '쌍둥이 성'],
     starRule:'★ 클리어 · ★★ 한 번만 틀림 · ★★★ 하나도 안 틀림',
@@ -855,16 +864,17 @@ NG.twin = (() => {
       const tips = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : []).map(k => RULE_TIP[k]).filter(Boolean);
       if(!G.adv && cfg.gap) tips.push(RULE_TIP.size);
       if(!G.adv && cfg.trap) tips.push(RULE_TIP.look);
+      const tagN = [].concat(cfg.mj || [], cfg.tw ? [cfg.tw] : [], !G.adv && cfg.gap ? ['size'] : [], !G.adv && cfg.trap ? ['look'] : []).map(k => (CONC.info[k] || CONC.twInfo[k] || {}).name).filter(Boolean);
       const need = []; P.forEach(p => (party ? [p.center].concat(p.seats) : p.cards).forEach(c => c.ids.forEach(id => { if(!need.includes(id)) need.push(id); })));
       const lives = G.duel ? 3 : cfg.lives || 3;
-      G.m = { P, N:P.length, three:!!cfg.three, blink:!!cfg.blink, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips,
+      G.m = { P, N:P.length, three:!!cfg.three, blink:!!cfg.blink, boss:!!cfg.boss, mj:cfg.mj || [], tw:cfg.tw || null, tips, tagN,
         host, H:HOST_LOOK[host] || HOST_LOOK.owl, need, i:-1, cur:null, phase:'deal', t0:0, W:1, done:0, correct:0, wrong:0, speedSum:0, tSum:0,
         combo:0, bestCombo:0, lives, maxLives:lives, lockUntil:0, slowUntil:0, taps:[], cover:false, nextAt:0, avg:0, timers:new Set() };
       G.paws = lives;
       const m = G.m;
       if(party){
         const D = G.duel, me = D.P && D.P[D.myPid];
-        Object.assign(m, { party:true, k:cfg.k, seat:me ? me.seat % PSEATS : 0, tips:[], pt:{ key:'', shown:-1, lockUntil:0, aiI:-1, aiAt:null, revI:-1, revOwn:null } });
+        Object.assign(m, { party:true, k:cfg.k, seat:me ? me.seat % PSEATS : 0, tips:[], tagN:[], pt:{ key:'', shown:-1, lockUntil:0, aiI:-1, aiAt:null, revI:-1, revOwn:null } });
       }
       G.cleanup = () => {
         m.timers.forEach(clearTimeout); m.timers.clear();
@@ -885,8 +895,8 @@ NG.twin = (() => {
         </div>`}
         <div class="tw-host">
           <span class="tw-hostbox"><img class="toy tw-hostimg" id="twHostImg" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></span>
-          <div class="tw-say" id="twSay" role="status" aria-live="polite"><span>${m.party ? '가운데 카드와 내 카드의 쌍둥이를 먼저!' : '카드를 섞는 중…'}</span></div>
-          ${m.party ? `<div class="tw-pcnt" aria-label="카드 진행·내가 차지한 수"><span><b id="twProg">0</b><small>/${m.N}</small></span><span class="mine">내 것 <b id="twMine">0</b></span></div>` : '<div class="hlives" id="twLives" role="img"></div>'}
+          <div class="tw-say" id="twSay" role="status" aria-live="polite"></div>
+          ${m.party ? `<div class="tw-pcnt" aria-label="카드 진행·내가 차지한 수"><span><b id="twProg">0</b><small>/${m.N}</small></span><span class="mine" aria-label="내가 차지한 카드">${CHECK}<b id="twMine">0</b></span></div>` : '<div class="hlives" id="twLives" role="img"></div>'}
           ${m.boss ? '<b class="tw-bossband" aria-hidden="true">대장!</b>' : ''}
         </div>
         <div class="tw-wbar" id="twBar" aria-hidden="true"><i id="twBarI"></i></div>
@@ -895,7 +905,7 @@ NG.twin = (() => {
       </div>`;
       const tb = $('#twTable'); if(tb) tb.addEventListener('pointerdown', onDown);
       hud(); layoutCards();
-      if(tb) tb.innerHTML = Array.from({ length:m.three ? 3 : 2 }, (_, ci) => cardHtml({ ids:[], L:[] }, ci, 'back' + (m.party ? (ci ? ' mine' : ' ctr') : ''), 0, '', m.party ? `<b class="tw-lab ${ci ? 'me' : 'ctr'}" aria-hidden="true">${ci ? '내 카드' : '가운데 · 모두 같아요'}</b>` : '')).join('');   /* 시작 전: 엎어 둔 카드 */
+      if(tb) tb.innerHTML = Array.from({ length:m.three ? 3 : 2 }, (_, ci) => cardHtml({ ids:[], L:[] }, ci, 'back' + (m.party ? (ci ? ' mine' : ' ctr') : ''), 0, '', m.party ? `<b class="tw-lab ${ci ? 'me' : 'ctr'}" aria-hidden="true">${ci ? '나' : '가운데'}</b>` : '')).join('');   /* 시작 전: 엎어 둔 카드 */
       if(m.boss){ sfx('twinBoss'); T(() => hostMood('', 0), 1800); }
       m.onResize = () => layoutCards();
       addEventListener('resize', m.onResize);
@@ -929,6 +939,7 @@ body[data-mode="twin"]{background:
 .ng-twin .tw-say span{overflow:hidden; text-overflow:ellipsis}
 .ng-twin .tw-say b{flex:none; font-family:var(--heavy); font-weight:400; font-size:18px; letter-spacing:.3px; color:var(--ac)}
 .ng-twin .tw-say b.ok{color:#1E9E5E} .ng-twin .tw-say b.bad{color:#E5484D} .ng-twin .tw-say b.warn{color:#E07B00} .ng-twin .tw-say b.boss{color:#D63A3A} .ng-twin .tw-say b.combo{color:#E0559A}
+.ng-twin .tw-say:empty{visibility:hidden}
 .ng-twin .tw-say.pop{animation:twin-pop .3s cubic-bezier(.2,1.5,.4,1)}
 @keyframes twin-pop{from{transform:scale(.85); opacity:.3}}
 .ng-twin .hlives{flex:none}
@@ -1019,6 +1030,8 @@ body[data-mode="twin"]{background:
 .ng-twin .tw-pcnt small{font-size:13px; color:#6A5884}
 .ng-twin .tw-pcnt .mine{padding:2px 7px; border-radius:99px; background:#FFE0EE; border:1.5px solid #1A0F45}
 .ng-twin .tw-pcnt .mine b{font-size:15px; color:#D61F72}
+.ng-twin .tw-pcnt .mine{display:inline-flex; align-items:center; gap:3px; white-space:nowrap}
+.ng-twin .tw-pcnt .mine svg{width:14px; height:14px; flex:none}
 .ng-twin .tw-say b.op{color:var(--oc, #5B3FB5)}
 .ng-twin .tw-mk.own{box-shadow:0 0 0 3px #1A0F45, inset 0 0 0 4px var(--sc), inset 0 0 0 6px #fff, 0 0 16px 4px color-mix(in srgb, var(--sc) 55%, transparent); animation:twin-ring .3s cubic-bezier(.2,1.6,.4,1) both}
 .ng-twin .tw-who{position:absolute; z-index:3; transform:translate(-50%,-100%); display:flex; align-items:center; gap:3px; pointer-events:none; white-space:nowrap; font-family:var(--disp); font-size:13px; line-height:1; padding:3px 7px 3px 5px; border-radius:99px; background:#fff; color:#1A0F45; border:2.5px solid var(--sc); box-shadow:0 2px 0 #1A0F45; animation:twin-pop .3s cubic-bezier(.2,1.6,.4,1) both}

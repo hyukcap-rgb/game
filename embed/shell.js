@@ -303,7 +303,8 @@ Object.assign(HOST, {
     return { attempt };
   },
   showPlay(){ $('#menu').hidden = true; $('#play').style.display = 'block'; },
-  subtitle:(L, attempt, ex) => EMB.cur === 'daily' ? `오늘의 문제 · ${L.name}${ex} · ${attempt === 1 ? '첫 기록' : '다시 풀기'}` : `연습 · ${L.name}${ex} · 새 문제`,
+  subtitle:(L, attempt, ex) => EMB.cur === 'daily' ? (attempt === 1 ? `${L.name}${ex}` : `다시 풀기${ex}`) : `연습${ex}`,
+  subtitleFull:(L, attempt, ex) => EMB.cur === 'daily' ? `오늘의 문제 · ${L.name}${ex} · ${attempt === 1 ? '첫 기록' : '다시 풀기'}` : `연습 · ${L.name}${ex} · 새 문제`,
   quitInfo:() => ({ note:EMB.cur === 'daily' ? '지금 나가면 이번 판은 기록되지 않아요. 같은 문제는 다시 할 수 있어요.' : '지금 나가면 이번 판은 기록되지 않아요.', label:'그만하기' }),
   finish(win){ if(G.adv) embSoloFinish(win); else embPlayFinish(win); },
   exit(){ embEmit('quit', { mode:EMB.cur }); embMenu(); },

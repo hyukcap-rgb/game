@@ -18,8 +18,13 @@ NG.thread = (() => {
     clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="#1A0F45" stroke-width="1.8"/><circle cx="12" cy="13.5" r="6" fill="#FFF8EA"/><rect x="10" y="1.8" width="4" height="3" rx="1" fill="#1A0F45"/><path d="M12 9.8v3.9l2.6 1.6" stroke="#1A0F45" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>',
     undo:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10H14a6 6 0 0 1 0 12h-3" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round"/></svg>',
     reset:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12A7.5 7.5 0 1 1 17 6.4" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round"/><path d="M18.5 2.5v4.5H14" fill="none" stroke="#1A0F45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>'
+    hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-4 12.8V18h8v-2.7A7 7 0 0 0 12 2.5z" fill="#FFE27A" stroke="#1A0F45" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21h6" stroke="#1A0F45" stroke-width="2" stroke-linecap="round"/><path d="M9.5 8a3 3 0 0 1 2.5-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+    /* 칩 이름표 대신 그림(docs/29): 채운 칸 = 2×2 천 칸 중 3칸 채움, 실 바꾸기 = 바늘과 실 */
+    fill:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#FFF8EA" stroke="#1A0F45" stroke-width="1.8"/><rect x="5" y="5" width="6.2" height="6.2" rx="1.2" fill="#4D7CFF"/><rect x="12.8" y="5" width="6.2" height="6.2" rx="1.2" fill="#4D7CFF"/><rect x="5" y="12.8" width="6.2" height="6.2" rx="1.2" fill="#4D7CFF"/></svg>',
+    swap:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L17.5 6.5" stroke="#8A93AA" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="18.6" cy="5.4" rx="1.6" ry="2.6" transform="rotate(45 18.6 5.4)" fill="none" stroke="#1A0F45" stroke-width="1.6"/><path d="M18 6c-5 2-10 0-13 5s3 9 8 7" fill="none" stroke="#FF4D5E" stroke-width="2" stroke-linecap="round"/></svg>'
   };
+  /* 판 위 규칙 꼬리표는 4글자 이하(docs/29) — 전체 이름·설명은 도움말 */
+  const CHIP_SHORT = { limit:'한번 꿰기' };
 
   /* ----- 개념 사이클(난이도 v2): 새 규칙 11·21·31·41, 변주 6·16·26·36·46 ----- */
   const CONC = {
@@ -267,10 +272,8 @@ NG.thread = (() => {
   }
   function msg(html, cls){ const e = $('#thMsg'); if(!e) return; e.className = 'th-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
-    const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>같은 단추끼리 실로 꿰어요</span>';
+    /* 판 위 안내 문장은 두지 않는다(docs/29) — 조작·이번 판 규칙은 도움말 tips. 알림 칸은 순간 알림에만 */
+    return '';
   }
   function layout(){
     const m = S(), box = $('#thBoard'), root = document.querySelector('.ng-thread'); if(!box || !root) return;
@@ -506,6 +509,17 @@ NG.thread = (() => {
       ['막히면 힌트', '💡힌트는 실 하나를 정답대로 꿰어 줘요. 대신 점수가 ' + HINT_PEN + '점 줄어요. 되돌리기·처음부터는 벌칙이 없어요.'],
       ['솔로: 5판마다 새 규칙', '솔로에서는 구멍 헝겊·박음질 벽·색 구슬·나무 다리 같은 새 규칙과 빠른 판·한 번에 꿰기·큰 천 같은 변주가 차례로 나와요.']
     ],
+    /* 판 위에서 뺀 안내 문장(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'thread' && G.m, t = [
+        ['꿰기', '같은 색·같은 모양 단추끼리 실로 꿰어요. 천의 빈칸을 남김없이 채우면 성공.'],
+        ['고치기', '놓인 실 가운데를 누르면 거기서부터 이어서 고쳐요. 다른 실 위로 지나가면 그 실이 잘려요.'],
+        ['되돌리기 · 처음부터', '벌칙 없이 한 번 되돌리거나 처음 판으로 가요.'],
+        ['힌트', '실 하나를 정답대로 꿰어 줘요(점수 −' + HINT_PEN + ').']];
+      if(m && m.capMax) t.push(['한번 꿰기', '한 번에 꿰기 — 실 색을 바꿔 잡을 수 있는 횟수가 정해져 있어요(바늘 칩).']);
+      if(m && m.tips.length) t.push(['이번 판', m.tips.join(' · ')]);
+      return t;
+    },
     helpExtra(){ const m = G && G.id === 'thread' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['단추 상자', '헝겊 인형', '퀼트 이불', '털실 가게', '무대 의상'],
     starRule:'★ 다 꿰매기 · ★★ 힌트 1번 이하, 실 바꾸기 조금 · ★★★ 힌트 없이 단추 쌍 수만큼만',
@@ -553,11 +567,11 @@ NG.thread = (() => {
       st.innerHTML = `<div class="ng-thread">
         <div class="hud-row">
           <div class="hchip th-done" aria-label="이은 실"><span class="hv">${ICO.link}<b id="thDone">0</b><small>/${m.P.K}쌍</small></span><em>이은 실</em></div>
-          <div class="hchip th-fillc" aria-label="채운 칸"><span class="hv"><b id="thFillP">0%</b></span><em>채운 칸</em></div>
-          ${m.capMax ? `<div class="hchip th-cap" aria-label="실 바꾸기"><span class="hv"><b id="thMoves">0/${m.capMax}</b></span><em>실 바꾸기</em></div>` : ''}
+          <div class="hchip th-fillc" aria-label="채운 칸"><span class="hv">${ICO.fill}<b id="thFillP">0%</b></span><em>채운 칸</em></div>
+          ${m.capMax ? `<div class="hchip th-cap" aria-label="실 바꾸기"><span class="hv">${ICO.swap}<b id="thMoves">0/${m.capMax}</b></span><em>실 바꾸기</em></div>` : ''}
           <div class="hchip time" id="thTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="thTime">${mmss(G.limit)}</b></span><em>남은 시간</em></div>
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="th-rules" aria-label="켜진 규칙">${m.boss ? '<span class="th-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="th-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="th-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="th-rules" aria-label="켜진 규칙">${m.boss ? '<span class="th-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="th-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="th-chip tw">${CHIP_SHORT[m.tw] || CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="th-barw" id="thBarWrap"><i id="thBar"></i></div>
         <div class="th-msg" id="thMsg"><span>단추를 다는 중…</span></div>
         <div class="th-wrap"><div class="th-frame"><div class="th-board in" id="thBoard" role="group" aria-label="색실 잇기 ${N}×${N} 천, 단추 ${m.P.K}쌍">

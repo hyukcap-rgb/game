@@ -1050,11 +1050,13 @@ NG.match = (() => {
     setTimeout(() => { if(G && !G.over && G.mt === M) finish(win); }, win ? 900 : 1300);
   }
   /* 아이템(솔로 전용, 이동을 쓰지 않음). 2026-09-30 개편: 십자 폭죽 · 바꿔 장갑 · 동물 피리 */
+  /* 2026-10-18 판 위 글자 최소화(docs/29): '남은 이동' 칩 그림(발자국 두 개, 24×24 선 그림) → 이름표는 엔진이 숨김 */
+  const MV_ICO = '<svg class="mt-mvi" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4c-2 0-3 2.5-3 5s1 4 3 4 3-1.5 3-4-1-5-3-5zM5 16.5h4M17 8c-2 0-3 2.5-3 5s1 4 3 4 3-1.5 3-4-1-5-3-5zM15 20.5h4"/></svg>';
   const ITEMS = [
-    { key:'ham', name:'뿅망치', desc:'한 칸(상자는 한 겹)', at:8, pick:'깰 칸을 골라요' },
-    { key:'cross', name:'십자 폭죽', desc:'고른 칸의 가로·세로 한 줄씩', at:13, pick:'터뜨릴 칸을 골라요' },
-    { key:'glove', name:'바꿔 장갑', desc:'이웃한 두 동물을 그냥 바꾸기', at:18, pick:'바꿀 두 칸을 차례로 눌러요' },
-    { key:'flute', name:'동물 피리', desc:'고른 동물을 판에서 모두 모으기', at:23, pick:'모을 동물을 골라요' }
+    { key:'ham', short:'망치', name:'뿅망치', desc:'한 칸(상자는 한 겹)', at:8, pick:'깰 칸을 골라요' },
+    { key:'cross', short:'폭죽', name:'십자 폭죽', desc:'고른 칸의 가로·세로 한 줄씩', at:13, pick:'터뜨릴 칸을 골라요' },
+    { key:'glove', short:'장갑', name:'바꿔 장갑', desc:'이웃한 두 동물을 그냥 바꾸기', at:18, pick:'바꿀 두 칸을 차례로 눌러요' },
+    { key:'flute', short:'피리', name:'동물 피리', desc:'고른 동물을 판에서 모두 모으기', at:23, pick:'모을 동물을 골라요' }
   ];
   const INV_KEY = 'hp:mtItems';
   /* 예전 아이템(가로·세로 화살 → 십자 폭죽, 요술 모자 → 동물 피리)을 한 번만 옮긴다 */
@@ -1083,7 +1085,7 @@ NG.match = (() => {
     d.innerHTML = ITEMS.map(it => { const open = !!v.got[it.key], n = v.n[it.key] || 0;
       /* 잠김: 회색 + "8판에 열려요" · 쓸 수 있음: 노랑 + 개수 배지 · 다 씀: 회색 0 */
       return `<button class="tool item mt-it${open ? (n > 0 ? ' ok' : ' zero') : ' lk'}${M.item === it.key ? ' on' : ''}" data-it="${it.key}" aria-pressed="${M.item === it.key}" ${open && n > 0 ? '' : 'disabled'} aria-label="${it.name}: ${it.desc}${open ? ', ' + n + '개' : ', ' + it.at + '판에 열려요'}">
-        <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span>${open ? `<span class="mt-in2">${it.name}</span><b class="cnt num">${n}</b>` : `<span class="mt-in2 mt-lkt">${it.at}판에 열려요</span>`}</button>`; }).join('');
+        <span class="mt-bi"><i style="background-image:${IK(it.key)}"></i></span>${open ? `<span class="mt-in2">${it.short || it.name}</span><b class="cnt num">${n}</b>` : `<span class="mt-in2 mt-lkt">${ic('lock')}${it.at}</span>`}</button>`; }).join('');
     d.querySelectorAll('button[data-it]').forEach(b => b.onclick = () => {
       if(M.busy || M.stop || G.over) return;
       const k = b.dataset.it;
@@ -1315,6 +1317,16 @@ NG.match = (() => {
       [HOW_LINES[2], `솔로는 이동 횟수 안에 위쪽 목표를 모아요.<details style="margin-top:6px"><summary style="cursor:pointer;list-style:none;font-size:14px;color:#6C3CE0">더 알아보기 ▾</summary>${MORE.map(([t, h]) => `<div style="margin-top:8px"><b style="font-size:13px">${t}</b>${h}</div>`).join('')}</details>`]
     ],
     howto:{ pic:howPic, lines:HOW_LINES, more:MORE },
+    /* 2026-10-18 판 위에서 뺀 이름·안내(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const cfg = G && G.id === 'match' && G.cfg, mv = cfg && cfg.mode === 'moves', out = [];
+      if(mv) out.push(['모을 목표', '위쪽 그림의 동물·장애물을 숫자만큼 모아요. 다 모으면 ✔.'], ['남은 이동', '발자국 숫자 = 남은 이동 횟수. 그 안에 목표를 모아요.']);
+      else out.push(['목표 점수', '이동 ' + ((cfg && cfg.moves) || 20) + '번 안에 목표 점수를 넘겨요. 막대의 ★는 목표·1.3배·1.6배.'], ['남은 이동', '발자국 숫자 = 남은 이동 횟수.']);
+      if(cfg && cfg.ob) out.push(['오늘의 장애물', '목표 칸 왼쪽 위 그림: ' + OB_NAME[cfg.ob] + '.']);
+      if(!mv) out.push(['아래 그림', '특별 조각 만드는 법: 4개 한 줄 = 줄 폭탄 · ㄱ·ㅗ 모양 = 폭탄 · 5개 한 줄 = 무지개 · 2×2 네모 = 별사탕. 🔥 = 이번 판 최고 연쇄.']);
+      if(mv) out.push(['아이템', ITEMS.map(it => (it.short || it.name) + ' = ' + it.name + '(' + it.desc + ', ' + it.at + '판부터)').join(' · ') + '. 🔒 숫자는 열리는 판.']);
+      return out;
+    },
     concepts:CONCEPTS,
     chapters:['문어 바닷가','병아리 농장','개구리 연못','부엉이 숲','판다 대나무숲'],
     starRule:'★ 목표 완료 · ★★ 이동 10% 남기기 · ★★★ 이동 20% 남기기',
@@ -1344,23 +1356,23 @@ NG.match = (() => {
       /* 위쪽 정보줄: 공용 칩 규격(.hud-row/.hchip, 아래 이름표 em). 목표 진행이 핵심이라 목표 칸은 크게 둔다 */
       const hudHtml = mv ? `<div class="hud-row mt-hud mv">
           <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
-          <div class="hchip mt-box mt-goal"><div class="mt-gs${cfg.goals.length >= 4 ? ' many' : ''}">${cfg.goals.map((g, n) => `<span class="mt-gc" id="mtG${n}" aria-label="${gName(g)} ${g.n}개"><i style="background-image:${goalIcon(g)}"></i><b class="num">${g.n}</b><s>${ic('check')}</s></span>`).join('')}</div><em>모을 목표</em></div>
-          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동">${cfg.hard || cfg.boss ? `<span class="mt-diff ${cfg.boss ? 'x' : ''}">${cfg.boss ? '대장 판' : '어려움'}</span>` : ''}<span class="hv"><b class="num" id="mtMv">${cfg.moves}</b><small>번</small></span><em>남은 이동</em></div>
+          <div class="hchip mt-box mt-goal ic"><div class="mt-gs${cfg.goals.length >= 4 ? ' many' : ''}">${cfg.goals.map((g, n) => `<span class="mt-gc" id="mtG${n}" aria-label="${gName(g)} ${g.n}개"><i style="background-image:${goalIcon(g)}"></i><b class="num">${g.n}</b><s>${ic('check')}</s></span>`).join('')}</div><em>모을 목표</em></div>
+          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동">${cfg.hard || cfg.boss ? `<span class="mt-diff ${cfg.boss ? 'x' : ''}">${cfg.boss ? '대장 판' : '어려움'}</span>` : ''}<span class="hv">${MV_ICO}<b class="num" id="mtMv">${cfg.moves}</b></span><em>남은 이동</em></div>
         </div>` : `<div class="hud-row mt-hud">
           <div class="mt-por" aria-hidden="true"><i style="background-image:${img(5)}"></i></div>
-          <div class="hchip mt-box mt-goal${cfg.ob ? ' hasob' : ''}" id="mtGoal">${cfg.ob ? `<span class="mt-diff ob" aria-label="오늘의 장애물 ${OB_NAME[cfg.ob]}"><i style="background-image:${goalIcon({ t:cfg.ob })}"></i>${OB_NAME[cfg.ob]}</span>` : ''}
+          <div class="hchip mt-box mt-goal ic${cfg.ob ? ' hasob' : ''}" id="mtGoal">${cfg.ob ? `<span class="mt-diff ob" aria-label="오늘의 장애물 ${OB_NAME[cfg.ob]}"><i style="background-image:${goalIcon({ t:cfg.ob })}"></i></span>` : ''}
             <div class="mt-gl"><b class="num" id="mtPts">0</b><small class="num">/ ${fmt(cfg.target)}</small></div>
             <div class="mt-prog" aria-label="목표까지 진행"><div class="mt-pbar"><i id="mtProgF"></i></div>
               <span class="mt-mk" id="mtMk0" style="left:62.5%" aria-label="목표">★</span><span class="mt-mk" id="mtMk1" style="left:81.25%" aria-label="목표의 1.3배">★</span><span class="mt-mk last" id="mtMk2" style="left:100%" aria-label="목표의 1.6배">★</span></div>
             <em>목표 점수</em></div>
-          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="hv"><b class="num" id="mtMv">${cfg.moves}</b><small>번</small></span><div class="mt-tbar"><i id="mtTF"></i></div><em>남은 이동</em></div>
+          <div class="hchip mt-box mt-time mt-mvb" aria-label="남은 이동"><span class="hv">${MV_ICO}<b class="num" id="mtMv">${cfg.moves}</b></span><div class="mt-tbar"><i id="mtTF"></i></div><em>남은 이동</em></div>
         </div>`;
       const dockHtml = mv ? `<div class="tools-row mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
-          <span class="mt-bst"><span class="mt-bi sp"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_H]}"></i></span><em>4개<br>줄 폭탄</em></span>
-          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_BOMB]}"></i></span><em>ㄱ자<br>폭탄</em></span>
-          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${RB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_RB]}"></i></span><em>5개<br>무지개</em></span>
-          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${IK('star')}"></i><i class="bdg" style="background-image:${BADGE[S_STAR]}"></i></span><em>2×2<br>별사탕</em></span>
-          <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>최고<br>연쇄</em></span>
+          <span class="mt-bst"><span class="mt-bi sp"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_H]}"></i></span><em>4</em></span>
+          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_BOMB]}"></i></span><em>ㄱ·ㅗ</em></span>
+          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${RB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_RB]}"></i></span><em>5</em></span>
+          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${IK('star')}"></i><i class="bdg" style="background-image:${BADGE[S_STAR]}"></i></span><em>2×2</em></span>
+          <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>${ic('flame')}</em></span>
         </div>`;
       st.innerHTML = `<div class="ng-match" id="mtRoot">
         ${hudHtml}
@@ -1375,8 +1387,8 @@ NG.match = (() => {
       ['ice1', 'ice2', 'honey'].forEach(k => M.root.style.setProperty('--mt-' + k, toURL(SRC[k])));   /* 바닥 그림(벡터 그대로) */
       if(mv) paintDock();
       paintIce();
-      setTimeout(() => { if(M && !M.dead) banner(mv ? '이동 ' + cfg.moves + '번 안에 목표를 모아요' : '이동 ' + cfg.moves + '번 안에 ' + fmt(cfg.target) + '점!', 'mix'); }, 350);
-      if(!mv && cfg.ob) setTimeout(() => { if(M && !M.dead && !M.ended) banner('오늘의 장애물: ' + OB_NAME[cfg.ob], 'mix'); }, 1900);
+      setTimeout(() => { if(M && !M.dead) banner(mv ? cfg.moves + '번 안에!' : cfg.moves + '번 · ' + fmt(cfg.target) + '점!', 'mix'); }, 350);
+      if(!mv && cfg.ob) setTimeout(() => { if(M && !M.dead && !M.ended) banner(OB_NAME[cfg.ob] + '!', 'mix'); }, 1900);
       bake(Math.min(256, Math.round(M.s * 1.25 * Math.min(3, window.devicePixelRatio || 1))), () => { if(M && !M.dead && !M.busy){ M.views.forEach(v => { const t = M.E.b.find(x => x && x.id === v.id); if(t) restyle(v, t); }); } });
       M.ready = true; M.last = 0;
       const bestEl = () => { const b = $m('#mtBest'); if(b) b.textContent = M.E.maxCombo >= 2 ? M.E.maxCombo : '–'; };
@@ -1563,6 +1575,12 @@ body[data-mode="match"] .fxfloat.mtf.big{color:#FFB020; font-size:26px; -webkit-
 .ng-match .mt-it.ok{background:linear-gradient(180deg,#FFF1A8,#FFC93C)}
 .ng-match .mt-it.zero .mt-bi{filter:grayscale(.7) opacity(.6)}
 .ng-match .mt-it .mt-lkt{white-space:normal; font-size:13px; line-height:1.15; text-align:center; color:#5A5470}
+.ng-match .mt-it .mt-lkt{display:inline-flex; align-items:center; gap:2px; white-space:nowrap}
+.ng-match .mt-it .mt-lkt .ico{display:inline-flex; width:13px; height:13px}
+.ng-match .mt-it .mt-lkt .ico svg{width:100%; height:100%}
+.ng-match .mt-mvi{flex:none; margin-right:3px; opacity:.8}
+.ng-match .mt-bst.best em .ico{display:inline-flex; width:16px; height:16px}
+.ng-match .mt-bst.best em .ico svg{width:100%; height:100%}
 .ng-match .mt-gs.many{gap:3px}
 .ng-match .mt-gs.many .mt-gc{min-width:32px}
 .ng-match .mt-gs.many .mt-gc i{width:30px; height:30px}

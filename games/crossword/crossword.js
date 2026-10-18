@@ -212,7 +212,7 @@ NG.crossword = (() => {
     const x = $('#cwCheck'); if(x){ x.querySelector('b').textContent = m.checkLeft; x.disabled = m.checkLeft <= 0; }
     const lv = $('#cwLives');
     if(lv && !m.lives) lv.hidden = true;
-    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
+    else if(lv){ const left = Math.max(0, m.lives - m.misses); lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); }
   }
   function msg(html, cls){ const e = $('#cwMsg'); if(!e) return; e.className = 'cw-msg ' + (cls || ''); e.innerHTML = html; }
   /* 잠깐 알림: ms 뒤 원래 문구로(앞 알림의 되돌리기 예약은 취소) */
@@ -223,15 +223,13 @@ NG.crossword = (() => {
   }
   function playMsg(){
     const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.theme) return '<b class="theme">주제 · ' + dict().catName[m.theme] + '</b>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return '<span>칸을 눌러 낱말을 고르고 답을 넣어요</span>';
+    /* 2026-10-18 판 위 글자 최소화(docs/29): 안내 문장은 두지 않는다 — 규칙·주제는 꼬리표, 설명은 도움말(tips·helpExtra) */
+    return '';
   }
 
   /* 열쇠 문구: 빈 열쇠·속담 열쇠·보통 */
   function clueText(wd){
-    if(wd.blind) return '<i class="cw-blind">뜻풀이 없음 — 첫 글자와 엇갈린 글자로 맞혀요</i>';
+    if(wd.blind) return '<i class="cw-blind" aria-label="뜻풀이 없음 — 첫 글자와 엇갈린 글자로 맞혀요">뜻풀이 없음</i>';
     if(wd.useProv) return '<span class="cw-prov">속담</span> ' + esc(wd.prov);
     return esc(wd.clue);
   }
@@ -239,7 +237,7 @@ NG.crossword = (() => {
     const m = S(), wd = m.words[m.cur], e = $('#cwClue'); if(!e || !wd) return;
     const other = crossOf(m.cur);
     const who = m.sh && wd.done && wd.owner ? `<b class="cw-who" style="--oc:${wd.oc}">${wd.owner === G.duel.myPid ? '내 땅' : esc(wd.onick) + '님 땅'}</b> ` : '';
-    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b><small>${wd.len}글자${wd.gold ? ' ★' : ''}</small>${other >= 0 ? `<button class="cw-dir" data-k="${other}" aria-label="${dirName(1 - wd.d)} 낱말로 바꾸기">⇄ ${dirName(1 - wd.d)}</button>` : ''}</span><span class="cw-ct">${who}${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
+    e.innerHTML = `<span class="cw-tg"><b class="cw-tag d${wd.d}">${dirName(wd.d)} ${wd.num}</b>${wd.gold ? '<small aria-label="황금 낱말">★</small>' : ''}${other >= 0 ? `<button class="cw-dir" data-k="${other}" aria-label="${dirName(1 - wd.d)} 낱말로 바꾸기">⇄ ${dirName(1 - wd.d)}</button>` : ''}</span><span class="cw-ct">${who}${wd.done ? '<em>' + wd.w + '</em> · ' + clueText(wd) : clueText(wd)}</span>`;
     const inp = $('#cwIn'); if(inp){ inp.placeholder = wd.done ? (m.sh ? '차지된 낱말이에요' : '맞힌 낱말이에요') : wd.len + '글자 낱말'; inp.disabled = wd.done || G.over; }
     const go = $('#cwGo'); if(go) go.disabled = wd.done || G.over;
   }
@@ -588,6 +586,8 @@ NG.crossword = (() => {
     $('#cwList').onclick = e => { const b = e.target.closest && e.target.closest('.cw-li'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, true); };   /* 목록은 펼친 채로 둔다(세대별 테스트: 접혀 있으면 못 찾음) */
     const cl = $('#cwClue');
     cl.onpointerdown = e => { if(e.target.closest && e.target.closest('.cw-dir')) e.preventDefault(); };   /* 키보드가 내려가지 않게 */
+    const more = $('#cwMore'), lst = $('#cwList');   /* 열쇠 목록은 접어 둠(판 위 글자 최소화, docs/29) — 펼칠 때만 보임 */
+    if(more && lst) more.addEventListener('toggle', () => { lst.hidden = !more.open; });
     cl.onclick = e => { const b = e.target.closest && e.target.closest('.cw-dir'); if(!b) return; sfx('cwPick'); select(+b.dataset.k, document.activeElement === $('#cwIn')); };
     m.onResize = () => layout();
     addEventListener('resize', m.onResize);
@@ -641,6 +641,16 @@ NG.crossword = (() => {
       },
       lines:['칸을 눌러 낱말을 골라요', '아래 열쇠를 보고 답을 넣어요', '겹친 글자가 다른 낱말의 힌트!']
     },
+    tips(){ return [
+      ['칸 누르기', '칸을 누르면 그 낱말이 노랗게 빛나고 판 아래에 그 낱말의 열쇠(뜻풀이)만 나와요.'],
+      ['가로 1 · ⇄ 세로', '열쇠 앞 꼬리표는 방향과 번호예요. [⇄ 세로]·[⇄ 가로]를 누르면 엇갈린 낱말로 바꿔요. ◀ ▶로 이전·다음 열쇠.'],
+      ['넣기', '입력창에 낱말을 쓰고 [넣기]. 글자 수는 노랗게 빛나는 칸 수와 같아요.'],
+      ['열쇠 목록', '판 아래 [열쇠 목록]을 누르면 모든 열쇠를 한눈에 봐요. 열쇠를 누르면 그 낱말로 가요.'],
+      ['💡 글자 열기 · 🔍 틀린 칸', '💡는 지금 낱말의 글자 하나를 열어 줘요(−40점), 틀린 칸 확인은 틀린 글자를 표시해요(−25점).'],
+      ['★ 기회 · ★ 황금 낱말', '기회 별은 규칙 판에서만 나와요(틀릴 때마다 하나씩 꺼짐). 열쇠 옆 ★은 맞히면 시간을 더 주는 황금 낱말.']
+    ].concat((() => { const m = G && G.id === 'crossword' && G.m; if(!m) return [];   /* 이번 판 규칙(꼬리표 이름 → 뜻) */
+      return (m.mj || []).map(k => CONC.info[k] && ['규칙 · ' + CONC.info[k].name, CONC.info[k].desc]).filter(Boolean)
+        .concat(m.tw && CONC.twInfo[m.tw] ? [['규칙 · ' + CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]] : []); })()); },
     helpExtra(){ const m = G && G.id === 'crossword' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['골목 사전', '시장 골목', '바닷가 책방', '산마루 서당', '별빛 도서관'],
     starRule:'★ 클리어 · ★★ 도구 1번 이하·실수 2번 이하 · ★★★ 도구·실수 없이',
@@ -712,7 +722,7 @@ NG.crossword = (() => {
           <div class="cw-clue"><button class="cw-arr" id="cwPrev" aria-label="이전 열쇠">${ICO.prev}</button><div class="cw-cl" id="cwClue" aria-live="polite"></div><button class="cw-arr" id="cwNext" aria-label="다음 열쇠">${ICO.next}</button></div>
           <div class="cw-in"><input id="cwIn" type="text" lang="ko" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" maxlength="12" aria-label="답 넣기"><button id="cwGo" class="cw-go">넣기</button></div>
         </div>
-        <details class="cw-more" id="cwMore" open><summary>열쇠 목록 전체 보기<small>가로 ${m.words.filter(w => !w.d).length} · 세로 ${m.words.filter(w => w.d).length}</small></summary><div class="cw-list" id="cwList"></div></details>
+        <details class="cw-more" id="cwMore"><summary aria-label="열쇠 목록 전체 보기 (가로 ${m.words.filter(w => !w.d).length}개 · 세로 ${m.words.filter(w => w.d).length}개)">열쇠 목록<small>${m.words.length}</small></summary><div class="cw-list" id="cwList" hidden></div></details>
       </div>`;
       layout(); wire(); refresh();
       T(() => { const b = $('#cwBoard'); if(b) b.classList.remove('in'); }, 900);
@@ -838,6 +848,7 @@ body[data-mode="crossword"]{background:
 .ng-crossword .cw-more > summary::after{content:''; width:8px; height:8px; border-right:2.5px solid #7A3F10; border-bottom:2.5px solid #7A3F10; transform:translateY(-2px) rotate(45deg); transition:transform .15s}
 .ng-crossword .cw-more[open] > summary::after{transform:translateY(2px) rotate(225deg)}
 .ng-crossword .cw-more > summary small{font-size:13px; color:#54446E}
+.ng-crossword .cw-list[hidden]{display:none}
 .ng-crossword .cw-list{width:100%; margin-top:10px; display:flex; flex-direction:column; gap:10px}
 /* 키보드가 올라온 동안: 열쇠+입력창을 키보드 바로 위에 붙임(top은 visualViewport로 계산) */
 .ng-crossword.cw-kbd .cw-ctl{position:fixed; left:12px; right:12px; width:auto; margin:0; z-index:30; padding:8px; border-radius:18px; background:rgba(255,245,228,.97); box-shadow:0 -4px 16px rgba(26,15,69,.18)}

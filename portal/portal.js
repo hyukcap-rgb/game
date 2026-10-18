@@ -986,7 +986,8 @@ Object.assign(HOST, {
     return { attempt };
   },
   showPlay(){ $('#home').style.display = 'none'; $('#play').style.display = 'block'; },
-  subtitle:(L, attempt, ex) => attempt === 1 ? `${subjOf(G.id) ? subjOf(G.id) + ' · ' : ''}${L.name}${ex} · 공식 답안` : `다시 풀기 · 기록 안 됨 · ${L.name}${ex}`,
+  subtitle:(L, attempt, ex) => attempt === 1 ? `${L.name}${ex}` : `다시 풀기${ex}`,
+  subtitleFull:(L, attempt, ex) => attempt === 1 ? `${subjOf(G.id) ? subjOf(G.id) + ' · ' : ''}${L.name}${ex} · 공식 답안` : `다시 풀기 · 기록 안 됨 · ${L.name}${ex}`,
   quitInfo:() => ({
     note:G.attempt === 1 ? '지금 나가면 여기까지 진행한 만큼(최대 300점)만 공식 점수로 기록돼요. 오늘 이 문제의 공식 답안은 한 번뿐이에요.' : '연습 판이라 나가도 공식 기록은 그대로예요.',
     label:G.attempt === 1 ? '여기서 제출하기' : '다시 풀기 그만하기',

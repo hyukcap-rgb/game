@@ -200,10 +200,8 @@ NG.parking = (() => {
   }
   function msg(html, cls){ const e = $('#pkMsg'); if(!e) return; e.className = 'pk-msg ' + (cls || ''); e.innerHTML = html; }
   function playMsg(){
-    const m = S();
-    if(m.boss) return '<b class="boss">대장 판</b><span>' + (m.tips[0] || '끝까지 집중!') + '</span>';
-    if(m.tips.length) return '<span>' + m.tips.slice(0, 2).join(' · ') + '</span>';
-    return m.P.goals.length > 1 ? '<span>빨간 차·노란 차를 자리로!</span>' : '<span>차를 끌거나, 누르고 화살표로 밀어요</span>';
+    /* 판 위 안내 문장은 두지 않는다(docs/29) — 조작·이번 판 규칙은 도움말 tips. 알림 칸은 순간 알림에만 */
+    return '';
   }
   /* 출구 표지판이 판 밖으로 나오는 길이(px). 출구가 있는 쪽에만 자리를 비우고, 반대쪽은 거의 붙여서 판을 최대한 크게 */
   const SIGN = 26;
@@ -674,6 +672,17 @@ NG.parking = (() => {
     /* 도움말 v2(공용 WP3가 읽음): 3줄 + 더 알아보기. 솔로 새 규칙은 개념 카드에서만 설명 */
     howto:{ pic:howPic, lines:['차를 끌거나, 누르고 화살표로 밀어요', '빨간 내 차를 출구까지 보내요', '적은 수로 풀수록 별이 많아요'],
       more:[['한 수 세기', '같은 차를 이어서 밀면 한 수예요. 되돌리기·처음부터는 벌칙이 없어요.'], ['힌트', '다음에 밀 차와 갈 칸을 보여 줘요(점수 −' + HINT_PEN + ').'], ['대전', '2~5명이 같은 주차장을 동시에! 내 차를 먼저 빼면 1등(2분). 못 빼면 남은 최단 수가 적은 사람이 앞서요. 끝나면 모두의 풀이를 나란히 다시 봐요.']] },
+    /* 판 위에서 뺀 안내 문장(docs/29) → 도움말 "화면 안내" */
+    tips(){
+      const m = G && G.id === 'parking' && G.m, t = [
+        ['밀기', '차를 끌거나, 차를 누르고 나온 화살표를 눌러 밀어요.'],
+        ['수 칩', '움직인 수 / 최단 수예요. 같은 차를 이어서 밀면 한 수.'],
+        ['되돌리기 · 처음부터', '벌칙 없이 한 수 되돌리거나 처음 판으로 가요.'],
+        ['힌트', '다음에 밀 차와 갈 칸을 보여 줘요(점수 −' + HINT_PEN + ').']];
+      if(m && m.P && m.P.goals.length > 1) t.push(['두 대 주차', '빨간 차와 노란 차를 둘 다 자리로 보내요.']);
+      if(m && m.tips.length) t.push(['이번 판', m.tips.join(' · ')]);
+      return t;
+    },
     helpExtra(){ const m = G && G.id === 'parking' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['동네 골목', '마트 주차장', '항구 하역장', '공항 주차빌딩', '눈꽃 스키장'],
     starRule:'★ 주차 성공 · ★★ 힌트 1번 이하, 최단+여유 수 안 · ★★★ 힌트 없이 최단 수로',

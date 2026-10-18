@@ -4,12 +4,12 @@
     {
       "id": "fox",
       "name": "여우 자리 찾기",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "summary": "색깔 구역마다 여우를 한 마리씩 놓는 논리 퍼즐",
       "duel": true,
       "file": "fox.html",
-      "bytes": 312592,
-      "gzip": 102324
+      "bytes": 317286,
+      "gzip": 103691
     },
     {
       "id": "sudoku",
@@ -18,8 +18,8 @@
       "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
       "duel": true,
       "file": "sudoku.html",
-      "bytes": 312858,
-      "gzip": 102013
+      "bytes": 317174,
+      "gzip": 103305
     },
     {
       "id": "ball",
@@ -28,8 +28,8 @@
       "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
       "duel": true,
       "file": "ball.html",
-      "bytes": 321262,
-      "gzip": 105169
+      "bytes": 325751,
+      "gzip": 106432
     },
     {
       "id": "fleet",
@@ -38,8 +38,8 @@
       "summary": "함대를 숨기고 번갈아 포격하는 해전 추리(실시간 1:1·AI)",
       "duel": true,
       "file": "fleet.html",
-      "bytes": 351180,
-      "gzip": 113994
+      "bytes": 355454,
+      "gzip": 115024
     },
     {
       "id": "match",
@@ -48,8 +48,8 @@
       "summary": "같은 동물 3마리를 맞추는 퍼즐",
       "duel": true,
       "file": "match.html",
-      "bytes": 369806,
-      "gzip": 122011
+      "bytes": 374574,
+      "gzip": 123480
     },
     {
       "id": "nono",
@@ -58,8 +58,8 @@
       "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
       "duel": true,
       "file": "nono.html",
-      "bytes": 333198,
-      "gzip": 109663
+      "bytes": 337438,
+      "gzip": 110889
     },
     {
       "id": "block",
@@ -68,18 +68,18 @@
       "summary": "조각을 놓아 가로·세로 줄을 지우는 공간 퍼즐",
       "duel": true,
       "file": "block.html",
-      "bytes": 329148,
-      "gzip": 109010
+      "bytes": 333537,
+      "gzip": 110367
     },
     {
       "id": "memory",
       "name": "카드 짝 맞추기",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "보여 준 카드를 기억해 짝을 찾는 집중력 게임",
       "duel": true,
       "file": "memory.html",
-      "bytes": 330285,
-      "gzip": 108134
+      "bytes": 334093,
+      "gzip": 109258
     },
     {
       "id": "merge",
@@ -88,18 +88,18 @@
       "summary": "밀어서 같은 숫자를 합쳐 목표를 이동 안에 채우는 전략 퍼즐",
       "duel": true,
       "file": "merge.html",
-      "bytes": 333391,
-      "gzip": 110878
+      "bytes": 338689,
+      "gzip": 112499
     },
     {
       "id": "link",
       "name": "짝 잇기",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "summary": "같은 그림 타일을 두 번까지 꺾이는 길로 이어 지우는 공간지각 게임",
       "duel": true,
       "file": "link.html",
-      "bytes": 329185,
-      "gzip": 108329
+      "bytes": 332856,
+      "gzip": 109350
     },
     {
       "id": "gostop",
@@ -108,8 +108,8 @@
       "summary": "2인 맞고 규칙의 고스톱(19세 이상) — 솔로(AI 스테이지)와 실시간 1:1 대전만, 오늘의 시험지에는 없음",
       "duel": true,
       "file": "gostop.html",
-      "bytes": 1484455,
-      "gzip": 919691
+      "bytes": 1489366,
+      "gzip": 920960
     },
     {
       "id": "crossword",
@@ -118,8 +118,8 @@
       "summary": "뜻풀이 열쇠를 보고 가로·세로로 엇갈린 한국어 낱말을 맞히는 추리 퍼즐",
       "duel": true,
       "file": "crossword.html",
-      "bytes": 346626,
-      "gzip": 130535
+      "bytes": 350733,
+      "gzip": 131915
     },
     {
       "id": "hidden",
@@ -128,8 +128,8 @@
       "summary": "세계 여행 그림책 장면 20곳 속 물건을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "hidden.html",
-      "bytes": 329036,
-      "gzip": 109313
+      "bytes": 333031,
+      "gzip": 110537
     },
     {
       "id": "spot",
@@ -138,8 +138,8 @@
       "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "spot.html",
-      "bytes": 359743,
-      "gzip": 119894
+      "bytes": 363393,
+      "gzip": 120957
     },
     {
       "id": "chosung",
@@ -148,8 +148,8 @@
       "summary": "초성과 분류를 보고 낱말을 떠올려 쓰는 추리 게임",
       "duel": true,
       "file": "chosung.html",
-      "bytes": 360976,
-      "gzip": 148100
+      "bytes": 364799,
+      "gzip": 149082
     },
     {
       "id": "wordchain",
@@ -158,8 +158,8 @@
       "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — 컴퓨터와 잇기, 끝내기 낱말, 2~5명 돌아가며 잇기 대전",
       "duel": true,
       "file": "wordchain.html",
-      "bytes": 842323,
-      "gzip": 647293
+      "bytes": 846328,
+      "gzip": 648366
     },
     {
       "id": "mines",
@@ -168,8 +168,8 @@
       "summary": "숫자를 보고 밤송이가 숨은 칸을 피해 숲을 모두 여는 찍기 없는 논리 게임",
       "duel": true,
       "file": "mines.html",
-      "bytes": 309578,
-      "gzip": 101013
+      "bytes": 313341,
+      "gzip": 102077
     },
     {
       "id": "omok",
@@ -178,8 +178,8 @@
       "summary": "정확히 5개를 먼저 잇는 오목 — 오늘의 묘수풀이·AI 대국·실시간 1:1 대전",
       "duel": true,
       "file": "omok.html",
-      "bytes": 325779,
-      "gzip": 107130
+      "bytes": 329937,
+      "gzip": 108316
     },
     {
       "id": "parking",
@@ -188,8 +188,8 @@
       "summary": "꽉 찬 주차장에서 차를 앞뒤로 밀어 빨간 내 차를 자리까지 보내는 공간지각 퍼즐",
       "duel": true,
       "file": "parking.html",
-      "bytes": 387081,
-      "gzip": 135742
+      "bytes": 390661,
+      "gzip": 136677
     },
     {
       "id": "snowball",
@@ -198,28 +198,28 @@
       "summary": "말랑볼을 굴려 먹고 커져서, 작은 상대를 꿀꺽하는 3분 육성 대결 — 솔로(별 3개)와 30명 배틀로열 대전",
       "duel": true,
       "file": "snowball.html",
-      "bytes": 325051,
-      "gzip": 106339
+      "bytes": 330373,
+      "gzip": 107963
     },
     {
       "id": "flag",
       "name": "청기 백기",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "summary": "진행자 명령대로 파란 깃발·흰 깃발을 올리고 내리는 순발력 게임(막 누르면 손해)",
       "duel": true,
       "file": "flag.html",
-      "bytes": 320993,
-      "gzip": 104024
+      "bytes": 325326,
+      "gzip": 105221
     },
     {
       "id": "mole",
       "name": "두더지 땅땅",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "summary": "구멍에서 튀어나오는 두더지만 치고 폭탄 두더지는 참는 순발력 게임",
       "duel": true,
       "file": "mole.html",
-      "bytes": 324884,
-      "gzip": 105711
+      "bytes": 328872,
+      "gzip": 106833
     },
     {
       "id": "twin",
@@ -228,18 +228,18 @@
       "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
       "duel": true,
       "file": "twin.html",
-      "bytes": 339583,
-      "gzip": 112628
+      "bytes": 343544,
+      "gzip": 113692
     },
     {
       "id": "arrow",
       "name": "거꾸로 화살표",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "summary": "파란 화살표는 그 방향, 빨간 화살표는 반대로 미는 순발력 게임",
       "duel": true,
       "file": "arrow.html",
-      "bytes": 324267,
-      "gzip": 104036
+      "bytes": 328055,
+      "gzip": 105070
     },
     {
       "id": "rps",
@@ -248,8 +248,8 @@
       "summary": "상대 손과 지령(이겨라·져라·비겨라)에 맞는 손을 재빨리 내는 순발력 게임",
       "duel": true,
       "file": "rps.html",
-      "bytes": 320472,
-      "gzip": 103032
+      "bytes": 324363,
+      "gzip": 104234
     },
     {
       "id": "thread",
@@ -258,18 +258,18 @@
       "summary": "같은 색 단추를 색실로 꿰어 잇고 천의 빈칸을 남김없이 채우는 공간지각 퍼즐",
       "duel": true,
       "file": "thread.html",
-      "bytes": 385346,
-      "gzip": 142486
+      "bytes": 389807,
+      "gzip": 143793
     },
     {
       "id": "goback",
       "name": "고백점프",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "summary": "고·백·점프로 차례를 넘기는 2~5명 순발력 놀이 — 앞사람이 외친 걸 보고 내 차례를 알아채요",
       "duel": true,
       "file": "goback.html",
-      "bytes": 312562,
-      "gzip": 100515
+      "bytes": 316130,
+      "gzip": 101574
     },
     {
       "id": "mountain",
@@ -278,8 +278,8 @@
       "summary": "앞사람 행동을 처음부터 순서대로 따라 하고 하나씩 얹는 기억력 대전 — 2~5명 돌아가며, 틀리면 탈락",
       "duel": true,
       "file": "mountain.html",
-      "bytes": 298796,
-      "gzip": 96703
+      "bytes": 302199,
+      "gzip": 97609
     },
     {
       "id": "march",
@@ -288,8 +288,8 @@
       "summary": "병사 1명으로 출발해 갈림길·숫자 상자·보상 통을 지나 병력을 키우고, 예고 공격을 피하며 보스를 쓰러뜨리는 행군 — 솔로(새 기믹·3판마다 보스)와 라이벌 2분 대전",
       "duel": true,
       "file": "march.html",
-      "bytes": 345953,
-      "gzip": 114620
+      "bytes": 350324,
+      "gzip": 116001
     },
     {
       "id": "jigsaw",
@@ -298,8 +298,8 @@
       "summary": "섞인 명화 조각을 3×3·4×4·5×5로 맞추는 공간지각 퍼즐",
       "duel": true,
       "file": "jigsaw.html",
-      "bytes": 299075,
-      "gzip": 100287
+      "bytes": 302685,
+      "gzip": 101218
     },
     {
       "id": "tidy",
@@ -308,8 +308,8 @@
       "summary": "서랍·책상·냉장고 칸에 모양이 다른 물건을 돌려 가며 빈틈없이 채우는 정리 퍼즐 — 차가운 칸·깨지는 물건·무거운 물건 규칙",
       "duel": true,
       "file": "tidy.html",
-      "bytes": 303999,
-      "gzip": 99584
+      "bytes": 307860,
+      "gzip": 100711
     },
     {
       "id": "tgostop",
@@ -318,8 +318,8 @@
       "summary": "고스톱(맞고)을 트럼프 52장으로 — 판·연출·대전은 고스톱 그대로, A~Q = 1~12월, K = 보너스패, 연뻑·3연뻑 추가(19세 이상)",
       "duel": true,
       "file": "tgostop.html",
-      "bytes": 908681,
-      "gzip": 482293
+      "bytes": 913589,
+      "gzip": 483737
     },
     {
       "id": "holdem",
@@ -328,8 +328,8 @@
       "summary": "텍사스 홀덤 노리밋(19세 이상) — 독립 서비스 로열 홀덤을 사이트 안에서 열어요: AI 대결 · 친구 대전 · 오늘의 토너먼트",
       "duel": true,
       "file": "holdem.html",
-      "bytes": 278263,
-      "gzip": 88415
+      "bytes": 281723,
+      "gzip": 89319
     },
     {
       "id": "quiz",
@@ -338,8 +338,8 @@
       "summary": "멜로디·상표 가린 추억 간식·그림 속담·옛 인물을 맞히는 온 가족 4지선다 퀴즈",
       "duel": true,
       "file": "quiz.html",
-      "bytes": 292818,
-      "gzip": 95904
+      "bytes": 296278,
+      "gzip": 96802
     }
   ],
   "retired": [

@@ -99,7 +99,7 @@ html body[data-mode="flag"] .pbar{margin-bottom:10px}
 /* 흉내쟁이 명령: 점선 테두리·베이지 말풍선·꼬리는 너구리 쪽 */
 .ng-flag .fl-bub.mimic{--bg:#F3ECE3; border-style:dashed; --tail:84%}
 .ng-flag .fl-bub.mimic .fl-who{color:#7D6E64}
-.ng-flag .fl-bub.mimic .fl-who::after{content:"따라 하면 안 돼요"; margin-left:auto; font-size:13px; color:#fff; background:#9C8D80; border-radius:99px; padding:2px 8px}
+.ng-flag .fl-bub.mimic .fl-who::after{content:"따라 하지 마"; margin-left:auto; font-size:13px; color:#fff; background:#9C8D80; border-radius:99px; padding:2px 8px}
 .ng-flag .fl-bub.card.flip{--bg:#F1EAFF}
 .ng-flag .fl-bub.card.keep{--bg:#E8FAEF}
 .ng-flag .fl-bub.lose .fl-cardt{color:#C8283A}
@@ -189,3 +189,10 @@ html body[data-mode="flag"] .pbar{margin-bottom:10px}
   .ng-flag .fl-cmd.pop, .ng-flag .fl-btn.hit, .ng-flag .fl-win.hurry{animation:none}
   .ng-flag .fl-btn{transition:none}
 }
+
+/* 2026-10-18 판 위 글자 최소화(docs/29): 버튼은 그림(깃발 + ▲▼)만, 진행자 이름은 읽기 프로그램에만 */
+.ng-flag .fl-sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.ng-flag .fl-bi{gap:8px}
+.ng-flag .fl-bi .fl-fi{width:34px; height:34px}
+.ng-flag .fl-bi .fl-badge{width:40px; height:40px; border-width:3px}
+@media (max-width:370px){ .ng-flag .fl-bi .fl-fi{width:30px; height:30px} .ng-flag .fl-bi .fl-badge{width:36px; height:36px} }

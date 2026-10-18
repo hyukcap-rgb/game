@@ -41,6 +41,7 @@ body[data-mode="arrow"]{background:
 .ng-arrow .ar-say span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .ng-arrow .ar-say.pop{animation:ar-say .3s cubic-bezier(.2,1.5,.4,1)}
 @keyframes ar-say{from{transform:scale(.88); opacity:.3}}
+.ng-arrow .ar-say.idle{visibility:hidden}
 
 /* 표지판 원판 */
 .ng-arrow .ar-discwrap{position:relative; flex:1 1 auto; min-height:0; display:grid; place-items:center}

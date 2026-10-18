@@ -175,3 +175,6 @@ body[data-mode="rps"] .fxfloat.rpf{font-family:var(--heavy); font-weight:400; fo
 }
 /* 두 손: 밀려남·으쓱은 생략(뒤집힌 손 모양 유지), 맞부딪힘 별만 기준 손 쪽에 */
 .ng-rps .rp-opp.two.hit .rp-hand, .ng-rps .rp-opp.two.won .rp-hand{animation:none}
+
+/* 2026-10-18 판 위 글자 줄이기(docs/29): 손 버튼은 그림만(이름은 aria-label·도움말) → 그림을 조금 크게 */
+.ng-rps .rp-b img{max-width:92%}

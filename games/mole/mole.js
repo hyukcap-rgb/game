@@ -30,6 +30,8 @@ NG.mole = (() => {
       tight:{ name:'외줄 타기', desc:'기회가 2개뿐이에요. 폭탄 두더지를 특히 조심해요.' }
     }
   };
+  /* 남은 두더지 칩 그림(24×24 선 그림, 2026-10-18 칩 이름표 대신) */
+  const MOLE_ICO = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19v-7a7 7 0 0 1 14 0v7"/><path d="M2.5 19.5h19"/><circle cx="9.5" cy="11" r=".6" fill="currentColor"/><circle cx="14.5" cy="11" r=".6" fill="currentColor"/><path d="M11 14.2h2"/></svg></span>';
   const RULE_TIP = { helmet:'헬멧은 두 번', gold:'황금은 재빨리', order:'번호 순서대로', hide:'처음 쏙은 가짜', flash:'짧게 나와요', dark:'불 켜진 구멍', tight:'기회 2개' };
 
   /* ===== 솔로 스테이지 설정(planOf 개념 사이클) ===== */
@@ -251,12 +253,11 @@ NG.mole = (() => {
     set('mlOk', m.correct); set('mlLeft', m.N - m.shown); set('mlCombo', m.combo);
     const okc = $('#mlOkP'); if(okc) okc.classList.toggle('goal', m.correct >= m.need);
     const lv = $('#mlLives');
-    if(lv){ lv.innerHTML = '기회 ' + Array.from({ length:m.maxLives }, (_, n) => `<i${n >= m.lives ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', m.lives === 1); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '개'); }
+    if(lv){ lv.innerHTML = Array.from({ length:m.maxLives }, (_, n) => `<i${n >= m.lives ? ' class="off"' : ''}>★</i>`).join(''); lv.classList.toggle('last', m.lives === 1); lv.setAttribute('aria-label', '남은 기회 ' + m.lives + '개'); }
     G.paws = m.lives;
   }
   function playSub(m){
-    if(m.tips.length) return m.tips.join(' · ');
-    return '폭탄 두더지는 참아요';
+    return '';   /* 2026-10-18 판 위 글자 최소화: 규칙 문장은 도움말 tips */
   }
 
   /* ---- 두더지 보이기(transform만 → 60fps) ---- */
@@ -406,7 +407,7 @@ NG.mole = (() => {
     if(now < m.lockUntil){ return; }
     if(m.taps.length > SPAM_N){   /* 마구 누르기: 0.5초 잠금(벌점 없음) */
       m.lockUntil = now + SPAM_LOCK; m.taps = []; m.slow++;
-      lockShow('천천히!', SPAM_LOCK); sfx('moleSlow'); say('천천히!', '잘 보고 눌러요', 'warn');
+      lockShow('천천히!', SPAM_LOCK); sfx('moleSlow'); say('천천히!', '', 'warn');
       return;
     }
     if(!r){
@@ -467,7 +468,7 @@ NG.mole = (() => {
         fxEmit(q.x, y, { quantity:9, speed:{ min:20, max:80 }, angle:{ min:200, max:340 }, lifespan:{ min:700, max:1100 }, kind:'smoke', tint:['#8C86A0', '#B9B3C8'], scale:{ start:10, end:24 }, alpha:{ start:.55, end:0 }, gravityY:-60 });
         fxFlash('#FF6B6B', .12, 300); fxShake($('#mlField'), 3);
       });
-      say('앗, 폭탄!', m.lives ? '폭탄 두더지는 참아요' : '', 'bad');
+      say('앗, 폭탄!', '', 'bad');
     } else {
       sfx('moleWrong'); fxBuzz([30, 40, 30]);
       fx(() => { fxFlash('#FF6B6B', .1, 240); fxShake($('#mlField'), 3); });
@@ -599,6 +600,12 @@ NG.mole = (() => {
       ['막 누르면 손해', '빈 구멍을 누르면 ' + EMPTY_PTS + '점이 깎이고 망치가 잠깐 멍해져요. 폭탄을 치면 기회 별이 하나 줄어요.'],
       ['목표를 넘기면 성공', '두더지가 다 나온 뒤 정답이 목표 수 이상이면 성공. 솔로에서는 헬멧·황금·번호·숨바꼭질 두더지가 5판마다 하나씩 나와요.']
     ],
+    tips(){
+      const m = S(), out = [['두더지', '나온 두더지만 눌러요. 폭탄 두더지(회색·폭탄)는 들어갈 때까지 참아요'], ['칩', '정답/목표 · 남은 두더지 · 연속 정답'], ['막대', '판단 시간(초록 → 노랑 → 빨강)']];
+      if(m) m.tips.forEach(t => out.push(['이번 판', t]));
+      if(m && m.boss) out.push(['대장 판', '끝까지 침착하게']);
+      return out;
+    },
     helpExtra(){ const m = S(); if(!m) return []; return [['이번 판', `두더지 ${m.N}마리 · 목표 ${m.need}개${m.tips.length ? ' · ' + m.tips.join(' · ') : ''}`]]; },
     chapters:['앞마당', '당근 밭', '달빛 들판', '두더지 마을', '땅속 왕국'],
     starRule:'★ 클리어 · ★★ 실수 1번 이하 · ★★★ 실수 없이',
@@ -634,9 +641,9 @@ NG.mole = (() => {
       const m = S(), S0 = sprites();
       st.innerHTML = `<div class="ng-mole ch-${m.ch}${m.dark ? ' dark' : ''}${m.boss ? ' boss' : ''}">
         <div class="hud-row">
-          <div class="hchip" id="mlOkP" aria-label="정답과 목표"><span class="hv"><b id="mlOk">0</b><small>/목표 ${m.need}</small></span><em>정답</em></div>
-          <div class="hchip" aria-label="남은 두더지"><span class="hv"><b id="mlLeft">${m.N}</b><small>마리</small></span><em>남은 두더지</em></div>
-          <div class="hchip" aria-label="연속 정답"><span class="hv"><b id="mlCombo">0</b></span><em>연속</em></div>
+          <div class="hchip" id="mlOkP" aria-label="정답과 목표 ${m.need}개"><span class="hv">${ic('check')}<b id="mlOk">0</b><small>/${m.need}</small></span><em>정답/목표</em></div>
+          <div class="hchip" aria-label="남은 두더지"><span class="hv">${MOLE_ICO}<b id="mlLeft">${m.N}</b></span><em>남은 두더지</em></div>
+          <div class="hchip" aria-label="연속 정답"><span class="hv">${ic('flame')}<b id="mlCombo">0</b></span><em>연속</em></div>
         </div>
         <div class="ml-top">
           <div class="ml-hostw"><img class="toy ml-host" id="mlHost" src="${toySrc(m.host, m.boss ? 'wow' : '')}" alt="" aria-hidden="true" draggable="false"></div>
@@ -652,7 +659,7 @@ NG.mole = (() => {
           <img class="ml-ham" id="mlHam" src="${S0.ham}" alt="" draggable="false">
           <div class="ml-lock" id="mlLock" aria-live="assertive"></div>
           <div class="ml-banner" id="mlBanner" aria-hidden="true"></div>
-          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>대장 판!</b><span>끝까지 침착하게</span></div>' : ''}
+          ${m.boss ? '<div class="ml-boss" id="mlBoss" aria-hidden="true"><b>대장 판!</b></div>' : ''}
         </div>
       </div>`;
       const f = st.querySelector('.ng-mole');   /* 판 밖으로 삐져나온 윗줄 두더지 머리도 받도록 게임 화면 전체에서 받음 */

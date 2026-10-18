@@ -313,6 +313,17 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .tool.item .cnt{background:#6C3CE0}
 .tools-row{display:flex; gap:8px; width:100%} .tools-row > .tool{flex:1 1 0; min-width:0}
 @media (max-width:370px){ .hchip{height:44px; padding:0 6px} .hchip b{font-size:17px} .hud-row{gap:5px} .tool{font-size:13px} }
+/* UI팀 2026-10-18 글자 줄이기: 그림(아이콘)이 있는 칩·시간 칩·기회 칩은 이름표(<em>)를 화면에서 숨긴다(읽기 프로그램·도움말 '표시 안내'에는 남음) */
+.hchip:has(> .hv .ico, > .hv > svg, > .hv .hlives) > em, .hchip.time > em, .hchip.ic > em{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.hchip.time > .hv::before{content:''; width:18px; height:18px; flex:none; background:currentColor; opacity:.75;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E") center/contain no-repeat}
+.hchip.time > .hv:has(.ico, svg)::before{display:none}
+/* 기호 안내(도움말): 판 위 칩 그림 + 이름 */
+.hsym{display:flex; flex-wrap:wrap; gap:6px 12px}
+.hsym span{display:inline-flex; align-items:center; gap:5px; font-size:15px; color:var(--ink)}
+.hsym .ico, .hsym svg{width:18px; height:18px; flex:none}
+.hsym .hlives{height:22px; padding:0 6px}
 @media (prefers-reduced-motion:reduce){ .hbar > i{transition:none} }
 
 
@@ -366,6 +377,19 @@ body[data-mode="sudoku"] .pbar.has-duel .dping{top:calc(100% + 70px)}
 .hstar .hs.miss{color:#9A8FB0; text-decoration:line-through}
 .hstar .hs.miss i{color:#CFC6DE; text-shadow:none}
 .hstar > b{font-weight:400; color:#B9AEC9}
+.hstar{padding:0 6px; gap:2px}
+.hstar .hs{border:0; background:none; padding:0 6px; height:28px; font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.hstar .hs.miss{text-decoration:none; opacity:.55}
+/* 도움말 안의 '이번 판'·'별 목표'·'화면 안내'(UI팀 2026-10-18: 판 위에서 뺀 글) */
+.hnow{margin:10px 0 0; font-size:14px; font-weight:700; color:var(--sub); text-align:center}
+.hgoal,.htips{margin-top:10px; padding:10px 12px; border-radius:14px; background:#fff; border:2px solid var(--paper-line); text-align:left; display:flex; flex-direction:column; gap:6px}
+.hgoal > b,.htips > b{font-family:var(--disp); font-weight:400; font-size:16px; color:var(--ink)}
+.hgoal span{font-size:15px; color:var(--ink); line-height:1.5}
+.hgoal i{font-style:normal; color:#FFB020; margin-right:6px; letter-spacing:-1px}
+.htip{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:baseline; font-size:15px; line-height:1.5}
+.htip em{font-style:normal; font-weight:700; color:var(--ink); white-space:nowrap}
+.htip span{color:var(--sub)}
+body.big .htip,body.big .hgoal span{font-size:17px}
 
 /* 결과 창 기록 · 기록 갱신 도장 */
 .recl{margin:8px 0 0; font-family:var(--disp); font-size:16px; color:var(--ink)}

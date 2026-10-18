@@ -466,10 +466,34 @@ function openHelp(id, first){
       <ol class="h3l">${ho.lines.slice(0, 3).map((l, i) => `<li><span class="hn" style="background:${col}">${i + 1}</span><span>${l}</span></li>`).join('')}</ol>
       ${steps.length ? `<details class="hmore"><summary>더 알아보기 <span aria-hidden="true">▾</span></summary><div class="help">${stepHtml}</div></details>` : ''}`;
   } else body = `<div class="help">${stepHtml}</div>`;
+  /* UI팀 2026-10-18: 판 위에서 뺀 글은 여기서 본다 — 화면 안내(게임 정의 tips) · 이번 판(제목 전체) · 별 목표(솔로) */
+  let tips = []; try{ tips = typeof m.tips === 'function' ? m.tips() : (m.tips || []); }catch(_){ tips = []; }
+  let goals = []; try{ goals = G && G.id === id && G.adv && !G.duel ? hstarItems() : []; }catch(_){ goals = []; }
+  const extra = (G && G.id === id && PLAY_SUB ? `<p class="hnow">${PLAY_SUB}</p>` : '')
+    + (goals.length ? `<div class="hgoal"><b>별 목표</b>${goals.map(x => `<span><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i>${x.text}</span>`).join('')}</div>` : '')
+    + (tips.length ? `<div class="htips"><b>화면 안내</b>${tips.map(t => `<div class="htip"><em>${t[0]}</em><span>${t[1]}</span></div>`).join('')}</div>` : '')
+    + hsymHtml(id);
+  body = body + extra;
   openModal(`<h3>${GAMES[id].name} 방법</h3>${body}
     <div class="hfoot"><button class="b1" id="mOk">${first ? '시작하기' : '계속하기'}</button></div>`);
   $('#modal').classList.add('helpm');
   $('#mOk').onclick = () => { closeModal(); if(first && coachWant(id)){ coachStart(id, paused); return; } if(paused) gResume(); };
+}
+/* 기호 안내: 지금 판 위 칩(.hchip) 중 이름표를 숨긴 것의 그림 + 이름(게임 이름을 모르고 화면에서 읽음) */
+function hsymHtml(id){
+  try{
+    if(!G || G.id !== id) return '';
+    const out = [];
+    document.querySelectorAll('#stage .hchip').forEach(c => {
+      const em = c.querySelector(':scope > em'); if(!em || getComputedStyle(em).position !== 'absolute') return;
+      const t = em.textContent.trim(); if(!t || out.some(o => o.t === t)) return;
+      const v = c.querySelector(':scope > .hv'); let pic = '';
+      if(c.classList.contains('time')) pic = ic('clock');
+      else if(v){ const i = v.querySelector('.ico, svg, .hlives'); if(i) pic = i.classList && i.classList.contains('hlives') ? '<span class="hlives"><i>★</i></span>' : i.outerHTML; }
+      out.push({ t, pic });
+    });
+    return out.length ? `<div class="htips"><b>표시 안내</b><div class="hsym">${out.map(o => `<span>${o.pic}${o.t}</span>`).join('')}</div></div>` : '';
+  }catch(_){ return ''; }
 }
 function confirmQuit(){
   if(!G || G.over){ HOST.exit(); return; }
@@ -516,6 +540,7 @@ function renderPaws(){
 }
 
 let G = null, tick = null;
+let PLAY_SUB = '';   /* 제목 부제 전체 글(도움말 '이번 판'). G에 넣지 않음: 대전 판 지문(G 비교)에 안 섞이게 */
 
 function startGame(id, lv = 'normal', o = {}){
   const adv = o.adv || 0, duel = o.duel || null, m = NG[id];
@@ -543,9 +568,17 @@ function startGame(id, lv = 'normal', o = {}){
   HOST.showPlay();
   G.replay = o.replay || null;   /* 다시 풀기·받은 판·지난 문제: 기록·진도에 넣지 않음(HOST.replayFinish가 결과 창) */
   const ex = m.titleExtra ? m.titleExtra() : '';
-  $('#ptitle').innerHTML = GAMES[id].name + (adv ? `<small>솔로 · ${chName(id, chOf(adv))} · 스테이지 ${adv}${ex}</small>` : duel ? `<small>대전 · ${duel.fleet ? (lv === 'pvp' ? '실시간 1:1' : esc((duel.opp && duel.opp.nick) || '컴퓨터')) : 'VS ' + esc(duel.vs || duel.opp.nick) + (duel.mode === 'ai' ? ' (컴퓨터)' : '')} · ${L.name}${ex}</small>` : `<small>${HOST.subtitle(L, attempt, ex)}</small>`);
-  if(adv && !duel) $('#ptitle').innerHTML = GAMES[id].name + `<small>${G.replay && G.replay.kind === 'gift' ? '친구가 보낸 판 · ' + adv + '판' : '솔로 · ' + (WARMUP(adv) ? '몸풀기 판' : chName(id, chOf(adv))) + ' · ' + adv + '판'}${ex}</small>`;
-  if(G.replay && G.replay.kind === 'duel') $('#ptitle').innerHTML = GAMES[id].name + `<small>${G.replay.from ? esc(G.replay.from) + '님이 보낸 대전 판' : '대전 판 다시 풀기'} · 기록 안 됨${ex}</small>`;
+  /* 제목 아래 작은 글(UI팀 2026-10-18: 화면 글자 50% 줄이기) — 한 단어만. 자세한 건 도움말(?)의 '이번 판' 칸 */
+  const aiNick = duel && duel.fleet ? (lv === 'pvp' ? '' : esc((duel.opp && duel.opp.nick) || '')) : duel ? esc(duel.vs || (duel.opp && duel.opp.nick) || '') : '';
+  const sub = adv ? (G.replay && G.replay.kind === 'gift' ? '친구 판' : adv + '판')
+    : duel ? (aiNick ? 'VS ' + aiNick : '대전')
+    : G.replay && G.replay.kind === 'duel' ? '다시 풀기'
+    : HOST.subtitle(L, attempt, '');
+  $('#ptitle').innerHTML = GAMES[id].name + `<small>${sub}${ex}</small>`;
+  PLAY_SUB = adv ? (G.replay && G.replay.kind === 'gift' ? '친구가 보낸 판 · ' + adv + '판' : '솔로 · ' + (WARMUP(adv) ? '몸풀기 판' : chName(id, chOf(adv))) + ' · ' + adv + '판')
+    : duel ? '대전 · ' + L.name + (duel.mode === 'ai' ? ' · 컴퓨터 상대' : '')
+    : G.replay && G.replay.kind === 'duel' ? (G.replay.from ? esc(G.replay.from) + '님이 보낸 대전 판' : '대전 판 다시 풀기') + ' · 기록 안 됨'
+    : (HOST.subtitleFull ? HOST.subtitleFull(L, attempt, '') : '');
   hstarTick();   /* 솔로 별 목표선(판을 그리기 전에 자리를 잡아 판 크기 계산이 맞게) */
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
   $('#paws').dataset.n = 3; $('#fcount').textContent = ''; renderPaws(); renderStage();
@@ -606,9 +639,11 @@ function hstarTick(){
     if(!el){ el = document.createElement('div'); el.id = 'hstar'; el.className = 'hstar'; }
     const bar = document.querySelector('#play > .pbar');
     if(bar && el.previousElementSibling !== bar) bar.after(el);
-    const html = items.map(x => { const ok = typeof x.ok === 'function' ? x.ok() : x.ok;
-      return `<span class="hs${ok === false ? ' miss' : ok ? ' keep' : ''}"><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i>${x.text}</span>`; }).join('<b aria-hidden="true">·</b>');
-    if(el.dataset.h !== html){ el.dataset.h = html; el.innerHTML = html; el.setAttribute('aria-label', '별 목표: ' + items.map(x => (x.s || 3) + '개 ' + x.text).join(', ')); }
+    /* UI팀 2026-10-18: 판 위에는 별만(글은 누르면 잠깐 보이고, 도움말 '별 목표' 칸에 늘 있음) */
+    const html = items.map((x, i) => { const ok = typeof x.ok === 'function' ? x.ok() : x.ok;
+      return `<button type="button" class="hs${ok === false ? ' miss' : ok ? ' keep' : ''}" data-i="${i}" aria-label="별 ${x.s || 3}개 목표: ${x.text}"><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i></button>`; }).join('');
+    if(el.dataset.h !== html){ el.dataset.h = html; el.innerHTML = html; el.setAttribute('aria-label', '별 목표: ' + items.map(x => (x.s || 3) + '개 ' + x.text).join(', '));
+      el.querySelectorAll('.hs').forEach(b => b.onclick = () => { const it = hstarItems()[+b.dataset.i]; if(it) toast('★'.repeat(it.s || 3) + ' ' + it.text); }); }
   }catch(_){}
 }
 function hstarDrop(){ const el = $('#hstar'); if(el) el.remove(); }

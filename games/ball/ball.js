@@ -121,6 +121,10 @@ const BICO = {
   scope:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="2.2"/><circle cx="8.5" cy="15.5" r="1.8"/><circle cx="12.5" cy="11.5" r="1.8"/><circle cx="16.5" cy="7.5" r="1.8"/><circle cx="20.3" cy="3.7" r="1.8"/></svg>',
   lift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V4M5.5 10.5L12 4l6.5 6.5"/></svg>',
   left:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 4.5v15a1 1 0 0 1-1.6.8l-9.4-7.5a1 1 0 0 1 0-1.6l9.4-7.5a1 1 0 0 1 1.6.8z"/></svg>',
+  /* 2026-10-18 판 위 글자 최소화(docs/29): 칩 이름표 대신 그림 — 깬 블록 · 남은 줄 · 구슬 */
+  hBlk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9l6 6M15 9l-6 6" stroke-linecap="round"/></svg>',
+  hRow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 5h16M4 10h16"/><path d="M12 13.5v7M8.5 17l3.5 3.5 3.5-3.5" stroke-linejoin="round"/></svg>',
+  hBall:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7.5"/><circle cx="9.5" cy="9.5" r="1.6" fill="currentColor" stroke="none"/></svg>',
   right:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.5 4.5v15a1 1 0 0 0 1.6.8l9.4-7.5a1 1 0 0 0 0-1.6L10.1 3.7a1 1 0 0 0-1.6.8z"/></svg>'
 };
 function ballHud(){
@@ -137,7 +141,7 @@ function ballHud(){
   ['#bLeft', '#bRight'].forEach(q => { const b = $(q); if(b) b.disabled = !aim; });
   /* 발사 버튼: 날아가는 동안엔 [모두 거두기](다 쏜 뒤 1.5초부터) */
   const go = $('#bGo'), rc = ballCanRecall();
-  if(go){ go.disabled = !(aim || rc); go.lastChild.textContent = G.phase === 'shoot' ? (rc ? '모두 거두기' : '날아가는 중') : '발사'; go.classList.toggle('recall', rc); }
+  if(go){ go.disabled = !(aim || rc); go.lastChild.textContent = G.phase === 'shoot' ? (rc ? '거두기' : '발사') : '발사'; go.classList.toggle('recall', rc); }
   const dg = $('#sbRoot'); if(dg) dg.classList.toggle('danger', !G.fixed && ballRowHas(BR-2));
 }
 /* 대전 남은 시간 글자(m:ss) */
@@ -153,9 +157,9 @@ function ballRecall(){
 function ballStage(st){
   st.innerHTML = `<div class="sb" id="sbRoot">
     <div class="hud-row sb-hud">
-      <span class="hchip"><span class="hv"><b id="bscore">0</b></span><em>깬 블록</em></span>
-      <span class="hchip${G.fixed ? ' time' : ''}"><span class="hv"><b id="bline">0</b></span><em>${G.fixed ? '남은 시간' : '남은 줄'}</em></span>
-      <span class="hchip"><span class="hv"><b id="bballs">×0</b></span><em>구슬</em></span>
+      <span class="hchip"><span class="hv"><span class="ico" aria-hidden="true">${BICO.hBlk}</span><b id="bscore">0</b></span><em>깬 블록</em></span>
+      <span class="hchip${G.fixed ? ' time' : ''}"><span class="hv">${G.fixed ? '' : `<span class="ico" aria-hidden="true">${BICO.hRow}</span>`}<b id="bline">0</b></span><em>${G.fixed ? '남은 시간' : '남은 줄'}</em></span>
+      <span class="hchip"><span class="hv"><span class="ico" aria-hidden="true">${BICO.hBall}</span><b id="bballs">×0</b></span><em>구슬</em></span>
       ${G.fixed ? '' : `<span class="hchip"><span class="hv"><span class="hlives sb-sh" id="bShield" role="img"><i>★</i></span></span><em>방어막</em></span>`}
       <button class="hpause" id="bPause" aria-label="일시정지">${BICO.pause}</button>
     </div>
@@ -163,9 +167,9 @@ function ballStage(st){
     <div class="bfoot">
       <div class="tools-row sb-items">
         <button class="tool item sb-it it-pierce" id="bIPierce" aria-label="뚫는 구슬: 이번 턴 구슬이 블록을 뚫고 지나가며 1씩 깎아요">${BICO.pierce}<span>뚫는 구슬</span><i class="cnt">×1</i></button>
-        <button class="tool item sb-it it-scope" id="bIScope" aria-label="긴 조준선: 이번 턴 조준선이 두 번 튕긴 곳까지 보여요">${BICO.scope}<span>긴 조준선</span><i class="cnt">×1</i></button>
-        ${G.fixed ? '' : `<button class="tool item sb-it it-lift" id="bILift" aria-label="한 줄 올리기: 모든 블록을 한 줄 위로">${BICO.lift}<span>한 줄 올리기</span><i class="cnt">×1</i></button>`}
-        <button class="tool toggle sb-ff" id="bFast" aria-label="빠르게 보기" aria-pressed="false">${BICO.fast}<span>빠르게 보기</span></button>
+        <button class="tool item sb-it it-scope" id="bIScope" aria-label="긴 조준선: 이번 턴 조준선이 두 번 튕긴 곳까지 보여요">${BICO.scope}<span>조준선</span><i class="cnt">×1</i></button>
+        ${G.fixed ? '' : `<button class="tool item sb-it it-lift" id="bILift" aria-label="한 줄 올리기: 모든 블록을 한 줄 위로">${BICO.lift}<span>올리기</span><i class="cnt">×1</i></button>`}
+        <button class="tool toggle sb-ff" id="bFast" aria-label="빠르게 보기(×2)" aria-pressed="false">${BICO.fast}<span>×2</span></button>
       </div>
       <div class="sb-aim">
         <button class="sb-arr" id="bLeft" aria-label="조준 왼쪽으로 조금">${BICO.left}</button>
@@ -727,9 +731,9 @@ function ballDraw(){
     ctx.fillStyle = '#5E4F78'; ctx.font = Math.round(13 * U) + 'px "Noto Sans KR", sans-serif'; ctx.fillText(bn.b, 196, y + 26); ctx.textAlign = 'center'; ctx.globalAlpha = 1;
   } else if(G.tip && G.phase === 'aim' && G.turn === 0 && G.aim == null){   /* 처음 1번만, 쏘면 사라짐 */
     ctx.font = Math.round(15 * U) + 'px Jua, sans-serif';
-    const tl = [['판을 누른 채 끌어서 조준하고', 0], ['손을 떼면 구슬이 날아가요', 22 * U]], ty = (BR-2)*BS - 4 * U;
+    const tl = [['끌어서 조준', 0]], ty = (BR-2)*BS + 18 * U;   /* 2026-10-18 글자 줄이기(docs/29): 한 줄만, 자세한 건 도움말 */
     /* 반투명 알약 바탕: 조준 점선이 글자를 가로지르지 않게(테스트팀 2026-10-18) */
-    const pw = Math.max(...tl.map(([t]) => ctx.measureText(t).width)) + 28 * U, ph = 22 * U + 15 * U + 18 * U;
+    const pw = Math.max(...tl.map(([t]) => ctx.measureText(t).width)) + 28 * U, ph = 15 * U + 18 * U;
     ctx.save(); ctx.fillStyle = 'rgba(26,15,69,.82)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5 * U;
     ctx.beginPath(); const px = BW/2 - pw/2, py = ty - 15 * U / 2 - 9 * U;
     ctx.roundRect ? ctx.roundRect(px, py, pw, ph, ph / 2) : ctx.rect(px, py, pw, ph); ctx.fill(); ctx.stroke(); ctx.restore();
@@ -801,6 +805,10 @@ NG.ball = {
     rows:['스테이지 클리어', '턴 보너스 (' + G.turn + '턴, 기준 ' + G.R + '턴)', (G.shield ? '방어막 지킴' : '방어막 씀') + ' · ' + (G.itemUsed ? '아이템 씀' : '아이템 안 씀')] }; },
   stars:() => ballStars(G.turn, G.R, G.shield > 0),
   winSfx:true, amb:'stars',
+  /* 판 위에서 뺀 도구 전체 이름·설명(docs/29) */
+  tips:[['조준·발사', '판을 누른 채 끌어 조준하고 떼면 발사. ◀ ▶로 각도를 조금씩 바꾸고 [발사]를 눌러도 돼요. 다 쏜 뒤에는 [거두기]로 구슬을 바로 모아요.'],
+    ['뚫는 구슬', '이번 턴 구슬이 블록을 뚫고 지나가며 1씩 깎아요.'], ['조준선 (긴 조준선)', '이번 턴 조준선이 두 번 튕긴 곳까지 보여요.'],
+    ['올리기 (한 줄 올리기)', '모든 블록을 한 줄 위로 올려요.'], ['×2 (빠르게 보기)', '구슬이 2배 빠르게 날아가요. 오래 날면 저절로 빨라져요.']],
   /* 대전 = 고정 7줄 판 모든 블록 먼저 없애기(3분, 느긋하게 6분 = 엔진 기본 limit×2). 2~5명 경주.
      순위: 다 깬 사람(먼저) → 깬 블록 많은 → 쏜 턴 적은(tb) → 마지막으로 깬 시각 */
   duelKind:'race', duelMax:5, duelCfg:() => ballDuelCfg(),

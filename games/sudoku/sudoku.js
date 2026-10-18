@@ -7,22 +7,25 @@ function sudStage(st){
     erase:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.8l5.7 5.7-9.8 9.8H6.3l-3-3z" fill="currentColor" fill-opacity=".14"/><path d="M8.6 9.7l5.7 5.7"/><path d="M13 20.3h7.5"/></svg>',
     memo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="13" height="17.5" rx="2.5" fill="currentColor" fill-opacity=".14"/><path d="M7 8h6M7 12h4"/><path d="M20.5 9.5l-7.2 7.2-.8 3.1 3.1-.8 7.2-7.2z" fill="currentColor"/></svg>',
     hint:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6a6.6 6.6 0 0 0-3.9 11.9c.7.5 1.1 1.3 1.1 2.1v1h5.6v-1c0-.8.4-1.6 1.1-2.1A6.6 6.6 0 0 0 12 2.6z" fill="#FFF7D6" stroke="#4A2A00" stroke-width="2" stroke-linejoin="round"/><path d="M9.4 19.6h5.2v.6a1.9 1.9 0 0 1-1.9 1.9h-1.4a1.9 1.9 0 0 1-1.9-1.9z" fill="#4A2A00"/><path d="M9.9 8.4a2.8 2.8 0 0 1 2.1-1.5" stroke="#FFB020" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+    /* 칩 그림(2026-10-18 글자 줄이기: 그림이 있으면 엔진이 칩 이름표를 숨김) — 직접 그린 24×24 선 그림 */
+    score:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z" fill="#FFD34D"/><path d="M7 6H4.5a2.5 2.5 0 0 0 3 3.6M17 6h2.5a2.5 2.5 0 0 1-3 3.6M12 14v3.5M8.5 20h7"/></svg>',
+    miss:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.6" fill="#FFE3E3"/><path d="M8.6 8.6l6.8 6.8M15.4 8.6l-6.8 6.8" stroke="#D63B3B"/></svg>',
     pause:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.6" fill="#fff"/></svg>'
   };
   st.innerHTML = `<div class="sud-root"><div class="hud-row sud-hud">
-      <span class="hchip"><span class="hv"><b id="sscore">0</b></span><em>점수</em></span>
+      <span class="hchip"><span class="hv">${ico.score}<b id="sscore">0</b></span><em>점수</em></span>
       <span class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>시간</em></span>
-      ${sudDuel() ? `<span class="hchip" id="smisC" aria-label="실수 0번"><span class="hv"><b id="smisN">0</b></span><em>실수</em></span>`
+      ${sudDuel() ? `<span class="hchip" id="smisC" aria-label="실수 0번"><span class="hv">${ico.miss}<b id="smisN">0</b></span><em>실수</em></span>`
         : `<span class="hchip"><span class="hv"><span class="hlives" id="smis" role="img" aria-label="실수 0번, ${G.missCap || 3}번까지">${'<i>★</i>'.repeat(G.missCap || 3)}</span></span><em>기회</em></span>`}
       <button class="hpause" id="spause" aria-label="일시정지">${ico.pause}</button>
-    </div>${sudSxChips()}${G.sx && G.sx.rules.includes('parity') ? '<p class="sud-note">회색 동그라미 칸 = 짝수만</p>' : ''}
+    </div>${sudSxChips()}
     <div class="swrap${S === 6 ? ' w6' : ''}"><div class="board s9${S === 6 ? ' s6' : ''}" id="bd" role="grid" aria-label="스도쿠 판 ${S}×${S}"></div>
       <div class="pcover" id="pcover"><span class="pc-ico">${ico.pause}</span><b>잠깐 쉬는 중</b><button class="b1" id="presume">계속하기</button><button class="psnd" id="pSnd" style="width:auto;padding:0 18px"></button></div></div>
     <div class="sud-ctl">
     <div class="pad9${S === 9 ? ' n9' : ''}" id="pad"${S === 9 ? '' : ` style="grid-template-columns:repeat(${S},minmax(0,1fr))"`}></div>
     <div class="tools-row sud-tools">
-      <button class="tool" id="tUndo" aria-label="실행 취소">${ico.undo}<span>실행 취소</span></button>
-      <button class="tool" id="tErase" aria-label="지우기">${ico.erase}<span>지우기</span></button>
+      <button class="tool ico-only" id="tUndo" aria-label="실행 취소" title="실행 취소">${ico.undo}</button>
+      <button class="tool ico-only" id="tErase" aria-label="지우기" title="지우기">${ico.erase}</button>
       <button class="tool toggle" id="tMemo" aria-label="메모 꺼짐" aria-pressed="false">${ico.memo}<span id="memoTxt">메모 끔</span></button>
       <button class="tool" id="tHint" aria-label="힌트 3번 남음">${ico.hint}<span>힌트</span><i class="cnt" id="hintBadge">3</i></button>
     </div></div></div>`;
@@ -517,6 +520,13 @@ NG.sudoku = {
       <g font-family="Black Han Sans, Jua, sans-serif" font-size="15" text-anchor="middle"><circle cx="18" cy="30" r="12" fill="#fff" stroke="#2A1650" stroke-width="2.5"/><text x="18" y="35.5" fill="#6C3CE0">7</text><circle cx="142" cy="70" r="12" fill="#FFD04D" stroke="#2A1650" stroke-width="2.5"/><text x="142" y="75.5" fill="#2A1650">9</text></g></svg>`;
   },
   /* 도움말 첫 화면은 기본 규칙 3칸만(솔로 새 규칙은 개념 카드와 helpExtra로, S-SUD-7) */
+  /* 화면 안내(2026-10-18 판 위 글자 줄이기, docs/29) */
+  tips:[
+    ['도구', '↶ 실행 취소(한 수 되돌리기, 200단계까지) · 지우개 = 지우기(고른 칸 비우기) · 메모 끔/켬(작은 예비 숫자, 실수 아님) · 전구 = 힌트(고른 칸, 없으면 아무 빈칸의 답, 오른쪽 위 수 = 남은 횟수)'],
+    ['숫자판', '칸을 고른 뒤 아래 숫자를 눌러요. 9개(대전은 6개)를 다 쓴 숫자는 숫자판에서 사라져요.'],
+    ['짝수 칸', '회색 동그라미 칸에는 짝수만 들어가요.'],
+    ['대전', '틀려도 끝나지 않아요: −30점 · 0.8초 쉼. ✕ 칩 = 틀린 수.']
+  ],
   help:[['1~9를 한 번씩','가로줄, 세로줄, 굵은 칸마다 1부터 9까지 한 번씩 넣어요(대전 6×6 판은 1~6).'],['메모로 예비 숫자','[메모 켬]이면 작은 예비 숫자를 적어 둬요. 메모는 실수가 아니에요.'],['실수는 3번까지','틀린 숫자는 빨갛게 남고, 3번 틀리면 끝나요(대전은 −30점). 힌트는 3번 쓸 수 있어요.']],
   /* 도움말 v2(WP3 공용 도움말이 쓰는 칸): 그림 1장 + 3줄. 그림 = 가로줄 하나에 빈칸 숫자가 채워지는 모습 */
   howto:{

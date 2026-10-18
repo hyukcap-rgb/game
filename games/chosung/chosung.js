@@ -227,18 +227,15 @@ NG.chosung = (() => {
     }
     const k = $('#csSkip'); if(k){ k.querySelector('b').textContent = m.skipLeft; k.disabled = m.skipLeft <= 0; }
     const lv = $('#csLives');
-    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = '기회 ' + Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
+    if(lv){ if(!m.lives) lv.hidden = true; else { const left = Math.max(0, m.lives - m.wrongs); lv.hidden = false; lv.innerHTML = Array.from({ length:m.lives }, (_, n) => `<i${n >= left ? ' class="off"' : ''}>★</i>`).join(''); lv.setAttribute('aria-label', '남은 기회 ' + left + '번'); } }
     const dots = $('#csDots');
     if(dots) dots.innerHTML = m.qs.map((p, n) => `<i class="${p.res === 'ok' ? 'ok' : p.res === 'op' ? 'op' : p.res === 'skip' || p.res === 'sk' ? 'sk' : n === m.i ? 'now' : ''}"${m.bz && p.col ? ` style="--oc:${p.col}"` : ''}></i>`).join('');
     const mi = $('#csMine'); if(mi && m.bz) mi.textContent = bzMine();
   }
   function msg(html, cls){ const e = $('#csMsg'); if(!e) return; e.className = 'cs-msg ' + (cls || ''); e.innerHTML = html; }
   function baseMsg(){
-    const m = S(), p = m.qs[m.i]; if(!p) return '';
-    if(p.say) return '<span>띄어쓰기는 안 해도 돼요</span>';
-    if(p.hide) return '<span>어느 분류든 이 초성이면 정답!</span>';
-    const n = valid(p).length, c = dict().byKey[p.cat];
-    return n > 1 ? `<span>정답 ${n}개 중 <b class="k">하나만</b> 맞히면 돼요</span>` : `<span>${esc(c ? c.name : '')} 중에서 ${p.n.length}글자 낱말!</span>`;
+    /* 2026-10-18 판 위 글자 최소화(docs/29): 안내 문장(띄어쓰기·정답 여럿·"○○ 중에서 N글자")은 도움말 tips로 */
+    return '';
   }
   /* 지금 열린 글자와 맞는 정답만 */
   const valid = p => { const m = S(); if(m && m.bz) return p.ans;   /* 대전의 저절로 열린 글자는 보이기만(다른 정답도 그대로 인정) */
@@ -262,12 +259,12 @@ NG.chosung = (() => {
   }
   function cardHtml(){
     const m = S(), p = m.qs[m.i], c = dict().byKey[p.cat];
-    const chip = p.hide ? '<span class="cs-cat hide">분류를 숨겼어요</span>' : `<span class="cs-cat" style="--cc:${c.col}"><small>주제</small>${c.name}</span>`;
+    const chip = p.hide ? '<span class="cs-cat hide" aria-label="분류를 숨겼어요">비밀 분류</span>' : `<span class="cs-cat big" style="--cc:${c.col}" aria-label="주제 ${c.name}">${c.name}</span>`;
     /* 뜻풀이 줄: 보였으면 글, 아직이면 '💡를 누르면 뜻풀이'(힌트가 있는 판만) */
-    const gl = p.gl && p.glOn ? `<p class="cs-gl"><b>뜻</b><span>${esc(p.gl)}</span></p>`
-      : p.gl && m.glOk && !m.bz ? '<p class="cs-gl off"><span>💡 힌트를 누르면 뜻풀이가 나와요</span></p>'
-      : m.bz && p.gl ? `<p class="cs-gl off"><span>조금 뒤 뜻풀이가 나와요</span></p>` : '';
-    return `<div class="cs-top">${chip}<span class="cs-len">${p.n.length}글자</span></div>${tilesHtml(p)}${gl}`;
+    const gl = p.gl && p.glOn ? `<p class="cs-gl"><b aria-label="뜻">💡</b><span>${esc(p.gl)}</span></p>`
+      : p.gl && m.glOk && !m.bz ? '<p class="cs-gl off" aria-label="힌트를 누르면 뜻풀이가 나와요"><span>💡 …</span></p>'
+      : m.bz && p.gl ? `<p class="cs-gl off" aria-label="조금 뒤 뜻풀이가 나와요"><span>⏳ …</span></p>` : '';
+    return `<div class="cs-top">${chip}</div>${tilesHtml(p)}${gl}`;
   }
   function showQ(){
     const m = S(), card = $('#csCard'); if(!card) return;
@@ -514,7 +511,7 @@ NG.chosung = (() => {
       msg(`<b>딩동댕!</b><span>${esc(shown)}</span>`, 'cs-pop');
     } else if(own){
       sfx('chosungSkip');
-      msg(`<b class="op" style="--oc:${p.col}">${esc(nick)}</b><span>님이 먼저 맞혔어요</span>`, 'cs-pop');
+      msg('');   /* 누가 맞혔는지는 카드·가운데 알림에 이미 보임(판 위 글자 최소화) */
     } else {
       sfx('chosungSkip');
       msg(`<b class="sk">정답은</b><span>${esc(p.w)}</span>`, 'cs-pop');
@@ -634,6 +631,16 @@ NG.chosung = (() => {
       },
       lines:['ㄱㅇㅇ처럼 첫소리만 보고 낱말을 맞혀요', '위의 주제를 보고 떠올려 쓰면 돼요', '막히면 💡 뜻풀이 → 첫 글자 힌트']
     },
+    tips(){ return [
+      ['주제', '카드 맨 위 큰 글씨가 주제예요. 그 주제에서 초성 칸 수만큼의 글자 낱말을 써요.'],
+      ['정답 여럿', '같은 주제·같은 초성인 낱말은 모두 정답, 하나만 맞히면 돼요. 띄어쓰기는 안 해도 돼요.'],
+      ['💡 힌트', '처음 누르면 뜻풀이(−5점), 그다음부터 한 글자씩 열기(−15점).'],
+      ['⏩ 넘기기', '그 문제는 0점, 정답을 보여 주고 다음 문제로.'],
+      ['★ 기회', '규칙 판(외줄 타기)에서만 나와요. 틀릴 때마다 하나씩 꺼져요.'],
+      ['대전', '뜻풀이(⏳)와 첫 글자는 모두에게 같은 때 저절로 열려요. 먼저 맞힌 사람이 그 문제를 차지.']
+    ].concat((() => { const m = G && G.id === 'chosung' && G.m; if(!m) return [];   /* 이번 판 규칙(꼬리표 이름 → 뜻) */
+      return (m.mj || []).map(k => CONC.info[k] && ['규칙 · ' + CONC.info[k].name, CONC.info[k].desc]).filter(Boolean)
+        .concat(m.tw && CONC.twInfo[m.tw] ? [['규칙 · ' + CONC.twInfo[m.tw].name, CONC.twInfo[m.tw].desc]] : []); })()); },
     helpExtra(){ const m = G && G.id === 'chosung' && G.m; if(!m || !m.tips.length) return []; return [['이번 판 규칙', m.tips.join(' · ')]]; },
     chapters:['첫소리 마을','낱말 숲','수수께끼 다리','이야기 장터','말씨 궁전'],
     starRule:'★ 클리어 · ★★ 힌트·건너뛰기 2번 이하 · ★★★ 힌트·건너뛰기 없이',
@@ -699,7 +706,7 @@ NG.chosung = (() => {
           ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b><i class="cs-cost">−15</i></span><em><span class="cs-hl">힌트</span></em></button>
           <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b><i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></span><em>넘기기</em></button>`}
         </div>
-        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
+        ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj" aria-label="${CONC.info[k].name}">${k === 'saying' ? '속담 판' : CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw" aria-label="${CONC.twInfo[m.tw].name}">${m.tw === 'first' ? '첫 글자' : CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="cs-barw" id="csBarW"><i id="csBar"></i></div>
         <div class="cs-dots" id="csDots" aria-hidden="true"></div>
         <div class="cs-play" id="csPlay">
@@ -781,7 +788,7 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-top{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; position:relative}
 .ng-chosung .cs-cat{font-family:var(--heavy); font-weight:400; font-size:19px; line-height:1; padding:7px 14px 6px; border-radius:99px; border:2.5px solid #1A0F45; color:#fff; background:var(--cc,#7B5CE6); box-shadow:0 3px 0 #1A0F45; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; white-space:nowrap}
 .ng-chosung .cs-cat small{display:block; font-family:var(--disp); font-size:13px; line-height:1; letter-spacing:1px; -webkit-text-stroke:0; color:#fff; margin:0 0 3px; text-shadow:0 1px 0 #1A0F45, 0 -1px 0 #1A0F45, 1px 0 0 #1A0F45, -1px 0 0 #1A0F45}   /* 어떤 주제 색 위에서도 읽히게 진한 테두리 */
-.ng-chosung .cs-cat:has(small){font-size:24px; padding:6px 18px 7px; text-align:center}
+.ng-chosung .cs-cat:has(small), .ng-chosung .cs-cat.big{font-size:24px; padding:6px 18px 7px; text-align:center}
 .ng-chosung .cs-gl{display:flex; align-items:flex-start; gap:7px; width:100%; max-width:330px; margin:-2px 0 0; padding:8px 11px; border-radius:14px; background:#FFF7D6; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45;
   font-family:var(--disp); font-size:16px; line-height:1.35; color:#2E1F7A; text-align:left; word-break:keep-all}
 .ng-chosung .cs-gl b{flex:none; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:1; padding:4px 7px 3px; margin-top:1px; border-radius:8px; background:#7B5CE6; color:#fff; white-space:nowrap}

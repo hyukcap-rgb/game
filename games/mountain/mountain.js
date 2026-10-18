@@ -86,7 +86,7 @@ NG.mountain = (() => {
   function trail(st = {}){
     const m = S(), t = $q('#mtTrail'); if(!t) return;
     const c = $q('#mtCnt'); if(c) c.textContent = m.seq.length;
-    if(!m.seq.length){ t.innerHTML = '<span class="mt-empty">첫 번째 산을 기다리는 중</span>'; return; }
+    if(!m.seq.length){ t.innerHTML = '<span class="mt-empty" aria-label="아직 산 없음">· · ·</span>'; return; }
     t.innerHTML = m.seq.map((_, i) => {
       const k = st.bad === i ? 'bad' : st.newAt === i ? 'new' : i < (st.done || 0) ? 'done' : st.cur === i ? 'cur' : '';
       return `<span class="mt-pk ${k}"><i></i><small>${i + 1}</small></span>`;
@@ -100,7 +100,7 @@ NG.mountain = (() => {
       const m = S(), e = $q('#mtOrder'); if(!e) return;
       const cur = m.phase === 'play' ? TT.cur() : null;
       e.innerHTML = m.pl.map(pid => { const q = m.P[pid], out = q.out || (gone(pid) ? 'left' : null), w = who(pid);
-        return `<span class="mt-op${pid === cur && !out && !m.ended ? ' cur' : ''}${out ? ' out' : ''}${pid === m.me ? ' me' : ''}" style="--sc:${w.col || '#2F7BFF'}">${face(pid)}<b>${nm(pid)}</b><i>${out ? '탈락' : '산 ' + q.adds}</i></span>`; }).join('');
+        return `<span class="mt-op${pid === cur && !out && !m.ended ? ' cur' : ''}${out ? ' out' : ''}${pid === m.me ? ' me' : ''}" style="--sc:${w.col || '#2F7BFF'}">${face(pid)}<b>${nm(pid)}</b><i>${out ? '탈락' : MT_MINI + q.adds}</i></span>`; }).join('');
     }catch(_){}
   }
   function hud(){
@@ -131,9 +131,9 @@ NG.mountain = (() => {
     if(cur === m.me){
       if(q.out){ TT.act('p', null); lock(true); return; }   /* 이미 탈락: 바로 넘김 */
       m.turn = 'me'; m.stage = m.seq.length ? 'rep' : 'add';
-      stageWho(m.me); if(!m.seq.length) $q('#mtName').textContent = '첫 행동을 골라요';
+      stageWho(m.me); if(!m.seq.length) $q('#mtName').textContent = '';
       lock(false, m.stage === 'add');
-      msg(m.seq.length ? `<b>내 차례!</b><span>산 ${m.seq.length}개를 처음부터 순서대로 눌러요</span>` : '<b>내 차례!</b><span>첫 행동을 하나 골라 산을 쌓아요</span>', 'go');
+      msg('<b>내 차례!</b>', 'go');   /* 2026-10-18 판 위 글자 최소화: 설명 문장은 도움말 tips */
       sfx('mtTurn'); fxBuzz(15);
       return;
     }
@@ -142,9 +142,9 @@ NG.mountain = (() => {
       if(q.out){ TT.act('p', null, { as:'ai' }); return; }
       aiTurn(); return;
     }
-    if(q.out){ msg('<span>넘어가는 중…</span>', 'soft'); return; }
-    stageWho(cur); if(!m.seq.length) $q('#mtName').textContent = '첫 행동을 고르는 중';
-    msg(`<span><b>${nm(cur)}</b>님 차례 · ${m.seq.length ? '누르는 행동을 잘 봐 두세요!' : '첫 행동을 기다려요'}</span>`, 'soft');
+    if(q.out){ msg('<span>…</span>', 'soft'); return; }
+    stageWho(cur); if(!m.seq.length) $q('#mtName').textContent = '';
+    msg(`<span><b>${nm(cur)}</b> 차례</span>`, 'soft');
   }
 
   /* 내가 누르기 */
@@ -156,8 +156,8 @@ NG.mountain = (() => {
         if(!TT.act('t', i, { next:false })) return;
         m.prog++; m.P[m.me].reps++;
         perform(i, 'ok', m.me); trail({ done:m.prog, cur:m.prog });
-        if(m.prog >= m.seq.length){ m.stage = 'add'; lock(false, true); msg('<b class="win">다 넘었어요!</b><span>이제 새 행동 하나를 얹어요</span>', 'pop'); sfx('mtClear'); }
-        else msg(`<b>${m.prog} / ${m.seq.length}</b><span>다음 행동은?</span>`, 'go');
+        if(m.prog >= m.seq.length){ m.stage = 'add'; lock(false, true); msg('<b class="win">다 넘었어요!</b><span>＋ ⛰️</span>', 'pop'); sfx('mtClear'); }
+        else msg(`<b>${m.prog} / ${m.seq.length}</b>`, 'go');
         return;
       }
       m.turn = null; lock(true);
@@ -175,7 +175,7 @@ NG.mountain = (() => {
     const m = S(); if(!isAct(i) || m.ended) return;
     m.seq.push(i); m.P[pid].adds++;
     perform(i, 'new', pid); trail({ newAt:m.seq.length - 1 });
-    msg(`<span>${pid === m.me ? '내가' : `<b>${nm(pid)}</b>님이`} 산을 하나 쌓았어요</span><b class="new">${ACT[i].e} ${ACT[i].n}</b>`, 'pop');
+    msg(`<span>＋ ⛰️</span><b class="new">${ACT[i].e} ${ACT[i].n}</b>`, 'pop');
     TT.timeout(limFor(m.seq.length));   /* 다음 사람의 차례 시간(모든 기기가 같은 길이로 정함) */
     try{ const p = fxCenter($q('#mtDisc')); fxRing(p.x, p.y, '#7CDB9A', p.w * .7, .55, 8); }catch(_){}
     syncAi(); order(); hud(); checkEnd();
@@ -191,18 +191,19 @@ NG.mountain = (() => {
     if(a.kind === 'skip' && !q.out) out(a.pid, 'left', {});
   }
   const OUT_TXT = { miss:'순서가 틀렸어요', time:'시간 안에 못 했어요', left:'나갔어요', give:'포기했어요' };
+  const OUT_S = { miss:'순서', time:'시간', left:'나감', give:'포기' };   /* 판 위 짧은 이유(2026-10-18) */
   function out(pid, why, info){
     const m = S(), q = m.P[pid]; if(!q || q.out) return;
     q.out = why; q.outN = ++m.outN; if(why === 'miss') q.mis++;
     const at = info && Number.isInteger(info.at) ? info.at : null, ans = at != null && m.seq[at] != null ? ACT[m.seq[at]] : null;
     if(at != null && at < m.seq.length) trail({ done:at, bad:at });
-    const tip = ans && why !== 'left' ? ` · ${at + 1}번째는 ${ans.e} ${ans.n}` : '';
+    const tip = ans && why !== 'left' ? ` · ${at + 1}: ${ans.e}` : '';
     if(pid === m.me){
       m.turn = null; lock(true);
-      msg(`<b class="bad">탈락했어요</b><span>${OUT_TXT[why] || ''}${tip}${m.dw && alive().length > 1 ? ' · 끝날 때까지 함께 봐요' : ''}</span>`, 'pop');
+      msg(`<b class="bad">탈락</b><span>${OUT_S[why] || ''}${tip}</span>`, 'pop');
       sfx('mtOut'); fxBuzz([40, 40, 60]); try{ fxShake($q('#mtStageBox'), 6); }catch(_){}
     } else {
-      msg(`<span><b>${nm(pid)}</b>님 탈락 · ${OUT_TXT[why] || ''}${tip}</span>`, 'pop');
+      msg(`<span><b>${nm(pid)}</b> 탈락 · ${OUT_S[why] || ''}${tip}</span>`, 'pop');
       if(m.dw) try{ duelNotify(`${nm(pid)}님 탈락 · ${OUT_TXT[why] || ''}`, { from:who(pid), kind:'good', force:true }); }catch(_){}
       sfx('mtOther');
     }
@@ -229,8 +230,8 @@ NG.mountain = (() => {
     const m = S(), n0 = TT.n(), len = m.seq.length, r = mulberry(seedFrom(m.seed + ':ai:' + n0));
     const failAt = len && r() < aiFailP(len, m.cfg.ai || 9) ? Math.floor(len * (.35 + r() * .65)) : -1;
     const step = Math.max(480, 780 - len * 12);
-    m.turn = 'ai'; lock(true); stageWho('ai'); if(!len) $q('#mtName').textContent = '첫 행동을 고르는 중';
-    msg(`<span><b>${nm('ai')}</b> 차례 · ${len ? '누르는 행동을 잘 봐 두세요!' : '첫 행동을 기다려요'}</span>`, 'soft');
+    m.turn = 'ai'; lock(true); stageWho('ai'); if(!len) $q('#mtName').textContent = '';
+    msg(`<span><b>${nm('ai')}</b> 차례</span>`, 'soft');
     let k = 0;
     const still = () => !m.ended && !G.over && TT.cur() === 'ai' && TT.n() === n0;
     const go = () => {
@@ -265,7 +266,7 @@ NG.mountain = (() => {
       const hurry = mine && sec <= 5; if(tp) tp.classList.toggle('warn', hurry); const bw = $q('#mtBarW'); if(bw){ bw.classList.toggle('hurry', hurry); bw.classList.toggle('other', !mine); }
       if(hurry && sec > 0) sfx('mtTick', { hi:sec <= 3 });
     }
-    if(mine && rem <= 0 && m.dw && !m.timeShown){ m.timeShown = true; lock(true); msg('<b class="bad">시간이 다 됐어요</b><span>잠깐만요…</span>', 'pop'); }   /* 탈락은 엔진의 시간 초과 사건으로(모든 기기 같게) */
+    if(mine && rem <= 0 && m.dw && !m.timeShown){ m.timeShown = true; lock(true); msg('<b class="bad">시간 끝!</b>', 'pop'); }   /* 탈락은 엔진의 시간 초과 사건으로(모든 기기 같게) */
   }
 
   function wire(){
@@ -273,6 +274,17 @@ NG.mountain = (() => {
     g.onclick = e => { const b = e.target.closest('.mt-act'); if(b) tap(+b.dataset.i); };
   }
 
+  /* 사람 줄의 '산 n' 대신 작은 산 그림(2026-10-18) */
+  const MT_MINI = '<svg class="mt-mini" viewBox="0 0 24 24" aria-hidden="true" width="13" height="13"><path d="M1.5 20 8 8.5l3.2 5.3L14.5 7 22.5 20z" fill="#3E9B63"/></svg>';
+  /* 판 위에서 뺀 문장(도움말 '화면 안내', docs/29) */
+  const tipRows = [
+    ['내 차례', '산이 있으면 첫 번째부터 순서대로 누르고, 다 맞히면 새 행동 하나를 골라 얹어요. 첫 사람은 하나만 골라요'],
+    ['남의 차례', '누르는 행동이 가운데 무대에 크게 나와요. 잘 봐 두세요'],
+    ['산길', '쌓인 산 개수만 보여요(무슨 행동인지는 안 보임)'],
+    ['행동 버튼', '그림만 보여요. 이름은 누르면 무대에 나와요'],
+    ['사람 줄', '이름 옆 산 그림 숫자 = 그 사람이 얹은 산. 탈락하면 회색'],
+    ['탈락 이유', '순서 = 순서가 틀림 · 시간 = 차례 시간 끝 · 나감 = 나간 사람']
+  ];
   const helpRows = [
     ['처음부터 순서대로', '내 차례가 오면 지금까지 쌓인 행동을 첫 번째부터 순서대로 눌러요. 위쪽 산길에는 몇 개가 쌓였는지만 보이고, 무슨 행동인지는 안 보여요.'],
     ['하나를 얹어요', '다 맞히면 30가지 행동 중 하나를 골라 산을 하나 더 쌓고 다음 사람에게 넘겨요.'],
@@ -296,6 +308,7 @@ NG.mountain = (() => {
         <path d="M44 22c6-4 9-5 14-4M84 16c12-1 20 1 26 4" fill="none" stroke="#FF8A3D" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="3 4"/></svg>`;
     },
     help:helpRows,
+    tips:tipRows,
     howto:{
       pic(){
         const disc = (x, y, c, e, k) => `<g transform="translate(${x} ${y})"><circle r="30" fill="${c}" stroke="${OL}" stroke-width="3"/><text y="12" font-size="32" text-anchor="middle">${e}</text>${k ? `<circle cx="22" cy="-22" r="10" fill="#3E9B63" stroke="${OL}" stroke-width="2"/><text x="22" y="-17.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${k}</text>` : ''}</g>`;
@@ -333,8 +346,8 @@ NG.mountain = (() => {
       st.innerHTML = `<div class="ng-mt">
         <div class="hud-row">
           <div class="hchip" aria-label="쌓은 산"><span class="hv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1.5 20 8 8.5l3.2 5.3L14.5 7 22.5 20z" fill="#3E9B63" stroke="${OL}" stroke-width="1.6" stroke-linejoin="round"/></svg><b id="mtCnt">0</b><small>/${CAP}</small></span><em>쌓은 산</em></div>
-          <div class="hchip time" id="mtTimeP" aria-label="차례 남은 시간"><span class="hv"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="${OL}" stroke-width="1.8"/><path d="M12 9.8v3.9l2.6 1.6" stroke="${OL}" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg><b id="mtTime">${limFor(0)}</b><small>초</small></span><em>차례 시간</em></div>
-          <div class="hchip" aria-label="남은 사람"><span class="hv"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="6" fill="#FFB36B" stroke="${OL}" stroke-width="1.8"/><circle cx="16" cy="12" r="6" fill="#8FE3DA" stroke="${OL}" stroke-width="1.8" fill-opacity=".9"/></svg><b id="mtAlive">${m.pl.length}</b><small>명</small></span><em>남은 사람</em></div>
+          <div class="hchip time" id="mtTimeP" aria-label="차례 남은 시간"><span class="hv"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="8.5" fill="#FFC93C" stroke="${OL}" stroke-width="1.8"/><path d="M12 9.8v3.9l2.6 1.6" stroke="${OL}" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg><b id="mtTime">${limFor(0)}</b></span><em>차례 시간</em></div>
+          <div class="hchip" aria-label="남은 사람"><span class="hv"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="6" fill="#FFB36B" stroke="${OL}" stroke-width="1.8"/><circle cx="16" cy="12" r="6" fill="#8FE3DA" stroke="${OL}" stroke-width="1.8" fill-opacity=".9"/></svg><b id="mtAlive">${m.pl.length}</b></span><em>남은 사람</em></div>
         </div>
         <div class="mt-barw" id="mtBarW"><i id="mtBar"></i></div>
         <div class="mt-order" id="mtOrder" aria-label="차례 순서"></div>
@@ -342,10 +355,10 @@ NG.mountain = (() => {
           <div class="mt-who" id="mtWho"></div>
           <div class="mt-disc idle" id="mtDisc"><span id="mtE">⛰️</span></div>
           <div class="mt-name" id="mtName"></div>
-          <div class="mt-msg" id="mtMsg" role="status" aria-live="polite"><span>${m.dw ? '모두 모이면 시작해요' : '곧 시작해요'}</span></div>
+          <div class="mt-msg" id="mtMsg" role="status" aria-live="polite"><span>준비</span></div>
         </div>
-        <div class="mt-trailw"><div class="mt-trh"><span>산길</span><span>무슨 행동인지는 안 보여요</span></div><div class="mt-trail" id="mtTrail"></div></div>
-        <div class="mt-grid locked" id="mtGrid">${ACT.map(a => `<button class="mt-act" data-i="${a.i}" aria-label="${a.n}"><span class="e">${a.e}</span><span class="n">${a.n}</span></button>`).join('')}</div>
+        <div class="mt-trailw"><div class="mt-trail" id="mtTrail"></div></div>
+        <div class="mt-grid locked" id="mtGrid">${ACT.map(a => `<button class="mt-act" data-i="${a.i}" aria-label="${a.n}"><span class="e">${a.e}</span></button>`).join('')}</div>
       </div>`;
       wire(); trail(); order(); hud();
       if(G.raf) cancelAnimationFrame(G.raf);
@@ -383,6 +396,7 @@ body[data-mode="mountain"]{background:
 .ng-mt .mt-op{position:relative; display:flex; align-items:center; gap:5px; padding:3px 10px 3px 4px; border-radius:99px; background:#fff; border:2px solid ${OL}; box-shadow:0 2px 0 ${OL}; font-family:var(--disp); font-size:14px; color:${OL}; transition:transform .2s}
 .ng-mt .mt-op .av{width:26px; height:26px; border-width:2px; box-shadow:none}
 .ng-mt .mt-op i{font-style:normal; font-size:12.5px; color:#3E7A55}
+.ng-mt .mt-op i .mt-mini{vertical-align:-1px; margin-right:1px}
 .ng-mt .mt-op.cur{border-color:var(--sc); box-shadow:0 0 0 3px var(--sc), 0 2px 0 ${OL}; transform:translateY(-2px)}
 .ng-mt .mt-op.cur::before{content:'차례'; position:absolute; top:-12px; left:50%; transform:translateX(-50%); padding:0 6px; border-radius:99px; background:var(--sc); color:#fff; font-size:12.5px; line-height:1.4; border:1.5px solid ${OL}; white-space:nowrap}
 .ng-mt .mt-op.out{opacity:.45; filter:grayscale(1)}
@@ -418,9 +432,9 @@ body[data-mode="mountain"]{background:
 .ng-mt .mt-pk.new i{background:#FF8A3D}
 .ng-mt .mt-empty{margin:auto; font-family:var(--disp); font-size:13.5px; color:#55665F}
 .ng-mt .mt-grid{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px}
-.ng-mt .mt-act{min-width:0; min-height:52px; padding:3px 1px 3px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; border-radius:12px; background:#fff; border:2px solid ${OL}; box-shadow:0 3px 0 ${OL}; color:${OL}; cursor:pointer; transition:transform .08s}
-.ng-mt .mt-act .e{font-size:24px; line-height:1.05}
-.ng-mt .mt-act .n{max-width:100%; font-family:var(--disp); font-size:13px; line-height:1.1; text-align:center; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; letter-spacing:-.4px}   /* 13px · 긴 이름은 낱말 단위로 두 줄(말줄임 없음) */
+.ng-mt .mt-act{min-width:0; min-height:52px; padding:5px 1px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-radius:12px; background:#fff; border:2px solid ${OL}; box-shadow:0 3px 0 ${OL}; color:${OL}; cursor:pointer; transition:transform .08s}
+.ng-mt .mt-act .e{font-size:30px; line-height:1.1}
+.ng-mt .mt-act .n{max-width:100%; font-family:var(--disp); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .ng-mt .mt-act:active{transform:translateY(2px); box-shadow:0 1px 0 ${OL}}
 .ng-mt .mt-grid.locked .mt-act{opacity:.85; pointer-events:none; background:#E9ECE8; border-color:#6F7D76; box-shadow:0 1px 0 #6F7D76; color:#2E3B35}   /* 기다리는 중: 회색 바탕·얇은 그림자로 '못 누름'을 보이되 글자는 또렷하게 */
 .ng-mt .mt-grid.locked .mt-act .e{filter:grayscale(.55); opacity:.8}

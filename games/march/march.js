@@ -1092,32 +1092,36 @@ NG.march = (() => {
     } else bb.hidden = true;
   }
 
+  /* 판 위 그림 표시(글자 대신, 2026-10-18) */
+  const FLAG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 21V4" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M6 4.5h12l-2.6 3.8L18 12H6z" fill="#fff"/></svg>';
+  const HINT = '<svg viewBox="0 0 48 24" width="52" height="26" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 3 12l6 5M39 7l6 5-6 5M5 12h9M34 12h9"/><path d="M21 21v-9.5a1.8 1.8 0 0 1 3.6 0V15l4.4.9a2 2 0 0 1 1.6 2.3L30 21"/></svg>';
   function mount(st){
     const solo = !S.battle;
     st.innerHTML = `<div class="mcw">
       <canvas class="mc-cv" aria-label="행군대작전 전장"></canvas>
       <div class="mc-top">
-        <div class="mc-col"><div class="mc-plate"><img class="mc-ic" src="${BASE}soldier.webp" alt=""><div class="mc-cnt"><small>병력</small><b class="mc-n">0</b></div></div>
+        <div class="mc-col"><div class="mc-plate"><img class="mc-ic" src="${BASE}soldier.webp" alt=""><div class="mc-cnt" aria-label="병력"><b class="mc-n">0</b></div></div>
         <div class="mc-buff" hidden><img src="${BASE}xbow.webp" alt=""><span></span></div></div>
-        ${solo ? `<div class="mc-road" aria-label="결승까지 진행"><i></i><span class="mc-mk"></span><span class="mc-fl">${isBossStage(S.stage) ? '보스' : '결승'}</span><b class="mc-m"></b><span class="mc-foe" aria-label="남은 적"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="#ff8a80" d="M12 2C6.9 2 3 5.6 3 10.3c0 2.6 1.2 4.5 3 5.6V19a1 1 0 0 0 1 1h2v-2h2v2h2v-2h2v2h2a1 1 0 0 0 1-1v-3.1c1.8-1.1 3-3 3-5.6C21 5.6 17.1 2 12 2zm-3.5 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg><em></em></span></div>`
-        : `<div class="mc-vs"><div class="mc-side me"><small>나</small><b class="mc-vme">0</b></div><div class="mc-tm">2:00</div><div class="mc-side rv"><small class="mc-rvn"></small><b class="mc-vrv">0</b></div><div class="mc-tug"><i></i></div></div>`}
+        ${solo ? `<div class="mc-road" aria-label="결승까지 진행"><i></i><span class="mc-mk"></span><span class="mc-fl" aria-label="${isBossStage(S.stage) ? '보스' : '결승'}">${isBossStage(S.stage) ? '보스' : FLAG}</span><b class="mc-m"></b><span class="mc-foe" aria-label="남은 적"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="#ff8a80" d="M12 2C6.9 2 3 5.6 3 10.3c0 2.6 1.2 4.5 3 5.6V19a1 1 0 0 0 1 1h2v-2h2v2h2v-2h2v2h2a1 1 0 0 0 1-1v-3.1c1.8-1.1 3-3 3-5.6C21 5.6 17.1 2 12 2zm-3.5 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg><em></em></span></div>`
+        : `<div class="mc-vs"><div class="mc-side me"><small>나</small><b class="mc-vme">0</b></div><div class="mc-tm">2:00</div><div class="mc-side rv"><small class="mc-rvn"><i class="mc-rvd"></i></small><b class="mc-vrv">0</b></div><div class="mc-tug"><i></i></div></div>`}
       </div>
       <div class="mc-boss" hidden><img alt=""><div class="mc-bw"><div class="mc-bh"><span class="mc-bn"></span><span class="mc-bp"></span></div><div class="mc-bt"><i></i></div></div></div>
-      ${solo ? '' : `<div class="mc-mini"><canvas aria-label="라이벌 화면"></canvas><span class="mc-mtag"></span></div>`}
+      ${solo ? '' : `<div class="mc-mini"><canvas aria-label="라이벌 화면"></canvas></div>`}
       <div class="mc-bi" hidden><img alt=""><div><small>보스 등장!</small><b></b></div></div>
-      <div class="mc-hint">좌우로 끌어서 부대 이동</div>
+      <div class="mc-hint" aria-label="좌우로 끌어서 부대 이동">${HINT}</div>
       <div class="mc-end" hidden><b></b><span class="mc-sv" hidden><img src="${BASE}soldier.webp" alt=""><em></em></span><small></small></div>
-      <div class="mc-new" hidden><span class="mc-tag"></span><b></b><p></p><small>눌러서 바로 시작</small></div>
+      <div class="mc-new" hidden aria-label="누르면 바로 시작"><span class="mc-tag"></span><b></b></div>
     </div>`;
     S.root = st.querySelector('.mcw');
     /* 시작 카드: 솔로는 이 스테이지에 처음 나오는 것, 대전은 VS 라이벌. 카드가 떠 있는 동안 판은 멈춤 */
     const nc = S.root.querySelector('.mc-new');
-    const card = solo ? (NEWS[S.stage] ? ['NEW · 스테이지 ' + S.stage, NEWS[S.stage][0], NEWS[S.stage][1]] : isBossStage(S.stage) ? ['스테이지 ' + S.stage, '보스 ' + KIND[bossKindFor(S.stage)].name, '지금까지 나온 기믹이 모두 섞여 나와요. 병력을 지켜 보스까지!'] : null)
-      : ['대전 · 2분', 'VS ' + S.rvName, '먼저 전멸하면 패배! 2:00까지 둘 다 살면 남은 병력이 많은 쪽이 이겨요.'];
-    if(card){ nc.querySelector('.mc-tag').textContent = card[0]; nc.querySelector('b').textContent = card[1]; nc.querySelector('p').textContent = card[2]; nc.hidden = false; S.hold = solo ? 1.8 : 1.6; }
+    /* 2026-10-18 판 위 글자 최소화(docs/29): 카드는 꼬리표 + 이름만, 설명 문장은 도움말 tips */
+    const card = solo ? (NEWS[S.stage] ? ['NEW', NEWS[S.stage][0]] : isBossStage(S.stage) ? ['보스', KIND[bossKindFor(S.stage)].name] : null)
+      : ['2:00', 'VS ' + S.rvName];
+    if(card){ nc.querySelector('.mc-tag').textContent = card[0]; nc.querySelector('b').textContent = card[1]; nc.hidden = false; S.hold = solo ? 1.8 : 1.6; }
     const skip = () => { if(S.hold > 0){ S.hold = 0; nc.hidden = true; } };
     nc.addEventListener('pointerdown', skip);
-    if(!solo){ S.root.querySelector('.mc-rvn').textContent = S.rvName; S.root.querySelector('.mc-mtag').textContent = S.rvName; S.mcv = S.root.querySelector('.mc-mini canvas'); S.mctx = S.mcv.getContext('2d'); }
+    if(!solo){ S.root.querySelector('.mc-rvn').setAttribute('aria-label', S.rvName); S.mcv = S.root.querySelector('.mc-mini canvas'); S.mctx = S.mcv.getContext('2d'); }
     const cv = S.root.querySelector('.mc-cv'), ctx = cv.getContext('2d');
     const size = () => {
       const top = S.root.getBoundingClientRect().top + (window.scrollY || 0);
@@ -1205,6 +1209,7 @@ NG.march = (() => {
 .mcw .mc-side{display:flex; flex-direction:column; line-height:1.05; min-width:0}
 .mcw .mc-side small{font-family:var(--disp); font-size:13px; color:#9fb6dc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mcw .mc-side b{font-family:var(--heavy); font-weight:400; font-size:20px; font-variant-numeric:tabular-nums}
+.mcw .mc-rvd{display:inline-block; width:10px; height:10px; border-radius:50%; background:#ff9a94; box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .mcw .mc-side.me b{color:#8fc0ff} .mcw .mc-side.rv{text-align:right} .mcw .mc-side.rv b{color:#ff9a94}
 .mcw .mc-tm{font-family:var(--heavy); font-size:22px; color:var(--mc-gold); font-variant-numeric:tabular-nums}
 .mcw .mc-tm.hot{color:#ff7a6e; animation:mcBlink .5s steps(2) infinite}
@@ -1261,6 +1266,16 @@ NG.march = (() => {
       ['화살과 돌격', '부대는 앞의 적에게 화살을 자동으로 쏴요. 병력이 많을수록 빨리, 세게 쏴요. 빨간 부대와 부딪히면 서로 병력을 잃어요.'],
       ['보스와 별', '3·6·9…스테이지 끝엔 보스! 땅에 빨간 원·줄이 차오르면 공격이 와요 — 밖으로 피하세요(회전 베기는 초록 틈으로). 체력 절반이면 분노해서 빨라져요. 남은 병력이 최대의 40%면 ★★, 70%면 ★★★(보스 판 30%·55%).']
     ],
+    tips:() => {
+      const t = [['조작', '좌우로 끌어서 부대 이동(손가락 그림)'], ['왼쪽 위 숫자', '병력(지금 병사 수)']];
+      if(S && S.battle){ t.push(['위 막대', '왼쪽 = 내 병력 · 가운데 = 남은 시간 · 오른쪽(빨간 점) = 라이벌 병력']); t.push(['대전', '먼저 전멸하면 패배! 2:00까지 둘 다 살면 남은 병력이 많은 쪽이 이겨요']); }
+      else if(S){
+        t.push(['위 길', '깃발 = 결승(보스 판은 보스) · m = 남은 거리 · 해골 = 남은 적']);
+        if(NEWS[S.stage]) t.push(['NEW ' + NEWS[S.stage][0], NEWS[S.stage][1]]);
+        else if(isBossStage(S.stage)) t.push(['보스 ' + KIND[bossKindFor(S.stage)].name, '지금까지 나온 기믹이 모두 섞여 나와요. 병력을 지켜 보스까지!']);
+      }
+      return t;
+    },
     helpExtra:() => S && S.battle ? [['대전 판정', `라이벌과 똑같은 길을 동시에 걸어요(오른쪽 위 작은 화면). 먼저 전멸하면 패배, 2:00까지 둘 다 살면 남은 병력이 많은 쪽이 이겨요.`]] : [],
     chapters:['푸른 성벽', '바닷가 다리', '톱날 협곡', '궁수 요새', '용의 성'],
     starRule:'클리어 ★ · 남은 병력 40%↑ ★★ · 70%↑ ★★★ (보스 판 30% · 55%)',
