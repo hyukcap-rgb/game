@@ -402,3 +402,6 @@ body.big .db-who, body.big .db-val small, body.big .db-sub{font-size:15px}
 .brk summary::-webkit-details-marker{display:none}
 .brk summary::after{content:""; width:8px; height:8px; border-right:2.5px solid currentColor; border-bottom:2.5px solid currentColor; transform:translateY(-2px) rotate(45deg); transition:transform .15s}
 .brk[open] summary::after{transform:translateY(2px) rotate(-135deg)}
+/* 2026-10-18: 아이폰은 16px보다 작은 입력칸을 누르면 화면을 저절로 확대하고 그대로 둔다 → 아래 고정 메뉴가 화면 가운데로 떠 보이던 원인.
+   모든 입력칸 글자를 16px 이상으로(확대 안 됨) */
+input, select, textarea{font-size:max(16px, 1em) !important}

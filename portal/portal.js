@@ -1113,3 +1113,28 @@ DEV_FN.devHistClr = () => { const today = dayKey(); for(let i = 0; i <= 120; i++
     return r;
   };
 })();
+
+/* ===== 아래 메뉴(독) 화면 바닥 고정 보정(2026-10-18 대표 지적: 내리면 메뉴가 화면 가운데에 떠 있음) =====
+   ① 독을 body 바로 아래로 옮겨 어떤 조상 스타일에도 위치가 묶이지 않게
+   ② 아이폰이 화면을 확대한 채(입력칸 자동 확대·두 손가락 확대)이면 position:fixed가 '보이는 화면'이 아니라 원래 화면 기준이라
+      바닥이 아닌 곳에 뜬다 → 보이는 화면(visualViewport)의 바닥에 맞춰 위치를 바로잡는다. 확대가 없으면 아무것도 안 함. */
+(function(){
+  const dock = document.getElementById('dock'); if(!dock) return;
+  try{ if(dock.parentElement !== document.body) document.body.appendChild(dock); }catch(_){}
+  /* 홈이 숨으면(게임 화면) 독도 같이 숨김 — 예전엔 #home 안에 있어서 저절로 숨었음 */
+  try{ const home = document.getElementById('home'); const sync = () => { dock.style.display = home && home.style.display === 'none' ? 'none' : ''; };
+    if(home){ new MutationObserver(sync).observe(home, { attributes:true, attributeFilter:['style', 'hidden'] }); sync(); } }catch(_){}
+  const vv = window.visualViewport; if(!vv) return;
+  let raf = 0;
+  const fix = () => { raf = 0;
+    try{
+      const off = (window.innerHeight - vv.height - vv.offsetTop), zoomed = vv.scale > 1.01 || Math.abs(off) > 2;
+      if(!zoomed){ dock.style.removeProperty('transform'); return; }
+      /* 보이는 화면 바닥 = 확대 기준으로 옮김 */
+      dock.style.transform = `translate(${vv.offsetLeft}px, ${-off}px)`;
+    }catch(_){}
+  };
+  const on = () => { if(!raf) raf = requestAnimationFrame(fix); };
+  vv.addEventListener('resize', on); vv.addEventListener('scroll', on); addEventListener('scroll', on, { passive:true });
+  fix();
+})();

@@ -176,7 +176,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 .th body:not([data-mode]) .mm-i{background:var(--t-yel); color:var(--t-yel-ink)}
 .th body:not([data-mode]) .mm-t small{color:var(--t-sub)}
 /* 아래 탭 */
-.th body:not([data-mode]) .dock{background:var(--t-dock); border-top:0; box-shadow:none; left:50%; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:calc(100% - 24px); max-width:436px; padding:6px; border-radius:22px}
+.th body:not([data-mode]) .dock{background:var(--t-dock); border-top:0; box-shadow:none; left:12px; right:12px; margin:0 auto; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:auto; max-width:436px; padding:6px; border-radius:22px}
 .th body:not([data-mode]) .dock button{color:var(--t-dock-ink)}
 .th body:not([data-mode]) .dock button[aria-current="page"]{color:var(--t-acc-ink); background:var(--t-acc); box-shadow:none; transform:none}
 .th body:not([data-mode]) .dock .dot{border-color:var(--t-dock)}

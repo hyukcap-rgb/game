@@ -346,7 +346,7 @@ body.gs-full{overflow:hidden}
 .gs-askc.gs-end{width:1180px; max-height:880px; overflow-y:auto; box-sizing:border-box; padding:26px 32px 24px; display:grid; grid-template-columns:1fr 1fr; column-gap:32px; align-items:start; text-align:left;
   border:2.5px solid #241A3A; box-shadow:0 14px 36px rgba(0,20,0,.45)}
 .gs-end .gs-el{display:flex; flex-direction:column; align-items:flex-start}
-.gs-end .gs-er{display:flex; flex-direction:column; justify-content:flex-start; min-height:100%}
+.gs-end .gs-er{display:flex; flex-direction:column; justify-content:flex-start; align-self:stretch}   /* 2026-10-18: min-height:100%·sticky 버튼이 iOS 사파리에서 둘째 줄을 덮던 것 → 칸을 줄 높이만큼 늘이고 버튼은 보통 흐름 */
 .gs-end .gs-et{font-size:56px !important; line-height:1.15}
 .gs-end .gs-ew{margin:4px 0 12px; font-size:25px}
 .gs-end .gs-erows{width:100%; box-sizing:border-box; padding:6px 20px}
@@ -356,7 +356,7 @@ body.gs-full{overflow:hidden}
 .gs-end .gs-pay.sm{margin-bottom:8px; font-size:22px; padding:6px 20px} .gs-end .gs-pay.sm b{font-size:26px}
 .gs-end .gs-after{margin:4px 0 0; font-size:23px}
 .gs-end .gs-nx{width:100%; margin:16px 0 0}
-.gs-end .gs-askb{margin-top:auto; padding-top:16px; position:sticky; bottom:0; background:#FFFBF2}
+.gs-end .gs-askb{margin-top:auto; padding-top:16px; position:static}
 .gs-end .gs-askb button{min-height:80px; font-size:30px}
 .gs-end.d{grid-template-columns:1fr 1fr}
 /* 오른쪽 패널: 알림 칸이 손패와 안 겹치게 위로(아래 끝 652 < 손패 669) */

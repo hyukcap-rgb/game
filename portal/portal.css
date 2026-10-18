@@ -156,7 +156,7 @@ body[data-mode] .wrap{padding-bottom:44px}
 .advpromo .ico{width:20px; height:20px}
 
 /* 하단 탭 */
-.dock{position:fixed; z-index:15; left:50%; transform:translateX(-50%); bottom:0; width:100%; max-width:460px; padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px));
+.dock{position:fixed; z-index:15; left:0; right:0; margin:0 auto; bottom:0; width:100%; max-width:460px; padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px));
   display:grid; grid-template-columns:repeat(5,1fr); gap:3px; background:linear-gradient(180deg,rgba(30,18,80,.96),rgba(18,10,54,.98)); border-top:2.5px solid #FFD35C; box-shadow:0 -6px 20px rgba(0,0,0,.35)}
 body[data-mode] .dock{display:none}
 .dock button{position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:52px; border-radius:14px; font-family:var(--disp); font-size:13px; color:#A99FDA}
