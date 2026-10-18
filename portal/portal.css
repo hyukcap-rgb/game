@@ -1015,4 +1015,4 @@ body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .s
 .qzpromo .qz-subh{color:#F3EEFF}
 .rmpt em{top:-10px; right:2px}
 .rmpts{margin-top:6px}
-.mbtns .closebtn{height:auto; align-self:stretch; margin-top:0}
+#modal .mbtns button.closebtn{height:auto; align-self:stretch; margin-top:0}
