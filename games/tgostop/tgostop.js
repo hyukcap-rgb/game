@@ -353,6 +353,7 @@ NG.tgostop = (() => {
   const cardInner = id => (cardSvg(id), INNER[id]);
   const BACK = `<svg viewBox="${TGART.VB}" aria-hidden="true">${TGART.back}</svg>`;
   const BADGE19 = '<span class="gs19" aria-label="19세 이상 이용">19</span>';
+  const LOCK = '<svg class="gs-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';   /* 잠긴 판 표시(글자를 흐리게 하지 않고 자물쇠로) */
 
   /* ---------- 화면: 온라인 맞고식 가로 판(기준 1630×923, 화면에 맞춰 확대·축소, 세로 화면이면 90° 돌림) ---------- */
   const BW = 1630, BH = 923, MAINW = 1262;
@@ -1154,11 +1155,13 @@ NG.tgostop = (() => {
     const draw0 = msg => {
       const w = wallet(), fl = freeLeft(w), canRescue = broke(w) && w.rescue !== dayKey(), canFree = broke(w) && w.rescue === dayKey() && fl === 0;
       const nAch = ACH.filter(a => w.ach[a.k]).length;
-      box.innerHTML = `<div class="gs-lb">
+      /* 2026-10-18 디자인 검수: 다른 게임과 같은 맨 위 막대(< 나가기 · 제목 · ? 게임 방법) — 판(.gsg)이 공용 머리줄을 덮어서 방 고르기 화면에 직접 둠 */
+      box.innerHTML = `<div class="pbar gs-lbar"><button class="iconbtn" id="gsLbBack" aria-label="나가기">${ic('back')}</button><div class="ptitle">${esc(NG[ID].name)} ${BADGE19}</div><button class="iconbtn" id="gsLbHelp" aria-label="게임 방법">${ic('help')}</button></div>
+        <div class="gs-lb">${msg ? `<p class="gs-lnote" role="status">${msg}</p>` : ''}
         <div class="gs-wal"><span class="gs-coin">P</span><div><small>내 고스톱 포인트</small><b>${fmtP(w.pt)}</b><em>${titleOf(w.peak)} · 최고 ${fmtP(w.peak)}</em></div></div>
         <h3>${g.mode === 'pvp' ? '대전할 판을 골라요' : G.adv ? '솔로 ' + G.adv + '판 · 판을 골라요' : '컴퓨터와 겨룰 판을 골라요'}</h3>
-        <div class="gs-rooms">${ROOMS.map(r => { const ok = w.pt >= r.min; return `<button class="gs-room r${r.k}" data-r="${r.k}" ${ok ? '' : 'disabled'}><b>${r.name}</b><small>${ok ? r.sub : fmtP(r.min) + ' 필요'}</small></button>`; }).join('')}</div>
-        <p class="gs-rnote">이기면 <b>최종 점수 × 판 크기</b>만큼 포인트를 받고, 지면 그만큼 잃어요(가진 포인트까지만). 포인트는 게임 안에서만 쓰고 돈으로 사고팔 수 없어요.</p>
+        <div class="gs-rooms">${ROOMS.map(r => { const ok = w.pt >= r.min; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}" data-r="${r.k}" ${ok ? '' : 'disabled'}><b>${ok ? '' : LOCK}${r.name}</b><small>${ok ? r.sub : fmtP(r.min) + ' 모이면 열려요'}</small></button>`; }).join('')}</div>
+        <p class="gs-rnote">이기면 <b>최종 점수 × 판 크기</b>만큼 포인트를 받고, 지면 그만큼 잃어요(가진 포인트까지만). <span class="gs-nw">포인트는 게임 안에서만 써요.</span> <span class="gs-nw">돈으로 사고팔 수 없어요.</span></p>
         <div class="gs-earn"><b>포인트 얻는 법</b>
           <div class="${w.att === dayKey() ? 'done' : ''}"><span>매일 출석 <small>${w.streak || 1}일 연속 · 내일 +${fmt(1000 + Math.min(6, w.streak || 0) * 400)}P</small></span><i>${att ? '+' + fmt(att) + 'P 받음' : '오늘 받음'}</i></div>
           <div><span>파산 구제 <small>2천P보다 적으면 하루 한 번 1만P까지</small></span>${canRescue ? '<button id="gsRescue">받기</button>' : `<i>${w.rescue === dayKey() ? '오늘 받음' : '포인트 충분'}</i>`}</div>
@@ -1166,7 +1169,9 @@ NG.tgostop = (() => {
           <div><span>업적 <small>${ACH.map(a => `${w.ach[a.k] ? '✓' : '·'} ${a.name} +${fmt(a.pt / 1000)}천`).join(' ')}</small></span><i>${nAch}/${ACH.length}</i></div>
           <div><span>솔로 새 판 첫 클리어 <small>챕터마다 +500P씩 커짐</small></span><i>솔로</i></div>
         </div></div>`;
-      if(msg) try{ toast(msg); }catch(_){}
+      if(msg) try{ sfx('toast'); }catch(_){}   /* 알림은 판 위 글 칸(.gs-lnote)으로 — 공용 토스트가 '포인트 얻는 법' 글을 가리던 문제. 소리는 예전 토스트와 같게 한 번 */
+      const lb = $('#gsLbBack'); if(lb) lb.onclick = () => confirmQuit();
+      const lh = $('#gsLbHelp'); if(lh) lh.onclick = () => openHelp(ID);
       box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; g.room = r; box.hidden = true; box.innerHTML = ''; turnHint();
         if(g.mode === 'pvp') search();
         else if(g.sess){ g.seed0 = 'tg:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판 */
