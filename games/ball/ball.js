@@ -726,8 +726,15 @@ function ballDraw(){
     ctx.textAlign = 'left'; ctx.fillStyle = BOUT; ctx.font = '38px Jua, sans-serif'; ctx.fillText(bn.a, 196, y - 26);
     ctx.fillStyle = '#5E4F78'; ctx.font = Math.round(13 * U) + 'px "Noto Sans KR", sans-serif'; ctx.fillText(bn.b, 196, y + 26); ctx.textAlign = 'center'; ctx.globalAlpha = 1;
   } else if(G.tip && G.phase === 'aim' && G.turn === 0 && G.aim == null){   /* 처음 1번만, 쏘면 사라짐 */
-    ctx.font = Math.round(15 * U) + 'px Jua, sans-serif'; ctx.lineWidth = 7; ctx.strokeStyle = BOUT; ctx.fillStyle = '#FFFFFF';
-    for(const [t, dy] of [['판을 누른 채 끌어서 조준하고', 0], ['손을 떼면 구슬이 날아가요', 44]]){ ctx.strokeText(t, BW/2, (BR-2)*BS + dy); ctx.fillText(t, BW/2, (BR-2)*BS + dy); }
+    ctx.font = Math.round(15 * U) + 'px Jua, sans-serif';
+    const tl = [['판을 누른 채 끌어서 조준하고', 0], ['손을 떼면 구슬이 날아가요', 22 * U]], ty = (BR-2)*BS - 4 * U;
+    /* 반투명 알약 바탕: 조준 점선이 글자를 가로지르지 않게(테스트팀 2026-10-18) */
+    const pw = Math.max(...tl.map(([t]) => ctx.measureText(t).width)) + 28 * U, ph = 22 * U + 15 * U + 18 * U;
+    ctx.save(); ctx.fillStyle = 'rgba(26,15,69,.82)'; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5 * U;
+    ctx.beginPath(); const px = BW/2 - pw/2, py = ty - 15 * U / 2 - 9 * U;
+    ctx.roundRect ? ctx.roundRect(px, py, pw, ph, ph / 2) : ctx.rect(px, py, pw, ph); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = '#FFFFFF';
+    for(const [t, dy] of tl) ctx.fillText(t, BW/2, ty + dy);
   }
 }
 Object.assign(SFX_LIB, {

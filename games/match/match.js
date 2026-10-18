@@ -1210,7 +1210,8 @@ NG.match = (() => {
     const hAvail = Math.max(260, window.innerHeight - top - dH - 20);
     const rt = docTop(M.root);   /* 아래 줄(안내·아이템)은 화면 맨 아래 엄지 자리 */
     M.root.style.minHeight = Math.max(0, Math.min(window.innerHeight, Math.floor(window.innerHeight - rt - 10))) + 'px';
-    const pad = 16;
+    const pcs = getComputedStyle(M.panel);   /* 금테 안쪽 폭 = 바깥 폭 − (안쪽 여백 + 테두리) × 2 */
+    const pad = Math.ceil((parseFloat(pcs.paddingLeft) || 0) + (parseFloat(pcs.paddingRight) || 0) + (parseFloat(pcs.borderLeftWidth) || 0) + (parseFloat(pcs.borderRightWidth) || 0)) + 2;
     const s = Math.max(34, Math.floor((Math.min(wAvail, hAvail) - pad) / N));
     M.s = s;
     M.grid.style.width = M.grid.style.height = (s * N) + 'px';
@@ -1356,7 +1357,7 @@ NG.match = (() => {
         </div>`;
       const dockHtml = mv ? `<div class="tools-row mt-dock items" id="mtItems"></div>` : `<div class="mt-dock" aria-hidden="true">
           <span class="mt-bst"><span class="mt-bi sp"><i class="lh" style="background-image:${img(1)}"></i><i class="ar" style="background-image:${ARW_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_H]}"></i></span><em>4개<br>줄 폭탄</em></span>
-          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_BOMB]}"></i></span><em>ㄱ·ㅗ<br>폭탄</em></span>
+          <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${img(3)}"></i><i class="bb" style="background-image:${BOMB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_BOMB]}"></i></span><em>ㄱ자<br>폭탄</em></span>
           <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${RB_IMG}"></i><i class="bdg" style="background-image:${BADGE[S_RB]}"></i></span><em>5개<br>무지개</em></span>
           <span class="mt-bst"><span class="mt-bi sp"><i style="background-image:${IK('star')}"></i><i class="bdg" style="background-image:${BADGE[S_STAR]}"></i></span><em>2×2<br>별사탕</em></span>
           <span class="mt-bst best"><b class="num" id="mtBest">–</b><em>최고<br>연쇄</em></span>
@@ -1442,7 +1443,7 @@ body[data-mode="match"] #play{position:relative; z-index:1}
 .ng-match .mt-grid{position:relative; overflow:hidden; border-radius:7px; touch-action:none; cursor:pointer;
   background-color:#8E9DD6;
   box-shadow:inset 0 2px 6px rgba(30,40,110,.18)}
-.ng-match .mt-cells{position:absolute; inset:0; display:grid; z-index:0; pointer-events:none}
+.ng-match .mt-cells{position:absolute; inset:0; display:grid; z-index:0; pointer-events:none; gap:0; padding:0; border:0}   /* 사이트의 같은 이름 .mt-cells(간격 8px·안쪽 12px·점선)가 새어 들어와 칸이 오른쪽으로 밀리던 것 막음 */
 .ng-match .mt-cells i{margin:1.5px; border-radius:22%; background:linear-gradient(180deg,#B3C0EC,#A6B4E4); box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35), inset 0 -1.5px 0 rgba(40,50,120,.1)}
 .ng-match .mt-t{position:absolute; left:0; top:0; will-change:transform; z-index:1}
 .ng-match .mt-in{position:absolute; inset:0}

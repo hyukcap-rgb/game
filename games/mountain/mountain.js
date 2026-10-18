@@ -418,13 +418,14 @@ body[data-mode="mountain"]{background:
 .ng-mt .mt-pk.new i{background:#FF8A3D}
 .ng-mt .mt-empty{margin:auto; font-family:var(--disp); font-size:13.5px; color:#55665F}
 .ng-mt .mt-grid{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px}
-.ng-mt .mt-act{min-width:0; min-height:52px; padding:5px 1px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-radius:12px; background:#fff; border:2px solid ${OL}; box-shadow:0 3px 0 ${OL}; color:${OL}; cursor:pointer; transition:transform .08s}
-.ng-mt .mt-act .e{font-size:25px; line-height:1.1}
-.ng-mt .mt-act .n{max-width:100%; font-family:var(--disp); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ng-mt .mt-act{min-width:0; min-height:52px; padding:3px 1px 3px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; border-radius:12px; background:#fff; border:2px solid ${OL}; box-shadow:0 3px 0 ${OL}; color:${OL}; cursor:pointer; transition:transform .08s}
+.ng-mt .mt-act .e{font-size:24px; line-height:1.05}
+.ng-mt .mt-act .n{max-width:100%; font-family:var(--disp); font-size:13px; line-height:1.1; text-align:center; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; letter-spacing:-.4px}   /* 13px · 긴 이름은 낱말 단위로 두 줄(말줄임 없음) */
 .ng-mt .mt-act:active{transform:translateY(2px); box-shadow:0 1px 0 ${OL}}
-.ng-mt .mt-grid.locked .mt-act{opacity:.45; pointer-events:none; box-shadow:0 1px 0 ${OL}}
+.ng-mt .mt-grid.locked .mt-act{opacity:.85; pointer-events:none; background:#E9ECE8; border-color:#6F7D76; box-shadow:0 1px 0 #6F7D76; color:#2E3B35}   /* 기다리는 중: 회색 바탕·얇은 그림자로 '못 누름'을 보이되 글자는 또렷하게 */
+.ng-mt .mt-grid.locked .mt-act .e{filter:grayscale(.55); opacity:.8}
 .ng-mt .mt-grid.adding .mt-act{background:#FFF4E6; border-color:#C25A10}
-body.big .ng-mt .mt-act .n{font-size:12.5px}
+body.big .ng-mt .mt-act .n{font-size:14px}
 .ng-mt .mt-bounce{animation:mt-bounce .55s ease} .ng-mt .mt-shake{animation:mt-shake .5s ease} .ng-mt .mt-spin{animation:mt-spin .6s ease}
 .ng-mt .mt-pop{animation:mt-popd .5s ease} .ng-mt .mt-sway{animation:mt-sway .6s ease} .ng-mt .mt-run{animation:mt-run .55s ease}
 @keyframes mt-bounce{0%,100%{transform:translateY(0)}35%{transform:translateY(-22px) scale(1.04,.96)}60%{transform:translateY(0) scale(1.06,.92)}}
@@ -434,7 +435,7 @@ body.big .ng-mt .mt-act .n{font-size:12.5px}
 @keyframes mt-sway{0%,100%{transform:translateX(0) rotate(0)}30%{transform:translateX(-12px) rotate(-8deg)}70%{transform:translateX(12px) rotate(8deg)}}
 @keyframes mt-run{0%{transform:translateX(-36px); opacity:.3}100%{transform:translateX(0); opacity:1}}
 @keyframes mt-pop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
-@media (max-width:370px){ .ng-mt .mt-act .e{font-size:21px} .ng-mt .mt-act .n{font-size:10.5px} .ng-mt .mt-disc{width:92px; height:92px} .ng-mt .mt-disc span{font-size:46px} }
+@media (max-width:370px){ .ng-mt .mt-grid{gap:4px} .ng-mt .mt-act{min-height:50px} .ng-mt .mt-act .e{font-size:20px; line-height:1} .ng-mt .mt-act .n{font-size:13px; letter-spacing:-.6px} .ng-mt .mt-disc{width:92px; height:92px} .ng-mt .mt-disc span{font-size:46px} }
 @media (prefers-reduced-motion: reduce){ .ng-mt .mt-disc, .ng-mt .mt-msg.pop{animation:none!important} .ng-mt .mt-trail{scroll-behavior:auto} }
 `,
     sounds:{
