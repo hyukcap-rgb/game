@@ -1068,7 +1068,8 @@ body[data-mode="omok"]{background:
 .ng-omok .om-coord b{font-family:var(--heavy); font-weight:400; font-size:16px; color:#1A0F45}
 .ng-omok .om-coord b.bad{color:#D0303A}
 .ng-omok .om-act{margin-top:8px; align-items:stretch}
-.ng-omok .om-act .tool{flex:1 1 0}
+.ng-omok .om-act .tool{flex:1 1 0; height:56px; min-height:56px; padding:6px 4px; min-width:0}
+.ng-omok .om-act .tool > span{white-space:nowrap; line-height:1.25; letter-spacing:-.3px}   /* '처음부터'가 '처음부 / 터'로 꺾이지 않게, 모든 단추 높이 56px */
 .ng-omok .om-act .tool .cnt{font-style:normal}
 .ng-omok .om-zoom{flex:.9 1 0}
 .ng-omok .om-zoom.on{background:linear-gradient(180deg,#DFF1FF,#9ED2FF)}
@@ -1083,7 +1084,7 @@ body[data-mode="omok"]{background:
 .ng-omok .om-chip.tw{background:#EFE7FF; color:#5B3FB5}
 .ng-omok .om-chip.boss{background:linear-gradient(180deg,#FFE27A,#FFB020); color:#5A2E00}
 /* 세대별 테스트(2026-10-06): 칩 글자 13px, 시간 고르기, 자리 비움, [두기] 진한 핑크, 놓을 자리 분홍, 돋보기 */
-.ng-omok .hchip em{font-size:13px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ng-omok .hchip em{font-size:13px; line-height:1.25; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}   /* 줄 높이 1.25: 글자 아래가 잘리지 않게 */
 .ng-omok .om-side .om-opn{max-width:74px; white-space:nowrap}
 .ng-omok button.hchip{font:inherit; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-omok button.hchip:active{transform:translateY(2px)}
@@ -1105,7 +1106,7 @@ body[data-mode="omok"] .om-loupe .om-guide{stroke:#F0368A; stroke-width:.3; stro
 body[data-mode="omok"] .om-loupe .om-ban{stroke:#E5484D; stroke-width:.9; stroke-linecap:round; opacity:.75}
 body[data-mode="omok"] .om-loupe .om-winline, .om-loupe .om-bantip{display:none}
 body[data-mode="omok"] .om-loupe .om-lx{position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#F0368A; box-shadow:0 0 0 2px #fff}
-@media (max-width:370px){ .ng-omok .om-msg b{font-size:18px} }
+@media (max-width:370px){ .ng-omok .om-msg b{font-size:18px} .ng-omok .om-act{gap:6px} .ng-omok .om-act .tool{font-size:13px} .ng-omok .om-put{font-size:20px} }
 @media (prefers-reduced-motion: reduce){ .ng-omok .om-st.om-new, .ng-omok .om-ring, .ng-omok .om-hintring, .ng-omok .om-bantip{animation:none} }
 `,
     sounds:{
