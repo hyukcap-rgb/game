@@ -9,7 +9,7 @@
       "duel": true,
       "file": "fox.html",
       "bytes": 311434,
-      "gzip": 102044
+      "gzip": 102045
     },
     {
       "id": "sudoku",
@@ -19,7 +19,7 @@
       "duel": true,
       "file": "sudoku.html",
       "bytes": 311312,
-      "gzip": 101651
+      "gzip": 101653
     },
     {
       "id": "ball",
@@ -29,7 +29,7 @@
       "duel": true,
       "file": "ball.html",
       "bytes": 319701,
-      "gzip": 104708
+      "gzip": 104710
     },
     {
       "id": "fleet",
@@ -39,7 +39,7 @@
       "duel": true,
       "file": "fleet.html",
       "bytes": 348730,
-      "gzip": 113510
+      "gzip": 113512
     },
     {
       "id": "match",
@@ -49,7 +49,7 @@
       "duel": true,
       "file": "match.html",
       "bytes": 368373,
-      "gzip": 121563
+      "gzip": 121566
     },
     {
       "id": "nono",
@@ -59,7 +59,7 @@
       "duel": true,
       "file": "nono.html",
       "bytes": 331461,
-      "gzip": 109075
+      "gzip": 109077
     },
     {
       "id": "block",
@@ -69,7 +69,7 @@
       "duel": true,
       "file": "block.html",
       "bytes": 327984,
-      "gzip": 108646
+      "gzip": 108648
     },
     {
       "id": "memory",
@@ -79,7 +79,7 @@
       "duel": true,
       "file": "memory.html",
       "bytes": 329127,
-      "gzip": 107845
+      "gzip": 107848
     },
     {
       "id": "merge",
@@ -89,7 +89,7 @@
       "duel": true,
       "file": "merge.html",
       "bytes": 331048,
-      "gzip": 110222
+      "gzip": 110224
     },
     {
       "id": "link",
@@ -99,7 +99,7 @@
       "duel": true,
       "file": "link.html",
       "bytes": 328027,
-      "gzip": 108033
+      "gzip": 108035
     },
     {
       "id": "gostop",
@@ -109,7 +109,7 @@
       "duel": true,
       "file": "gostop.html",
       "bytes": 1480845,
-      "gzip": 918581
+      "gzip": 918586
     },
     {
       "id": "crossword",
@@ -119,7 +119,7 @@
       "duel": true,
       "file": "crossword.html",
       "bytes": 345255,
-      "gzip": 130068
+      "gzip": 130071
     },
     {
       "id": "hidden",
@@ -129,7 +129,7 @@
       "duel": true,
       "file": "hidden.html",
       "bytes": 327591,
-      "gzip": 108818
+      "gzip": 108820
     },
     {
       "id": "spot",
@@ -139,7 +139,7 @@
       "duel": true,
       "file": "spot.html",
       "bytes": 358150,
-      "gzip": 119339
+      "gzip": 119338
     },
     {
       "id": "chosung",
@@ -149,7 +149,7 @@
       "duel": true,
       "file": "chosung.html",
       "bytes": 359406,
-      "gzip": 147595
+      "gzip": 147598
     },
     {
       "id": "wordchain",
@@ -159,7 +159,7 @@
       "duel": true,
       "file": "wordchain.html",
       "bytes": 840716,
-      "gzip": 646717
+      "gzip": 646719
     },
     {
       "id": "mines",
@@ -169,7 +169,7 @@
       "duel": true,
       "file": "mines.html",
       "bytes": 308329,
-      "gzip": 100687
+      "gzip": 100689
     },
     {
       "id": "omok",
@@ -179,7 +179,7 @@
       "duel": true,
       "file": "omok.html",
       "bytes": 324273,
-      "gzip": 106687
+      "gzip": 106688
     },
     {
       "id": "parking",
@@ -189,7 +189,7 @@
       "duel": true,
       "file": "parking.html",
       "bytes": 385397,
-      "gzip": 135210
+      "gzip": 135213
     },
     {
       "id": "snowball",
@@ -199,7 +199,7 @@
       "duel": true,
       "file": "snowball.html",
       "bytes": 323260,
-      "gzip": 105793
+      "gzip": 105796
     },
     {
       "id": "flag",
@@ -209,7 +209,7 @@
       "duel": true,
       "file": "flag.html",
       "bytes": 319835,
-      "gzip": 103763
+      "gzip": 103765
     },
     {
       "id": "mole",
@@ -219,7 +219,7 @@
       "duel": true,
       "file": "mole.html",
       "bytes": 323726,
-      "gzip": 105417
+      "gzip": 105421
     },
     {
       "id": "twin",
@@ -229,7 +229,7 @@
       "duel": true,
       "file": "twin.html",
       "bytes": 338286,
-      "gzip": 112260
+      "gzip": 112261
     },
     {
       "id": "arrow",
@@ -239,7 +239,7 @@
       "duel": true,
       "file": "arrow.html",
       "bytes": 323109,
-      "gzip": 103801
+      "gzip": 103804
     },
     {
       "id": "rps",
@@ -249,7 +249,7 @@
       "duel": true,
       "file": "rps.html",
       "bytes": 319162,
-      "gzip": 102756
+      "gzip": 102760
     },
     {
       "id": "thread",
@@ -259,7 +259,7 @@
       "duel": true,
       "file": "thread.html",
       "bytes": 383781,
-      "gzip": 141989
+      "gzip": 141992
     },
     {
       "id": "goback",
@@ -269,7 +269,7 @@
       "duel": true,
       "file": "goback.html",
       "bytes": 311404,
-      "gzip": 100263
+      "gzip": 100266
     },
     {
       "id": "mountain",
@@ -279,7 +279,7 @@
       "duel": true,
       "file": "mountain.html",
       "bytes": 297269,
-      "gzip": 96183
+      "gzip": 96185
     },
     {
       "id": "march",
@@ -289,7 +289,7 @@
       "duel": true,
       "file": "march.html",
       "bytes": 344579,
-      "gzip": 114170
+      "gzip": 114171
     },
     {
       "id": "jigsaw",
@@ -299,7 +299,7 @@
       "duel": true,
       "file": "jigsaw.html",
       "bytes": 297510,
-      "gzip": 99733
+      "gzip": 99736
     },
     {
       "id": "tidy",
@@ -309,7 +309,7 @@
       "duel": true,
       "file": "tidy.html",
       "bytes": 302107,
-      "gzip": 99002
+      "gzip": 99004
     },
     {
       "id": "tgostop",
@@ -319,7 +319,7 @@
       "duel": true,
       "file": "tgostop.html",
       "bytes": 905046,
-      "gzip": 481135
+      "gzip": 481140
     },
     {
       "id": "holdem",
@@ -329,7 +329,7 @@
       "duel": true,
       "file": "holdem.html",
       "bytes": 276715,
-      "gzip": 88054
+      "gzip": 88055
     }
   ],
   "retired": [

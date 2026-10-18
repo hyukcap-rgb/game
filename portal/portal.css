@@ -813,7 +813,7 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 /* 방 QR로 초대(2026-10-08) */
 .frtop .frqr{grid-column:1 / -1}
 .frqr{display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; line-height:1.15}
-.frqr small{font-size:12px; color:rgba(255,255,255,.88); font-family:var(--body, inherit); width:100%; text-align:center; margin-top:-2px}
+.frqr small{font-size:13px; color:rgba(255,255,255,.88); font-family:var(--body, inherit); width:100%; text-align:center; margin-top:-2px}
 .frtop .frqr{height:auto; min-height:52px; padding:6px}
 #frQr{height:auto; min-height:52px; margin-top:7px; padding:6px}
 .qric{flex:none; vertical-align:-3px}
@@ -906,3 +906,33 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 .devgrid{display:flex; flex-wrap:wrap; justify-content:center; gap:6px}
 .devgrid .btn{margin:0}
 body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .sr-t small, body.big .thcard small, body.big .mt-c small, body.big .mt-c > span, body.big .mm-t small{font-size:15px}
+
+/* ===== 테스트팀 디자인 검수(2026-10-18) — 휴대폰 360~430px · 네 테마 공통 ===== */
+/* 1) 머리줄 로고: "리그"가 아래로 잘리던 문제(줄 높이 1 + overflow:hidden이 굵은 글꼴의 획을 잘라냄) → 위아래로는 자르지 않고, 휴대폰은 두 줄로 */
+.hud-logo{overflow:visible; line-height:1.2; padding:2px 0}
+@media (max-width:480px){
+  .hud-logo{display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:18px; line-height:1.15; -webkit-text-stroke:4px var(--outline2)}
+  .hud-logo small{display:block; margin:1px 0 0; font-size:13px; line-height:1.15}
+}
+@media (max-width:380px){
+  /* 좁은 폰(360): "하루퍼"로 잘리던 로고 자리 확보 — 하트 칩의 '가득' 글자는 숨기고(숫자 5/5로 충분) 간격을 줄인다 */
+  .hud{gap:5px}
+  .hud-logo{font-size:16px; -webkit-text-stroke:3px var(--outline2)}
+  .res-val small:not(.num){display:none}
+  .res .res-val{padding-right:3px}
+  .hud .mail.frhud + .res{margin-left:12px}
+}
+/* 2) 내 정보 버튼의 Lv 배지가 얼굴 절반을 가리던 것 → 배지를 아래로 내리고 얇게 */
+.me-btn .lvb{bottom:-11px; padding:0 5px 1px; line-height:1.15}
+/* 3) 솔로 타일의 "이어 하기 n판" 버튼이 24px로 눌려 작아지던 것(세로 줄에서 flex:1이 높이를 0부터 계산) → 44px 고정 */
+.acard.tile .ac-btns .gr-go, .acard.tile .ac-btns .map{flex:none}
+/* 4) 즐겨찾기 별이 썸네일 모서리에 반쯤 걸쳐 잘려 보이던 것 → 카드 안쪽 모서리에 온전히 */
+.favb{top:2px; left:2px}
+.acard.tile .favb{top:10px; left:10px}
+.acard.tile .favb svg{width:24px; height:24px}
+/* 5) 오늘의 시험지 줄: 좁은 폰에서 "아직 안 풀었어요 · …"로 잘리던 것 → 시작/무료를 위아래로 쌓아 버튼 폭을 줄임 */
+@media (max-width:400px){
+  .grow{gap:8px}
+  .grow .gr-go.soft{flex-direction:column; gap:1px; min-width:58px; padding:0 8px; height:52px; line-height:1.1}
+  .grow .gr-go.soft .freebadge, .grow .gr-go.soft .cost{padding:1px 6px}
+}

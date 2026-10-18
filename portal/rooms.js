@@ -473,7 +473,7 @@ function rmList(g){
   }
   RM.listG = g;
   const L = rmLv(), rec = rmRec(L), mx = rmMax(g);
-  const pt = d => mx > 2 ? `<b class="num">1위 ${duelTopTxt(d, mx)}</b><small>꼴찌 +${DUEL_LAST[d]}</small>` : `<b class="num">승 +${RM_PTS[d].w}</b><small>무 +${RM_PTS[d].d} · 패 +${RM_PTS[d].l}</small>`;
+  const pt = d => mx > 2 ? `<b class="num">1위 ${duelTopTxt(d, mx)}</b><small>꼴찌 +${DUEL_LAST[d]}</small>` : `<b class="num">승 +${RM_PTS[d].w}</b><small>무 +${RM_PTS[d].d}<br>패 +${RM_PTS[d].l}</small>`;
   openModal(`<div class="rmlist" id="rmList" style="--gc:${GCOL[g][1]}"><button class="mx" id="rlX" aria-label="닫기">✕</button>
     <div class="rmhead"><span class="g-art">${ART[g]()}</span><div><p class="kick">대전 방 · ${mx > 2 ? `2~${mx}명` : '1:1'}</p><h3>${GAMES[g].name}</h3></div></div>
     ${rmNoPts(g) ? `<p class="rmme">${escH((NG[g].duelNoPtsNote && NG[g].duelNoPtsNote()) || '대전 포인트가 없는 게임이에요')}</p>` : `<div class="rmpts">${RM_DIFF.map(d => `<div class="rmpt ${d}${rmCanD(d, L) ? '' : ' lock'}">${rmChip(d)}${d === rec ? '<em>추천</em>' : ''}${pt(d)}${rmCanD(d, L) ? '' : `<small class="lk">${ic('lock')}Lv ${RM_HARD_LV}부터</small>`}</div>`).join('')}</div>

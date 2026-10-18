@@ -330,3 +330,17 @@ html[data-theme="neon"] body:not([data-mode]) :is(.srow2, .sdemo, .amap .chhead 
 html[data-theme="neon"] body:not([data-mode]) .rg em{color:#F3F4FF}
 /* 당겨 내릴 때 보이는 맨 바탕색 */
 html[data-theme="ticket"]{background:#FFF4E2} html[data-theme="neon"]{background:#0B0F2A} html[data-theme="jelly"]{background:#F3F0FF}
+/* 테스트팀 검수(2026-10-18): "친구와 대전" 카드 아래에 밤하늘 테마의 분홍 그림자 판이 삐져나오던 것 → 테마 그림자로 */
+.th body:not([data-mode]) .dfcard{border:var(--t-bw) solid var(--t-acc); border-radius:var(--t-r); box-shadow:var(--t-sh-s)}
+html[data-theme="neon"] body:not([data-mode]) .dfcard{border-color:#FF6FB0; box-shadow:0 0 16px rgba(255,46,136,.25)}
+html[data-theme="jelly"] body:not([data-mode]) .dfcard{background:#fff; border-color:transparent; box-shadow:var(--t-sh)}
+/* 테스트팀 검수(2026-10-18): 창 아래 고정 버튼 줄(도움말 계속하기·판 고르기 시작·대전 방)이 밤하늘의 크림색 띠로 남던 것 → 테마 카드색으로 */
+.th body:not([data-mode]) :is(.hfoot, .amfoot, .rmfoot){background:linear-gradient(180deg, transparent, var(--paper2) 38%)}
+/* 네온: 판 고르기(스테이지 길) 판이 크림색 종이로 남던 것 → 어두운 판·잠긴 칸 */
+html[data-theme="neon"] body:not([data-mode]) .modal .path{background:color-mix(in srgb, var(--gc) 14%, #161B45); border-color:#3A44A0}
+html[data-theme="neon"] body:not([data-mode]) .modal .st.lock{background:#262D6B; color:#8F96D6; border-color:#3A44A0; box-shadow:0 3px 0 #0B0F2A}
+/* 친구 창 "방 QR로 초대하기" 아래 작은 글씨: 밝은 하늘색 버튼 위 흰 글자라 안 읽히던 것 → 버튼 글자색을 따라감 */
+.th body:not([data-mode]) .frqr small{color:inherit; opacity:.85; font-size:13px}
+/* 하늘색(보조) 버튼 위 하트 비용 칩: 흰 글자라 안 보이던 것(네온) → 진한 글자 */
+html[data-theme="neon"] body:not([data-mode]) :is(.b2, .btn.secondary) .cost{color:#0B0F2A; background:rgba(11,15,42,.14)}
+html[data-theme="neon"] body:not([data-mode]) :is(.b2, .btn.secondary) .cost .ico{color:#0B0F2A}

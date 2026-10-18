@@ -21,10 +21,10 @@
 .st.boss{border-radius:30%}
 .modal .path .st.hard:not(.lock){background:linear-gradient(180deg,#FF7A7A,#B3122E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #FFD0D0}
 .modal .path .st.xhard:not(.lock){background:linear-gradient(180deg,#A77BFF,#4B1E9E); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 3px 0 var(--outline2), 0 0 0 3px #E2D2FF}
-.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:13px/1 var(--disp); color:#fff; background:#27B86A; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
+.modal .path .st.newc:not(.lock)::before{content:"NEW"; position:absolute; top:-9px; right:-10px; white-space:nowrap; font:13px/1 var(--disp); color:#fff; background:#178A4C; border:2px solid #1A0F45; border-radius:8px; padding:2px 5px; z-index:2}
 .rule .cline{display:inline-block; margin-top:4px; font-size:13.5px; color:#5B3FB5; background:#EFE7FF; border-radius:10px; padding:3px 9px}
 .legend3{font-size:13px; color:var(--sub); margin:6px 0 0; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap}
-.legend3 .lg-n{font:13px/1 var(--disp); color:#fff; background:#27B86A; border-radius:6px; padding:2px 5px}
+.legend3 .lg-n{font:13px/1 var(--disp); color:#fff; background:#178A4C; border-radius:6px; padding:2px 5px}
 .legend3 .lg-h, .legend3 .lg-x{display:inline-block; width:12px; height:12px; border-radius:4px; background:linear-gradient(#FF7A7A,#B3122E)}
 .legend3 .lg-x{background:linear-gradient(#A77BFF,#4B1E9E)}
 .ncard{display:flex; gap:12px; align-items:center; text-align:left; background:#FFF8EA; border:3px solid var(--outline); border-radius:18px; padding:12px 14px; margin:10px 0 4px; box-shadow:0 4px 0 var(--outline2); color:var(--ink)}
