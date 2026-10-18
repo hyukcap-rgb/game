@@ -372,3 +372,29 @@ html[data-theme="neon"] body:not([data-mode]) .streak{color:#FFA94D}
 html[data-theme="neon"] body:not([data-mode]) .shgift{color:#4ADE80}
 /* 대전 머리 카드 칩(네온 하늘색 카드 위) */
 html[data-theme="neon"] body:not([data-mode]) .dh-rw .d{background:#0B0F2A; color:#7BE9F7; border-color:#0B0F2A}
+/* 검수 3차: 티켓·젤리에 남은 크림/베이지(밤하늘 종이색) → 테마 색 */
+.th body:not([data-mode]) .chdots i{background:var(--t-line); opacity:.35}
+.th body:not([data-mode]) .chdots i:is(.s1, .s2, .s3){opacity:1}
+.th body:not([data-mode]) .chdots i.cur{opacity:1; background:var(--t-card)}
+.th body:not([data-mode]) .modal .path{background:color-mix(in srgb, var(--gc) 10%, var(--t-card2)); border-color:var(--t-line)}
+.th body:not([data-mode]) .modal .st.lock{background:var(--t-card2); color:var(--t-sub); border-color:var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .rmd{background:var(--t-card2); border-color:var(--t-line)}
+.th body:not([data-mode]) .rmd b{color:var(--t-ink); font-family:var(--disp)}
+.th body:not([data-mode]) :is(.rmpv, .frvis){background:var(--t-card2); border-color:var(--t-line)}
+.th body:not([data-mode]) .sampnote{background:var(--t-card2); color:var(--t-sub); border-color:var(--t-yel)}
+.th body:not([data-mode]) .cal .c:not(.att):not(.rest){background:var(--t-card2); color:var(--t-sub)}
+.th body:not([data-mode]) .invrow{background:var(--t-card2); border-color:var(--t-line)}
+.th body:not([data-mode]) .rmf button{color:var(--t-chip-ink); background:var(--t-chip); border:var(--t-bw) solid var(--t-line); box-shadow:none}
+.th body:not([data-mode]) .rmf button.on{color:var(--t-card); background:var(--t-ink); border-color:var(--t-ink)}
+html[data-theme="neon"] body:not([data-mode]) .rmf button.on{color:#0B0F2A; background:#22D3EE; border-color:#22D3EE}
+.th body:not([data-mode]) .modal .closebtn{color:var(--t-ink); background:var(--t-card2); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
+html[data-theme="neon"] body:not([data-mode]) .modal .closebtn{background:#21275C; border-color:#3A44A0; box-shadow:none}
+html[data-theme="jelly"] body:not([data-mode]) .modal .closebtn{background:#F1ECFF; border-color:transparent; color:#5B3CC4; box-shadow:none}
+/* 젤리: 두뇌 리포트 버튼이 흰 카드에 묻히던 것 · 순위 칩이 메달보다 진하던 것 · 대전 카드 진행 막대 탁함 */
+html[data-theme="jelly"] body:not([data-mode]) .mt-a:not(.pri){border:2px solid #CBBFFF}
+html[data-theme="jelly"] body:not([data-mode]) .pnum{background:#EDE7FF; color:#5B3CC4; border-color:#EDE7FF}
+/* 네온: 선택된 과목 칩 뒤 네모 그림자 */
+html[data-theme="neon"] body:not([data-mode]) .fchips{background:none}
+html[data-theme="neon"] body:not([data-mode]) .fchips button{outline-offset:2px}
+/* 네온: 모두의 기부 화살표가 안 보이던 것 */
+html[data-theme="neon"] body:not([data-mode]) .pool .ico:last-child{color:#C9CEF7; opacity:1}

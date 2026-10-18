@@ -394,7 +394,7 @@ function renderToday(d, tl, P, lv){
 function renderAdv(lv){
   renderSoloPts();
   const nt = nextTitle(lv.L);
-  $('#lvCard').innerHTML = `<span class="shield">${shieldSVG(lv.L)}</span><div><span class="t">솔로 레벨</span><b>Lv.${lv.L} ${lv.title}</b><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>Lv.${lv.L + 1}까지 별 ${lv.need - lv.cur}개${nt ? ` · 칭호 '${nt[1]}' Lv.${nt[0]}` : ''}</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
+  $('#lvCard').innerHTML = `<span class="shield">${shieldSVG(lv.L)}</span><div><span class="t">솔로 레벨</span><b>Lv.${lv.L} ${lv.title}</b><div class="xp"><i style="width:${lv.cur / lv.need * 100}%"></i></div><div class="xp-t"><span>Lv.${lv.L + 1}까지 별 ${lv.need - lv.cur}개${nt ? ` · Lv.${nt[0]}에 칭호 '${nt[1]}'` : ''}</span><b class="num">${lv.cur}/${lv.need}</b></div></div>`;
   renderFilter('adv');
   const list = $('#advList'); list.innerHTML = '';
   for(const id of filteredIds('adv')){
@@ -1088,3 +1088,27 @@ DEV_FN.devHist = () => {
   renderHome(); toast('지난 2주 기록을 만들었어요(2일은 휴식권)');
 };
 DEV_FN.devHistClr = () => { const today = dayKey(); for(let i = 0; i <= 120; i++) store.set('hp:day:' + addDays(today, -i), null); renderHome(); toast('출석 기록을 모두 지웠어요'); };
+
+/* ===== 사이트 창 닫기(✕) 통일(2026-10-18 테스트팀 검수) =====
+   사이트(홈) 위에 뜨는 창 중 제목 띠(h3)로 시작하는데 ✕가 없던 창(하트·알림함·리포트·공유·기부·솔로 성장·배지·친구 초대…)에도
+   같은 자리(제목 띠 오른쪽)에 같은 ✕를 단다. 게임 플레이 중(body[data-mode]) 창·결과 창은 건드리지 않는다. */
+(function(){
+  if(typeof openModal !== 'function') return;
+  const _openModal = openModal;
+  window.openModal = function(){
+    const r = _openModal.apply(this, arguments);
+    try{
+      if(!document.body.dataset.mode){
+        const m = document.querySelector('#modal'), first = m && m.firstElementChild;
+        if(m && first && first.tagName === 'H3' && !m.querySelector('.mx, .amx')){
+          const b = document.createElement('button'); b.className = 'mx mx-auto'; b.type = 'button'; b.setAttribute('aria-label', '닫기');
+          b.onclick = () => { const c = m.querySelector('#hsClose, #mClose:not(.mx-auto), #mOk, #mBack'); if(c && c !== b) c.click(); else closeModal(); };
+          m.prepend(b);
+        }
+        /* 창 아래 '닫기' 버튼 모양 통일 */
+        if(m) m.querySelectorAll('button').forEach(x => { if(!x.classList.contains('mx') && /^(닫기|뒤로)$/.test(x.textContent.trim())) x.classList.add('closebtn'); });
+      }
+    }catch(_){}
+    return r;
+  };
+})();

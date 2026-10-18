@@ -962,3 +962,47 @@ body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .s
 .qzpromo .qz-acts{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .qzpromo .qz-acts > *{display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-height:64px; padding:10px 12px; border:0; border-radius:14px; background:#fff; color:#1A1240; font:inherit; font-size:15px; font-weight:800; text-align:left; text-decoration:none; cursor:pointer}
 .qzpromo .qz-acts small{font-size:13px; font-weight:600; color:#6E6890; line-height:1.3}
+
+/* ===== 테스트팀 정밀 검수 3차(2026-10-18) — 화면 검토팀(네온·티켓) 지적 반영 ===== */
+/* 한국어 줄바꿈: 조사·한 글자가 혼자 다음 줄로 떨어지던 것("일부(12원) / 를", "새로", "등급", "보세요"…) → 낱말 단위로만 끊고 마지막 줄 균형 */
+#home, #modal, .toast{word-break:keep-all; overflow-wrap:anywhere}
+#home :is(p, small, .note, span), #modal :is(p, small, .note, li, span){text-wrap:pretty}
+/* 창 제목 띠 모양 통일: 왼쪽 정렬이던 친구·설정·대전 방 제목도 가운데 */
+.modal h3, .rmlist h3, .rmroom h3, .rmmake h3, .frpickg h3, .frhub h3{text-align:center}
+.modal > .mx-auto{position:absolute; top:18px; right:16px; z-index:3}
+.modal:has(> .mx-auto) > h3{margin-right:50px}
+/* 솔로 레벨 카드: "0/5"가 "0/ 5"로 쪼개지던 것 */
+.xp-t{gap:8px} .xp-t > span{min-width:0} .xp-t b{flex:none; white-space:nowrap}
+/* Lv 배지: 얼굴 가림 → 아바타 오른쪽 아래 바깥으로, 작게 */
+.me-btn .lvb{left:auto; right:-10px; bottom:-8px; transform:none; padding:0 4px 1px; font-size:12.5px}
+.hud{padding-right:2px}
+/* 내 정보 제목이 머리줄 바로 밑에 붙던 것 → 다른 탭 제목과 같은 간격 */
+.mehead{margin-top:14px}
+/* 리그 순위: 360폭에서 이름이 아바타 테두리에 붙던 것 */
+.row > :nth-child(3){padding-left:4px}
+/* 솔로 성장 창 목록 맨 아래 줄이 테두리에 잘리던 것 → 아래 여백 */
+.grows, .grlist, #grList{padding-bottom:10px}
+/* 오늘 요약줄: 360폭에서 마감 시계가 칸 끝에 붙던 것 */
+@media (max-width:380px){ .strip .sc{padding:6px 7px 7px} .strip .sc b{font-size:19px; letter-spacing:0} }
+/* 대전 목록 오른쪽 버튼 칸 폭 통일(방 목록 / 대전 ♥1 버튼 폭이 달라 칸 끝이 들쭉날쭉) */
+.duelrow .gr-go{width:96px; padding:0 6px}
+@media (max-width:380px){ .duelrow .gr-go{width:86px; font-size:14px} }
+/* 공유·초대 창: 버튼 폭 들쭉날쭉 → 주 버튼 전체 폭, 보조 두 개 반반, 이름 칸 전체 폭 */
+#modal #shSend{flex:1 1 100%; height:50px}
+#modal .shrow{flex-wrap:nowrap}
+#modal :is(#shSave, #shCopy){flex:1 1 0; min-width:0; height:44px}
+.nickrow{justify-content:stretch} .nickrow span{flex:none} .nickrow input{flex:1; width:auto; min-width:0}
+/* 판 고르기: 대장 판 왕관이 위 줄 칸에 부딪히던 것 → 줄 간격 */
+.modal .path{row-gap:22px; padding-top:20px}
+/* 대전 방 '추천' 표시가 카드 테두리·난이도 칩에 겹치던 것 → 카드 안쪽 위 */
+.rmd em{top:-10px; right:2px}
+.rmd{margin-top:6px}
+/* 대전 방 필터 칩 폭 통일 */
+.rmf{display:grid !important; grid-template-columns:repeat(4,1fr); gap:6px}
+.rmf button{padding:0 4px}
+/* 친구 창: QR 버튼과 안내 글 사이 여백 */
+.frtop + p, .frtop + .note{margin-top:16px}
+/* 리포트 '연속 출석' 머리가 좁은 칸에 두 줄로 끼던 것 */
+.rp-sec h4, .rp-sec > b:first-child{white-space:nowrap}
+/* 사이트 창 아래 '닫기' 버튼 모양 통일(창마다 분홍·파랑·글자만 제각각) */
+#modal button.closebtn{display:flex; align-items:center; justify-content:center; width:100%; height:48px; margin-top:12px; border-radius:14px; font-family:var(--disp); font-size:17px; color:var(--ink); background:var(--paper2); border:2px solid var(--outline2); box-shadow:0 3px 0 var(--outline2); text-decoration:none}
