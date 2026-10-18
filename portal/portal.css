@@ -954,3 +954,11 @@ body.big .setrow .sr-t b, body.big .thcard b{font-size:19px} body.big .setrow .s
 .dh-rw .c{background:linear-gradient(#F0368A,#C8126A)}
 /* 공유 창 '오늘 첫 공유 선물' 초록 글자 대비 */
 .shgift{color:#11713E}
+/* 캠페인 띠: 여기서 노는 시간, 머리가 깨어나는 시간 (2026-10-18, docs/28) */
+.qzpromo{margin:14px 0 6px; padding:16px; border-radius:20px; background:linear-gradient(135deg,#2B1C6E,#7C5CFF); color:#fff; box-shadow:0 6px 18px rgba(40,20,120,.3)}
+.qzpromo .qz-head{margin:0; font-size:19px; line-height:1.35; font-weight:800; letter-spacing:-.3px}
+.qzpromo .qz-head b{color:#FFE27A}
+.qzpromo .qz-subh{margin:6px 0 12px; font-size:14px; color:#E3DAFF}
+.qzpromo .qz-acts{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.qzpromo .qz-acts > *{display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-height:64px; padding:10px 12px; border:0; border-radius:14px; background:#fff; color:#1A1240; font:inherit; font-size:15px; font-weight:800; text-align:left; text-decoration:none; cursor:pointer}
+.qzpromo .qz-acts small{font-size:13px; font-weight:600; color:#6E6890; line-height:1.3}

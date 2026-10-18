@@ -1,5 +1,5 @@
 /* 하루퍼즐 리그 사이트: 오늘의 시험지·하트·리그·친구·솔로 레벨·대전 목록·내 정보 (게임 자체는 games/, 공용 플레이 엔진은 core/) */
-registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','tgostop','holdem','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','jigsaw','tidy']);   /* 사이트에 보일 게임과 순서 */
+registerGames(['fox','sudoku','ball','fleet','match','nono','block','memory','merge','link','gostop','tgostop','holdem','crossword','hidden','spot','chosung','wordchain','mines','omok','parking','snowball','flag','mole','twin','arrow','rps','thread','goback','mountain','march','jigsaw','tidy','quiz']);   /* 사이트에 보일 게임과 순서 */
 const ADULT = ['gostop', 'tgostop', 'holdem'];   /* 성인(19) 게임: 솔로·대전 목록 맨 끝 "성인(19)" 묶음으로, 과목 칩 필터에서는 빠짐(게임 정의에 adult:true를 써도 됨) */
 const isAdult = id => !!(NG[id] && NG[id].adult) || ADULT.includes(id);
 /* ===== 가상 숫자 스위치 (2026-10-04 UI 검수 결론) =====
@@ -1063,6 +1063,7 @@ $('#strip').onclick = () => setTab('me');
 $('#pool').onclick = openDonateInfo;
 DEV_FN.devWeek = () => { const s0 = leagueState(); s0.week = addDays(weekStartKey(), -7); store.set('hp:league', s0); showLeagueResult(leagueRollover()); };
 $('#advPromo').onclick = () => setTab('adv'); $('#duelPromo').onclick = () => setTab('duel');
+$('#qzShow').onclick = () => openAdvMap('quiz');   /* 캠페인 '머리가 깨어나는 시간'(2026-10-18, docs/28) */
 $('#meGear').onclick = openSettings; $('#meMore').onclick = openSettings; $('#meReport').onclick = openReport; $('#meShare').onclick = () => openShare(closeModal);   /* 내 정보 ⚙ 설정 시트(2026-10-12) */
 if(!store.get('hp:advLv', 0)) store.set('hp:advLv', lvInfo().L);
 DEV_FN.devAdv = () => { GAME_IDS.forEach(g => store.set(advKey(g), null)); store.set('hp:advLv', 1); renderHome(); toast('솔로 기록을 초기화했어요'); };

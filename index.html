@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>하루퍼즐 리그</title>
-<meta name="description" content="같은 문제, 다른 점수. 매일 전 국민이 같은 퍼즐 5문제(논리·집중·공간·전략·추리)를 풀고 성적표를 받아요. 강제 광고 없는 퍼즐 리그.">
+<meta name="description" content="여기서 노는 시간, 머리가 깨어나는 시간. 같은 문제, 다른 점수. 매일 전 국민이 같은 퍼즐 5문제(논리·집중·공간·전략·추리)를 풀고 성적표를 받아요. 강제 광고 없는 퍼즐 리그.">
 <meta name="theme-color" content="#0B0F2A">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="하루퍼즐 리그">
-<meta property="og:title" content="하루퍼즐 리그 · 같은 문제, 다른 점수.">
+<meta property="og:title" content="하루퍼즐 리그 · 여기서 노는 시간, 머리가 깨어나는 시간">
 <meta property="og:description" content="오늘의 시험지가 도착했습니다. 전 국민이 같은 퍼즐 5문제, 차이는 실력뿐. 나랑 같은 문제로 붙어 볼래?">
 <meta property="og:url" content="https://hyukcap-rgb.github.io/game/">
 <meta property="og:image" content="https://hyukcap-rgb.github.io/game/og.png">
@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="games/goback/goback.css">
 <link rel="stylesheet" href="games/tgostop/tgostop.css">
 <link rel="stylesheet" href="games/holdem/holdem.css">
+<link rel="stylesheet" href="games/quiz/quiz.css">
 <link rel="stylesheet" href="core/play.css">
 <link rel="stylesheet" href="core/duel.css">
 <link rel="stylesheet" href="portal/portal.css">
@@ -70,6 +71,11 @@
     <button class="pool" id="pool" aria-label="모두의 기부 안내 보기"></button>
     <button class="advpromo" id="advPromo" aria-label="솔로 모드로 가기"></button>
     <button class="advpromo duelpromo" id="duelPromo" aria-label="대전 모드로 가기"></button>
+    <div class="qzpromo" aria-label="퀴즈 놀이">
+      <p class="qz-head">여기서 노는 시간,<br><b>머리가 깨어나는 시간</b></p>
+      <p class="qz-subh">아이도 어른도, 하루 10분 머리 쓰는 놀이</p>
+      <div class="qz-acts"><button id="qzShow">🎵 두뇌 퀴즈쇼<small>멜로디 · 추억 간식 · 속담</small></button><a href="shorts/">🎬 10초 퀴즈<small>쇼츠 보고 맞히기 · 친구에게 내기</small></a></div>
+    </div>
   </div>
 
   <div class="pane" id="paneAdv" hidden>
@@ -208,6 +214,8 @@
 <script src="games/tgostop/tgostop-snd.js"></script>
 <script src="games/tgostop/tgostop.js"></script>
 <script src="games/holdem/holdem.js"></script>
+<script src="games/quiz/quiz-bank.js"></script>
+<script src="games/quiz/quiz.js"></script>
 <script src="portal/theme.js"></script>
 <script src="portal/portal.js"></script>
 <script src="portal/viral.js"></script>

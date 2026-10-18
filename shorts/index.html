@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>10초 퀴즈 · 하루퍼즐</title>
+<meta name="description" content="유튜브 쇼츠 10초 보고 맞히기. 연예인·노래·춤 퀴즈를 직접 만들어 친구에게 보내요.">
+<meta property="og:title" content="10초 보고 맞혀 봐! · 하루퍼즐 10초 퀴즈">
+<meta property="og:description" content="친구가 낸 10초 퀴즈가 도착했어요. 여기서 노는 시간, 머리가 깨어나는 시간.">
+<meta property="og:image" content="https://hyukcap-rgb.github.io/game/og.png">
+<link rel="icon" href="../icon.png">
+<!--
+  10초 퀴즈 (2026-10-18, docs/28_퀴즈쇼_법무검토.md 3절)
+  법무 기준을 코드로 지키는 곳:
+  1) 영상은 유튜브 공식 퍼가기 플레이어(youtube-nocookie)로만 튼다. 내려받기·소리만 따로 틀기·플레이어 가리기·광고 건너뛰기 없음.
+     플레이어 위에 아무것도 덮지 않는다(정답 보기는 플레이어 아래). 크기 200×200 이상.
+  2) 퍼가기를 막은 영상(오류 101·150)은 틀지 않고 안내만.
+  3) 퀴즈 내용은 주소(#q=…) 안에만 들어 있다. 서버에 저장하지 않음 = 개인정보·게시물 보관 없음.
+  4) 신고 버튼 → 운영 신고 창구(지금은 저장소 이슈, 정식 출시 전 전용 메일로 교체). 신고된 영상 ID는 BLOCK 목록에 더하면 그 퀴즈가 열리지 않는다.
+  5) 만드는 사람 확인: 남을 비하·성희롱·사생활 노출 퀴즈 금지, 공식 채널이나 본인이 올린 영상 권장.
+-->
+<style>
+:root{ --bg:#140B3A; --bg2:#2A1A6E; --card:#fff; --ink:#1A1240; --sub:#6E6890; --pri:#7C5CFF; --pink:#FF4F8B; --ok:#22A57A; --no:#E5484D; --line:#E2DCF7; }
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+body{ background:radial-gradient(120% 80% at 50% 0%, var(--bg2), var(--bg)); color:#fff; font-family:'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:520px; margin:0 auto; padding:16px 16px 40px; }
+header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+header a{ color:#D9CCFF; font-size:14px; font-weight:700; text-decoration:none; }
+h1{ font-size:22px; margin:0; letter-spacing:-.4px; }
+.lead{ margin:4px 0 0; color:#D9CCFF; font-size:14px; }
+.card{ background:var(--card); color:var(--ink); border-radius:20px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.25); margin-bottom:12px; }
+.card h2{ font-size:18px; margin:0 0 10px; }
+label{ display:block; font-size:14px; font-weight:800; margin:12px 0 6px; }
+input[type=text], input[type=url], input[type=number], select{ width:100%; font:inherit; font-size:16px; padding:12px; border:2px solid var(--line); border-radius:12px; color:var(--ink); background:#fff; }
+input:focus, select:focus{ outline:none; border-color:var(--pri); }
+.row{ display:flex; gap:8px; align-items:center; }
+.row > *{ flex:1; }
+.opt{ display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+.opt input[type=radio]{ width:22px; height:22px; flex:none; accent-color:var(--ok); }
+.hint{ font-size:13px; color:var(--sub); margin:6px 0 0; line-height:1.45; }
+.btn{ display:flex; align-items:center; justify-content:center; gap:6px; width:100%; min-height:54px; border:0; border-radius:16px; font:inherit; font-size:17px; font-weight:900; cursor:pointer; color:#fff; background:var(--pri); margin-top:12px; text-decoration:none; }
+.btn.pink{ background:var(--pink); } .btn.ghost{ background:#F1EEFA; color:var(--ink); }
+.btn:disabled{ opacity:.45; cursor:default; }
+.player{ position:relative; width:100%; aspect-ratio:9/16; max-height:62vh; min-height:260px; background:#000; border-radius:16px; overflow:hidden; margin:0 auto; }
+.player.wide{ aspect-ratio:16/9; min-height:200px; }
+.player iframe, .player > div{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.cnt{ display:flex; align-items:center; gap:10px; margin:10px 0 0; }
+.cnt .bar{ flex:1; height:10px; border-radius:6px; background:#ECE8F8; overflow:hidden; }
+.cnt .bar i{ display:block; height:100%; width:0; background:var(--pink); transition:width .25s linear; }
+.cnt b{ font-size:15px; min-width:40px; text-align:right; }
+.q{ font-size:19px; font-weight:900; text-align:center; margin:12px 0 8px; word-break:keep-all; }
+.ch{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ch button{ min-height:60px; border:2px solid var(--line); border-radius:14px; background:#fff; color:var(--ink); font:inherit; font-size:16px; font-weight:800; cursor:pointer; padding:8px; word-break:keep-all; }
+.ch button.ans{ border-color:var(--ok); background:#E6F8EF; } .ch button.no{ border-color:var(--no); background:#FFEDEE; }
+.ch.wait button{ opacity:.5; }
+.res{ text-align:center; font-size:20px; font-weight:900; margin:12px 0 0; }
+.res.good{ color:var(--ok); } .res.bad{ color:var(--no); }
+.tabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.tabs button{ border:0; border-radius:999px; padding:9px 14px; font:inherit; font-size:14px; font-weight:800; background:rgba(255,255,255,.12); color:#fff; cursor:pointer; min-height:40px; }
+.tabs button.on{ background:#fff; color:var(--ink); }
+.rules{ font-size:13px; color:var(--sub); line-height:1.55; margin:0; padding-left:18px; }
+.foot{ text-align:center; font-size:12px; color:#B9AEE8; line-height:1.6; margin-top:16px; }
+.foot button{ background:none; border:0; color:#D9CCFF; text-decoration:underline; font:inherit; cursor:pointer; }
+.score{ text-align:center; font-size:15px; color:var(--sub); margin:0 0 6px; }
+.toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#1A1240; color:#fff; padding:12px 18px; border-radius:12px; font-size:15px; font-weight:700; opacity:0; transition:.2s; pointer-events:none; }
+.toast.on{ opacity:1; transform:translateX(-50%); }
+.hide{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>10초 퀴즈</h1><p class="lead">여기서 노는 시간, 머리가 깨어나는 시간</p></div>
+    <a href="../">하루퍼즐 ›</a>
+  </header>
+
+  <!-- 풀기 -->
+  <section id="play" class="hide">
+    <div class="card">
+      <p class="score" id="pNo"></p>
+      <div class="player" id="pBox"><div id="yt"></div></div>
+      <div class="cnt"><div class="bar"><i id="pBar"></i></div><b id="pSec">10초</b></div>
+      <button class="btn pink" id="pGo">▶ 10초 보기</button>
+      <p class="q" id="pQ"></p>
+      <div class="ch wait" id="pCh"></div>
+      <p class="res" id="pRes"></p>
+      <button class="btn hide" id="pNext">다음 문제</button>
+    </div>
+    <div class="card hide" id="pEnd">
+      <h2 id="pEndT"></h2>
+      <button class="btn pink" id="pShare">결과 자랑하기</button>
+      <button class="btn" id="pMake">나도 퀴즈 내기</button>
+      <a class="btn ghost" href="../">하루퍼즐에서 두뇌 대결하기</a>
+    </div>
+  </section>
+
+  <!-- 만들기 -->
+  <section id="make">
+    <div class="tabs" id="kinds">
+      <button data-k="star" class="on">🌟 누구일까?</button><button data-k="song">🎵 무슨 노래?</button><button data-k="dance">🕺 무슨 춤?</button><button data-k="free">❓ 자유</button>
+    </div>
+    <div class="card">
+      <h2 id="mT">문제 1 만들기</h2>
+      <label for="mUrl">유튜브 쇼츠·영상 주소</label>
+      <input type="url" id="mUrl" placeholder="https://youtube.com/shorts/…" inputmode="url" autocomplete="off">
+      <p class="hint">공식 채널이나 직접 올린 영상을 써 주세요. 영상은 유튜브 플레이어 그대로 나와요.</p>
+      <div class="row">
+        <div><label for="mStart">몇 초부터 볼까요?</label><input type="number" id="mStart" min="0" max="3600" value="0" inputmode="numeric"></div>
+        <div><label for="mShape">화면 모양</label><select id="mShape"><option value="v">세로(쇼츠)</option><option value="h">가로</option></select></div>
+      </div>
+      <label for="mQ">질문</label>
+      <input type="text" id="mQ" maxlength="40">
+      <label>보기 4개 · 정답에 동그라미</label>
+      <div id="mOpts"></div>
+      <button class="btn ghost" id="mPrev">미리 보기</button>
+      <div class="player hide" id="mBox" style="margin-top:10px"><div id="ytm"></div></div>
+      <button class="btn" id="mAdd">이 문제 담기</button>
+      <p class="hint" id="mList"></p>
+      <button class="btn pink" id="mDone" disabled>퀴즈 링크 만들기</button>
+    </div>
+    <div class="card">
+      <h2>꼭 지켜 주세요</h2>
+      <ul class="rules">
+        <li>영상을 내려받거나 잘라 올리지 않아요. 유튜브에 올라온 영상을 그대로 보여 줘요.</li>
+        <li>사람을 놀리거나 깎아내리는 질문, 사생활·성적인 내용, 아이가 나오는 영상은 안 돼요.</li>
+        <li>퍼가기를 막아 둔 영상은 재생되지 않아요.</li>
+        <li>퀴즈는 링크 안에만 담겨요. 이 사이트에 저장되지 않아요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="foot">영상 저작권은 각 채널과 권리자에게 있어요. 하루퍼즐은 유튜브 공식 플레이어로 연결만 해요.<br><button id="report">이 퀴즈 신고하기</button></p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+'use strict';
+/* 신고로 막은 영상 ID(운영팀이 더함) */
+const BLOCK = [];
+const KIND = {
+  star:{ q:'10초 안에 나온 이 사람은 누구일까?', ph:['정답 이름', '다른 이름', '다른 이름', '다른 이름'] },
+  song:{ q:'이 영상에 나온 노래 제목은?', ph:['정답 제목', '다른 제목', '다른 제목', '다른 제목'] },
+  dance:{ q:'이 춤은 무슨 노래의 춤일까?', ph:['정답 노래', '다른 노래', '다른 노래', '다른 노래'] },
+  free:{ q:'', ph:['보기 1', '보기 2', '보기 3', '보기 4'] }
+};
+const CLIP = 10, MAXQ = 5, REPORT = 'https://github.com/hyukcap-rgb/game/issues/new';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+function toast(t){ const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 2400); }
+function vidOf(u){
+  u = String(u || '').trim();
+  const m = u.match(/(?:youtube\.com\/(?:shorts\/|watch\?(?:.*&)?v=|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(u) ? u : '');
+}
+const b64e = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
+
+/* ---------- 유튜브 공식 플레이어 ---------- */
+let ytReady = null;
+function loadYT(){
+  if(ytReady) return ytReady;
+  ytReady = new Promise(res => { window.onYouTubeIframeAPIReady = () => res(window.YT); const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s); });
+  return ytReady;
+}
+function makePlayer(hostId, vid, start, onState, onErr){
+  return loadYT().then(YT => new Promise(res => {
+    const p = new YT.Player(hostId, { host:'https://www.youtube-nocookie.com', videoId:vid,
+      playerVars:{ start, end:start + CLIP, playsinline:1, rel:0, modestbranding:1, controls:1 },
+      events:{ onReady:() => res(p), onStateChange:e => onState && onState(e.data, p), onError:e => onErr && onErr(e.data) } });
+  }));
+}
+
+/* ---------- 만들기 ---------- */
+let kind = 'star', items = [], mPlayer = null;
+function drawOpts(){
+  const ph = KIND[kind].ph, old = [...document.querySelectorAll('#mOpts input[type=text]')].map(x => x.value);
+  $('mOpts').innerHTML = ph.map((p, i) => `<div class="opt"><input type="radio" name="ans" value="${i}" ${i === 0 ? 'checked' : ''} aria-label="${i + 1}번이 정답"><input type="text" maxlength="24" placeholder="${p}" value="${esc(old[i] || '')}" aria-label="보기 ${i + 1}"></div>`).join('');
+  if(!$('mQ').value || Object.values(KIND).some(k => k.q === $('mQ').value)) $('mQ').value = KIND[kind].q;
+}
+$('kinds').onclick = e => { const b = e.target.closest('button'); if(!b) return; kind = b.dataset.k; document.querySelectorAll('#kinds button').forEach(x => x.classList.toggle('on', x === b)); drawOpts(); };
+function readForm(){
+  const v = vidOf($('mUrl').value);
+  if(!v) return toast('유튜브 주소를 확인해 주세요'), null;
+  const ch = [...document.querySelectorAll('#mOpts input[type=text]')].map(x => x.value.trim());
+  if(ch.some(x => !x)) return toast('보기 4개를 모두 적어 주세요'), null;
+  if(new Set(ch).size < 4) return toast('보기가 서로 달라야 해요'), null;
+  const q = $('mQ').value.trim(); if(!q) return toast('질문을 적어 주세요'), null;
+  const a = +document.querySelector('#mOpts input[name=ans]:checked').value;
+  return { v, s:Math.max(0, Math.min(3600, Math.floor(+$('mStart').value || 0))), h:$('mShape').value === 'h' ? 1 : 0, q, c:ch, a };
+}
+$('mPrev').onclick = () => {
+  const v = vidOf($('mUrl').value); if(!v) return toast('유튜브 주소를 확인해 주세요');
+  const box = $('mBox'); box.classList.remove('hide'); box.classList.toggle('wide', $('mShape').value === 'h');
+  if(mPlayer){ try{ mPlayer.destroy(); }catch(_){} } box.innerHTML = '<div id="ytm"></div>';
+  makePlayer('ytm', v, Math.floor(+$('mStart').value || 0), null, () => toast('이 영상은 퍼가기가 막혀 있어서 쓸 수 없어요')).then(p => mPlayer = p);
+};
+$('mAdd').onclick = () => {
+  const it = readForm(); if(!it) return;
+  if(items.length >= MAXQ) return toast(`한 퀴즈에 ${MAXQ}문제까지예요`);
+  items.push(it); toast(`문제 ${items.length} 담았어요`);
+  $('mUrl').value = ''; $('mStart').value = 0; document.querySelectorAll('#mOpts input[type=text]').forEach(x => x.value = '');
+  $('mT').textContent = `문제 ${items.length + 1} 만들기`;
+  $('mList').textContent = items.map((x, i) => `${i + 1}. ${x.q} → ${x.c[x.a]}`).join('\n');
+  $('mList').style.whiteSpace = 'pre-line';
+  $('mDone').disabled = false;
+};
+$('mDone').onclick = async () => {
+  if(!items.length) return;
+  const url = location.origin + location.pathname + '#q=' + b64e({ t:kind, i:items });
+  const text = `10초 보고 맞혀 봐! 내가 낸 퀴즈 ${items.length}문제`;
+  try{ if(navigator.share){ await navigator.share({ title:'10초 퀴즈', text, url }); return; } }catch(_){ }
+  try{ await navigator.clipboard.writeText(text + '\n' + url); toast('링크를 복사했어요. 친구에게 붙여 넣어 보내요'); }catch(_){ prompt('이 링크를 복사해 보내요', url); }
+};
+
+/* ---------- 풀기 ---------- */
+let Q = null, qi = 0, ok = 0, pPlayer = null, watched = false, tick = null;
+function startPlay(data){
+  Q = (data.i || []).filter(x => x && vidOf(x.v) && !BLOCK.includes(x.v) && Array.isArray(x.c) && x.c.length === 4).slice(0, MAXQ);
+  if(!Q.length){ toast('열 수 없는 퀴즈예요'); return; }
+  $('make').classList.add('hide'); $('play').classList.remove('hide');
+  qi = 0; ok = 0; showQ();
+}
+function showQ(){
+  const it = Q[qi]; watched = false;
+  $('pNo').textContent = `문제 ${qi + 1} / ${Q.length}`;
+  $('pQ').textContent = it.q; $('pRes').textContent = ''; $('pRes').className = 'res'; $('pNext').classList.add('hide');
+  $('pCh').className = 'ch wait'; $('pCh').innerHTML = it.c.map((t, i) => `<button data-i="${i}" disabled>${esc(t)}</button>`).join('');
+  $('pBar').style.width = '0'; $('pSec').textContent = CLIP + '초'; $('pGo').classList.remove('hide'); $('pGo').disabled = false;
+  const box = $('pBox'); box.classList.toggle('wide', !!it.h);
+  if(pPlayer){ try{ pPlayer.destroy(); }catch(_){} pPlayer = null; } box.innerHTML = '<div id="yt"></div>';
+  makePlayer('yt', it.v, it.s, st => { if(st === 1) runClock(it); if(st === 0) endClip(); }, () => { toast('이 영상은 재생할 수 없어서 넘어가요'); openAnswers(); })
+    .then(p => pPlayer = p);
+}
+function runClock(it){
+  if(tick) return; const t0 = Date.now();
+  tick = setInterval(() => {
+    let e = 0; try{ e = pPlayer.getCurrentTime() - it.s; }catch(_){ e = (Date.now() - t0) / 1000; }
+    e = Math.max(0, Math.min(CLIP, e));
+    $('pBar').style.width = (e / CLIP * 100) + '%'; $('pSec').textContent = Math.ceil(CLIP - e) + '초';
+    if(e >= CLIP - .15) endClip();
+  }, 200);
+}
+function endClip(){ clearInterval(tick); tick = null; try{ pPlayer.pauseVideo(); }catch(_){} openAnswers(); }
+function openAnswers(){
+  if(watched) return; watched = true;
+  $('pGo').classList.add('hide'); $('pCh').className = 'ch';
+  $('pCh').querySelectorAll('button').forEach(b => { b.disabled = false; b.onclick = () => answer(+b.dataset.i); });
+}
+$('pGo').onclick = () => { if(pPlayer){ try{ pPlayer.seekTo(Q[qi].s, true); pPlayer.playVideo(); }catch(_){} } $('pGo').disabled = true; setTimeout(() => { if(!watched && !tick) $('pGo').disabled = false; }, 2500); };
+function answer(i){
+  const it = Q[qi], good = i === it.a; if(good) ok++;
+  $('pCh').querySelectorAll('button').forEach((b, k) => { b.disabled = true; if(k === it.a) b.classList.add('ans'); else if(k === i) b.classList.add('no'); });
+  $('pRes').textContent = good ? '정답!' : '아쉬워요 · 정답: ' + it.c[it.a]; $('pRes').className = 'res ' + (good ? 'good' : 'bad');
+  if(qi + 1 < Q.length){ $('pNext').classList.remove('hide'); } else finishPlay();
+}
+$('pNext').onclick = () => { qi++; showQ(); };
+function finishPlay(){
+  $('pEnd').classList.remove('hide');
+  $('pEndT').textContent = `${Q.length}문제 중 ${ok}문제 정답! ${ok === Q.length ? '눈썰미 최고예요' : ok * 2 >= Q.length ? '꽤 잘 봤어요' : '다시 보면 보여요'}`;
+  $('pEnd').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+$('pShare').onclick = async () => {
+  const text = `10초 퀴즈 ${Q.length}문제 중 ${ok}개 맞혔어! 너도 맞혀 봐`, url = location.href;
+  try{ if(navigator.share){ await navigator.share({ title:'10초 퀴즈', text, url }); return; } }catch(_){ }
+  try{ await navigator.clipboard.writeText(text + '\n' + url); toast('복사했어요'); }catch(_){ }
+};
+$('pMake').onclick = () => { history.replaceState(null, '', location.pathname); $('play').classList.add('hide'); $('make').classList.remove('hide'); scrollTo(0, 0); };
+$('report').onclick = () => {
+  const ids = (Q || []).map(x => x.v).join(', ');
+  open(`${REPORT}?title=${encodeURIComponent('[10초 퀴즈 신고] 영상 ' + ids)}&body=${encodeURIComponent('신고 이유:\n\n영상 ID: ' + ids)}`, '_blank', 'noopener');
+};
+
+drawOpts();
+const h = location.hash.match(/q=([A-Za-z0-9_-]+)/);
+if(h){ try{ startPlay(b64d(h[1])); }catch(_){ toast('퀴즈 링크가 깨졌어요'); } }
+</script>
+</body>
+</html>
