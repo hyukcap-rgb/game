@@ -612,6 +612,19 @@ NG.merge = (() => {
     const u = document.getElementById('mUndo'); if(u) fxPop(u);
     hud();
   }
+  /* 이동 수 말풍선: 칩 줄·다음 타일 줄 바로 아래에 판 폭 그대로(화면 끝에서 16px 안, 다음 타일 미리 보기를 가리지 않음). 보이기만 함 */
+  function movesBubble(M, text){
+    try{
+      const w = M.wrap, e = document.getElementById('mMoves'); if(!w || !e) return;
+      const above = w.querySelector('.mpeek') || w.querySelector('.mchips') || w.querySelector('.mhud'); if(!above) return;
+      const wr = w.getBoundingClientRect(), ar = above.getBoundingClientRect(), cr = e.closest('.hchip').getBoundingClientRect();
+      const d = document.createElement('div'); d.className = 'mbub'; d.textContent = text; d.setAttribute('aria-hidden', 'true');
+      d.style.top = Math.round(ar.bottom - wr.top + 8) + 'px';
+      d.style.setProperty('--ax', Math.round(cr.left + cr.width / 2 - wr.left) + 'px');
+      w.appendChild(d);
+      later(() => d.classList.add('out'), 1800); later(() => d.remove(), 2200);
+    }catch(_){}
+  }
   /* 판 아래 한 줄 안내: 새 규칙/변주 판이면 그 설명, 아니면 이번 판 목표 문장 */
   function tipHTML(M){
     const c = M.cfg, bits = [];
@@ -781,7 +794,7 @@ NG.merge = (() => {
         const s = M.layer.querySelector('.stone'), l = M.layer.querySelector('.mt.lk'), ic = M.layer.querySelector('.mt.ice'), sb = M.starEl[0];
         if(ic) fxBubble(ic, '옆에서 두 번 합치면 깨져요'); else if(sb) fxBubble(sb, `별 칸에 ${c.starV} 이상을 올려요`);
         else if(l) fxBubble(l, '같은 숫자로 부딪히면 풀려요'); else if(s) fxBubble(s, '돌 칸: 움직이지 않아요');
-        else if(M.mv){ const e = document.getElementById('mMoves'); if(e) fxBubble(e.closest('.hchip'), M.mv + '번 안에 만들어요'); }
+        else if(M.mv) movesBubble(M, M.mv + '번 안에 만들어요');
       }, 700);
     },
     progress(){
@@ -816,7 +829,11 @@ body[data-mode="merge"]{background:
   radial-gradient(70% 45% at 100% 100%, rgba(80,40,200,.55) 0%, rgba(80,40,200,0) 70%),
   linear-gradient(170deg,#FF9A5C 0%, #F0568F 42%, #8B3FD0 78%, #4A2398 100%) fixed}
 .ng-merge{--gap:8px; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none; color:#fff; padding-bottom:6px}
-.ng-merge{display:flex; flex-direction:column}
+.ng-merge{display:flex; flex-direction:column; position:relative}
+.ng-merge .mbub{position:absolute; left:0; right:0; z-index:12; pointer-events:none; padding:8px 12px; border-radius:12px; background:#2A1650; border:2px solid #FFE27A; color:#fff; font-size:14px; font-weight:700; line-height:1.35; text-align:center; white-space:normal; box-shadow:0 6px 16px rgba(0,0,0,.25); animation:merge_bubin .25s cubic-bezier(.2,1.5,.5,1)}
+.ng-merge .mbub::after{content:""; position:absolute; bottom:100%; left:calc(var(--ax) - 9px); border:8px solid transparent; border-bottom-color:#FFE27A}
+.ng-merge .mbub.out{opacity:0; transition:opacity .35s}
+@keyframes merge_bubin{0%{opacity:0; transform:translateY(-6px)} 100%{opacity:1; transform:none}}
 /* 위 칩 줄(UI팀): 목표 · 지금 · (얼음·별·시간) · 이동 */
 .ng-merge .mhud{margin:0; color:#3A2261}
 .ng-merge .mhud .hchip{height:auto; min-height:56px; padding:4px 6px}

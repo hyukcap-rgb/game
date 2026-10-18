@@ -23,8 +23,9 @@
 .sb .tool.item.it-lift{background:linear-gradient(180deg,#DDF6D5,#93D58A); color:#174A12}
 .sb .tool.sb-ff{background:#FFFFFF; color:#1A0F45}
 .sb .tool.sb-ff[aria-pressed="true"]{background:linear-gradient(180deg,#A98BFF,#6C3CE0); color:#fff}
-.sb .tool.item .cnt{font-size:13px; background:#1A0F45}
-.sb-it span, .sb-ff span{white-space:nowrap}
+.sb .tool.item .cnt{font-size:13px; background:#1A0F45; top:3px; right:3px; min-width:20px; height:20px; line-height:16px; padding:0 4px; border:2px solid #FFFFFF}   /* 개수 배지는 버튼 안 오른쪽 위에(모서리를 물지 않게) */
+.sb-it span, .sb-ff span{white-space:nowrap; font-size:13px}
+.sb-it svg{margin-right:14px}
 .sb-ff b{font-family:var(--heavy); font-weight:400}
 .sb-it.on{box-shadow:0 0 0 3px #FFFFFF, 0 0 0 6px #1A0F45; transform:translateY(1px)}
 .sb-aim{display:grid; grid-template-columns:64px 1fr 64px; gap:8px}

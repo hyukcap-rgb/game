@@ -425,14 +425,14 @@ NG.hidden = (() => {
     T_(() => finish(false), 1500);
   }
 
-  /* 첫 판 안내: 돋보기 단추 옆 말풍선(한 번 확대하거나 5초 지나면 사라짐, 이 기기에서 3판까지) */
+  /* 첫 판 안내: 돋보기 단추 옆 말풍선(한 번 확대하거나 3초 지나면 사라짐, 이 기기에서 3판까지) */
   function zoomTipOff(){ const t = $('#hdZtip'); if(t){ t.classList.add('off'); setTimeout(() => { try{ t.remove(); }catch(_){} }, 300); } try{ store.set('hp:hidden:ztip', 9); }catch(_){} }
   function zoomTip(){
     try{
       const m = S(), n = +store.get('hp:hidden:ztip', 0) || 0; if(m.night || n >= 3 || !$('#hdWrap')) return;
       store.set('hp:hidden:ztip', n + 1);
       const t = document.createElement('div'); t.id = 'hdZtip'; t.className = 'hd-ztip'; t.innerHTML = '돋보기로<br>크게 볼 수 있어요'; t.setAttribute('aria-hidden', 'true');
-      $('#hdWrap').appendChild(t); T_(() => zoomTipOff(), 5000);
+      $('#hdWrap').appendChild(t); T_(() => zoomTipOff(), 3000);
     }catch(_){}
   }
   function layout(){
@@ -706,10 +706,11 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-zlv{position:absolute; right:12px; bottom:136px; min-width:44px; padding:3px 7px; border-radius:99px; background:rgba(26,15,69,.82); color:#fff; font-family:var(--heavy); font-size:14px; line-height:1.15; text-align:center; pointer-events:none; font-variant-numeric:tabular-nums}
 .ng-hidden .hd-zlv[hidden]{display:none}
 .ng-hidden .hd-img{image-rendering:auto}
-.ng-hidden .hd-zoom button{width:56px; height:56px; padding:9px; border-radius:50%; border:2.5px solid #1A0F45; background:rgba(255,255,255,.92); box-shadow:0 3px 0 #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.ng-hidden .hd-zoom button{width:56px; height:56px; padding:9px; border-radius:50%; border:2.5px solid #1A0F45; background:#FFFFFF; box-shadow:0 3px 0 #1A0F45; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .ng-hidden .hd-zoom button svg{width:100%; height:100%; display:block}
 .ng-hidden .hd-zoom button:active{transform:translateY(2px); box-shadow:0 1px 0 #1A0F45}
-.ng-hidden .hd-zoom button:disabled{opacity:.4; cursor:default}
+.ng-hidden .hd-zoom button:disabled{opacity:1; background:#E4DEF2; border-color:#1A0F45; cursor:default}   /* 그림 위에서도 단추가 보이게: 투명하게 하지 않고 회보라 바탕 + 아이콘만 흐리게 */
+.ng-hidden .hd-zoom button:disabled svg{opacity:.45}
 .ng-hidden .hd-ztip{position:absolute; right:74px; bottom:76px; padding:7px 11px; border-radius:12px; background:#1A0F45; color:#fff; font-family:var(--disp); font-size:14px; line-height:1.25; text-align:center; pointer-events:none; box-shadow:0 3px 0 rgba(0,0,0,.2); animation:hidden-in .35s cubic-bezier(.2,1.5,.4,1); transition:opacity .3s}
 .ng-hidden .hd-ztip::after{content:''; position:absolute; right:-7px; top:50%; margin-top:-7px; border:7px solid transparent; border-right:0; border-left-color:#1A0F45}
 .ng-hidden .hd-ztip.off{opacity:0}
@@ -724,12 +725,12 @@ body[data-mode="hidden"]{background:
 .ng-hidden .hd-list{display:flex; gap:6px; width:100%; margin:4px 0 0; padding:9px 2px 6px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity}
 .ng-hidden .hd-list::-webkit-scrollbar{display:none}
 .ng-hidden .hd-list.more{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent); mask-image:linear-gradient(90deg,#000 82%,transparent)}
-.ng-hidden .hd-chip{position:relative; flex:0 0 74px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height:72px; padding:2px 1px 3px; border-radius:12px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0; scroll-snap-align:start}
+.ng-hidden .hd-chip{position:relative; flex:0 0 76px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height:82px; padding:3px 1px 3px; border-radius:12px; background:#fff; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45; min-width:0; scroll-snap-align:start}
 .ng-hidden .hd-ci{width:38px; height:38px; flex:none; display:block}
 .ng-hidden .hd-ph{display:block; width:100%; height:100%; border-radius:8px; background-size:400% 300%; background-repeat:no-repeat; background-color:#fff; box-shadow:0 0 0 1.5px #1A0F45}
 .ng-hidden .hd-ph.sh{filter:brightness(0) opacity(.72)}
 .ng-hidden .hd-ci svg{width:100%; height:100%; display:block; overflow:visible}
-.ng-hidden .hd-cn{max-width:100%; font-family:var(--disp); font-size:12px; line-height:1.1; color:#4A2A10; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.6px; padding:0 2px}
+.ng-hidden .hd-cn{max-width:100%; font-family:var(--disp); font-size:13px; line-height:1.12; color:#4A2A10; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; text-align:center; letter-spacing:-.5px; padding:0 2px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden}   /* 13px · 두 줄까지(말줄임 없이 낱말 단위로 줄바꿈) */
 .ng-hidden .hd-chip em{position:absolute; top:-8px; right:-3px; font-style:normal; font-family:var(--heavy); font-size:13px; line-height:1; padding:3px 5px; border-radius:99px; background:#F08A24; color:#fff; border:2px solid #1A0F45}
 .ng-hidden .hd-chip em.ok{background:#2BB673}
 .ng-hidden .hd-chip.done{background:#E3FAEC}
