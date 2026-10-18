@@ -696,8 +696,8 @@ NG.chosung = (() => {
         <div class="hud-row">
           <div class="hchip" aria-label="문제"><span class="hv">${ICO.q}<b id="csNo">1</b><small>/${m.q}</small></span><em>문제</em></div>
           <div class="hchip time" id="csTimeP" aria-label="남은 시간"><span class="hv">${ICO.clock}<b id="csTime">${mmss(m.bz ? m.bz.qt : G.limit)}</b></span><em>남은 시간</em></div>
-          ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b></span><em><span class="cs-hl">힌트</span><i class="cs-cost">−15</i></em></button>
-          <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b></span><em>넘기기<i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></em></button>`}
+          ${m.bz ? `<div class="hchip mine" aria-label="내가 맞힌 문제"><span class="hv">${ICO.bell}<b id="csMine">0</b></span><em>내가 맞힘</em></div>` : `<button class="hchip item" id="csHint" aria-label="힌트: 한 글자 열기, 점수 15점 깎임"><span class="hv">${ICO.hint}<b>${m.hintLeft}</b><i class="cs-cost">−15</i></span><em><span class="cs-hl">힌트</span></em></button>
+          <button class="hchip skip" id="csSkip" aria-label="건너뛰기: 그 문제는 0점"><span class="hv">${ICO.skip}<b>${m.skipLeft}</b><i class="cs-cost">−${Math.round(600 / Math.max(1, m.q))}</i></span><em>넘기기</em></button>`}
         </div>
         ${G.adv && (m.mj.length || m.tw || m.boss) ? `<div class="cs-rules" aria-label="켜진 규칙">${m.boss ? '<span class="cs-chip boss">대장 판</span>' : ''}${m.mj.map(k => `<span class="cs-chip mj">${CONC.info[k].name}</span>`).join('')}${m.tw ? `<span class="cs-chip tw">${CONC.twInfo[m.tw].name}</span>` : ''}</div>` : ''}
         <div class="cs-barw" id="csBarW"><i id="csBar"></i></div>
@@ -738,7 +738,12 @@ body[data-mode="chosung"]{background:
 .ng-chosung .hud-row{margin:0}
 .ng-chosung .hchip em{font-size:13px}
 .ng-chosung .hchip em{display:flex; align-items:center; gap:3px}
-.ng-chosung .cs-cost{font-style:normal; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:1; padding:1px 4px 0; border-radius:6px; background:#E5484D; color:#fff}
+/* 감점 꼬리표는 숫자 옆(위 줄)에: 이름표와 붙지 않고 칩 가장자리에서 떨어지게. 흰 글자 대비 4.5 이상(#C42B30) */
+.ng-chosung .hchip.item, .ng-chosung .hchip.skip{flex:1.2 1 0; padding:0 6px}
+.ng-chosung .hchip.time{flex:1 1 0}
+.ng-chosung .hchip .hv{gap:4px}
+.ng-chosung .hchip:is(.item,.skip) .hv svg{width:16px; height:16px}
+.ng-chosung .cs-cost{flex:none; font-style:normal; font-family:var(--heavy); font-weight:400; font-size:13px; line-height:1; padding:2px 5px 1px; margin-left:2px; border-radius:7px; background:#C42B30; color:#fff; letter-spacing:0}
 .ng-chosung .cs-boom{position:fixed; inset:0; z-index:40; display:grid; place-items:center; pointer-events:none}
 .ng-chosung .cs-boom b{font-family:var(--heavy); font-weight:400; font-size:var(--fs); line-height:1.1; color:#FFE27A; -webkit-text-stroke:calc(var(--fs) * .1) #1A0F45; paint-order:stroke fill; letter-spacing:2px; white-space:nowrap;
   text-shadow:0 6px 0 #1A0F45, 0 0 40px rgba(255,226,122,.9); animation:chosung-boom 1s cubic-bezier(.2,1.4,.4,1) both}
@@ -775,7 +780,7 @@ body[data-mode="chosung"]{background:
 @keyframes chosung-in{from{transform:translateX(26px) scale(.96); opacity:0}}
 .ng-chosung .cs-top{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; position:relative}
 .ng-chosung .cs-cat{font-family:var(--heavy); font-weight:400; font-size:19px; line-height:1; padding:7px 14px 6px; border-radius:99px; border:2.5px solid #1A0F45; color:#fff; background:var(--cc,#7B5CE6); box-shadow:0 3px 0 #1A0F45; -webkit-text-stroke:4px #1A0F45; paint-order:stroke fill; letter-spacing:.5px; white-space:nowrap}
-.ng-chosung .cs-cat small{display:block; font-family:var(--disp); font-size:11px; line-height:1; letter-spacing:1px; -webkit-text-stroke:0; color:#fff; opacity:.95; margin:0 0 3px; text-shadow:0 1px 0 #1A0F45}
+.ng-chosung .cs-cat small{display:block; font-family:var(--disp); font-size:13px; line-height:1; letter-spacing:1px; -webkit-text-stroke:0; color:#fff; margin:0 0 3px; text-shadow:0 1px 0 #1A0F45, 0 -1px 0 #1A0F45, 1px 0 0 #1A0F45, -1px 0 0 #1A0F45}   /* 어떤 주제 색 위에서도 읽히게 진한 테두리 */
 .ng-chosung .cs-cat:has(small){font-size:24px; padding:6px 18px 7px; text-align:center}
 .ng-chosung .cs-gl{display:flex; align-items:flex-start; gap:7px; width:100%; max-width:330px; margin:-2px 0 0; padding:8px 11px; border-radius:14px; background:#FFF7D6; border:2px solid #1A0F45; box-shadow:0 2px 0 #1A0F45;
   font-family:var(--disp); font-size:16px; line-height:1.35; color:#2E1F7A; text-align:left; word-break:keep-all}
@@ -786,7 +791,7 @@ body[data-mode="chosung"]{background:
 .ng-chosung .cs-cat.hide{background:repeating-linear-gradient(135deg,#3E2A9A 0 8px,#5B44C4 8px 16px); font-size:16px}
 .ng-chosung .cs-cat.ok{background:#2BB673}
 .ng-chosung .cs-cat.sk{background:#8E8AA6}
-.ng-chosung .cs-len{position:absolute; right:2px; font-family:var(--disp); font-size:13px; color:#7A6CB0}
+.ng-chosung .cs-len{position:absolute; right:2px; font-family:var(--disp); font-size:14px; color:#4E3F94}
 .ng-chosung .cs-tiles{display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; max-width:100%}
 .ng-chosung .cs-wd{display:flex; gap:5px; flex-wrap:nowrap}
 .ng-chosung .cs-t{width:var(--ts); height:calc(var(--ts) * 1.08); display:grid; place-items:center; border-radius:calc(var(--ts) * .24); border:3px solid #1A0F45;

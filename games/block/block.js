@@ -367,7 +367,7 @@ NG.block = (function(){
     st.innerHTML = `<div class="ng-block">
       <div class="hud-row bk-hud">
         <div class="hchip bk-goal" aria-live="polite"><div class="bk-gt${multi ? ' gm' : ''}">${gHtml}</div>
-          <div class="hbar bk-bar"><i id="bkFill"></i></div><em id="bkLbl">${multi ? '모을 목표' : '지운 줄 0/' + s.target}</em></div>
+          <div class="hbar bk-bar"><i id="bkFill"></i></div><em id="bkLbl">${multi ? '모을 목표' : '지운 줄'}</em></div>
         ${G.duel && G.limit ? `<div class="hchip time" id="bkRemP"><span class="hv"><b id="bkRem">${mmss(G.limit)}</b></span><em>남은 시간</em></div>` : '<div class="hchip time"><span class="hv"><b id="sclock">00:00</b></span><em>걸린 시간</em></div>'}
         <div class="hchip bk-pts"><span class="hv"><b id="bkPts">0</b></span><em>점수</em></div>
       </div>
@@ -523,7 +523,7 @@ NG.block = (function(){
     const s = S(), set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
     const gl = goals(s);
     set('bkLines', Math.min(s.lines, s.target)); set('bkPts', fmt(s.pts));
-    if(gl.length === 1 && gl[0].k === 'lines') set('bkLbl', '지운 줄 ' + Math.min(s.lines, s.target) + '/' + s.target);
+    /* 줄 목표는 위 숫자(0/20)가 이미 보여 줌 → 이름표는 '지운 줄'만(같은 숫자를 두 번 쓰지 않음) */
     gl.forEach(o => set('bkG_' + o.k, o.have));
     const f = document.getElementById('bkFill'); if(f) f.style.width = Math.min(100, progressOf(s) * 100) + '%';
   }
@@ -857,7 +857,8 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-goal em{font-size:13px; color:#4A3A6E}
 .ng-block .hchip.time.hurry{background:linear-gradient(180deg,#FFE3E4,#FFB3B6)} .ng-block .hchip.time.hurry b{color:#E5484D}
 .ng-block .bk-bar i{transition:width .35s cubic-bezier(.3,1.3,.5,1)}
-.ng-block .bk-board{position:relative; width:max-content; margin:auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #B4A8FF;
+/* 판·조각 받침은 움직이는 배경(.bgscene, z-index 0) 위에 불투명하게 → 배경 도형이 테두리를 넘어 보이지 않음 */
+.ng-block .bk-board{position:relative; z-index:1; width:max-content; margin:auto; padding:7px; border-radius:18px; background:linear-gradient(180deg,#30277E,#1C1650); border:3px solid #B4A8FF;
   box-shadow:0 0 0 2.5px #1A0F45, inset 0 2px 0 rgba(255,255,255,.25), 0 5px 0 2px #0B0628, 0 14px 26px rgba(4,0,20,.45), 0 0 18px rgba(160,140,255,.35); touch-action:none}
 .ng-block .bk-board canvas{display:block; touch-action:none}
 .ng-block .bk-msg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; white-space:nowrap; padding:12px 22px; border-radius:18px; font-family:var(--disp); font-size:22px;
@@ -869,7 +870,7 @@ body[data-mode="block"]{background:radial-gradient(120% 60% at 50% 0%, #4B2FB8 0
 .ng-block .bk-multi.m3{color:#FF9BD0; font-size:50px}
 .ng-block .bk-multi.m4, .ng-block .bk-multi.m5{color:#8CFFC1; font-size:54px}
 @keyframes bkMulti{0%{transform:translate(-50%,-50%) scale(.3) rotate(-8deg); opacity:0}25%{transform:translate(-50%,-50%) scale(1.12) rotate(-4deg); opacity:1}70%{transform:translate(-50%,-58%) scale(1) rotate(-4deg); opacity:1}100%{transform:translate(-50%,-80%) scale(.95) rotate(-4deg); opacity:0}}
-.ng-block .bk-tray{display:grid; grid-template-columns:repeat(3,1fr); margin:0 0 4px; overflow:clip; border-radius:20px; background:rgba(8,4,30,.35); border:2px solid #8274DA; box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
+.ng-block .bk-tray{position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); margin:0 0 4px; overflow:clip; border-radius:20px; background:#150D45; border:2px solid #8274DA; box-shadow:inset 0 3px 8px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.08); touch-action:none}
 .ng-block .bk-slot{position:relative; display:flex; align-items:center; justify-content:center; min-height:44px; padding-bottom:10px; cursor:grab; touch-action:none}
 .ng-block .bk-slot + .bk-slot::before{content:""; position:absolute; left:0; top:14%; bottom:14%; width:1.5px; background:rgba(180,168,255,.55)}
 /* 누르고 놓기: 고른 조각 */

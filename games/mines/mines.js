@@ -252,7 +252,7 @@ NG.mines = (() => {
 
   function layout(){
     const m = S(), bd = $('#bd'), root = document.querySelector('.ng-mines'); if(!bd || !root) return;
-    const W = Math.min((root.clientWidth || 360) + 16, 480);   /* 판은 양옆 여백을 8px씩 더 쓴다(.mn-board 음수 여백) */
+    const W = Math.min(root.clientWidth || 360, 480);   /* 판 양옆 여백은 다른 화면처럼 16px(음수 여백 없음) */
     const top = bd.getBoundingClientRect().top + (window.scrollY || 0);
     const H = Math.max(300, (innerHeight || 740) - top - 96);   /* 아래 열기·깃발 단추 자리 */
     const gap = 2, pad = 5;
@@ -608,7 +608,8 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-barw i{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(180deg,#FFD27A,#F08A24); box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
 .ng-mines .mn-barw.hurry i{background:linear-gradient(180deg,#FF9A9E,#E5484D)}
 .ng-mines .mn-row{display:flex; align-items:center; gap:8px; width:100%; height:38px}
-.ng-mines .hlives{flex:none}
+.ng-mines .hlives{flex:none; line-height:1}
+.ng-mines .hlives i{display:block; line-height:17px; height:17px}   /* '기회' 글자와 별의 세로 가운데를 맞춤 */
 .ng-mines .hlives i.lost{animation:mines-lost .5s ease-out}
 .ng-mines .hlives.last{background:#FFE3E3; animation:mines-last 1s ease-in-out infinite alternate}
 @keyframes mines-lost{0%{transform:scale(1.5); color:#FF4D6D} 100%{transform:none}}
@@ -620,7 +621,7 @@ body[data-mode="mines"]{background:
 .ng-mines .mn-msg.mn-pop, .ng-mines .mn-msg.mn-win{animation:mines-in .35s cubic-bezier(.2,1.5,.4,1)}
 .ng-mines .mn-msg.mn-win b{font-size:22px; color:#FFE27A}
 @keyframes mines-in{from{transform:scale(.6); opacity:0}}
-.ng-mines .mn-board{position:relative; display:grid; width:max-content; margin:auto -8px; max-width:calc(100% + 16px); gap:var(--gap); padding:var(--pad); border-radius:18px; justify-content:center;
+.ng-mines .mn-board{position:relative; display:grid; width:max-content; margin:auto 0; max-width:100%; gap:var(--gap); padding:var(--pad); border-radius:18px; justify-content:center;
   background:linear-gradient(180deg,#6B4425,#553319); border:3px solid #1A0F45;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.18), 0 5px 0 #1A0F45, 0 14px 22px rgba(120,60,10,.25); touch-action:none}
 .ng-mines .mn-board.in .mn-cell{animation:mines-deal .4s cubic-bezier(.2,1.5,.4,1) both}

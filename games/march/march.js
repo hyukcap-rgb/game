@@ -1121,7 +1121,8 @@ NG.march = (() => {
     const cv = S.root.querySelector('.mc-cv'), ctx = cv.getContext('2d');
     const size = () => {
       const top = S.root.getBoundingClientRect().top + (window.scrollY || 0);
-      const h = Math.max(440, window.innerHeight - top - 6);
+      let mb = 16; try{ mb = parseFloat(getComputedStyle(S.root).marginBottom) || 16; }catch(_){}   /* 아래 여백(안전 영역 포함, CSS margin-bottom) */
+      const h = Math.max(440, window.innerHeight - top - mb);
       S.root.style.height = h + 'px';
       S.DPR = Math.min(S.dprCap || 2, window.devicePixelRatio || 1); S.W = S.root.clientWidth; S.H = h;
       cv.width = Math.round(S.W * S.DPR); cv.height = Math.round(S.H * S.DPR);
@@ -1176,7 +1177,7 @@ NG.march = (() => {
 
   /* ---------- 스타일(게임 톤: 남색 판 + 금색 글자, 파랑=나 · 빨강=적) ---------- */
   const css = `
-.mcw{position:relative; width:100%; min-height:440px; border-radius:22px; overflow:hidden; background:#3b8fe0; touch-action:none; user-select:none; -webkit-user-select:none; --mc-ink:#16233d; --mc-gold:#ffc83d; --mc-blue:#2f7be8; --mc-red:#e2403a}
+.mcw{position:relative; width:100%; min-height:440px; margin-bottom:max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px)); border-radius:22px; overflow:hidden; background:#3b8fe0; touch-action:none; user-select:none; -webkit-user-select:none; --mc-ink:#16233d; --mc-gold:#ffc83d; --mc-blue:#2f7be8; --mc-red:#e2403a}
 .mcw [hidden]{display:none!important}
 .mcw .mc-cv{position:absolute; inset:0; width:100%; height:100%; display:block}
 .mcw .mc-top{position:absolute; left:10px; right:10px; top:10px; display:flex; gap:8px; align-items:stretch; pointer-events:none}
@@ -1190,7 +1191,7 @@ NG.march = (() => {
 .mcw .mc-n{font-family:var(--heavy); font-weight:400; font-size:26px; color:var(--mc-gold); text-shadow:0 2px 0 #7a4b00; font-variant-numeric:tabular-nums; display:inline-block}
 .mcw .mc-n.pop{animation:mcPop .28s ease-out}
 @keyframes mcPop{0%{transform:scale(1.35)} 100%{transform:scale(1)}}
-.mcw .mc-road{position:relative; flex:1; align-self:center; height:16px; border-radius:99px; background:#d9c08f; box-shadow:inset 0 2px 0 rgba(0,0,0,.18), 0 0 0 2px #fff6, 0 3px 0 rgba(22,35,61,.35); margin-right:34px}
+.mcw .mc-road{position:relative; flex:1; align-self:center; height:16px; border-radius:99px; background:#d9c08f; box-shadow:inset 0 2px 0 rgba(0,0,0,.18), 0 0 0 2px #fff6, 0 3px 0 rgba(22,35,61,.35); margin-right:50px}
 .mcw .mc-m{position:absolute; left:50%; top:100%; transform:translate(calc(-100% - 4px), 5px); font:14px/1 "Black Han Sans","Jua",sans-serif; color:#fff; background:rgba(22,35,61,.78); padding:3px 9px 4px; border-radius:99px; white-space:nowrap; letter-spacing:.3px; box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .mcw .mc-foe{position:absolute; left:calc(50% + 4px); top:100%; transform:translateY(5px); white-space:nowrap; display:flex; align-items:center; gap:3px; font:14px/1 "Black Han Sans","Jua",sans-serif; color:#fff; background:rgba(122,20,16,.82); padding:3px 9px 4px 6px; border-radius:99px; box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .mcw .mc-foe em{font-style:normal}
@@ -1199,7 +1200,7 @@ NG.march = (() => {
 .mcw .mc-sv em{font:normal 26px/1 "Black Han Sans","Jua",sans-serif; color:#fff; -webkit-text-stroke:4px #16233d; paint-order:stroke fill}
 .mcw .mc-road i{position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:repeating-linear-gradient(-45deg, #ffc83d 0 8px, #ffd86b 8px 16px); width:0}
 .mcw .mc-mk{position:absolute; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; background:var(--mc-blue); box-shadow:0 0 0 3px #fff, 0 2px 0 3px rgba(22,35,61,.4)}
-.mcw .mc-fl{position:absolute; right:-36px; top:50%; transform:translateY(-50%); font-family:var(--heavy); font-size:13px; color:#fff; background:var(--mc-red); padding:2px 7px; border-radius:8px; box-shadow:0 2px 0 #a92723}
+.mcw .mc-fl{position:absolute; left:calc(100% + 6px); top:50%; transform:translateY(-50%); white-space:nowrap; font-family:var(--heavy); font-size:13px; color:#fff; background:#C42F29; padding:2px 7px; border-radius:8px; box-shadow:0 2px 0 #8a1f1b}   /* 길 끝 바로 옆(막대를 덮지 않음), 흰 글자 대비 4.5 이상 */
 .mcw .mc-vs{flex:1; position:relative; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:4px; padding:5px 10px 11px; border-radius:16px; background:linear-gradient(#24365c, #16233d); box-shadow:0 0 0 2px #e9c46a, 0 4px 0 #0b1426; min-width:0}
 .mcw .mc-side{display:flex; flex-direction:column; line-height:1.05; min-width:0}
 .mcw .mc-side small{font-family:var(--disp); font-size:13px; color:#9fb6dc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -1237,10 +1238,10 @@ NG.march = (() => {
 @keyframes mcSlamEnd{0%{transform:scale(2.2); opacity:0} 100%{transform:scale(1); opacity:1}}
 .mcw .mc-new{position:absolute; left:50%; top:42%; transform:translate(-50%, -50%); width:min(320px, calc(100% - 40px)); padding:16px 18px 14px; border-radius:22px; text-align:center; background:linear-gradient(#fffaf0, #f3e6c8); box-shadow:0 0 0 3px #e9c46a, 0 6px 0 #b8893a, 0 16px 34px rgba(0,0,0,.3); animation:mcIn .35s cubic-bezier(.2, 1.4, .4, 1); cursor:pointer}
 @keyframes mcIn{0%{transform:translate(-50%, -40%) scale(.85); opacity:0} 100%{transform:translate(-50%, -50%) scale(1); opacity:1}}
-.mcw .mc-tag{display:inline-block; font-family:var(--heavy); font-size:13px; letter-spacing:.06em; color:#fff; background:var(--mc-red); padding:3px 11px; border-radius:99px; box-shadow:0 2px 0 #a92723}
+.mcw .mc-tag{display:inline-block; font-family:var(--heavy); font-size:13px; letter-spacing:.06em; color:#fff; background:#C42F29; padding:3px 11px; border-radius:99px; box-shadow:0 2px 0 #a92723}
 .mcw .mc-new b{display:block; margin:8px 0 4px; font-family:var(--heavy); font-weight:400; font-size:26px; color:var(--mc-ink); line-height:1.15}
 .mcw .mc-new p{margin:0; font-family:var(--disp); font-size:16px; line-height:1.45; color:#3c4a66}
-.mcw .mc-new small{display:block; margin-top:8px; font-family:var(--disp); font-size:13px; color:#8a7a55}
+.mcw .mc-new small{display:block; margin-top:8px; font-family:var(--disp); font-size:13px; color:#6B5A30}
 @media (prefers-reduced-motion:reduce){ .mcw .mc-n.pop, .mcw .mc-bi.go, .mcw .mc-tm.hot, .mcw .mc-new{animation:none} }`;
 
   /* ---------- 게임 정의 ---------- */

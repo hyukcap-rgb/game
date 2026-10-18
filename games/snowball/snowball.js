@@ -760,11 +760,11 @@ NG.snowball = (() => {
   const stageFood = n => Math.max(.7, Math.round((1.15 - (n - 1) * .01) * 100) / 100);
   /* 디자인 v2: 우유빛 반투명 판 + 진보라 글자. 핑크는 '내 성장'(레벨 배지·막대·부스트·레버)에만 */
   const css = `
-.snb{--ink:#3B2150; --sub:#6E5A82; --pk:#E0457F; --pk2:#FF8CC0; --line:#F0DCEB; --milk:rgba(255,255,255,.9);
+.snb{--ink:#3B2150; --sub:#6E5A82; --pk:#E0457F; --pk2:#FF8CC0; --line:#F0DCEB; --milk:rgba(255,253,254,.985); --pkt:#C2306A;
   position:relative; width:100%; min-height:420px; border-radius:24px; overflow:hidden; background:#FFF5F9; color:var(--ink); touch-action:none; user-select:none; -webkit-user-select:none}
 .snb .sn-cv{position:absolute; inset:0; width:100%; height:100%; display:block}
-.snb .sn-pan{background:var(--milk); color:var(--ink); border-radius:20px; box-shadow:0 0 0 2px #fff, 0 5px 0 rgba(91,48,110,.10); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
-.snb .sn-top{position:absolute; left:10px; right:10px; top:10px; display:flex; gap:8px; align-items:flex-start; pointer-events:none}
+.snb .sn-pan{position:relative; z-index:1; background:var(--milk); color:var(--ink); border-radius:20px; box-shadow:0 0 0 2px #fff, 0 0 0 3.5px var(--line), 0 5px 0 rgba(91,48,110,.12); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
+.snb .sn-top{position:absolute; z-index:1; left:10px; right:10px; top:10px; display:flex; gap:8px; align-items:flex-start; pointer-events:none}
 .snb .sn-me{flex:0 1 220px; min-width:0; padding:9px 12px 10px 9px; display:flex; flex-direction:column; gap:7px}
 .snb .sn-row{display:flex; align-items:center; gap:10px}
 .snb .sn-l{width:54px; height:54px; flex:none; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1;
@@ -777,7 +777,7 @@ NG.snowball = (() => {
 .snb .sn-bar i{position:absolute; left:0; top:0; bottom:0; border-radius:999px; transition:width .15s;
   background:repeating-linear-gradient(-45deg, #FF8CC0 0 7px, #FFA9D0 7px 14px); box-shadow:inset 0 2px 0 rgba(255,255,255,.55)}
 .snb .sn-bf{display:flex; justify-content:space-between; gap:6px; white-space:nowrap; font-size:13px; color:var(--sub)}
-.snb .sn-bf b{color:var(--pk)}
+.snb .sn-bf b{color:var(--pkt)}
 .snb .sn-board{margin-left:auto; width:150px; padding:9px 10px 8px; display:flex; flex-direction:column; gap:4px; font-size:13px}
 .snb .sn-bh{display:flex; justify-content:space-between; color:var(--sub); font-size:13px; font-weight:700; padding-bottom:2px; border-bottom:2px dotted var(--line)}
 .snb .sn-br{display:flex; align-items:center; gap:5px}
@@ -791,17 +791,18 @@ NG.snowball = (() => {
 .snb .sn-ban{position:absolute; left:50%; top:140px; transform:translateX(-50%); padding:6px 14px; border-radius:999px; font-size:13px; font-weight:900; white-space:nowrap; background:#FF8A3D; color:#2A1300; box-shadow:0 0 0 3px #fff, 0 4px 0 rgba(180,85,15,.35); pointer-events:none}
 .snb .sn-ban.hot{background:#F0306A; color:#fff; box-shadow:0 0 0 3px #fff, 0 4px 0 rgba(160,20,70,.4)}
 .snb .sn-ban[hidden]{display:none}
-.snb .sn-bot{position:absolute; left:0; right:0; bottom:0; padding:10px 12px 12px; border-radius:26px 26px 0 0; display:flex; flex-direction:column; gap:8px}
+.snb .sn-bot{position:absolute; z-index:1; left:0; right:0; bottom:0; padding:10px 10px 12px; border-radius:26px 26px 0 0; display:flex; flex-direction:column; gap:8px}
 .snb .sn-cap{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:13px; font-weight:700}
 .snb .sn-cap span:first-child{color:var(--sub)}
-.snb .sn-unlock{color:var(--pk); text-align:right}
-.snb .sn-chips{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px}
-.snb .sn-chip{background:#FFF0F6; border-radius:14px; padding:4px 3px 3px; display:flex; flex-direction:column; align-items:center; gap:0; min-width:0; font-size:13px; color:var(--ink); box-shadow:inset 0 0 0 2px #FFE0EE}
+.snb .sn-unlock{color:var(--pkt); text-align:right; white-space:nowrap}
+.snb .sn-chips{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px}
+.snb .sn-chip{background:#FFF0F6; border-radius:14px; padding:4px 1px 3px; display:flex; flex-direction:column; align-items:center; gap:0; min-width:0; font-size:13px; color:var(--ink); box-shadow:inset 0 0 0 2px #FFE0EE}
 .snb .sn-chip canvas{width:20px; height:20px}
-.snb .sn-chip b{font-family:var(--disp); font-weight:400; font-size:13px; color:var(--pk)}
-.snb .sn-chip.locked{background:#F7F2FA; box-shadow:inset 0 0 0 2px #E6DAF0; color:#9A86AE}
+.snb .sn-chip span{max-width:100%; white-space:nowrap; letter-spacing:-.6px; line-height:1.3}   /* '반짝 결정'이 두 줄로 꺾여 칩 높이가 달라지지 않게 */
+.snb .sn-chip b{font-family:var(--disp); font-weight:400; font-size:13px; line-height:1.3; color:var(--pkt)}
+.snb .sn-chip.locked{background:#F7F2FA; box-shadow:inset 0 0 0 2px #E6DAF0; color:var(--sub)}
 .snb .sn-chip.locked canvas{opacity:.4; filter:grayscale(1)}
-.snb .sn-chip.locked b{color:#9A86AE; font-family:var(--font); font-size:13px; font-weight:700}
+.snb .sn-chip.locked b{color:var(--sub); font-family:var(--font); font-size:13px; font-weight:700}
 .snb .sn-ctl{display:flex; align-items:center; gap:10px}
 .snb .sn-joy{position:relative; width:112px; height:112px; border-radius:50%; flex:none; touch-action:none; cursor:grab;
   background:radial-gradient(circle, #FBF1F7 0 56%, #F3E2EE 57%); box-shadow:inset 0 0 0 3px #fff, inset 0 4px 0 rgba(91,48,110,.08), 0 0 0 2px var(--line)}
@@ -814,12 +815,15 @@ NG.snowball = (() => {
 .snb .sn-mid{flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:6px}
 .snb .sn-mini{width:58px; height:58px; border-radius:50%; flex:none; background:#FFF5F9; box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--line)}
 .snb .sn-status{width:100%; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:13px; line-height:1.35; color:var(--sub)}
+.snb .sn-status span{white-space:nowrap; letter-spacing:-.4px}
 .snb .sn-status b.p{color:#1F6FC4} .snb .sn-status b.d{color:#B4550F}
 .snb .sn-boost{width:84px; height:84px; border-radius:50%; border:0; color:var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; flex:none; touch-action:none; font-family:var(--font);
   background:radial-gradient(circle at 34% 28%, #fff 0 10%, #FFC2DD 36%, #FF8CC0 100%); box-shadow:0 0 0 3px #fff, 0 6px 0 #C2347A; transition:transform .06s, box-shadow .06s}
-.snb .sn-boost span{font-family:var(--disp); font-size:17px} .snb .sn-boost small{font-size:13px; font-weight:700}
+.snb .sn-boost span{font-family:var(--disp); font-size:17px} .snb .sn-boost small{font-size:13px; font-weight:700; color:var(--ink)}
 .snb .sn-boost.on{transform:translateY(4px); box-shadow:0 0 0 3px #fff, 0 2px 0 #C2347A}
-.snb .sn-boost:disabled{opacity:.5; filter:grayscale(.6)}
+/* 못 쓸 때: 흐리게(opacity) 대신 회보라 판 + 진한 글자 → 글자 대비 4.5 이상 유지 */
+.snb .sn-boost:disabled{background:radial-gradient(circle at 34% 28%, #fff 0 10%, #EFE8F3 36%, #DCD0E4 100%); box-shadow:0 0 0 3px #fff, 0 6px 0 #B7A6C4; color:#4E3D60}
+.snb .sn-boost:disabled small{color:#4E3D60}
 .snb .sn-boost:focus-visible{outline:3px solid #6A3FC0; outline-offset:3px}
 .snb .snb-rv{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(59,33,80,.38)}
 .snb .snb-rv[hidden]{display:none}
@@ -834,7 +838,7 @@ NG.snowball = (() => {
 .snb .rv-b{width:100%; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px}
 .snb .rv-b button{min-height:52px; border-radius:18px; font-family:var(--disp); font-size:17px; border:0; text-shadow:none}
 .snb .rv-b .rv-no{background:#F6EEF8; color:var(--ink); box-shadow:0 4px 0 #E2D3EA} .snb .rv-b .rv-yes{background:radial-gradient(circle at 34% 28%, #FFC2DD, #FF7EB3); color:var(--ink); box-shadow:0 4px 0 #C2347A}
-@media (max-width:380px){ .snb .sn-board{width:130px} .snb .sn-me{flex-basis:200px} }
+@media (max-width:380px){ .snb .sn-board{width:130px} .snb .sn-me{flex-basis:200px} .snb .sn-ctl{gap:8px} .snb .sn-boost{width:80px; height:80px} }
 @media (prefers-reduced-motion:reduce){ .snb .sn-bar i, .snb .sn-knob, .snb .sn-boost{transition:none} }`;
 
   return {
