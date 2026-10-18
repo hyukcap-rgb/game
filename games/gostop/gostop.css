@@ -470,3 +470,7 @@ body.gs-full{overflow:hidden}
 .gs-mask{background:#F6E9CC !important; box-shadow:0 0 0 3px #241A3A, 0 0 0 6px #FFE9B0, 0 6px 14px rgba(36,26,58,.35)}
 .gs-mask[data-k="op"]{box-shadow:0 0 0 3px #241A3A, 0 0 0 6px #F9C6CF, 0 6px 14px rgba(36,26,58,.35)}
 .gs-side .gs-ring{left:-10px; top:-10px; width:120px; height:120px}
+
+/* v1.16 솔로 결과 창: [결과 보기] [한 판 더] 두 버튼 나란히 */
+.gs-end .gs-askb.two{display:flex; gap:14px}
+.gs-end .gs-askb.two button{flex:1}

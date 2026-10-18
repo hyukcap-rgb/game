@@ -983,18 +983,22 @@ NG.gostop = (() => {
       ${draw0 ? '' : `<div class="gs-erows">${(r.rows || []).map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}${mult}<div class="tot"><span>최종</span><b>${fmt(r.final)}점</b></div></div>`}</div>
       <div class="gs-er">${payHtml}
       ${g.sess ? `<div class="gs-nx" id="gsNx"><i></i><span id="gsNxT"></span></div><div class="gs-askb"><button class="${g.bye ? 'on' : ''}" id="gsEndBye">${g.bye ? '나가기 예약 취소' : '나가기 예약'}</button></div>`
-        : '<div class="gs-askb"><button class="pri" id="gsEndOk">결과 보기</button></div>'}</div></div>`;
-    if(box){ box.innerHTML = html; box.hidden = false; }
+        : '<div class="gs-askb two"><button id="gsEndOk">결과 보기</button><button class="pri" id="gsAgain">한 판 더</button></div>'}</div></div>`;
+    /* 결과 창은 '승리!/졌어요' 큰 글자 연출이 끝난 뒤에 띄움(글자가 창을 가리던 문제) */
+    setMsg(draw0 ? '나가리 · 무승부' : win ? '<b>이겼어요!</b>' : '졌어요', win ? 'me' : 'op');
+    if(box){ box.innerHTML = html; box.hidden = true; }
     /* 연출: 총통·3뻑 → 박 → 승패 */
     const who = r.w === g.me ? 'me' : 'op';
     let at = 0;
     if(r.why === '총통' || r.why === '3뻑'){ X(() => GX.event(r.why === '총통' ? 'chongtong' : 'ppuk3', { who })); at = 1300; }
     (r.mults || []).filter(m => /피박|광박|고박|멍따/.test(m[0])).slice(0, 2).forEach(m => { setTimeout(() => X(() => GX.event('bak', { who, text:m[0].replace(/\(.*\)/, '') })), at); at += 650; });
     setTimeout(() => { if(GS() === g) X(() => GX.event(draw0 ? 'draw' : win ? 'win' : 'lose', { who })); }, at);
+    const showAt = at + (FXR.reduce ? 300 : 1400);
+    setTimeout(() => { if(GS() === g && !G.over && box && g.phase === 'between' && box.innerHTML){ X(() => GX.clear()); box.hidden = false; } }, showAt);   /* 남은 큰 글자는 지우고 창만 */
     if(!draw0){ faceFor(r.w, 'joy', 5000); faceFor(1 - r.w, 'sad', 5000); }
     if(g.sess){
       const eb = $('#gsEndBye'); if(eb) eb.onclick = () => toggleBye();
-      const t0 = Date.now() + at, tot = NEXT_SEC * 1000;
+      const t0 = Date.now() + showAt, tot = NEXT_SEC * 1000;
       clearInterval(g.nxIv);
       g.nxIv = setInterval(() => {
         if(GS() !== g || G.over || g.phase !== 'between'){ clearInterval(g.nxIv); return; }
@@ -1007,13 +1011,26 @@ NG.gostop = (() => {
       }, 150);
       return;
     }
+    /* 솔로: 이긴 판 중 가장 좋은 판을 기억(한 판 더 친 뒤 결과 보기에서 별·클리어로 씀) */
+    if(win && (!g.best || (r.final || 0) > (g.best.final || 0))) g.best = r;
     const done = () => {
       if(GS() !== g || G.over) return;
+      clearTimeout(g.endT);
       if(box){ box.hidden = true; box.innerHTML = ''; }
-      finish(win);
+      if(g.best && (!win || (g.best.final || 0) > (r.final || 0))) g.res = g.best;
+      finish(win || !!g.best);
+    };
+    /* 한 판 더: 방 고르기 없이 같은 판 크기로 컴퓨터와 바로 다음 판(포인트가 모자라면 방 고르기) */
+    const again = () => {
+      if(GS() !== g || G.over) return;
+      clearTimeout(g.endT);
+      if(box){ box.hidden = true; box.innerHTML = ''; }
+      if(wallet().pt < (g.room || ROOMS[0]).min){ toast('포인트가 모자라 판 크기를 다시 골라요'); lobby(); return; }
+      g.gi++; startPlay();
     };
     const ok = $('#gsEndOk'); if(ok) ok.onclick = done;
-    g.endT = setTimeout(done, 30000);
+    const ag = $('#gsAgain'); if(ag) ag.onclick = again;
+    g.endT = setTimeout(done, 60000);
   }
   /* 다음 판 할지 알리기: [판, 999, 3, 나가기 예약, 포인트]. 두 사람 기록이 모두 있어야 결정(같은 결론) */
   function nxSend(){
@@ -1144,7 +1161,7 @@ NG.gostop = (() => {
       box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; g.room = r; box.hidden = true; box.innerHTML = ''; turnHint();
         if(g.mode === 'pvp') search();
         else if(g.sess){ g.seed0 = 'gs:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판 */
-        else { g.seed0 = 'gs:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 */
+        else { g.seed0 = 'gs:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = g.ended ? g.gi + 1 : 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 · 한 판 더에서 방을 다시 고르면 새 패 */   /* 솔로: 선은 스테이지가 정함 */
       const rb = $('#gsRescue'); if(rb) rb.onclick = () => { const b = rescue(); if(b){ sfx('gsWin'); draw0(`파산 구제 +${fmtP(b)}! 다시 도전해요`); } };
       const fb = $('#gsFree'); if(fb) fb.onclick = () => { const b = freeCharge(); if(b){ sfx('gsCap'); draw0(`무료 충전 +${fmtP(b)}`); } };
     };
