@@ -856,15 +856,15 @@ body.big .rmsn b{font-size:17px} body.big .rmsn small{font-size:15px}
 .mt-score > em{font-style:normal; font-family:var(--heavy); font-size:20px; color:#D1145A}
 .mt-score p{flex-basis:100%; margin:2px 0 0; font-size:14px; font-weight:700; line-height:1.4; color:var(--ink)}
 .mt-score p em{font-style:normal; color:#C2185B}
-.mt-cells{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; border-top:2.5px dashed var(--outline)}
-.mt-c{display:flex; flex-direction:column; gap:1px; min-width:0; padding:8px 10px; border-radius:12px; background:#fff; border:2px solid var(--paper-line)}
-.mt-c small{display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:var(--sub)}
-.mt-c small .ico{width:15px; height:15px}
-.mt-c.grit small .ico{color:var(--grit)}
-.mt-c b{font-family:var(--heavy); font-weight:400; font-size:24px; line-height:1.15; color:var(--ink)}
-.mt-c b em{font-style:normal; font-size:14px; color:var(--sub); margin-left:1px}
-.mt-c > span{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mt-c > span b{font-family:inherit; font-size:inherit; font-weight:800; color:#C2410C}
+.meticket .mt-cells{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; border-top:2.5px dashed var(--outline)}
+.meticket .mt-c{display:flex; flex-direction:column; gap:1px; min-width:0; padding:8px 10px; border-radius:12px; background:#fff; border:2px solid var(--paper-line)}
+.meticket .mt-c small{display:flex; align-items:center; gap:4px; font-size:13px; font-weight:800; color:var(--sub)}
+.meticket .mt-c small .ico{width:15px; height:15px}
+.meticket .mt-c.grit small .ico{color:var(--grit)}
+.meticket .mt-c b{font-family:var(--heavy); font-weight:400; font-size:24px; line-height:1.15; color:var(--ink)}
+.meticket .mt-c b em{font-style:normal; font-size:14px; color:var(--sub); margin-left:1px}
+.meticket .mt-c > span{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.meticket .mt-c > span b{font-family:inherit; font-size:inherit; font-weight:800; color:#C2410C}
 .mt-acts{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 14px}
 .mt-a{height:48px; border-radius:13px; font-family:var(--disp); font-size:16px; color:var(--ink); background:#fff; border:2.5px solid var(--outline2); box-shadow:0 3px 0 var(--outline2)}
 .mt-a.pri{color:#fff; background:linear-gradient(#86D6FF,#2E8FE8); border-color:#124F92; box-shadow:0 3px 0 #124F92; text-shadow:0 1px 0 #124F92}

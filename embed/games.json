@@ -24,12 +24,12 @@
     {
       "id": "ball",
       "name": "별빛 구슬",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "summary": "구슬을 쏘아 숫자 젤리 블록을 깨는 각도 퍼즐",
       "duel": true,
       "file": "ball.html",
-      "bytes": 320859,
-      "gzip": 105015
+      "bytes": 321262,
+      "gzip": 105169
     },
     {
       "id": "fleet",
@@ -44,12 +44,12 @@
     {
       "id": "match",
       "name": "동물 삼총사",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "summary": "같은 동물 3마리를 맞추는 퍼즐",
       "duel": true,
       "file": "match.html",
-      "bytes": 369531,
-      "gzip": 121859
+      "bytes": 369806,
+      "gzip": 122011
     },
     {
       "id": "nono",
@@ -84,12 +84,12 @@
     {
       "id": "merge",
       "name": "숫자 합치기",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "밀어서 같은 숫자를 합쳐 목표를 이동 안에 채우는 전략 퍼즐",
       "duel": true,
       "file": "merge.html",
-      "bytes": 332206,
-      "gzip": 110515
+      "bytes": 333391,
+      "gzip": 110878
     },
     {
       "id": "link",
@@ -124,12 +124,12 @@
     {
       "id": "hidden",
       "name": "숨은그림 찾기",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "summary": "세계 여행 그림책 장면 20곳 속 물건을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "hidden.html",
-      "bytes": 328749,
-      "gzip": 109106
+      "bytes": 329036,
+      "gzip": 109313
     },
     {
       "id": "spot",
@@ -274,12 +274,12 @@
     {
       "id": "mountain",
       "name": "산넘어산",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "summary": "앞사람 행동을 처음부터 순서대로 따라 하고 하나씩 얹는 기억력 대전 — 2~5명 돌아가며, 틀리면 탈락",
       "duel": true,
       "file": "mountain.html",
-      "bytes": 298427,
-      "gzip": 96475
+      "bytes": 298796,
+      "gzip": 96703
     },
     {
       "id": "march",
