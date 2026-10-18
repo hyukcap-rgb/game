@@ -14,12 +14,12 @@
     {
       "id": "sudoku",
       "name": "스도쿠",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "1~9를 줄·칸마다 한 번씩 넣는 숫자 퍼즐(솔로: 대각선·짝수 칸·창문·부등호)",
       "duel": true,
       "file": "sudoku.html",
-      "bytes": 312470,
-      "gzip": 101907
+      "bytes": 312858,
+      "gzip": 102013
     },
     {
       "id": "ball",
@@ -54,12 +54,12 @@
     {
       "id": "nono",
       "name": "네모 그림",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "숫자 단서로 칸을 칠해 숨은 그림을 찾는 논리 퍼즐",
       "duel": true,
       "file": "nono.html",
-      "bytes": 332619,
-      "gzip": 109370
+      "bytes": 333198,
+      "gzip": 109663
     },
     {
       "id": "block",
@@ -134,12 +134,12 @@
     {
       "id": "spot",
       "name": "틀린그림 찾기",
-      "version": "1.8.0",
+      "version": "1.8.1",
       "summary": "똑같아 보이는 두 그림에서 다른 곳을 찾아 누르는 집중력 게임",
       "duel": true,
       "file": "spot.html",
-      "bytes": 359308,
-      "gzip": 119647
+      "bytes": 359743,
+      "gzip": 119894
     },
     {
       "id": "chosung",
@@ -154,12 +154,12 @@
     {
       "id": "wordchain",
       "name": "끝말잇기",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "summary": "앞 낱말의 끝 글자로 번갈아 잇는 전략 말놀이 — 컴퓨터와 잇기, 끝내기 낱말, 2~5명 돌아가며 잇기 대전",
       "duel": true,
       "file": "wordchain.html",
-      "bytes": 841874,
-      "gzip": 646992
+      "bytes": 842323,
+      "gzip": 647293
     },
     {
       "id": "mines",
@@ -184,12 +184,12 @@
     {
       "id": "parking",
       "name": "자동차 주차하기",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "summary": "꽉 찬 주차장에서 차를 앞뒤로 밀어 빨간 내 차를 자리까지 보내는 공간지각 퍼즐",
       "duel": true,
       "file": "parking.html",
-      "bytes": 386555,
-      "gzip": 135507
+      "bytes": 387081,
+      "gzip": 135742
     },
     {
       "id": "snowball",
@@ -224,12 +224,12 @@
     {
       "id": "twin",
       "name": "쌍둥이 찾기",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "summary": "두 카드에 딱 하나 있는 똑같은 그림을 재빨리 찾아 누르는 순발력 게임",
       "duel": true,
       "file": "twin.html",
-      "bytes": 339444,
-      "gzip": 112555
+      "bytes": 339583,
+      "gzip": 112628
     },
     {
       "id": "arrow",
@@ -244,22 +244,22 @@
     {
       "id": "rps",
       "name": "가위바위보 지령",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "summary": "상대 손과 지령(이겨라·져라·비겨라)에 맞는 손을 재빨리 내는 순발력 게임",
       "duel": true,
       "file": "rps.html",
-      "bytes": 320320,
-      "gzip": 102997
+      "bytes": 320472,
+      "gzip": 103032
     },
     {
       "id": "thread",
       "name": "색실 잇기",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "summary": "같은 색 단추를 색실로 꿰어 잇고 천의 빈칸을 남김없이 채우는 공간지각 퍼즐",
       "duel": true,
       "file": "thread.html",
-      "bytes": 384939,
-      "gzip": 142307
+      "bytes": 385346,
+      "gzip": 142486
     },
     {
       "id": "goback",
@@ -304,12 +304,12 @@
     {
       "id": "tidy",
       "name": "착착 정리",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "summary": "서랍·책상·냉장고 칸에 모양이 다른 물건을 돌려 가며 빈틈없이 채우는 정리 퍼즐 — 차가운 칸·깨지는 물건·무거운 물건 규칙",
       "duel": true,
       "file": "tidy.html",
-      "bytes": 303265,
-      "gzip": 99294
+      "bytes": 303999,
+      "gzip": 99584
     },
     {
       "id": "tgostop",
