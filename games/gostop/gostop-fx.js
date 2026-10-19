@@ -321,6 +321,7 @@ const GSFX = (() => {
       }
     }catch(_){}
   }
+  const VLAST = {}, VLITE = { bonus:1, steal:1, stolen:1, hurry:1, hurry2:1 };
   const VPRI = { firstppuk:1, win:1, lose:1, nagari:1, go1:1, go2:1, go3:1, go4:1, stop:1, chongtong:1, gwang5:1 };
   function say(who, key, delay){
     try{
@@ -329,6 +330,10 @@ const GSFX = (() => {
       vLoad();
       const buf = VBUF[(who === 'op' ? 'op' : 'me') + ':' + key]; if(!buf) return;
       const now = performance.now();
+      /* 같은 말 반복 줄이기: 같은 대사는 20초 안에 다시 안 함, 자주 나오는 말(보너스·피·재촉)은 반쯤만 */
+      if(!VPRI[key] && VLAST[key] && now - VLAST[key] < 20000) return;
+      if(VLITE[key] && Math.random() < .45) return;
+      VLAST[key] = now;
       if(now < vUntil){ if(!VPRI[key]) return; try{ vSrc && vSrc.stop(); }catch(_){} }
       const ac = AUD.ac, src = ac.createBufferSource(), g = aOut({ pan:who === 'op' ? .18 : -.18 });
       src.buffer = buf; g.gain.value = 1.1; src.connect(g); src.start(ac.currentTime + .02);
