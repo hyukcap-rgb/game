@@ -699,6 +699,7 @@ NG.tgostop = (() => {
     draw(liveView());
     /* 패 돌리기 연출 */
     const dealN = dealAnim();
+    if(!g.gi) X(() => GX.say('op', 'greet', 450));   /* 첫 판: 상대가 인사 */
     X(() => GX.event('deal', { n:dealN, gap:DEAL_GAP / 1000 }));
     if(g.S.over){ setTimeout(() => endGame(), 900); return; }
     const ep = g.epoch;
@@ -738,6 +739,8 @@ NG.tgostop = (() => {
       if(gs){ askGS(k); return; }
       setMsg('<b>내 차례</b>', 'me');
       X(() => GX.play('gsfxTurn'));   /* 내 차례: 소리만(바닥에 큰 원이 남아 보이지 않게) */
+      clearTimeout(g.hurryT);   /* 시계 없는 판(솔로): 6.5초 넘게 안 내면 상대가 재촉 */
+      if(!g.sess) g.hurryT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy && !G.over) X(() => GX.say('op', Math.random() < .5 ? 'hurry' : 'hurry2')); }, 6500);
     } else {
       setMsg(`<b>${esc(g.oppNick)}</b> ${gs ? '고? 스톱?…' : '차례…'}${g.mode === 'pvp' && !g.oppHere ? ' <small>(자동)</small>' : ''}`, 'op');
       if(g.mode !== 'pvp') g.turnT = setTimeout(() => { if(GS() === g && g.k === k && !g.busy) step(k, gs ? { gs:aiGo(S, p, g.ai, g.rnd) ? 1 : 0 } : aiPick(S, p, g.ai, g.rnd), 'ai'); }, gs ? 500 : 300 + g.rnd() * 300);
@@ -754,6 +757,7 @@ NG.tgostop = (() => {
       clockPaint();
       const n = Math.ceil(left);
       if(n >= 1 && n <= 3 && n < c.last){ c.last = n; if(c.p === g.me) X(() => GX.event('tick', { n })); }
+      if(left <= 4.5 && !c.hurried){ c.hurried = 1; X(() => GX.say(c.p === g.me ? 'op' : 'me', Math.random() < .5 ? 'hurry' : 'hurry2')); }   /* 4.5초 남으면 다른 사람이 재촉 */
       if(left <= 0){ clearInterval(g.tIv); const cb = c.cb; c.cb = null; if(cb) cb(); }
     };
     g.tIv = setInterval(tk, 100); tk();
@@ -1220,6 +1224,7 @@ NG.tgostop = (() => {
           g.fpd = (g.fpd || 0) + d;
         }
         banner(`${nm}!${amt ? ' ' + (d >= 0 ? '+' : '−') + fmtP(Math.abs(d)) : ''}`, mine ? '' : 'bad');
+        if(nm === '첫뻑') X(() => GX.say(mine ? 'me' : 'op', 'firstppuk'));
         X(() => GX.play(mine ? 'gsWin' : 'gsBad')); fxBuzz(mine ? [30, 40, 30] : 60);
         X(() => toast(mine ? (amt ? `${nm}! 판돈의 ${x}배 ${fmtP(d)}를 받았어요` : `${nm}! (연습 판이라 포인트는 오가지 않아요)`) : (amt ? `${esc(g.oppNick)}님 ${nm} · ${fmtP(-d)}를 줬어요` : `${esc(g.oppNick)}님 ${nm}!`)));
         faceFor(i, 'joy', 1800); faceFor(1 - i, 'sad', 1800);

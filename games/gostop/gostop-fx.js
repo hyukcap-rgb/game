@@ -305,7 +305,51 @@ const GSFX = (() => {
       return true;
     }catch(_){ return false; }
   }
-  const rate = () => rr(.95, 1.06);   /* 같은 소리가 기계처럼 똑같이 들리지 않게 살짝 높낮이 */
+  const rate = () => rr(.95, 1.06);
+  /* 캐릭터 목소리(v1.17, GS_VOICE): 일을 한 사람이 말함(나 = 선비 소년, 상대 = 각시). 한 번에 한 마디 — 말하는 중이면 새 말은 버림(승패·고·스톱·나가리는 끼어들어 앞 말을 끊음).
+     효과음과 같은 sfx 버스(음소거·효과음 크기 설정을 따름) */
+  const VBUF = {}, VQ = {};
+  let vUntil = 0, vSrc = null;
+  function vLoad(){
+    try{
+      if(typeof GS_VOICE === 'undefined' || typeof AUD === 'undefined' || !AUD.ac) return;
+      for(const who of ['me', 'op']) for(const k in GS_VOICE[who]){
+        const id = who + ':' + k; if(VQ[id]) continue; VQ[id] = 1;
+        const u = GS_VOICE[who][k], bin = atob(u.slice(u.indexOf(',') + 1)), a = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+        const p = AUD.ac.decodeAudioData(a.buffer, b => { VBUF[id] = b; }, () => {}); if(p && p.catch) p.catch(() => {});
+      }
+    }catch(_){}
+  }
+  const VPRI = { firstppuk:1, win:1, lose:1, nagari:1, go1:1, go2:1, go3:1, go4:1, stop:1, chongtong:1, gwang5:1 };
+  function say(who, key, delay){
+    try{
+      if(typeof sfx !== 'function' || typeof SND === 'undefined' || !SND.on || !AUD.set || AUD.set.sfx <= 0) return;
+      if(delay){ setTimeout(() => say(who, key), delay); return; }
+      vLoad();
+      const buf = VBUF[(who === 'op' ? 'op' : 'me') + ':' + key]; if(!buf) return;
+      const now = performance.now();
+      if(now < vUntil){ if(!VPRI[key]) return; try{ vSrc && vSrc.stop(); }catch(_){} }
+      const ac = AUD.ac, src = ac.createBufferSource(), g = aOut({ pan:who === 'op' ? .18 : -.18 });
+      src.buffer = buf; g.gain.value = 1.1; src.connect(g); src.start(ac.currentTime + .02);
+      vSrc = src; vUntil = now + buf.duration * 1000;
+      try{ if(window.__VOX) window.__VOX.push({ who, key, t:Math.round(now) }); }catch(_){}
+    }catch(_){}
+  }
+  /* 이벤트 → 대사 */
+  const VOX = { ppuk:'ppuk', ppukEat:'ppukEat', jappuk:'jappuk', jjok:'jjok', ttadak:'ttadak', sseul:'sseul', bomb:'bomb', shake:'shake', bonus:'bonus', steal:'steal',
+    stop:'stop', godori:'godori', hongdan:'hongdan', cheongdan:'cheongdan', chodan:'chodan', chongtong:'chongtong', bak:'bak', sun:'sun' };
+  function voxFor(name, o){
+    const who = o.op ? 'op' : 'me', oth = o.op ? 'me' : 'op';
+    if(name === 'go') return say(who, 'go' + Math.max(1, Math.min(4, o.n || 1)));
+    if(name === 'gwang') return say(who, 'gwang' + Math.max(3, Math.min(5, o.n || 3)));
+    if(name === 'win' || name === 'lose'){ say(who, 'win'); say(oth, 'lose', 1500); return; }   /* who = 이긴 사람 */
+    if(name === 'draw') return say('me', 'nagari');
+    if(name === 'timeout') return say('me', 'timeout');
+    if(name === 'steal'){ if(rr(0, 1) < .55) say(who, 'steal'); else say(oth, 'stolen'); return; }   /* 뺏은 쪽 또는 뺏긴 쪽이 한마디 */
+    if(VOX[name]) say(who, VOX[name]);
+  }
+   /* 같은 소리가 기계처럼 똑같이 들리지 않게 살짝 높낮이 */
 
   const sounds = {
     /* 카드 부딪힘 1·2·3 */
@@ -677,6 +721,7 @@ const GSFX = (() => {
         return;
       }
       const f = EV[name]; if(!f || name[0] === '_') return;
+      T(() => voxFor(name, o));
       const l = LIGHT[name] ? null : layer(false);
       if(l) T(() => cine(l, name, o));   /* 실감 층은 글자보다 뒤에 깔림 */
       f(o, l, P0, k);
@@ -689,5 +734,5 @@ const GSFX = (() => {
       document.querySelectorAll('.gsfx-l').forEach(l => T(() => l.remove()));
     }catch(_){}
   }
-  return { land, flip, grab, toss, event, clear, play:S, sounds, gate, _P:P, _B:B, _smp:() => Object.keys(SMP) };
+  return { land, flip, grab, toss, event, clear, play:S, say, sounds, gate, _P:P, _B:B, _smp:() => Object.keys(SMP) };
 })();
