@@ -543,7 +543,7 @@ NG.sudoku = {
         <text x="160" y="152" text-anchor="middle" font-family="Jua,sans-serif" font-size="13" fill="#D9CCF0">세로줄 · 굵은 칸도 똑같아요</text></svg>`;
     },
     lines:['줄·굵은 칸마다 숫자를 한 번씩', '칸을 고르고 아래 숫자를 눌러요', '모르면 [메모 켬]으로 적어 둬요'],
-    more:[['실수','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요(대전은 끝나지 않고 30점 줄고 0.8초 쉬어요).'],['대전 판','대전은 6×6 작은 판(숫자 1~6, 굵은 칸 2×3)이에요.']]
+    more:[['실수','틀린 숫자는 빨갛게 남아요. 3번 틀리면 끝나요(대전은 끝나지 않고 30점 줄고 0.8초 쉬어요).'],['대전 판','쉬움은 6×6 작은 판(숫자 1~6, 굵은 칸 2×3), 보통·어려움은 9×9 판이에요(어려움은 처음 숫자가 더 적어요).']]
   },
   helpExtra(){   /* 솔로: 이번 판에 켜진 새 규칙·변주 설명 */
     if(!(G && G.id === 'sudoku' && G.sx && !G.over)) return [];
@@ -556,12 +556,19 @@ NG.sudoku = {
   stage:n => ({ givens:0, limit:sudPlan(n).limit }),   /* 개념 사이클 + 기술 판정으로 만든다(sudPlan) */
   stageDesc:n => sudDesc(n),
   /* 대전 전용 작은 판(WP10): 6×6(2×3 상자), 빈칸 18개, 3분. 지금 엔진(1:1)은 보통 판을 넘겨 주므로 init에서 바꿔 끼운다(v3 엔진이 duelCfg를 직접 불러도 같은 값) */
-  duelCfg(){ return { size:6, holes:18, limit:180, duel:1 }; },
+  /* 2026-10-20 대전 난이도: 쉬움 = 6×6 빈칸 18(3분) · 보통 = 9×9 숫자 38개(7분) · 어려움 = 9×9 숫자 28개(12분). 예전엔 어려움도 6×6이 나왔음 */
+  duelCfg(o){ const d = (o && o.diff) || 'normal';
+    return d === 'easy' ? { size:6, holes:18, limit:180, duel:1, dv:'easy' } : d === 'hard' ? { size:9, givens:28, limit:720, duel:1, dv:'hard' } : { size:9, givens:38, limit:420, duel:1, dv:'normal' }; },
+  duelAi(rng, o){   /* 컴퓨터 상대: 판 크기에 맞춘 평균 시간·성공률 */
+    const c = (o && o.cfg) || {}, [T0, p] = c.size === 6 ? [110, .85] : c.dv === 'hard' ? [480, .7] : [270, .8];
+    const ok = rng() < p; let T = T0 * (0.7 + rng() * 0.6) * (o && o.pace === 's' ? 1.5 : 1); if(c.limit) T = Math.min(T, c.limit * .97);
+    return { ok, T, sc:ok ? Math.round((560 + rng() * 380) / 10) * 10 : 0, fail:0.3 + rng() * 0.6 };
+  },
   duelSlow(cfg){ return Object.assign({}, cfg, { limit:cfg.limit * 2 }); },   /* 느긋하게: 6분 */
   duelMax:5,   /* 2~5명 경주(2단계) */
   duelKind:'race',
   init(cfg, rng){
-    if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.sudoku.duelCfg(); G.cfg = cfg; G.limit = cfg.limit; }
+    if(G.duel && !G.duel.fleet && !G.adv && !cfg.duel){ cfg = NG.sudoku.duelCfg({ diff:G.lv || 'normal' }); G.cfg = cfg; G.limit = cfg.limit; }
     const six = cfg.size === 6;
     const X = G.adv ? sudGenStage(G.adv) : null, p = X ? X.r : six ? genSudoku6(rng, cfg.holes) : genSudoku(rng, cfg.givens);
     const empty = p.puz.filter(v => !v).length, S = six ? 6 : 9, NN = S * S;
