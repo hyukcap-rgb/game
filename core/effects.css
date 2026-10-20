@@ -34,7 +34,7 @@
 @keyframes combo{0%{opacity:0; transform:translate(-50%,10px) scale(.4)} 18%{opacity:1; transform:translate(-50%,0) scale(1.15)} 30%{transform:translate(-50%,0) scale(1)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-14px)}}
 #fxScore.bump{display:inline-block; animation:bump .4s cubic-bezier(.2,1.8,.4,1)}
 @keyframes bump{40%{transform:scale(1.35); color:#FF6FA8}}
-.fxlast{position:absolute; left:50%; top:-16px; transform:translateX(-50%); background:linear-gradient(#FF7A82,#E5484D); color:#fff; font-family:var(--disp); font-size:14px; padding:3px 14px 4px; border:2.5px solid var(--outline2); border-radius:999px; z-index:3; white-space:nowrap; animation:lastin .4s cubic-bezier(.2,1.6,.4,1)}
+.fxlast{position:absolute; left:50%; top:-16px; transform:translateX(-50%); background:linear-gradient(#FF7A82,#E5484D); color:#fff; font-family:var(--disp); font-size:14px; padding:3px 14px 4px; border:2.5px solid var(--outline2); border-radius:999px; z-index:3; white-space:nowrap; animation:lastin .4s cubic-bezier(.2,1.6,.4,1); font-weight:var(--disp-w,400)}
 @keyframes lastin{from{transform:translateX(-50%) scale(.3)}}
 .fxstamp{white-space:nowrap; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-12deg); z-index:4; font-size:clamp(40px,13vw,60px); font-weight:800; color:#FF5C8A; background:rgba(255,255,255,.9); border:6px solid #FF5C8A; border-radius:22px; padding:6px 26px; pointer-events:none; animation:stamp .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-12deg) scale(3); opacity:0} 100%{transform:translate(-50%,-50%) rotate(-12deg) scale(1); opacity:1}}

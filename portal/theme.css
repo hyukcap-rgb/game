@@ -13,9 +13,9 @@ html[data-theme="ticket"] body:not([data-mode]){
   --t-veil:rgba(43,27,18,.55);
   --ink:#2B1B12; --sub:#5A4636; --paper:#FFFFFF; --paper2:#FFFFFF; --paper-line:#E6CFA9; --outline:#2B1B12; --outline2:#2B1B12; --line:#E6CFA9;
   --primary:#D83A30; --pink:#E8443A; --sky:#14808D; --gold:#FFC21A;
-  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
-  --disp:"Do Hyeon","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
-  --heavy:"Black Han Sans","Do Hyeon","Apple SD Gothic Neo",system-ui,sans-serif;
+  --font:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --disp:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; --disp-w:700;
+  --heavy:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; --heavy-w:800;   /* 2026-10-20 디자인팀: 장식 글꼴(Black Han Sans·Do Hyeon) → Pretendard(작은 글씨도 또렷) */
 }
 html[data-theme="neon"] body:not([data-mode]){
   --t-bg:radial-gradient(80% 40% at 100% 0%, rgba(255,46,136,.18), transparent 70%), radial-gradient(70% 40% at 0% 100%, rgba(34,211,238,.14), transparent 70%), linear-gradient(180deg,#0B0F2A 0%,#1A1048 100%);
@@ -26,9 +26,9 @@ html[data-theme="neon"] body:not([data-mode]){
   --t-veil:rgba(5,7,24,.78);
   --ink:#F3F4FF; --sub:#C9CEF7; --paper:#161B45; --paper2:#161B45; --paper-line:#2E3785; --outline:#3A44A0; --outline2:#0B0F2A; --line:#2E3785;
   --primary:#7C3AED; --pink:#FF2E88; --sky:#22D3EE; --gold:#FFD43B;
-  --font:"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
-  --disp:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
-  --heavy:"Black Han Sans","Apple SD Gothic Neo",system-ui,sans-serif;
+  --font:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --disp:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; --disp-w:700;
+  --heavy:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; --heavy-w:800;   /* 2026-10-20 디자인팀: 장식 글꼴(Black Han Sans·Do Hyeon) → Pretendard(작은 글씨도 또렷) */
 }
 html[data-theme="jelly"] body:not([data-mode]){
   --t-bg:linear-gradient(180deg,#F3F0FF 0%,#FFF0F6 100%);
@@ -45,7 +45,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 }
 
 /* ---------- 2부: 세 테마 공용 모양 ---------- */
-.th body:not([data-mode]){background:var(--t-bg); background-attachment:fixed; color:var(--t-ink)}
+.th body:not([data-mode]){font-family:var(--font); letter-spacing:-.01em; -webkit-font-smoothing:antialiased; background:var(--t-bg); background-attachment:fixed; color:var(--t-ink)}
 .th body:not([data-mode]) .scene{display:none}
 .th body:not([data-mode]) button:focus-visible, .th body:not([data-mode]) summary:focus-visible{outline:3px solid var(--t-acc); outline-offset:3px}
 /* 카드(양피지 패널) */
@@ -63,7 +63,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 /* 섹션 제목·안내 글 */
 .th body:not([data-mode]) .sec{justify-content:flex-start}
 .th body:not([data-mode]) .sec::before, .th body:not([data-mode]) .sec::after{display:none}
-.th body:not([data-mode]) .sec h2{font-family:var(--heavy); font-size:21px; color:var(--t-ink); -webkit-text-stroke:0; text-shadow:none}
+.th body:not([data-mode]) .sec h2{font-family:var(--heavy); font-size:21px; color:var(--t-ink); -webkit-text-stroke:0; text-shadow:none; font-weight:var(--heavy-w,400)}
 .th body:not([data-mode]) .sec h2::before, .th body:not([data-mode]) .sec h2::after{display:none}
 .th body:not([data-mode]) .sec .more{color:var(--t-sub)}
 .th body:not([data-mode]) :is(.daynote, .advnote, .rank-note, .tagline){color:var(--t-sub); text-shadow:none}
@@ -81,7 +81,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 .th body:not([data-mode]) .strip .go{color:var(--t-sub)}
 .th body:not([data-mode]) .cta{background:var(--t-acc); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh)}
 .th body:not([data-mode]) .cta::before, .th body:not([data-mode]) .cta::after{display:none}
-.th body:not([data-mode]) .cta-txt b{color:var(--t-acc-ink); -webkit-text-stroke:0; text-shadow:none; font-family:var(--heavy)}
+.th body:not([data-mode]) .cta-txt b{color:var(--t-acc-ink); -webkit-text-stroke:0; text-shadow:none; font-family:var(--heavy); font-weight:var(--heavy-w,400)}
 .th body:not([data-mode]) .cta-txt i{color:var(--t-acc-ink); background:rgba(0,0,0,.22)}
 .th body:not([data-mode]) .cta-txt small{color:var(--t-acc-ink)}
 .th body:not([data-mode]) .cta-tile{border-color:var(--t-line); box-shadow:none; background:#fff}
@@ -159,7 +159,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 .th body:not([data-mode]) .av{box-shadow:0 0 0 2px var(--t-line)}
 .th body:not([data-mode]) .row .send{background:var(--t-card); border-color:var(--t-acc); color:var(--t-acc); box-shadow:none}
 /* 내 정보(간소화) */
-.th body:not([data-mode]) .mehead h2{font-family:var(--heavy); color:var(--t-ink); -webkit-text-stroke:0}
+.th body:not([data-mode]) .mehead h2{font-family:var(--heavy); color:var(--t-ink); -webkit-text-stroke:0; font-weight:var(--heavy-w,400)}
 .th body:not([data-mode]) .mehead small{color:var(--t-sub)}
 .th body:not([data-mode]) .megear{color:var(--t-yel-ink); background:var(--t-yel); border:var(--t-bw) solid var(--t-line); box-shadow:var(--t-sh-s)}
 .th body:not([data-mode]) .prof .ttlchip{background:var(--t-acc); color:var(--t-acc-ink); border-color:var(--t-line)}
@@ -183,7 +183,7 @@ html[data-theme="jelly"] body:not([data-mode]){
 /* 창(모달·시트) · 알림 */
 .th body:not([data-mode]) .veil{background:var(--t-veil); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px)}
 .th body:not([data-mode]) .modal{background:var(--t-card); color:var(--t-ink); border:var(--t-bw) solid var(--t-line); border-radius:calc(var(--t-r) + 6px); box-shadow:var(--t-sh), 0 20px 50px rgba(0,0,0,.3)}
-.th body:not([data-mode]) .modal h3{color:var(--t-acc-ink); background:var(--t-acc); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s); text-shadow:none; font-family:var(--heavy)}
+.th body:not([data-mode]) .modal h3{color:var(--t-acc-ink); background:var(--t-acc); border:var(--t-bw) solid var(--t-line); border-radius:var(--t-r); box-shadow:var(--t-sh-s); text-shadow:none; font-family:var(--heavy); font-weight:var(--heavy-w,400)}
 .th body:not([data-mode]) .modal h3.ok{background:#1F9D55}
 .th body:not([data-mode]) .modal h3.bad{background:#6B6F86}
 .th body:not([data-mode]) .modal h3.dz-h{background:none; border:0; box-shadow:none}
@@ -379,7 +379,7 @@ html[data-theme="neon"] body:not([data-mode]) .dh-rw .d{background:#0B0F2A; colo
 .th body:not([data-mode]) .modal .path{background:color-mix(in srgb, var(--gc) 10%, var(--t-card2)); border-color:var(--t-line)}
 .th body:not([data-mode]) .modal .st.lock{background:var(--t-card2); color:var(--t-sub); border-color:var(--t-line); box-shadow:none}
 .th body:not([data-mode]) .rmd{background:var(--t-card2); border-color:var(--t-line)}
-.th body:not([data-mode]) .rmd b{color:var(--t-ink); font-family:var(--disp)}
+.th body:not([data-mode]) .rmd b{color:var(--t-ink); font-family:var(--disp); font-weight:var(--disp-w,400)}
 .th body:not([data-mode]) :is(.rmpv, .frvis){background:var(--t-card2); border-color:var(--t-line)}
 .th body:not([data-mode]) .sampnote{background:var(--t-card2); color:var(--t-sub); border-color:var(--t-yel)}
 .th body:not([data-mode]) .cal .c:not(.att):not(.rest){background:var(--t-card2); color:var(--t-sub)}
@@ -399,7 +399,7 @@ html[data-theme="neon"] body:not([data-mode]) .fchips button{outline-offset:2px}
 /* 네온: 모두의 기부 화살표가 안 보이던 것 */
 html[data-theme="neon"] body:not([data-mode]) .pool .ico:last-child{color:#C9CEF7; opacity:1}
 .th body:not([data-mode]) .rmpt{background:var(--t-card2); border-color:var(--t-line)}
-.th body:not([data-mode]) .rmpt b{color:var(--t-ink); font-family:var(--disp)}
+.th body:not([data-mode]) .rmpt b{color:var(--t-ink); font-family:var(--disp); font-weight:var(--disp-w,400)}
 .th body:not([data-mode]) .row .samp{background:var(--t-yel); color:var(--t-yel-ink)}
 .th body:not([data-mode]) .mini:not(.on){background:var(--t-card2); color:var(--t-sub); box-shadow:inset 0 0 0 1.5px var(--t-line)}
 html[data-theme="neon"] body:not([data-mode]) .acard .chn{background:rgba(11,15,42,.88)}
