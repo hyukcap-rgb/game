@@ -83,6 +83,8 @@ NG.tgostop = (() => {
         const mc = monthCount(S.P[p].hand), m4 = Object.keys(mc).find(k => mc[k] >= 4);
         if(m4){ S.over = true; S.result = { w:p, final:10, base:10, why:'총통', rows:[[`총통 (${RK(m4)} 네 장)`, '10점']], mults:[] }; break; }
       }
+      /* 판 미션(v1.18): 씨앗으로 정한 패 2장 — 이긴 사람이 둘 다 먹었으면 최종 점수 ×2(가끔 ×3). 두 기기 같은 씨앗 → 같은 미션 */
+      { const mr = mulberry(seedFrom(seed + ':mis')), a = Math.floor(mr() * 48); let b = Math.floor(mr() * 47); if(b >= a) b++; S.mis = { c:[a, b], x:mr() < .25 ? 3 : 2 }; }
       return S;
     }
     return null;
@@ -225,6 +227,7 @@ NG.tgostop = (() => {
     if(s.pP && lp > 0 && lp < 6) mults.push(['피박', 2]);
     if(s.gP && !L.cap.some(id => C[id] && C[id].g)) mults.push(['광박', 2]);
     if(L.go) mults.push(['고박', 2]);
+    if(S.mis && S.mis.c.every(id => W.cap.includes(id))) mults.push(['미션 성공', S.mis.x]);
     const final = mults.reduce((a, m) => a * m[1], pts);
     S.over = true; S.pendingGS = -1;
     S.result = { w, final, base:pts, why:how, rows, mults, s };
@@ -234,6 +237,11 @@ NG.tgostop = (() => {
   function seenCards(S, p){ return new Set([...S.floor, ...S.P[0].cap, ...S.P[1].cap, ...S.P[p].hand]); }
   function want(S, p, id){
     const c = C[id]; if(!c) return 0; if(c.bonus) return c.pv * 3;
+    if(S.mis && S.mis.c.includes(id) && !S.P[1 - p].cap.some(x => S.mis.c.includes(x))) return want0(S, p, id) + 6 * S.mis.x;   /* 미션 패는 더 탐냄 */
+    return want0(S, p, id);
+  }
+  function want0(S, p, id){
+    const c = C[id];
     const mine = scoreOf(S.P[p].cap), opp = scoreOf(S.P[1 - p].cap);
     let v = 0;
     if(c.g) v = (c.rg ? 9 : 15) + 4 * mine.gN + 3 * opp.gN;
@@ -478,7 +486,16 @@ NG.tgostop = (() => {
     const tot = s.total, need = P.go ? P.goScore + 1 : 7, left = Math.max(0, need - tot);
     const head = mul.length ? mul.join(' · ') : s.birds === 3 ? '고도리!' : s.hong === 3 || s.cheong === 3 || s.cho === 3 ? '단 완성!' : left ? `${tot} / ${need}점` : `${tot}점 · 고? 스톱?`;
     return `<div class="gs-ih" aria-label="내 패 점수 · 고·스톱까지 ${need}점"><b>${head}</b></div><div class="gs-ibar"><i style="width:${Math.min(100, tot / need * 100).toFixed(1)}%"></i></div>
-      <div class="gs-ir">${[['광', s.gN], ['열끗', s.yN], ['띠', s.tN], ['피', s.piV]].map(([k, v]) => `<span><small>${k}</small><b>${v}</b></span>`).join('')}</div>`;
+      ${misHtml(view)}`;
+  }
+  /* 판 미션 칸: 미션 패 2장(먹은 사람 표시) + 배수. 한 사람이 둘 다 먹고 이기면 최종 ×배수 */
+  function misHtml(view){
+    const g = GS(), M = g.S && g.S.mis; if(!M) return '';
+    const own = id => view.c[g.me].includes(id) ? 'me' : view.c[1 - g.me].includes(id) ? 'op' : '';
+    const st = M.c.map(own), done = st[0] && st[0] === st[1], lost = st[0] && st[1] && st[0] !== st[1];
+    const tip = done ? (st[0] === 'me' ? '미션 성공! 이기면 ×' + M.x : '상대가 미션 성공') : lost ? '미션 실패(나눠 먹음)' : '둘 다 먹고 이기면 ×' + M.x;
+    return `<div class="gs-mis${done ? ' ok ' + st[0] : ''}${lost ? ' no' : ''}" aria-label="판 미션: ${M.c.map(cardName).join(', ')} · ${tip}">
+      <span class="gs-mt">미션</span>${M.c.map((id, i) => `<span class="gs-mc ${st[i]}">${cardSvg(id)}${st[i] ? `<i>${st[i] === 'me' ? '✓' : '✕'}</i>` : ''}</span>`).join('')}<span class="gs-mr"><b class="gs-mx">×${M.x}</b><small class="gs-ms">${done ? (st[0] === 'me' ? '성공!' : '상대 성공') : lost ? '실패' : '둘 다 먹기'}</small></span></div>`;
   }
   function draw(view){
     const g = GS(); if(!g || !$('#gsb')) return;
@@ -637,6 +654,11 @@ NG.tgostop = (() => {
       pv = sc;
     }
     if(GS() !== g || G.over || g.epoch !== ep) return;
+    /* 판 미션을 이번 수로 다 모았으면 */
+    { const M = g.S.mis; if(M && M.c.every(id => pv.c[p].includes(id)) && !M.c.every(id => prev.c[p].includes(id))){
+        banner(`${p === g.me ? '미션 성공!' : esc(g.oppNick) + '님 미션 성공!'} 이기면 ×${M.x}`, p === g.me ? '' : 'bad');
+        X(() => GX.play(p === g.me ? 'gsWin' : 'gsBad')); faceFor(p, 'joy', 1600); faceFor(1 - p, 'wow', 1400);
+        await wait(700); if(GS() !== g || G.over || g.epoch !== ep) return; } }
     /* 족보가 이번에 완성됐으면 */
     const s1 = scoreOf(pv.c[p]), yk = [];
     if(s1.birds === 3 && s0.birds < 3) yk.push(['godori']);
@@ -699,7 +721,8 @@ NG.tgostop = (() => {
     draw(liveView());
     /* 패 돌리기 연출 */
     const dealN = dealAnim();
-    if(!g.gi) X(() => GX.say('op', 'greet', 450));   /* 첫 판: 상대가 인사 */
+    X(() => GX.play('gsfxStart'));   /* v1.18 판 시작 징글(매 판) */
+    if(!g.gi) X(() => GX.say('op', 'greet', 2500));   /* 첫 판: 징글이 끝난 뒤 상대가 인사 */
     X(() => GX.event('deal', { n:dealN, gap:DEAL_GAP / 1000 }));
     if(g.S.over){ setTimeout(() => endGame(), 900); return; }
     const ep = g.epoch;
@@ -1338,13 +1361,13 @@ NG.tgostop = (() => {
     const g = GS(); g.phase = 'search'; g.mmT0 = Date.now(); searchUI();
     const room = ROOM; if(!room){ switchAI(); return; }
     g.dt = Date.now();
-    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:3 }).catch(() => {});
+    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:4 }).catch(() => {});
     const check = () => {
       if(GS() !== g || G.over || (g.phase !== 'search' && g.phase !== 'nobody')) return;
       let ps; try{ ps = room.peers(); }catch(_){ return; }
       const me = ps.find(p => p.sameTab); if(!me) return;
       g.myPeer = me.peer;
-      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 3;   /* dv:3 = 같은 규칙·기록 방식끼리만(v3: 처음 바닥 3장 뻑) */
+      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 4;   /* dv:3 = 같은 규칙·기록 방식끼리만(v3: 처음 바닥 3장 뻑) */
       const claim = ps.find(p => !p.sameTab && ok(p) && p.presence.du === 'play' && p.presence.dp === me.peer);
       if(claim){ match(claim); return; }
       const list = ps.filter(p => ok(p) && p.presence.du === 'wait' && typeof p.presence.dt === 'number')

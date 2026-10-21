@@ -39,7 +39,7 @@ const EVENT = new Set(['gsfxPpuk', 'gsfxPpuk3', 'gsfxPpukEat', 'gsfxJappuk', 'gs
 const BIG = new Set([...EVENT, 'gsfxGo', 'gsfxStop', 'gsfxGodori', 'gsfxHongdan', 'gsfxCheongdan', 'gsfxChodan', 'gsfxGwang', 'gsfxChongtong', 'gsfxWin', 'gsfxLose', 'gsfxDraw', 'gsfxBak', 'gsWin', 'gsBad', 'gsBig', 'gsfxSun', 'gsfxTimeout']);
 const DUR = { gsfxLand1:.18, gsfxLand2:.18, gsfxLand3:.2, gsPick:.06, gsfxFlip:.25, gsfxToss:.12, gsfxGrab:.42, gsfxDeal:.83, gsfxPpuk:.55, gsfxBomb:.45, gsfxGo:.82, gsfxStop:1, gsfxWin:1.13, gsfxLose:1.45,
   gsfxSteal:.68, gsfxJjok:.8, gsfxTtadak:1, gsfxSseul:.94, gsfxShake:.75, gsfxGodori:1.14, gsfxHongdan:.96, gsfxCheongdan:.96, gsfxChodan:.96, gsfxGwang:1.07, gsfxPpukEat:1.15, gsfxJappuk:1.15, gsfxChongtong:1.15,
-  gsfxBonus:.47, gsfxTimeout:.22, gsfxTick:.08, gsfxTurn:.25, gsCap:.3, gsBig:.5, gsWin:.6, gsBad:.5, gsfxBak:.5, gsfxDraw:.8, gsfxSun:.7, gsfxSunFlip:.3, gsfxPpuk3:1.2 };
+  gsfxBonus:.47, gsfxTimeout:.22, gsfxTick:.08, gsfxTurn:.25, gsCap:.3, gsBig:.5, gsWin:.6, gsBad:.5, gsfxBak:.5, gsfxDraw:.8, gsfxSun:.7, gsfxSunFlip:.3, gsfxPpuk3:1.2, gsfxStart:2.5 };
 const dur = n => DUR[n] || .3;
 
 function analyze(L0){

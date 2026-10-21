@@ -20,9 +20,14 @@ const TGFX = (() => {
   const BDUR = { gsfxPpuk:.55, gsfxPpuk3:1.2, gsfxPpukEat:1.15, gsfxJappuk:1.15, gsfxJjok:.75, gsfxTtadak:.9, gsfxSseul:.9, gsfxBomb:.5, gsfxShake:.7, gsfxBonus:.4, gsfxSteal:.6,
     gsfxGo:.8, gsfxStop:1, gsfxGodori:1.1, gsfxHongdan:.9, gsfxCheongdan:.9, gsfxChodan:.9, gsfxGwang:1, gsfxChongtong:1.15, gsfxWin:1.1, gsfxLose:1.3, gsfxDraw:.8, gsfxBak:.5,
     gsfxSun:.6, gsfxTimeout:.25, gsWin:.5, gsBad:.45, gsBig:.55, gsfxGrab:.42 };   /* 모으기도 끝난 뒤에 고/스톱 알림 */
-  let bigUntil = 0, lastAny = 0;
+  let bigUntil = 0, lastAny = 0, jingleUntil = 0, lastLand = -1e9;
   const S = (name, o) => { try{
     const now = performance.now();
+    const gapL = name === 'gsfxGrab' ? 130 : name === 'gsfxSteal' ? 220 : 0;
+    if(gapL && !(o && o._d) && now - lastLand < gapL){ const d = gapL - (now - lastLand); setTimeout(() => S(name, Object.assign({}, o, { _d:1 })), d); return; }   /* 패 '착' 바로 뒤 모으기는 살짝 늦춰 겹치지 않게 */
+    if(/^gsfxLand/.test(name)) lastLand = now;
+    if(name === 'gsfxStart') jingleUntil = now + 2300;   /* 시작 징글이 나는 동안은 패 돌리기·'내 차례' 소리 생략 */
+    else if((name === 'gsfxDeal' || name === 'gsfxTurn') && now < jingleUntil) return;
     if(name === 'gsfxTurn' && (now - lastAny < 700 || now < bigUntil)) return;
     if(BDUR[name]){
       if(now < bigUntil - 30){ if(name === 'gsfxGrab') return; const d = bigUntil - now; if(d <= 1200) setTimeout(() => S(name, o), d); return; }   /* 모으기는 미루지 않고 생략(늦게 나면 엉뚱함) */
@@ -450,6 +455,8 @@ const TGFX = (() => {
     gsfxSun(o){ const v = V(o); jgD({ v:.18 * v }); kkw({ t:.08, v:.06 * v }); arp([0, 2, 4, 7], 72, { t:.1, v:.12 * v }); aBell({ f:m2f(96), t:.35, d:.7, v:.04 * v, rev:.4 }); },
     gsfxSunFlip(o){ aWhoosh({ f:1000, f2:4000, a:.01, d:.08, v:.05 }); slap(1, { t:.06 }); aBell({ f:m2f(88), t:.08, d:.3, v:.03 }); },
     gsfxTurn(o){ aBell({ f:P5(9, 72), d:.22, v:.035, idx:1.1 }); },   /* 내 차례: 아주 짧은 '띵' 하나(다음 패 소리와 안 겹치게) */
+    /* 판 시작 징글(v1.18, 2026-10-21 사용자 지시: 한게임처럼 2~3초 경쾌한 시작음) — 녹음이 없으면 짧은 합성 팡파르 */
+    gsfxStart(o){ if(smp('start', { v:.8 })) return; jgD({ v:.16 }); kkw({ t:.06, v:.06 }); [0, 2, 4, 7, 9].forEach((s, i) => aMarimba(P5(s, 72), { t:.08 + i * .08, v:.12 })); aBell({ f:m2f(96), t:.5, d:.8, v:.04, rev:.4 }); },
     /* 패 돌리기: 한 장마다 '착'(가볍게) — 화면의 장 수·간격과 맞춤 */
     gsfxDeal(o){ const n = Math.max(4, Math.min(30, o.n || 14)), gp = o.gap || .034;
       if(smp('deal', { v:.75, rate:n < 12 ? 1.15 : 1 })) return;
