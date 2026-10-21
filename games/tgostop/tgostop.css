@@ -184,6 +184,14 @@ body.gs-full{overflow:hidden}
 .gs-room.r3{background:#FFD9C2}
 .gs-room.r4{background:#FFC2D0}
 .gs-room:active{transform:translateY(5px); box-shadow:0 2px 0 #1A0F45}
+/* 난이도(초급·중급·고급) — 솔로·컴퓨터 대전 판 고르기 위 */
+.gs-lvs{grid-column:1; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px}
+.gs-lv{min-height:84px; border-radius:22px; border:5px solid #1A0F45; box-shadow:0 6px 0 #1A0F45; background:#fff; color:#1A0F45; cursor:pointer; padding:6px 10px}
+.gs-lv b{display:block; font-size:32px; font-weight:900}
+.gs-lv small{display:block; font-size:22px; font-weight:700; color:#6A5A7A}
+.gs-lv.on{background:#FFD866; box-shadow:0 6px 0 #1A0F45, inset 0 0 0 4px #fff}
+.gs-lv:active{transform:translateY(4px); box-shadow:0 2px 0 #1A0F45}
+.gs-earn .hot{outline:5px solid #FFD866; outline-offset:2px}
 .gs-room:disabled{opacity:.45; cursor:default; transform:none; box-shadow:0 7px 0 #1A0F45}
 .gs-rnote{grid-column:1; font-size:23px; line-height:1.45; color:#5A4A6A; margin:18px 0 0}
 .gs-rnote b{color:#B5490F}
