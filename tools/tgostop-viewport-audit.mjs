@@ -33,7 +33,8 @@ function check(touch){
   const out = [], vw = innerWidth, vh = innerHeight, de = document.documentElement;
   if(de.scrollWidth > vw + 1) out.push(`가로 스크롤 ${de.scrollWidth}>${vw}`);
   const vis = el => { const s = getComputedStyle(el); if(s.display === 'none' || s.visibility === 'hidden' || +s.opacity === 0) return false; const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && !el.closest('[hidden]'); };
-  const scrollY = el => { for(let p = el.parentElement; p; p = p.parentElement){ const s = getComputedStyle(p); if(/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 1) return p; } return null; };
+  const docScroll = (() => { const se = document.scrollingElement, hs = getComputedStyle(document.documentElement).overflowY, bs = getComputedStyle(document.body).overflowY; return se.scrollHeight > se.clientHeight + 1 && hs !== 'hidden' && bs !== 'hidden' && hs !== 'clip' && bs !== 'clip'; })();
+  const scrollY = el => { if(docScroll && !el.closest('[style*="position: fixed"]')) return document.scrollingElement; for(let p = el.parentElement; p; p = p.parentElement){ const s = getComputedStyle(p); if(/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 1) return p; } return null; };
   const name = el => (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '') + ' "' + (el.innerText || el.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 24) + '"';
   for(const el of document.querySelectorAll('button, a[href], [role=button], input, select')){
     if(!vis(el)) continue;
@@ -51,6 +52,8 @@ function check(touch){
     const clipY = /(hidden|clip)/.test(s.overflowY);
     if(clipY && el.scrollHeight > el.clientHeight + 4 && el.innerText && el.innerText.trim() && el.children.length < 4 && !/(auto|scroll)/.test(s.overflowY)) out.push(`글 잘림(세로 ${el.scrollHeight}>${el.clientHeight}): ` + name(el));
   }
+  try{ if(!touch && G && G.gs && G.gs.rot) out.push('마우스 PC인데 판이 90도 돌아감(돌릴 수 없는 화면)'); }catch(_){}
+  try{ if(touch && G && G.gs && G.gs.S && vh > vw * 1.05 && !G.gs.rot) out.push('휴대폰 세로인데 판이 안 돌아감'); }catch(_){}
   const b = document.querySelector('#gsb');
   if(b && vis(b)){ const r = b.getBoundingClientRect(); if(r.left < -2 || r.top < -2 || r.right > vw + 2 || r.bottom > vh + 2) out.push(`판이 화면 밖 ${Math.round(r.left)},${Math.round(r.top)}~${Math.round(r.right)},${Math.round(r.bottom)} / ${vw}×${vh}`); }
   return [...new Set(out)];

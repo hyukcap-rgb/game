@@ -365,7 +365,10 @@ NG.gostop = (() => {
   /* 판 크기 맞추기 */
   function fit(){
     const g = GS(), b = $('#gsb'); if(!g || !b) return;
-    const vw = window.innerWidth, vh = window.innerHeight, rot = vh > vw * 1.05;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    /* 2026-10-22: 판을 90도 돌리는 건 손가락으로 쓰는 기기(휴대폰·태블릿)가 세로일 때만 — 마우스 PC의 세로 모니터·좁은 창은 돌리지 않고 그대로 줄임(돌릴 수 없으니까) */
+    const coarse = (() => { try{ return matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches; }catch(_){ return false; } })();
+    const rot = coarse && vh > vw * 1.05;
     const S = rot ? Math.min(vh / BW, vw / BH) : Math.min(vw / BW, vh / BH);
     g.rot = rot; g.sc = S;
     b.style.transform = `translate(-50%,-50%) rotate(${rot ? 90 : 0}deg) scale(${S})`;
