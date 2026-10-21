@@ -251,7 +251,7 @@ if(!process.env.GSROOM){
   await x.pg.evaluate(() => document.querySelector('#gsLobby [data-r="1"]').click());
   await x.pg.waitForFunction(() => G.gs.phase === 'play' && G.gs.S, null, { timeout:15000 }).catch(() => {});
   const pay = await x.pg.evaluate(() => { const g = G.gs, w0 = NG.tgostop._pt.wallet().pt; g.S.P[g.me].fp = 1; NG.tgostop._fp(); NG.tgostop._fp(); return [NG.tgostop._pt.wallet().pt - w0, g.fpd]; });
-  ok(pay[0] === 475 && pay[1] === 475, '점당 100P 판 첫뻑 정산 +500P − 관리비 5% = +475P(두 번 불러도 한 번): ' + pay.join('/'));
+  ok(pay[0] === 500 && pay[1] === 500, '점당 100P 판 첫뻑 정산 +500P(두 번 불러도 한 번): ' + pay.join('/'));
   ok(!x.errs.length, '오류 없음 ' + x.errs.join(' | '));
   await x.ctx.close();
 }
