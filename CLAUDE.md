@@ -32,6 +32,7 @@
 | `embed/` | 다른 사이트·앱에 붙이는 게임 모듈. `shell.*`(모듈 첫 화면·결과·이벤트), `haru-embed.js`(붙이는 쪽 스크립트), `<id>.html`(**빌드 결과물**) | 모듈만 |
 | `tools/` | 빌드(`build.js`)·점검(`test.mjs`)·실시간 대전 점검(`duel-test.mjs`)·난이도 도구 | — |
 | `server/` | 실시간 대전 중계 서버(Railway 함수 `battle`) | 대전 |
+| `steam/` | 트럼프 고스톱 스팀(PC) 앱 — `embed/tgostop.html`을 Electron 창으로 감쌈(업적·로컬 글꼴·SteamPipe 설정). 게임 코드는 없음 | 스팀 앱만 |
 
 규칙
 1. **게임 하나를 고칠 땐 그 게임 폴더만 고친다.** core를 고쳐야 할 것 같으면 먼저 게임 정의(`NG.<id>`)의 선택 항목으로 풀 수 있는지 본다(`games/CLAUDE.md`의 계약). 정말 core를 고치면 모든 게임을 점검하고 사용자에게 "공용 엔진을 고쳤다"고 알린다.

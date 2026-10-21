@@ -1,0 +1,16 @@
+{
+  "_설명": "Steamworks 관리 화면(앱 → 통계 및 업적)에 아래 id 그대로 등록한다. stat/goal은 앱이 이 PC에 쌓는 기록(main.js)으로 판단. 이름·설명은 한국어/영어 둘 다 입력.",
+  "achievements": [
+    { "id":"FIRST_WIN",      "stat":"wins",       "goal":1,   "ko":"첫 승리",        "en":"First Win",          "ko_desc":"한 판을 이긴다",                 "en_desc":"Win your first game" },
+    { "id":"WIN_10",         "stat":"wins",       "goal":10,  "ko":"동네 타짜",      "en":"Neighborhood Shark", "ko_desc":"10판을 이긴다",                  "en_desc":"Win 10 games" },
+    { "id":"WIN_50",         "stat":"wins",       "goal":50,  "ko":"고수",           "en":"Master",             "ko_desc":"50판을 이긴다",                  "en_desc":"Win 50 games" },
+    { "id":"WIN_200",        "stat":"wins",       "goal":200, "ko":"전설의 손",      "en":"Legendary Hands",    "ko_desc":"200판을 이긴다",                 "en_desc":"Win 200 games" },
+    { "id":"STREAK_5",       "stat":"bestStreak", "goal":5,   "ko":"연승 행진",      "en":"Hot Streak",         "ko_desc":"5연승을 한다",                   "en_desc":"Win 5 games in a row" },
+    { "id":"SOLO_STAGE_10",  "stat":"bestStage",  "goal":10,  "ko":"스테이지 10",    "en":"Stage 10",           "ko_desc":"솔로 스테이지 10을 깬다",          "en_desc":"Clear solo stage 10" },
+    { "id":"SOLO_STAGE_30",  "stat":"bestStage",  "goal":30,  "ko":"스테이지 30",    "en":"Stage 30",           "ko_desc":"솔로 스테이지 30을 깬다",          "en_desc":"Clear solo stage 30" },
+    { "id":"DUEL_FIRST",     "stat":"duelGames",  "goal":1,   "ko":"첫 대전",        "en":"First Duel",         "ko_desc":"대전을 한 판 한다",               "en_desc":"Play your first duel" },
+    { "id":"DUEL_WIN_10",    "stat":"duelWins",   "goal":10,  "ko":"대전의 강자",    "en":"Duelist",            "ko_desc":"대전에서 10판을 이긴다",           "en_desc":"Win 10 duels" },
+    { "id":"GAMES_100",      "stat":"games",      "goal":100, "ko":"백 판의 추억",    "en":"Hundred Hands",      "ko_desc":"100판을 둔다",                   "en_desc":"Play 100 games" }
+  ],
+  "_다음": "고·뻑·고도리 같은 게임 속 사건 업적(예: 3연뻑, 5고, 광박 주기)은 게임 모듈이 그 사건을 이벤트로 보내야 해서 2단계(게임 정의에 이벤트 추가)에서 넣는다."
+}

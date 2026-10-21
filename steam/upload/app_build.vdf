@@ -1,0 +1,11 @@
+"AppBuild"
+{
+	"AppID" "APP_ID"
+	"Desc" "트럼프 고스톱 빌드"
+	"ContentRoot" "../dist/"
+	"BuildOutput" "./output/"
+	"Depots"
+	{
+		"WIN_DEPOT_ID" "depot_win.vdf"
+	}
+}

@@ -1,0 +1,38 @@
+{
+  "name": "trump-gostop",
+  "productName": "Trump Gostop",
+  "version": "0.10.1",
+  "description": "트럼프 고스톱 — 스팀(PC) 버전. embed/tgostop.html을 데스크톱 창으로 감싼 앱",
+  "main": "main.js",
+  "private": true,
+  "steamAppId": 480,
+  "scripts": {
+    "prepare-app": "node prepare.mjs",
+    "start": "node prepare.mjs && electron .",
+    "smoke": "node prepare.mjs && SMOKE=1 electron .",
+    "dist:win": "node prepare.mjs && electron-builder --win dir --x64",
+    "dist:mac": "node prepare.mjs && electron-builder --mac dir --universal",
+    "dist:linux": "node prepare.mjs && electron-builder --linux dir --x64"
+  },
+  "dependencies": {
+    "steamworks.js": "0.4.0"
+  },
+  "devDependencies": {
+    "@fontsource/black-han-sans": "5.1.0",
+    "@fontsource/jua": "5.1.0",
+    "@fontsource/noto-sans-kr": "5.1.0",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "io.github.hyukcap.trumpgostop",
+    "productName": "Trump Gostop",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "achievements.json", "app/**/*", "package.json"],
+    "extraFiles": [{ "from": "steam_appid.txt", "to": "steam_appid.txt" }],
+    "asarUnpack": ["node_modules/steamworks.js/**/*"],
+    "win": { "icon": "build/icon.png" },
+    "mac": { "icon": "build/icon.png", "category": "public.app-category.card-games" },
+    "linux": { "icon": "build/icon.png", "category": "Game" }
+  }
+}

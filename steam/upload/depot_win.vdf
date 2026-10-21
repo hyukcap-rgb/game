@@ -1,0 +1,12 @@
+"DepotBuild"
+{
+	"DepotID" "WIN_DEPOT_ID"
+	"ContentRoot" "../dist/win-unpacked/"
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"Recursive" "1"
+	}
+	"FileExclusion" "*.pdb"
+}
