@@ -1135,7 +1135,7 @@ NG.tgostop = (() => {
   const PT_KEY = 'hp:tg:pt', START_PT = 10000, RESCUE_TO = 10000, FREE_PT = 3000, FREE_MS = 3 * 3600 * 1000;
   /* 2026-10-21 포인트 v2: 난이도(초급·중급·고급) 보상 배율 · 충전권(올인 때 1만P로 채움). 관리비는 사용자 지시로 없앰(FEE = 0, 반발 우려) */
   const FEE = 0, feeOf = n => Math.round(Math.max(0, n) * FEE);
-  const LV_KO = { easy:'초급', normal:'중급', hard:'고급' }, LV_X = { easy:.5, normal:1, hard:1.5 };
+  const LV_KO = { easy:'초급', normal:'중급', hard:'고급' }, LV_X = { easy:1, normal:1, hard:1 };   /* 2026-10-21 사용자 지시: 난이도 보상 배율 없앰(모두 ×1) */
   const CHARGE_TO = 10000, CHARGE_MAX = 5, CHARGE_START = 3;
   const ROOMS = [
     { k:0, stake:0, min:0, name:'연습 판', sub:'포인트가 오가지 않아요' },
@@ -1202,7 +1202,7 @@ NG.tgostop = (() => {
       box.innerHTML = `<div class="pbar gs-lbar"><button class="iconbtn" id="gsLbBack" aria-label="나가기">${ic('back')}</button><div class="ptitle">${esc(NG[ID].name)} ${BADGE19}</div><button class="iconbtn" id="gsLbHelp" aria-label="게임 방법">${ic('help')}</button></div>
         <div class="gs-lb">${msg ? `<p class="gs-lnote" role="status">${msg}</p>` : ''}
         <div class="gs-wal" aria-label="내 고스톱 포인트 ${fmtP(w.pt)} · 최고 ${fmtP(w.peak)}"><span class="gs-coin">P</span><div><b>${fmtP(w.pt)}</b><em title="최고 ${fmtP(w.peak)}">${titleOf(w.peak)}</em></div></div>
-        ${vsAi ? `<div class="gs-lvs" role="group" aria-label="난이도">${['easy', 'normal', 'hard'].map(k => `<button class="gs-lv${w.lv === k ? ' on' : ''}" data-lv="${k}" aria-pressed="${w.lv === k}"><b>${LV_KO[k]}</b><small>보상 ×${LV_X[k]}</small></button>`).join('')}</div>` : ''}
+        ${vsAi ? `<div class="gs-lvs" role="group" aria-label="난이도">${['easy', 'normal', 'hard'].map(k => `<button class="gs-lv${w.lv === k ? ' on' : ''}" data-lv="${k}" aria-pressed="${w.lv === k}"><b>${LV_KO[k]}</b><small>${AI_NAME[k]}</small></button>`).join('')}</div>` : ''}
         <div class="gs-rooms">${ROOMS.map(r => { const ok = w.pt >= r.min; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}" data-r="${r.k}" ${ok ? '' : 'disabled'} aria-label="${r.name} · ${ok ? r.sub : fmtP(r.min) + ' 필요'}"><b>${r.name}</b><small>${r.stake ? (ok ? '' : LOCK_ICO) + '×' + fmt(r.stake) + ' · ' + fmtP(r.min) + '~' : '±0'}</small></button>`; }).join('')}</div>
         <div class="gs-earn" aria-label="포인트 얻는 법">
           <div class="${w.att === dayKey() ? 'done' : ''}" aria-label="매일 출석 · ${w.streak || 1}일 연속"><span>출석</span><i>${att ? '+' + fmt(att) + 'P' : '✓'}</i></div>
@@ -1231,7 +1231,7 @@ NG.tgostop = (() => {
     g.paid = true;
     const r = g.S.result, room = g.room || ROOMS[0], w = wallet(), win = r && r.w === g.me, lose = r && r.w >= 0 && !win;
     let d = 0;
-    /* 이기면: 최종 점수 × 점당 × 난이도 배율(컴퓨터와 둘 때만) → 관리비 없음(FEE = 0). 지면: 그대로 잃음. opp = 상대 보유의 변화(실시간 대전 표시용, 상대 기기도 같은 식) */
+    /* 이기면: 최종 점수 × 점당(난이도 배율은 없앰, LV_X 모두 1) → 관리비 없음(FEE = 0). 지면: 그대로 잃음. opp = 상대 보유의 변화(실시간 대전 표시용, 상대 기기도 같은 식) */
     let gross = 0, fee = 0, lvx = 1, opp = 0;
     if(room.stake && win){ lvx = g.mode === 'pvp' ? 1 : (LV_X[g.ai] || 1); gross = Math.min(Math.round(r.final * room.stake * lvx), g.mode === 'pvp' ? (g.oppPt ?? Infinity) : Infinity); fee = feeOf(gross); d = gross - fee; opp = -gross; }
     else if(room.stake && lose){ const loss = Math.min(r.final * room.stake, w.pt); d = -loss; opp = loss - feeOf(loss); }
@@ -1650,7 +1650,7 @@ NG.tgostop = (() => {
     startGate(go){ ageGate(go); },
     /* 화면 안내(2026-10-18 판 위 글자 줄이기, docs/29): 판 위에서 뺀 설명 문장 */
     tips:() => [
-      ['난이도', '솔로·컴퓨터 대전은 판 고르기 위에서 난이도를 골라요. 초급(컴퓨터 새내기) 보상 ×0.5 · 중급(컴퓨터 고수) ×1 · 고급(컴퓨터 타짜) ×1.5 — 이길 때 받는 포인트에만 곱하고, 질 때는 그대로예요.'],
+      ['난이도', '솔로·컴퓨터 대전은 판 고르기 위에서 난이도를 골라요. 초급(컴퓨터 새내기) · 중급(컴퓨터 고수) · 고급(컴퓨터 타짜) — 컴퓨터 세기만 다르고, 이기고 지는 포인트는 어느 난이도든 같아요.'],
       ['판 고르기', '연습 판은 포인트가 오가지 않아요(±0). ' + ROOMS.filter(r => r.stake).map(r => `${r.name}: ${fmtP(r.min)} 이상 보유 · 판 크기 ×${fmt(r.stake)}`).join(' / ') + '. 자물쇠 = 포인트가 모자라 못 들어가는 판.'],
       ['포인트', '솔로·컴퓨터 대전에서 모은 포인트로 실시간 대전 판에 들어가요. 이기면 최종 점수 × 판 크기만큼 받고, 지면 그만큼 잃어요(가진 포인트까지만). 포인트는 게임 안에서만 쓰고 돈으로 사고팔 수 없어요. 금색 글 = 내 칭호(최고 보유 포인트 기준).'],
       ['포인트 얻기', '출석: 매일 1,000P + 연속 하루마다 400P(최대 +2,400P). 출석하면 충전권도 1장(최대 5장). 충전권: 올인(2천P 미만)일 때 1장 써서 1만P로 채워요 — 처음 3장, 솔로 챕터 첫 클리어마다 1장. 충전(무료 충전): 충전권이 없으면 3시간마다 3천P. 업적: ' + ACH.map(a => `${a.name} +${fmt(a.pt / 1000)}천`).join(' · ') + '. 솔로 새 판 첫 클리어: 챕터마다 +500P씩 커져요. ✓ = 오늘 받음, — = 필요 없음.'],
