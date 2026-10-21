@@ -304,7 +304,8 @@
       }
       for (const p of this.players) {
         p.bet = 0; p.acted = false; p.actedAt = 0; p.raises = 0;
-        if (p.lastAction && !p.folded && !p.allIn) p.lastAction = null;
+        // 지난 스트리트의 행동은 지우지 않고 '지난 것' 표시만(화면이 마지막 콜·체크 말풍선을 놓치지 않게, 돌려준 금액(returned)도 전달). 새 핸드에서 지움
+        if (p.lastAction && !p.folded && !p.allIn && p.lastAction.type !== 'WAIT') p.lastAction = Object.assign({}, p.lastAction, { prev: true });
       }
       this.currentBet = 0;
       this.minRaise = this.bb;
@@ -411,9 +412,9 @@
       if (!p || !p.inHand || p.hole.length < 2) return false;
       if (!(p.folded || this.stage === 'done')) return false;
       mask = (mask | 0) & 3;
-      if (!mask) return false;
+      if (!mask || ((p.showMask | 0) & mask) === mask) return false;   // 이미 공개한 장이면 바뀐 게 없음(방송도 안 함)
       p.showMask = (p.showMask | 0) | mask;
-      this.actionSeq++;
+      // actionSeq는 올리지 않음 — 행동 번호가 바뀌면 타임뱅크를 또 쓸 수 있고, 오늘의 토너먼트 봇 판단(씨앗에 actionSeq 포함)이 공개 여부에 따라 달라짐
       return true;
     }
 
@@ -556,9 +557,9 @@
           folded: p.folded, allIn: p.allIn, inHand: p.inHand, isBot: p.isBot, avatar: p.avatar,
           lastAction: p.lastAction, won: p.won || 0, away: !!p.away, empty: !!p.empty, waitBB: !!p.waitBB, postBB: !!p.postBB,
           hole: p.id === forId || reveal(p) ? p.hole.slice()
-            : p.showMask ? p.hole.map((c, k) => (p.showMask & (1 << k) ? c : '??'))
+            : p.showMask && this.stage === 'done' ? p.hole.map((c, k) => (p.showMask & (1 << k) ? c : '??'))   // 폴드 뒤 '패 보여주기'는 핸드가 끝난 뒤에만 남에게 보임(진행 중엔 정보가 새면 안 됨)
             : (p.inHand && !p.folded ? ['??', '??'] : []),
-          showMask: p.showMask || 0,
+          showMask: p.id === forId || this.stage === 'done' ? (p.showMask || 0) : 0,
           rebuys: p.rebuys || 0,
         })),
         legal: toActP && toActP.id === forId ? this.legal() : null,

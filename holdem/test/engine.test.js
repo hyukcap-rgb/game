@@ -300,4 +300,38 @@ t('chips conserved with joiners over many hands', () => {
   }
 });
 
+t('folded reveal is hidden from others until the hand ends', () => {
+  const g = seatGame([1e4, 1e4, 1e4]);
+  g.startHand();
+  const f = g.players[g.toAct];
+  assert(g.act(f.id, 'fold'));
+  assert(g.reveal(f.id, 3), '폴드 뒤 공개 요청은 받음');
+  const other = g.players.find((p) => p !== f && p.inHand && !p.folded);
+  let guard = 0;
+  while (g.stage !== 'done') {
+    const v = g.view(other.id).players.find((p) => p.id === f.id);
+    assert.deepStrictEqual(v.hole, [], '진행 중엔 폴드한 사람 카드가 남에게 안 보임');
+    assert.strictEqual(v.showMask, 0, '진행 중엔 공개 표시도 안 감');
+    assert.strictEqual(g.view(f.id).players.find((p) => p.id === f.id).showMask, 3, '본인은 예약 상태를 앎');
+    if (++guard > 200) throw new Error('loop');
+    if (g.runout) { g.runoutStep(); continue; }
+    const L = g.legal(); assert(g.act(g.players[g.toAct].id, L.canCheck ? 'check' : 'call'));
+  }
+  const v = g.view(other.id).players.find((p) => p.id === f.id);
+  assert.deepStrictEqual(v.hole, f.hole, '핸드가 끝나면 공개');
+});
+
+t('reveal does not bump actionSeq (timebank/tournament seed unaffected) and repeats are no-ops', () => {
+  const g = seatGame([1e4, 1e4, 1e4]);
+  g.startHand();
+  const f = g.players[g.toAct];
+  assert(g.act(f.id, 'fold'));
+  const seq = g.actionSeq;
+  assert(g.reveal(f.id, 1));
+  assert.strictEqual(g.actionSeq, seq, '공개는 행동 번호를 바꾸지 않음');
+  assert.strictEqual(g.reveal(f.id, 1), false, '이미 공개한 장은 다시 공개해도 바뀐 게 없음');
+  assert(g.reveal(f.id, 3), '남은 장은 공개됨');
+  assert.strictEqual(g.reveal(f.id, 3), false);
+});
+
 console.log('OK', n, 'tests');

@@ -5,6 +5,7 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const rakeTxt = (rk) => (rk && rk.pct > 0 ? `수수료 ${rk.pct}% · 최대 ${fmt(rk.cap)}${rk.capBB ? ` (${rk.capBB}BB)` : ''}${rk.nfnd === false ? '' : ' · 플랍 전 무료'}` : '수수료 없음');
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // 분양 주소(/s/이름/…)면 그 사업장으로 연결. 로그인 정보도 사업장마다 따로 저장
   const BASE = (location.pathname.match(/^\/s\/[a-z0-9-]{2,30}/) || [''])[0];
@@ -246,7 +247,7 @@
   const SLOT_SETS = { 1: [0], 2: [0, 9], 3: [0, 3, 6], 4: [0, 2, 9, 7], 5: [0, 2, 4, 5, 7], 6: [0, 1, 3, 9, 6, 8], 7: [0, 1, 2, 4, 5, 7, 8], 8: [0, 1, 2, 3, 9, 6, 7, 8], 9: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
   const CENTER = [50, 45];
   // D는 항상 버튼 주인 앞 + SB 쪽(시계 방향 다음 자리 쪽)으로. 반대쪽(이전 자리 쪽)으로 치우치면 그 사람이 버튼처럼 보임
-  const DEALER_POS = [[37, 73], [29, 53], [28, 38.5], [29, 30.5], [41, 21.5], [60, 24.5], [71, 31.5], [72, 38.5], [71, 55], [57, 24]];
+  const DEALER_POS = [[37, 73], [29, 53], [28, 38.5], [26.5, 30.5], [42, 21], [58, 21], [73.5, 31.5], [72, 38.5], [71, 55], [57, 24]];
   const VOICE_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인' };
   const TAG_TXT = { fold: '폴드', check: '체크', call: '콜', bet: '베팅', raise: '레이즈', allin: '올인', SB: 'SB', BB: 'BB', WAIT: '대기' };
   const CHIP_COLORS = ['#e0384d', '#2563eb', '#16a34a', '#111827', '#9333ea', '#d4a017'];
@@ -273,9 +274,10 @@
       $('#banner').className = 'banner'; $('#pot').classList.remove('show');
       $('#myHand').classList.remove('show'); $('#dealerBtn').classList.remove('show');
       $('#actions').className = 'actions';
+      Actions.raising = false; Actions.raiseTo = 0;   // 지난 게임에서 레이즈 패널을 연 채 나왔어도 새 게임 첫 차례에 지난 금액을 보내지 않게
       TurnFx.stop(); this.turnKey = '';
     },
-    myIndex(v) { const i = v.players.findIndex((p) => p.id === this.myId); return i; },
+    myIndex(v) { const i = v.players.findIndex((p) => p.id === this.myId && !p.gone); return i; },   // 나갔다가 관전으로 돌아오면 옛 자리(정산된 자리)는 내 자리가 아님
     slotPos(v, seat) {
       const n = v.players.length;
       const mi = Math.max(0, this.myIndex(v));
@@ -285,8 +287,10 @@
     lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; },
     betPos(v, seat) {
       const p = this.slotPos(v, seat);
-      if (p[1] > 80) return [50, 70];
-      return this.lerp(p, CENTER, 0.5);
+      if (p[1] > 80) return [50, 68.9];                     // 내 자리: 보드 아래·내 카드 위 사이
+      const q = this.lerp(p, CENTER, 0.5);
+      if (p[1] < 20 && p[0] !== 50) { q[0] = p[0] < 50 ? 38.5 : 61.5; q[1] = 31; }   // 맨 윗줄 둘: 큰 금액 글자가 서로·D와 안 닿게 바깥쪽·조금 아래로
+      return q;
     },
     // D 버튼: 참고 화면처럼 테이블(펠트) 위, 버튼 주인 앞에 놓음.
     // 자리마다 위치는 화면 겹침 점검(2~9명 × 쇼다운·모두 베팅 × 360/390/1280px)으로 고른 값:
@@ -397,6 +401,8 @@
         el.classList.toggle('folded', p.inHand && p.folded);
         el.classList.toggle('out', !p.inHand && p.stack <= 0 && !p.empty);
         el.classList.toggle('away', !!p.away);
+        el.classList.toggle('off', !!p.off);   // 연결이 끊긴 사람(앱을 닫았거나 화면이 꺼짐)
+        { let ot = el.querySelector('.off-tag'); if (p.off) { if (!ot) { ot = document.createElement('div'); ot.className = 'off-tag'; ot.textContent = '연결 끊김'; el.querySelector('.plate').appendChild(ot); } } else if (ot) ot.remove(); }
         el.classList.toggle('empty', !!p.empty);
         const open = !!(v.watch && v.open && v.open.includes(i)), resv = v.reserved === i;
         let sit = el.querySelector('.sit-btn');
@@ -413,15 +419,16 @@
         if (v.result && p.won && (!prev || !prev.result || newHand)) {
           shownStack = p.stack - p.won; // 칩이 날아온 뒤 갱신
           const target = p.stack;
-          setTimeout(() => this.tickStack(el, target - p.won, target), 1250);
+          const hk = v.hk;
+          setTimeout(() => this.tickStack(el, target - p.won, target, hk), 1250);
         } else if (v.result && p.won) {
+          // 결과 화면 중 리바인 등으로 칩이 바뀌면 바로 새 값(늘어나는 숫자 연출은 원래 값만)
+          if (pp && pp.stack !== p.stack) { el.dataset.shown = p.stack; el.dataset.tickTo = ''; }
           shownStack = Number(el.dataset.shown || p.stack);
         }
         if (!(v.result && p.won)) el.dataset.shown = p.stack;
-        el.querySelector('.stk').textContent = p.empty ? '' : !p.inHand && p.stack <= 0 ? '칩 없음' : fmt(shownStack);
-        let rbc = el.querySelector('.rb-count');
-        if (p.rebuys) { if (!rbc) { rbc = document.createElement('div'); rbc.className = 'rb-count'; el.querySelector('.plate').appendChild(rbc); } rbc.textContent = `리바인 ${p.rebuys}`; }
-        else if (rbc) rbc.remove();
+        el.querySelector('.stk').textContent = p.empty ? '' : p.gone ? '나감' : !p.inHand && p.stack <= 0 ? '칩 없음' : fmt(shownStack);
+        { const rbc = el.querySelector('.rb-count'); if (rbc) rbc.remove(); }   // 리바인 횟수는 남에게 보이지 않음(리바인 순간 알림만)
 
         // 홀카드
         const box = el.querySelector('.cards');
@@ -455,17 +462,23 @@
         box.classList.toggle('up', !isMe && faceUp);
         box.classList.toggle('shown', !!p.showMask);
         el.querySelector('.shown-tag').hidden = !(p.showMask && p.folded);
+        if (isMe) el.querySelector('.shown-tag').textContent = v.stage === 'done' ? '공개' : '끝나고 공개';
 
         // 액션 태그
         const tag = el.querySelector('.tag');
         const la = p.lastAction;
-        const changed = !pp || JSON.stringify(pp.lastAction) !== JSON.stringify(la);
+        const laKey = (x) => (x ? x.type + ':' + (x.amount || 0) + ':' + (x.returned || 0) : '');
+        const changed = !pp || laKey(pp.lastAction) !== laKey(la);
         if (v.result && winners.has(p.id)) {
           tag.className = 'tag win show'; tag.innerHTML = (p.won > 0 ? `<b>+${fmt(p.won)}</b>` : '') + 'WINNER';
         } else if (v.result && faceUp) {
-          tag.className = 'tag';   // 쇼다운: 공개된 카드를 가리지 않게 말풍선 숨김
+          // 쇼다운: 공개된 카드를 가리지 않게 말풍선 숨김. 폴드한 뒤 스스로 보여 준 패는 '공개' 말풍선으로
+          if (p.folded && p.showMask && !isMe) { tag.className = 'tag fold show'; tag.textContent = '공개'; }
+          else tag.className = 'tag';
+        } else if (la && la.prev && v.toAct === i && !v.result) {
+          tag.className = 'tag';   // 지난 스트리트 말풍선은 그 사람 차례가 오면 숨김(새 행동 전)
         } else if (la && !(la.type === 'SB' || la.type === 'BB') || (la && newHand)) {
-          tag.className = 'tag ' + la.type + (changed ? '' : ' show');
+          tag.className = 'tag ' + la.type + (changed ? '' : ' show') + (la.prev ? ' prev' : '');
           tag.textContent = TAG_TXT[la.type] || la.type;
           if (changed) {
             requestAnimationFrame(() => tag.classList.add('show'));
@@ -485,10 +498,13 @@
       });
     },
 
-    tickStack(el, from, to) {
+    tickStack(el, from, to, hk) {
+      if (!this.v || this.v.hk !== hk) return;   // 이미 다음 핸드면 지난 핸드 숫자로 덮지 않음
       const t0 = performance.now();
       const dur = 700;
+      el.dataset.tickTo = to;
       const step = (t) => {
+        if (!this.v || this.v.hk !== hk || el.dataset.tickTo !== String(to)) return;
         const k = Math.min(1, (t - t0) / dur);
         const val = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
         el.querySelector('.stk').textContent = fmt(val);
@@ -556,8 +572,12 @@
     sidePotPos(v, id) {
       const i = v.players.findIndex((p) => p.id === id);
       if (i < 0) return [50, 46];
-      if (this.slotPos(v, i)[1] > 80) return [25, 76];   // 내 자리: 카드·족보 글자 왼쪽
-      return this.betPos(v, i);
+      const sp = this.slotPos(v, i);
+      if (sp[1] > 80) return [25, 76, 'c'];   // 내 자리: 카드·족보 글자 왼쪽
+      const [x, y] = this.betPos(v, i);
+      if (sp[1] < 20) return [x < 50 ? 41.5 : x > 50 ? 58.5 : 50, 31, 'c', true];   // 맨 윗줄: 자기 베팅 칩 자리에 짧게(글자 없이)
+      // 옆줄: 자리 앞(D 바로 안쪽)에서 가운데 쪽으로 늘어나게 — 팟과 안 닿게 아랫줄은 조금 아래, 가운뎃줄은 조금 위로. 위에서 둘째 줄은 맞은편 베팅과 안 닿게 짧게
+      return [x < 50 ? x + 2 : x - 2, y > 46 ? y + 4.5 : y > 38 ? y - 3 : y, x < 50 ? 'l' : 'r', y < 46];
     },
     renderPot(v) {
       const pots = v.pots || [{ amount: v.stage === 'done' ? v.potTotal : v.pot, at: null }];
@@ -566,29 +586,57 @@
       const centerAmt = pots.filter((p) => !p.at).reduce((s, p) => s + p.amount, 0);
       $('#potAmt').textContent = fmt(centerAmt);
       $('#pot').classList.toggle('show', centerAmt > 0 && !gone);
-      // 옆 팟
+      // 옆 팟: 자기 자리 앞(베팅 칩 자리)에서 가운데 쪽으로. 팟·남의 베팅 칩·먼저 놓인 옆 팟과 겹치면 위아래로 비켜 놓음
       const box = $('#sidePots');
       if (this._sideHk !== v.hk) { box.innerHTML = ''; this._sideHk = v.hk; }
       const keep = new Set();
-      side.forEach((p, k) => {
+      const T = $('#table').getBoundingClientRect();
+      const placed = [];   // 피해야 할 네모들(테이블 % 단위) — 팟, 지금 걸린 베팅 칩
+      if (centerAmt > 0 && !gone) placed.push({ l: 31, t: 43.4, r: 69, b: 48.6 });
+      placed.push({ l: 17, t: 57.5, r: 83, b: 68 });   // 보드 카드 자리
+      if (v.dealer >= 0) { const [dx, dy] = this.dealerPos(v, v.dealer); placed.push({ l: dx - 3.2, t: dy - 1.9, r: dx + 3.2, b: dy + 1.9, w: 40 }); }   // D는 작아서 겹침 넓이가 작게 나옴 → 가중치를 크게(절대 덮지 않게)
+      v.players.forEach((q, i) => { if (q.bet > 0 && this.betEls[i]) { const r = this.betEls[i].getBoundingClientRect(); placed.push({ l: (r.left - T.left) / T.width * 100 - .4, t: (r.top - T.top) / T.height * 100 - .2, r: (r.right - T.left) / T.width * 100 + .4, b: (r.bottom - T.top) / T.height * 100 + .2 }); } });
+            side.forEach((p, k) => {
         const key = p.at;
         keep.add(key);
         let el = box.querySelector(`[data-at="${CSS.escape(key)}"]`);
-        const [x, y] = this.sidePotPos(v, p.at);
-        if (!el) {
+        let [x, y, anchor, compact] = this.sidePotPos(v, p.at);
+        const fresh = !el;
+        if (fresh) {
           el = document.createElement('div');
-          el.className = 'pot side-pot'; el.dataset.at = key;
+          el.className = 'pot side-pot' + (compact ? ' top' : ''); el.dataset.at = key;
+          el.style.transform = anchor === 'l' ? 'translate(0, -50%)' : anchor === 'r' ? 'translate(-100%, -50%)' : 'translate(-50%, -50%)';
           el.innerHTML = '<span class="pot-chip"></span><small></small><b></b>';
           el.style.left = '50%'; el.style.top = '46%';   // 가운데에서 그 사람 쪽으로 밀려 나감
           box.appendChild(el);
-          const from = this.tablePt([50, 46]), to = this.tablePt([x, y]);
-          for (let c = 0; c < 4; c++) this.flyChip(from, to, '#d4a017', null, c * 70);
-          Sound.chip(0.05);
-          requestAnimationFrame(() => requestAnimationFrame(() => { el.style.left = x + '%'; el.style.top = y + '%'; }));
-        } else { el.style.left = x + '%'; el.style.top = y + '%'; }
+        }
         el.querySelector('small').textContent = k === 0 ? '메인' : '사이드';
         el.querySelector('b').textContent = fmt(p.amount);
         el.classList.toggle('gone', gone);
+        // 자리 찾기: 원하는 자리 → 아래/위로 한 칸씩
+        const ovl = (a, b) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t)) * (a.w || 1);
+        let xx = x, yy = y, best = Infinity;
+        const dxs = anchor === 'l' ? [0, -4, -8] : anchor === 'r' ? [0, 4, 8] : [0];   // 자리가 없으면 자기 자리 쪽으로도 조금 물러남
+        const search = () => {
+          const w = el.offsetWidth / T.width * 100, h = el.offsetHeight / T.height * 100;
+          const rectAt = (xx, yy) => { const l = anchor === 'l' ? xx : anchor === 'r' ? xx - w : xx - w / 2; return { l, t: yy - h / 2, r: l + w, b: yy + h / 2 }; };
+          best = Infinity;
+          outer: for (const dx of dxs) for (const dy of [0, -1.6, 1.6, -3.8, 3.8, -5.6, 5.6, -7.6, 7.6, -9.6, 9.6, 13.6]) {
+            const r = rectAt(x + dx, y + dy), area = placed.reduce((s, q) => s + ovl(q, r), 0);
+            if (area < best - 1e-9) { best = area; xx = x + dx; yy = y + dy; }
+            if (area === 0) break outer;
+          }
+          return rectAt;
+        };
+        let rectAt = search();
+        if (best > 0 && !compact) { el.classList.add('top'); compact = true; rectAt = search(); }   // 그래도 자리가 없으면 '메인/사이드' 글자를 빼고 금액만(좁게) 다시 찾음
+        placed.push(rectAt(xx, yy));
+        if (fresh) {
+          const from = this.tablePt([50, 46]), to = this.tablePt([xx, yy]);
+          for (let c = 0; c < 4; c++) this.flyChip(from, to, '#d4a017', null, c * 70);
+          Sound.chip(0.05);
+          requestAnimationFrame(() => requestAnimationFrame(() => { el.style.left = xx + '%'; el.style.top = yy + '%'; }));
+        } else { el.style.left = xx + '%'; el.style.top = yy + '%'; }
       });
       box.querySelectorAll('.side-pot').forEach((el) => { if (!keep.has(el.dataset.at)) el.remove(); });
     },
@@ -651,10 +699,17 @@
           });
         });
         Sound.collect();
+        if (res.rake > 0) {   // 팟에서 뗀 수수료 — 팟 자리에 잠깐
+          const f = document.createElement('div');
+          f.className = 'float-num rake'; f.textContent = '수수료 -' + fmt(res.rake);
+          f.style.left = '50%'; f.style.top = '40%';
+          $('#fx').appendChild(f); setTimeout(() => f.remove(), 2400);
+        }
         this._potGone = hand;
         setTimeout(() => { $('#pot').classList.remove('show'); $$('#sidePots .side-pot').forEach((el) => el.classList.add('gone')); }, 400);
+        const winners = new Set(); res.pots.forEach((pt) => { if (!pt.refund || res.pots.length === 1) pt.winners.forEach((w) => winners.add(w)); });
         v.players.forEach((p, i) => {
-          if (p.won > 0) this.seatEls[i].classList.add('win');   // 금액은 WINNER 배지에
+          if (winners.has(p.id)) this.seatEls[i].classList.add('win');   // 금액은 WINNER 배지에. 반환 팟만 받은 사람은 승자 연출 없음(칩 숫자가 숨겨지던 문제)
         });
       }, res.type === 'showdown' ? 1100 : 450);
 
@@ -828,13 +883,14 @@
       const showReveal = !!canReveal && !(L && !v.result) && !(Online.waitRebuy > Date.now());
       a.classList.toggle('can-reveal', showReveal);
       if (showReveal) {
-        const key = v.hk + ':' + (me0.showMask | 0) + ':' + (rbCan ? 1 : 0);
+        const key = v.hk + ':' + (me0.showMask | 0) + ':' + (rbCan ? 1 : 0) + ':' + (v.stage === 'done' ? 1 : 0);
         const rr = $('#revealRow');
         if (rr.dataset.key !== key) {
           rr.dataset.key = key;
           const mini = (cs) => `<span class="mini">${cs.map((c) => `<div class="card"><div class="inner"><div class="face${c[1] === 'h' || c[1] === 'd' ? ' r' : ''}">${faceHTML(c)}</div></div></div>`).join('')}</span>`;
           const m = me0.showMask | 0;
-          rr.innerHTML = `<button data-mask="1" ${m & 1 ? 'disabled' : ''}>${mini([me0.hole[0]])}공개</button><button data-mask="2" ${m & 2 ? 'disabled' : ''}>${mini([me0.hole[1]])}공개</button><button data-mask="3">${mini(me0.hole)}공개</button>` + (rbCan ? `<button class="rb" id="rebuyBtn2">💰 리바인</button>` : '');
+          const lb = v.stage === 'done' ? '공개' : '끝나고 공개';   // 핸드 진행 중엔 예약만(끝난 뒤에 보임)
+          rr.innerHTML = `<button data-mask="1" ${m & 1 ? 'disabled' : ''}>${mini([me0.hole[0]])}${lb}</button><button data-mask="2" ${m & 2 ? 'disabled' : ''}>${mini([me0.hole[1]])}${lb}</button><button data-mask="3">${mini(me0.hole)}${lb}</button>` + (rbCan ? `<button class="rb" id="rebuyBtn2">💰 리바인</button>` : '');
           rr.classList.toggle('with-rb', rbCan);
           const b2 = $('#rebuyBtn2'); if (b2) b2.onclick = rebuyModal;
         }
@@ -851,6 +907,8 @@
         else if (L.toCall >= me.stack) call.innerHTML = `올인 콜<small>${fmt(L.toCall)}</small>`;
         else call.innerHTML = `콜<small>${fmt(L.toCall)}</small>`;
         raise.disabled = !L.canRaise;
+        if (this.raising && this._raiseKey !== v.hk + ':' + v.actionSeq) { this.raising = false; a.classList.remove('raising'); }   // 다른 핸드·다른 차례에서 열어 둔 패널은 닫음
+        this._raiseKey = v.hk + ':' + v.actionSeq;
         if (!this.raising) this.raiseTo = L.minTo;
         this.syncRaise();
       } else {
@@ -926,9 +984,14 @@
     },
     send(type, amount) {
       if (!this.ctrl) return;
+      // 같은 차례에 두 번 보내지 않음(더블 탭이 다음 스트리트의 체크/콜이 되던 문제). 서버도 행동 번호(seq)가 다르면 버림
+      const v = R.v, key = v ? v.hk + ':' + v.actionSeq : '';
+      if (key && this.sentKey === key) return;
+      this.sentKey = key;
       this.raising = false;
       $('#actions').classList.remove('raising');
-      this.ctrl.act(type, amount);
+      $$('#actRow .act').forEach((b) => { b.disabled = true; });   // 다음 상태가 올 때까지 잠금
+      this.ctrl.act(type, amount, v ? v.actionSeq : undefined);
     },
   };
   const isPre = () => $('#actions').classList.contains('pre');
@@ -950,9 +1013,10 @@
     const L = Actions.L; if (!L || isPre()) return;
     if (L.minTo >= L.maxTo) return Actions.send('allin');
     if (!Actions.raising) {
-      Actions.raising = true; Actions.raiseTo = L.minTo;
+      Actions.raising = true; Actions.raiseTo = L.minTo; Actions.openedAt = Date.now();
       $('#actions').classList.add('raising'); Actions.syncRaise(); return;
     }
+    if (Date.now() - (Actions.openedAt || 0) < 350) return;   // 패널을 연 직후의 두 번째 터치(더블 탭)는 전송이 아님
     Actions.send(Actions.raiseTo >= L.maxTo ? 'allin' : 'raise', Actions.raiseTo);
   };
   $('#presets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) Actions.setTo(+b.dataset.to); });
@@ -975,7 +1039,7 @@
 
   function hud(title, v, extra) {
     $('#hudTitle').textContent = title;
-    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)} · ${extra || '#' + v.handNo}`;
+    if (v) $('#hudSub').textContent = `블라인드 ${fmt(v.sb)}/${fmt(v.bb)}${v.rake && v.rake.pct > 0 ? ' · 수수료 ' + v.rake.pct + '%' : ''} · ${extra || '#' + v.handNo}`;
   }
   const PHRASES = {
     p1: '빨리빨리~', p2: '아 까비!', p3: '이걸 넘겨?', p4: '나이스!', p5: '블러프지?', p6: '올인 간다!',
@@ -990,7 +1054,9 @@
   // ---------- 서버 연결 ----------
   const Net = {
     ws: null, open: false, queue: [], handlers: {}, wantOpen: false, retry: 0,
+    halted: false,   // 다른 곳에서 같은 계정으로 접속해 밀려난 상태 — '여기서 계속하기'를 누르기 전엔 어떤 send()도 다시 붙지 않음
     connect() {
+      if (this.halted) return;
       this.wantOpen = true;
       if (this.ws && (this.ws.readyState === 0 || this.ws.readyState === 1)) return;
       const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + BASE + '/ws');
@@ -1002,10 +1068,14 @@
         q.forEach((m) => ws.send(JSON.stringify(m)));
       };
       ws.onmessage = (e) => {
+        if (ws !== this.ws) return;
+        this.lastRx = Date.now();
         let m; try { m = JSON.parse(e.data); } catch (er) { return; }
         const h = this.handlers[m.t]; if (h) h(m);
       };
+      this.lastRx = Date.now();
       ws.onclose = () => {
+        if (ws !== this.ws) return;   // 이미 새 연결로 바꾼 옛 연결
         this.open = false;
         if (this.wantOpen) {
           this.retry++;
@@ -1016,23 +1086,82 @@
     },
     send(m) {
       if (this.open && this.ws.readyState === 1) this.ws.send(JSON.stringify(m));
-      else { this.queue.push(m); this.connect(); }
+      else {
+        // 끊긴 동안 누른 행동·예약·타임뱅크·방 목록은 버림(다시 붙으면 서버가 상태를 새로 주고, 늦게 도착한 행동이 다른 차례에 실행되면 안 됨)
+        if (!['act', 'pre', 'timebank', 'roomList', 'ping', 'emote', 'reveal'].includes(m.t)) { this.queue.push(m); if (this.queue.length > 20) this.queue.shift(); }
+        this.connect();
+      }
     },
     on(t, fn) { this.handlers[t] = fn; },
+    // 연결 확인: 휴대폰 화면이 꺼졌다 켜지면 소켓이 죽어 있는데도 '열림'으로 남아 버튼이 안 먹고 화면이 멈춤 →
+    // 8초마다 ping, 서버 소식이 20초 없으면(또는 화면이 다시 보일 때 3초 안에 답이 없으면) 연결을 새로 맺음(서버가 방·상태를 다시 보내 줌)
+    check(timeoutMs) {
+      if (!this.wantOpen) return;
+      if (!this.ws || this.ws.readyState !== 1) { this.connect(); return; }
+      const sent = Date.now();
+      try { this.ws.send('{"t":"ping"}'); } catch (e) { /* */ }
+      clearTimeout(this.chkT);
+      this.chkT = setTimeout(() => { if (this.lastRx < sent && this.wantOpen) this.reset(); }, timeoutMs);
+    },
+    reset() {
+      const old = this.ws;
+      this.ws = null; this.open = false;
+      try { old && old.close(); } catch (e) { /* */ }
+      this.connect();
+    },
   };
+  // 8초마다(뒤로 간 탭에서도) 서버에 ping — 서버는 45초 넘게 소식이 없는 연결을 '끊김'으로 처리함. 답이 8초 안에 없으면 새로 연결
+  setInterval(() => { if (Net.wantOpen) Net.check(8000); }, 8000);
+  // 화면 오류를 서버 로그로(무엇이 멈췄는지 나중에 확인)
+  let errSent = 0;
+  function reportErr(e, ctx) {
+    if (errSent++ > 20) return;
+    try { Net.send({ t: 'clientErr', msg: String((e && e.message) || e), stack: String((e && e.stack) || ''), ctx: ctx || '', ua: navigator.userAgent }); } catch (er) { /* */ }
+  }
+  window.addEventListener('error', (e) => reportErr(e.error || e.message, 'window ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  window.addEventListener('unhandledrejection', (e) => reportErr(e.reason, 'promise'));
+  // 화면 멈춤 감지: 0.5초마다 도는 타이머가 2초 넘게 늦으면(화면이 보이는 동안) 멈춘 시간과 그때 상황을 서버 로그로
+  { let last = performance.now();
+    setInterval(() => {
+      const n = performance.now(), lag = n - last - 500; last = n;
+      if (lag > 2000 && !document.hidden && !(Date.now() - (window.__hiddenAt || 0) < lag + 1000)) {
+        const v = R.v;
+        reportErr('화면 멈춤 ' + (lag / 1000).toFixed(1) + '초', 'stall screen=' + (($('.screen.active') || {}).id) + ' stage=' + (v && v.stage) + ' hk=' + (v && v.hk) + ' seq=' + (v && v.actionSeq) + ' fx=' + $('#fx').children.length + ' dom=' + document.getElementsByTagName('*').length);
+      }
+    }, 500);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) window.__hiddenAt = Date.now(); });
+  }
+  // 게임 화면인데 서버 상태가 25초 넘게 안 오면(연결은 살아 있는데 화면이 뒤처짐) 서버에 지금 상태를 다시 달라고 함
+  setInterval(() => {
+    if (!Online.active || current !== Online || !$('#game').classList.contains('active') || document.hidden) return;
+    if (Online.lastStateAt && Date.now() - Online.lastStateAt > 25000 && Net.ws && Net.ws.readyState === 1) {
+      Online.lastStateAt = Date.now();
+      reportErr('상태 25초 없음 → 다시 받기', 'resync');
+      Net.send({ t: 'resync' });
+    }
+  }, 5000);
+  const wake = () => { if (!document.hidden) Net.check(3000); };
+  document.addEventListener('visibilitychange', wake);
+  window.addEventListener('pageshow', wake);
+  window.addEventListener('online', () => Net.check(3000));
+  window.addEventListener('focus', wake);
 
   // ---------- 회원·승인 ----------
   const Me = { info: null, pendingStart: null };
   const Online = {
     online: true, room: null, mode: null, active: false, pid: null,
     preFold: false, tb: 0, tbUsed: false, turnMs: 15000,
-    act(type, amount) { Net.send({ t: 'act', type, amount }); },
+    act(type, amount, seq) { Net.send({ t: 'act', type, amount, seq }); },
     emote(e) { Net.send({ t: 'emote', e }); },
     reveal(mask) { Net.send({ t: 'reveal', mask }); },
     leave() { Net.send({ t: 'leave' }); this.active = false; this.room = null; },
   };
   Actions.ctrl = Online;
-  $('#revealRow').addEventListener('click', (e) => { const b = e.target.closest('button[data-mask]'); if (b && !b.disabled) Online.reveal(+b.dataset.mask); });
+  $('#revealRow').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mask]'); if (!b || b.disabled) return;
+    Online.reveal(+b.dataset.mask);
+    if (R.v && R.v.stage !== 'done') toast('핸드가 끝나면 다른 사람에게 공개돼요');
+  });
 
   function homeState(kind) {
     // kind: 'auth' | 'gate' | 'ready'
@@ -1103,6 +1232,11 @@
   });
   Net.on('kicked', (m) => {
     closeModal(); Online.active = false; current = null; show('home');
+    if (m.reason === 'dup') {   // 다른 곳에서 같은 계정으로 접속 — 이 화면은 다시 붙지 않음(서로 밀어내는 핑퐁 방지). '여기서 계속'을 누르면 이쪽이 다시 가져감
+      Net.halted = true; Net.wantOpen = false; try { Net.ws && Net.ws.close(); } catch (e) { /* */ }
+      modal(`<h3>다른 곳에서 접속했어요</h3><p>${esc(m.msg)}</p><div class="btns"><button class="btn primary big" id="dupHere">여기서 계속하기</button></div>`, (el) => { el.querySelector('#dupHere').onclick = () => { closeModal(); Net.halted = false; Net.retry = 0; Net.queue = []; Net.connect(); }; });
+      return;
+    }
     modal(`<h3>알림</h3><p>${esc(m.msg)}</p><div class="btns"><button class="btn ghost" data-close>확인</button></div>`);
   });
   function doLogin(signup) {
@@ -1135,7 +1269,15 @@
     Online.waitRebuy = m.waitRebuy ? Date.now() + m.waitRebuy : 0;
     Online.preFold = !!m.preFold; Online.preCall = m.preCall == null ? null : m.preCall; Online.tb = m.tb | 0; Online.tbUsed = !!m.tbUsed; Online.turnMs = m.turnMs || 15000;
     if (!$('#game').classList.contains('active')) { R.reset(); show('game'); }
-    R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 });
+    try { R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 }); }
+    catch (e) {
+      // 화면 그리기에서 오류가 나도 버튼 줄은 살려 둠(예전엔 여기서 멈추면 그 판 내내 버튼이 안 먹음) + 서버 로그로 보냄
+      reportErr(e, 'render ' + (m.view && m.view.stage) + ' hk=' + (m.view && m.view.hk) + ' seq=' + (m.view && m.view.actionSeq));
+      // 한 번 꼬이면 다음 상태도 같은 곳에서 계속 실패해 화면이 굳음(새로고침해야 풀리던 증상) → 테이블을 처음부터 다시 그림
+      try { R.reset(); R.render(m.view, { deadline: m.deadline ? Date.now() + m.deadline : 0 }); }
+      catch (e2) { reportErr(e2, 'render-retry'); try { R.v = m.view; Actions.render(m.view); } catch (e3) { reportErr(e3, 'actions'); } }
+    }
+    Online.lastStateAt = Date.now();
     if (m.mode === 'daily') hud('오늘의 토너먼트', m.view, `핸드 ${Math.min(m.view.handNo, m.handLimit)}/${m.handLimit}`);
     else if (m.mode === 'friends') hud('친구 대전 · ' + (Online.room ? Online.room.code : ''), m.view);
     else hud(MODE_TITLE[m.mode] || '로열 홀덤', m.view);
@@ -1180,6 +1322,19 @@
     });
   });
   Net.on('left', () => { Online.active = false; });
+  Net.on('pong', () => {});
+  Net.on('restart', () => {
+    if (!Online.active) return;
+    Online.active = false; current = null; closeModal(); show('home');
+    modal(`<h3>서버 업데이트</h3><p>서버가 새 버전으로 바뀌면서 진행 중이던 판이 끝났어요.<br>테이블 칩은 보유 칩으로 그대로 돌려드려요. 잠시 뒤 다시 시작해 주세요.</p><div class="btns"><button class="btn primary" data-close>확인</button></div>`);
+  });
+  Net.on('toast', (m) => toast(m.msg));
+  // 다시 연결했는데 서버에 내 방이 없음(시간 초과로 빠졌거나 게임이 끝남) → 멈춘 화면 대신 홈으로
+  Net.on('noRoom', () => {
+    if (!Online.active || current !== Online) return;
+    if ($('#modal').classList.contains('show') && ['over', 'daily'].includes($('#modal').dataset.kind)) return;
+    if ($('#game').classList.contains('active') || $('#lobby').classList.contains('active')) { goHome(true); toast('연결이 끊긴 사이 방에서 나왔어요. 테이블 칩은 보유 칩으로 돌아갔어요'); }
+  });
 
   function renderLobby(m) {
     $('#roomCode').textContent = m.code;
@@ -1196,7 +1351,7 @@
     const allSeated = m.members.every((x) => x.seat > 0);
     const canStart = (m.members.length >= 2 || m.fillBots) && allSeated;
     $('#startBtn').disabled = !canStart;
-    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b>`;
+    $('#roomRule').innerHTML = `블라인드 <b class="num">${fmt(m.sb)} / ${fmt(m.bb)}</b> · 최소 머니 <b class="num">${fmt(m.minIn)}</b><br><small>${rakeTxt(m.rake)}</small>`;
     const sitBtn = $('#sitBtn');
     sitBtn.hidden = m.mySeat > 0;
     sitBtn.onclick = () => buyInModal({ title: '칩 가져오기', sb: m.sb, bb: m.bb, minIn: m.minIn, rake: m.rake || null, go: '앉기', onOk: (x) => Net.send({ t: 'sit', buyIn: x.buyIn }) });
@@ -1229,6 +1384,7 @@
       <div class="bi">
         ${o.pickBlinds ? '<label>블라인드 (SB / BB)</label><div class="bi-chips" id="biBlinds"></div>' : `<p class="bi-info">블라인드 <b class="num">${fmt(o.sb)} / ${fmt(o.bb)}</b> · 최소 머니 <b class="num">${fmt(minIn)}</b></p>`}
         ${o.pickMin ? '<label>최소 머니 (들어올 때 이만큼은 가져와야 해요)</label><div class="bi-chips" id="biMins"></div>' : ''}
+        <p class="bi-rake" id="biRake"></p>
         <label>가져갈 칩 <small>보유 ${fmt(bal)}</small></label>
         <div class="bi-amt num" id="biAmt"></div>
         <input type="range" id="biRange">
@@ -1243,6 +1399,7 @@
       const draw = () => {
         if (o.pickBlinds) el.querySelector('#biBlinds').innerHTML = BLINDS.map(([a, b]) => `<button data-bb="${b}" class="${b === bb ? 'on' : ''}">${short(a)}/${short(b)}</button>`).join('');
         if (o.pickMin) el.querySelector('#biMins').innerHTML = MIN_INS.filter((x) => x >= bb * 10).map((x) => `<button data-min="${x}" class="${x === minIn ? 'on' : ''}" ${x > bal ? 'disabled' : ''}>${short(x)}</button>`).join('');
+        { const rt = Me.info && Me.info.rake && Me.info.rake[bb]; el.querySelector('#biRake').textContent = rakeTxt(o.rake !== undefined ? o.rake : rt ? rt[o.mode || 'friends'] : null); }
         const ok = bal >= minIn;
         const r = el.querySelector('#biRange');
         r.min = minIn; r.max = Math.max(minIn, bal); r.step = 100; r.value = amt; r.disabled = !ok;
@@ -1255,7 +1412,7 @@
       };
       el.onclick = (e) => {
         const b = e.target.closest('button'); if (!b || b.disabled) return;
-        if (b.dataset.bb) { bb = +b.dataset.bb; if (minIn < bb * 10 || !o.pickMin) minIn = defMin(bb); amt = fitAmt(Math.max(amt, minIn)); draw(); }
+        if (b.dataset.bb) { bb = +b.dataset.bb; if (minIn < bb * 10 || !o.pickMin || minIn > bal) minIn = defMin(bb); amt = fitAmt(Math.max(amt, minIn)); draw(); }
         else if (b.dataset.min) { minIn = +b.dataset.min; amt = fitAmt(Math.max(amt, minIn)); draw(); }
         else if (b.dataset.v) { amt = fitAmt(+b.dataset.v); draw(); }
         else if (b.dataset.post) { post = b.dataset.post === '1'; el.querySelectorAll('#biPost button').forEach((x) => x.classList.toggle('on', x === b)); }
@@ -1288,7 +1445,7 @@
         <div class="bi-amt num" id="rbAmt"></div>
         <input type="range" id="rbRange" min="${rb.min}" max="${Math.max(rb.min, hi)}" step="${bb}">
         <div class="bi-quick" id="rbQuick">${[['40BB', rb.min], ['100BB', bb * 100], ['200BB', rb.max], ['최대', hi]].filter(([, x]) => x >= rb.min && x <= hi).map(([n, x]) => `<button data-v="${x}">${n}</button>`).join('')}</div>
-        <p class="bi-err">${rb.balance < rb.min ? `보유 칩이 ${fmt(rb.min)}보다 적어요` : rb.count ? `이번 게임 리바인 ${rb.count}회째 다음` : ''}</p>
+        <p class="bi-err">${rb.balance < rb.min ? `보유 칩이 ${fmt(rb.min)}보다 적어요` : ''}</p>
       </div>
       <div class="btns"><button class="btn gold big" id="rbOk" ${rb.balance < rb.min ? 'disabled' : ''}>리바인</button><button class="btn ghost" data-close>취소</button></div>`,
     (el) => {
@@ -1301,7 +1458,7 @@
   }
   Net.on('rebuy', (m) => {
     R.rebuyFx(m.pid, m.amount, m.bb);
-    toast(`💰 ${m.name}님 리바인 +${fmt(m.amount)} (${m.bb}BB)${m.count > 1 ? ` · ${m.count}회째` : ''}`);
+    toast(`💰 ${m.name}님 리바인 +${fmt(m.amount)} (${m.bb}BB)`);
   });
 
   Net.on('roomInfo', (m) => {
@@ -1332,8 +1489,26 @@
   function startSolo() {
     needApproval(() => buyInModal({ title: 'AI 대결 — 테이블 고르기', pickBlinds: true, mode: 'solo', go: '앉기', onOk: (x) => { current = Online; R.reset(); Net.send(Object.assign({ t: 'solo' }, x)); } }));
   }
+  function createFriends() {
+    buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, mode: 'friends', go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } });
+  }
+  // '친구 대전' → 열린 방 목록(바로 입장) + 방 만들기 + 코드로 입장
   function startFriends() {
-    needApproval(() => buyInModal({ title: '친구 대전 방 만들기', pickBlinds: true, pickMin: true, mode: 'friends', go: '방 만들기', onOk: (x) => { current = Online; Net.send(Object.assign({ t: 'create' }, x)); } }));
+    needApproval(() => {
+      modal(`<h3>친구 대전</h3>
+        <p class="rb-sub">열린 방에 바로 들어가거나 새 방을 만드세요</p>
+        <div class="room-list rb-list" id="rbList"><div class="rb-empty">방 목록을 불러오는 중…</div></div>
+        <div class="join-row rb-join"><input id="rbCode" maxlength="4" placeholder="방 코드" autocomplete="off"><button class="btn ghost" id="rbJoin">코드로 입장</button></div>
+        <div class="btns"><button class="btn primary" id="rbCreate">＋ 새 방 만들기</button><button class="btn ghost" data-close>닫기</button></div>`, (el) => {
+        el.querySelector('#rbCreate').onclick = createFriends;
+        el.querySelector('#rbJoin').onclick = () => joinRoom(el.querySelector('#rbCode').value);
+        el.querySelector('#rbCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(e.target.value); });
+        el.querySelector('#rbList').addEventListener('click', (e) => { const b = e.target.closest('[data-join]'); if (b) joinRoom(b.dataset.join); });
+        RoomList.browse = true;
+        RoomList.render();
+        RoomList.tick();
+      });
+    });
   }
   // ---------- 홈: 친구 대전 열린 방 목록 ----------
   var RoomList = {   // var: show()/homeState()가 먼저 불려도 안전하게
@@ -1341,17 +1516,13 @@
     tick() {
       clearTimeout(this.t);
       const home = $('#home').classList.contains('active');
-      if (home && approved() && !document.hidden) Net.send({ t: 'roomList' });
-      this.t = setTimeout(() => this.tick(), home ? 4000 : 8000);
+      const browsing = this.browse && $('#modal').classList.contains('show') && $('#rbList');
+      if ((home || browsing) && approved() && !document.hidden) Net.send({ t: 'roomList' });
+      this.t = setTimeout(() => this.tick(), home || browsing ? 3000 : 8000);
     },
-    render() {
-      const L = this.list, box = $('#roomList'), cnt = $('#roomCnt');
-      const show = approved() && !$('#modesBox').hidden;
-      cnt.hidden = !show || !L.length;
-      cnt.textContent = `방 ${L.length}개`;
-      box.hidden = !show || !L.length;
-      if (box.hidden) return;
-      const rows = L.map((r) => {
+    browse: false,
+    rows() {
+      return this.list.map((r) => {
         const full = r.count >= r.maxSeats, playing = r.status !== 'lobby';
         const btn = r.mine ? `<button class="btn primary sm" data-join="${r.code}">돌아가기</button>`
           : playing ? `<button class="btn primary sm" data-join="${r.code}">${r.open ? '관전·앉기' : '관전하기'}</button>`
@@ -1362,8 +1533,22 @@
           <div class="rr-t"><b>${esc(r.host)}<small>님의 방</small></b>
             <span>👥 <i class="num">${r.count}/${r.maxSeats}</i>${playing && r.open ? ` · 빈자리 <i class="num">${r.open}</i>` : ''} · <i class="num">${short(r.sb)}/${short(r.bb)}</i> · 최소 <i class="num">${short(r.minIn)}</i></span></div>
           <span class="rr-st ${playing ? 'play' : 'wait'}">${playing ? '게임 중' : '대기 중'}</span>${btn}</div>`;
-      });
-      box.innerHTML = `<div class="rl-head">열린 방 <b class="num">${L.length}</b></div>` + rows.join('');
+      }).join('');
+    },
+    render() {
+      const L = this.list, box = $('#roomList'), cnt = $('#roomCnt');
+      const show = approved() && !$('#modesBox').hidden;
+      cnt.hidden = !show || !L.length;
+      cnt.textContent = `방 ${L.length}개`;
+      // 열린 친구 대전 창
+      const rb = $('#rbList');
+      if (rb && $('#modal').classList.contains('show')) {
+        rb.innerHTML = L.length ? `<div class="rl-head">열린 방 <b class="num">${L.length}</b></div>` + this.rows()
+          : `<div class="rb-empty">지금 열린 방이 없어요<br><small>새 방을 만들면 다른 사람도 여기서 바로 들어올 수 있어요</small></div>`;
+      } else this.browse = false;
+      box.hidden = !show || !L.length;
+      if (box.hidden) return;
+      box.innerHTML = `<div class="rl-head">열린 방 <b class="num">${L.length}</b> · 눌러서 바로 입장</div>` + this.rows();
     },
   };
   Net.on('roomList', (m) => { RoomList.list = m.list || []; RoomList.render(); });

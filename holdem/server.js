@@ -20,6 +20,7 @@ const DAILY_STACK = 10000;
 const DAILY_HANDS = Number(process.env.DAILY_HANDS) || 30;
 const TURN_SEC_DEF = 15;     // 차례 제한 시간(초) 기본값 — 관리자 설정 '차례 시간'으로 바꿈
 const AWAY_MS = 4000;
+const KICK_TIMEOUTS = 2;      // 친구 대전: 시간 초과가 연속 이만큼이면 방에서 내보냄
 const TB_MS = 15000;         // 타임뱅크 한 번 = +15초(차례마다 1번)
 const TB_MAX = 3, TB_EVERY = 20;   // 타임뱅크는 처음 3개, 20핸드마다 1개 다시 채움(최대 3)
 const HAND_LOG_DAYS = 7;     // 관리자 게임 기록 보관(일)
@@ -136,7 +137,8 @@ function readHands(days) {
   return out;
 }
 
-function saveNow() { if (frozen) return; clearTimeout(saveT); try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) { /* */ } }
+// 즉시 저장(종료·되살리기 때). save()와 같은 임시 파일→이름 바꾸기 방식이라 비동기 저장과 겹쳐도 파일이 반쯤 쓰인 채 남지 않음
+function saveNow() { if (frozen) return; clearTimeout(saveT); try { const tmp = DB_FILE + '.now.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); } catch (e) { /* */ } }
 
 const rid = (n) => crypto.randomBytes(n).toString('base64url');
 const now = () => Date.now();
@@ -201,6 +203,8 @@ function userOf(acct) {
   u.acct = acct;
   return u;
 }
+// 운영 로그(Railway 로그에서 문제 상황을 되짚기용): 방 시작·끝, 끊김·재접속, 시간 초과 퇴장, 화면 오류
+function ev(...a) { console.log('[ev]', new Date(now() + 9 * 3600e3).toISOString().slice(5, 19).replace('T', ' '), ...a); }
 function send(u, msg) { if (u && u.ws && u.ws.readyState === 1) u.ws.send(JSON.stringify(msg)); }
 function sendWs(ws, msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 function meMsg(u) {
@@ -264,6 +268,7 @@ class Room {
   sit(u, amount) {
     if (!this.paid() || this.status !== 'lobby') return 'now';
     if (this.seats.get(u.id)) return '';
+    if (this.seats.size >= MAX_SEATS) return '자리가 다 찼어요';
     amount = Math.round(Number(amount) || 0);
     if (amount < this.minIn) return `최소 ${this.minIn.toLocaleString()} 이상 가져와야 해요`;
     if (amount > u.acct.balance) return `보유 칩(${u.acct.balance.toLocaleString()})보다 많이 가져올 수 없어요`;
@@ -289,6 +294,7 @@ class Room {
     if (this.mode === 'friends' && this.members.length < 2 && !this.fillBots) return 'few';
     this.status = 'playing';
     this.waitUntil = 0;
+    this.spokeFor = 0; this.hl = null;   // 새 게임: 지난 게임 마지막 핸드 번호가 남아 새 1핸드 기록·수수료를 건너뛰지 않게
     // 오늘의 토너먼트: 모두 같은 카드여야 하므로 날짜 + 서버 비밀값(밖에서 날짜만으로 덱을 계산 못 하게)
     // 그 밖의 방: 핸드마다 암호학적 난수로 섞음(덱을 미리 계산할 방법 없음)
     if (!db.dailySecret) { db.dailySecret = rid(24); save(); }
@@ -298,6 +304,7 @@ class Room {
     if (this.mode === 'friends') {
       // 친구 대전은 항상 9자리: 사람은 고르게 띄워 앉히고, 나머지는 AI 또는 빈자리(나중에 들어온 사람이 앉을 수 있음)
       const k = this.members.length, at = new Map();
+      if (k > MAX_SEATS) return 'full';   // 관전자까지 앉아 10명 넘으면 자리가 겹쳐 칩이 사라짐
       this.members.forEach((m, j) => at.set(Math.floor((j * MAX_SEATS) / k), m));
       const used = new Set(this.members.map((m) => m.acct.avatar));
       const pool = BOTS.filter((b) => !used.has(b.avatar)).concat(BOTS.filter((b) => used.has(b.avatar)));
@@ -338,6 +345,7 @@ class Room {
       }
     }
     this.seats.clear();   // 이제 칩은 테이블(게임) 위에 있음
+    ev('방 시작', this.mode, this.code, 'tid=' + this.tid, '사람:', this.members.map((m) => m.acct.name).join(','));
     this.sendRoom();
     this.nextHand();
     return '';
@@ -349,8 +357,9 @@ class Room {
     const a = db.accounts[p.acct];
     p.cashed = true;
     const amt = p.stack;
+    this.hlMark(p, 'out', amt);   // 핸드 도중에 나가 정산한 칩(게임 기록 손익에서 '진 칩'으로 잘못 잡히지 않게)
     if (!a) return amt;
-    a.inPlay = 0;
+    { const uu = users.get(a.id); if (!(uu && uu.room && uu.room !== this.code && rooms.has(uu.room))) a.inPlay = 0; }   // 핸드 중 다른 방으로 옮겨 그 방에 이미 칩을 가져갔으면 그 값은 덮지 않음
     a.balance += amt;
     log(a, 'cashout', amt, reason || ((this.mode === 'solo' ? 'AI 대결' : '친구 대전 ' + this.code) + ' 정산'));
     pushMe(a.id);
@@ -370,6 +379,7 @@ class Room {
     this.applyPending();
     this.syncInPlay();
     const alive = g.players.filter((p) => p.stack > 0);
+    if (this.endAfterHand && this.mode === 'solo') { ev('AI 대결 자동 종료(끊긴 채 시간 초과)', this.code); return this.finish(); }
     if (this.mode === 'daily') {
       const me = g.players[0];
       if (g.handNo >= DAILY_HANDS || me.stack <= 0 || alive.length < 2) return this.finishDaily();
@@ -407,28 +417,34 @@ class Room {
   tick() { this.schedule(); this.broadcastState(); }
 
   schedule() {
-    clearTimeout(this.timer); clearTimeout(this.nagT);
-    this.deadline = 0;
     const g = this.game;
+    // 같은 차례(핸드·행동 번호·단계)에 다시 불리면(재접속·누가 나감·끊김) 남은 시간을 이어 감 — 매번 처음부터 다시 재면 새로고침으로 시간을 무한히 끌 수 있고, 남이 들락날락할 때마다 내 시계가 되돌아감
+    const key = g && this.status === 'playing' ? [g.handNo, g.actionSeq, g.stage, g.runout ? 1 : 0, g.toAct].join(':') : '';
+    const same = key && key === this.schedKey && this.fireAt > now();
+    const left = same ? this.fireAt - now() : 0;   // 같은 상황이면 남은 시간만(결과 화면 4.2초·AI 생각 시간·내 차례 모두)
+    this.schedKey = key;
+    clearTimeout(this.timer); clearTimeout(this.nagT);
+    this.deadline = 0; this.fireAt = 0;
     if (!g || this.status !== 'playing') return;
+    const after = (ms, fn) => { ms = same ? Math.min(ms, left) : ms; this.fireAt = now() + ms; this.timer = setTimeout(fn, ms); return ms; };
     if (g.stage === 'done') {
       if (!this.spokeFor || this.spokeFor !== g.handNo) { this.spokeFor = g.handNo; this.botReactResult(); this.recordRake(); this.hlEnd(); }
-      this.timer = setTimeout(() => this.nextHand(), g.result.type === 'showdown' ? 4200 : 2000);
+      after(g.result.type === 'showdown' ? 4200 : 2000, () => this.nextHand());
       return;
     }
-    if (g.runout) { this.timer = setTimeout(() => { g.runoutStep(); this.tick(); }, 1200); return; }
+    if (g.runout) { after(1200, () => { g.runoutStep(); this.tick(); }); return; }
     const p = g.players[g.toAct];
     if (p.isBot) {
       const rand = this.mode === 'daily' ? H.mulberry32(H.hashSeed(this.seed + ':bot:' + g.handNo + ':' + g.actionSeq)) : Math.random;
       const delay = 600 + (this.mode === 'daily' ? rand() : Math.random()) * 800;
-      this.timer = setTimeout(() => {
+      after(delay, () => {
         const L = g.legal();
         const d = H.botDecide(g, rand);
         g.act(p.id, d.type, d.amount);
         if (d.type === 'fold' && L && L.toCall >= L.pot * 0.4) this.botSay(['p3'], 0.18, p.id);
         else if (p.allIn) this.botSay(['p6'], 0.5, p.id, p.id);
         this.tick();
-      }, delay);
+      });
       return;
     }
     const m = this.members.find((x) => x.pid === p.id);
@@ -438,22 +454,22 @@ class Room {
       const pc = p.preCall; p.preCall = null;
       if (pc.st === g.stage && g.currentBet <= pc.to) {
         const L = g.legal();
-        this.how = 'reserve'; g.act(p.id, L && L.canCheck ? 'check' : 'call'); this.how = '';
+        this.how = 'reserve'; g.act(p.id, L && L.canCheck ? 'check' : 'call'); this.how = ''; p.timeouts = 0;
         return this.schedule();
       }
     }
     if (m && p.preFold && !p.gone) {
       const L = g.legal();
-      this.how = 'reserve'; g.act(p.id, 'fold'); this.how = '';
+      this.how = 'reserve'; g.act(p.id, 'fold'); this.how = ''; p.timeouts = 0;
       if (!L || !L.canCheck) p.preFold = false;
       return this.schedule();
     }
     const turnMs = this.turnMs();
-    const ms = !m || p.gone ? 700 : (!m.ws || p.away) ? AWAY_MS : turnMs;
-    this.deadline = now() + ms;
-    this.tbKey = '';
-    if (m && ms === turnMs && turnMs > 9000) this.nagT = setTimeout(() => this.botSay(['p1', 'p12'], 0.6), Math.round(turnMs * 0.6));   // 오래 고민하면 AI가 재촉
-    this.timer = setTimeout(() => this.timeout(p), ms);
+    let ms = !m || p.gone ? 700 : (!m.ws || p.away) ? AWAY_MS : turnMs;
+    if (!same) this.tbKey = '';   // 새 차례면 타임뱅크를 다시 쓸 수 있음(같은 차례면 사용 기록 유지)
+    ms = after(ms, () => this.timeout(p));
+    this.deadline = this.fireAt;
+    if (m && !same && ms === turnMs && turnMs > 9000) this.nagT = setTimeout(() => this.botSay(['p1', 'p12'], 0.6), Math.round(turnMs * 0.6));   // 오래 고민하면 AI가 재촉
   }
   turnMs() { return Math.max(5, Math.min(60, Number(SET(this.tid).turnSec) || TURN_SEC_DEF)) * 1000; }
   // 시간이 다 되면 체크(할 수 없으면 폴드), 다음부터는 자리비움(4초)
@@ -463,6 +479,17 @@ class Room {
     const L = g.legal();
     this.how = 'timeout'; g.act(p.id, L && L.canCheck ? 'check' : 'fold'); this.how = '';
     p.away = true;
+    p.timeouts = (p.timeouts || 0) + 1;   // 직접 행동하면 0으로
+    // 친구 대전: 시간 초과가 연속 2번이면 방에서 내보냄(끊긴 사람이 몇십 판씩 남아 판을 늦추지 않게). 칩은 보유 칩으로 정산
+    const m = this.members.find((x) => x.pid === p.id);
+    if (this.mode === 'solo' && m && !m.ws && p.timeouts >= KICK_TIMEOUTS + 1) this.endAfterHand = true;   // AI 대결: 끊긴 채 계속 시간 초과면 이 핸드 끝에 정산하고 끝냄(10분 동안 블라인드만 빠지지 않게)
+    if (this.mode === 'friends' && m && p.timeouts >= KICK_TIMEOUTS) {
+      this.members.forEach((x) => x !== m && send(x, { t: 'toast', msg: `${p.name}님이 응답이 없어 방에서 나갔어요 (시간 초과 ${p.timeouts}번)` }));
+      ev('시간 초과 퇴장', this.code, p.name, '접속', !!m.ws);
+      send(m, { t: 'kicked', msg: `시간 초과가 ${p.timeouts}번 나서 방에서 나왔어요. 테이블 칩은 보유 칩으로 돌아갔어요.` });
+      this.remove(m);
+      if (this.status !== 'playing' || !this.game) return;
+    }
     this.tick();
   }
   // 타임뱅크: 내 차례에 +15초(차례마다 1번)
@@ -475,7 +502,7 @@ class Room {
     if (this.tbKey === key) return send(u, { t: 'error', msg: '타임뱅크는 차례마다 한 번만 쓸 수 있어요' });
     if (!(p.tb > 0)) return send(u, { t: 'error', msg: '남은 타임뱅크가 없어요' });
     p.tb--; this.tbKey = key;
-    this.deadline += TB_MS;
+    this.deadline += TB_MS; this.fireAt = this.deadline;   // 타임뱅크로 늘어난 시간도 재접속 때 이어지게
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.timeout(p), Math.max(0, this.deadline - now()));
     if (this.hl) this.hl.acts.push({ t: now() - this.hl.at, st: g.stage, n: p.name, a: 'timebank' });
@@ -486,8 +513,8 @@ class Room {
     const p = g && g.players.find((x) => x.id === u.pid);
     if (!p || this.status !== 'playing' || g.stage === 'done' || !p.inHand || p.folded || p.allIn) return;
     p.preFold = !!on;
-    if (on) p.preCall = null;
-    if (p.preFold && g.players[g.toAct] === p) { this.schedule(); }   // 이미 내 차례면 바로
+    if (on) { p.preCall = null; p.away = false; p.timeouts = 0; }   // 예약을 누른 것도 '자리에 있다'는 뜻
+    if (p.preFold && g.players[g.toAct] === p) return this.tick();   // 이미 내 차례면 바로 행동하고 방송
     this.broadcastState();
   }
 
@@ -500,8 +527,8 @@ class Room {
     else {
       to = Math.round(Number(to) || 0);
       if (to !== g.currentBet) return this.broadcastState();   // 그사이 금액이 바뀜 → 화면만 새로
-      p.preCall = { to, st: g.stage }; p.preFold = false;
-      if (g.players[g.toAct] === p) return this.schedule();
+      p.preCall = { to, st: g.stage }; p.preFold = false; p.away = false; p.timeouts = 0;   // 예약을 누른 것도 '자리에 있다'는 뜻
+      if (g.players[g.toAct] === p) return this.tick();   // 이미 내 차례면 바로 행동하고 모두에게 방송(schedule만 하면 아무도 모름)
     }
     this.broadcastState();
   }
@@ -516,7 +543,7 @@ class Room {
       rake: g.rake ? g.rake.pct : 0,
       players: g.players.map((p, i) => ({ seat: i, n: p.name, acct: p.acct || null, bot: !!p.isBot, pos: pos(i),
         start: before.get(p) != null ? before.get(p) : p.stack + p.total, hole: p.hole.slice(), in: !!p.inHand })).filter((x) => x.in),
-      acts: g.players.map((p, i) => (i === g.sbIdx || i === g.bbIdx) && p.lastAction ? { t: 0, st: 'preflop', n: p.name, a: p.lastAction.type, to: p.lastAction.amount } : null).filter(Boolean)
+      acts: g.players.map((p, i) => (i === g.sbIdx || i === g.bbIdx || (p.lastAction && p.lastAction.type === 'BB')) && p.lastAction ? { t: 0, st: 'preflop', n: p.name, a: p.lastAction.type, to: p.lastAction.amount } : null).filter(Boolean)   // 새로 앉아 BB를 낸 사람(posting)도 기록
         .sort((a, b) => (a.a === 'SB' ? -1 : b.a === 'SB' ? 1 : 0)),
       board: [],
     };
@@ -538,6 +565,15 @@ class Room {
     hl.board = g.board.slice();
     hl.acts.push({ t: now() - hl.at, st: g.board.length === 3 ? 'flop' : g.board.length === 4 ? 'turn' : 'river', deal: add });
   }
+  // 핸드 도중 칩이 판 밖에서 들어오거나 나간 것(리바인·나가서 정산)을 기록 — 손익 = 끝 + 나간 칩 - 시작 - 리바인
+  hlMark(p, key, amt) {
+    const hl = this.hl, g = this.game;
+    if (!hl || !g) return false;
+    const x = hl.players.find((q) => q.seat === g.players.indexOf(p));
+    if (!x) return false;
+    x[key] = (x[key] || 0) + amt;
+    return true;
+  }
   hlEnd() {
     const g = this.game, hl = this.hl, r = g.result;
     if (!hl || !r || hl.done) return;
@@ -549,7 +585,7 @@ class Room {
     hl.pots = r.pots.map((x) => ({ amt: x.amount, win: x.winners.map((id) => (g.players.find((p) => p.id === id) || {}).name || id), hand: x.handName || null, refund: !!x.refund }));
     for (const x of hl.players) {
       const p = g.players[x.seat];
-      x.end = p.stack; x.net = p.stack - x.start;
+      x.end = p.stack; x.net = p.stack + (x.out || 0) - x.start - (x.rebuy || 0);
       x.fold = !!p.folded; x.won = p.won || 0;
       if (r.hands && r.hands[p.id]) x.hn = r.hands[p.id].name;
       if (p.showMask) x.show = p.showMask;
@@ -685,6 +721,7 @@ class Room {
     u.acct.balance -= amount;
     p.stack += amount; p.rebuys = (p.rebuys || 0) + 1;
     u.acct.inPlay = p.stack;
+    if (this.hlMark(p, 'rebuy', amount) && this.hl) this.hl.acts.push({ t: now() - this.hl.at, st: g.stage, n: p.name, a: 'rebuy', to: amount });   // 핸드 도중 리바인(폴드한 뒤)은 손익이 아님
     log(u.acct, 'rebuy', -amount, `${this.label()} 리바인 ${p.rebuys}회차 (${Math.round(amount / this.bb)}BB)`);
     pushMe(u.id);
     this.members.forEach((m) => send(m, { t: 'rebuy', pid: p.id, name: p.name, amount, stack: p.stack, count: p.rebuys, bb: Math.round(amount / this.bb) }));
@@ -694,12 +731,20 @@ class Room {
 
   broadcastState() {
     const g = this.game;
+    if (!g) return;
     const rr = this.rebuyRange();
     for (const q of g.players) if (q.preCall && (q.preCall.st !== g.stage || g.currentBet > q.preCall.to || q.folded || q.allIn)) q.preCall = null;   // 누가 더 올렸거나 스트리트가 바뀌면 콜 예약 취소
     for (const m of this.members) {
       const p = g.players.find((x) => x.id === m.pid);
       const rebuy = this.paid() ? { min: rr.min, max: rr.max, can: this.rebuyOk(p), balance: m.acct.balance, count: (p && p.rebuys) || 0 } : null;
       const view = g.view(m.pid);
+      for (const vp of view.players) {   // 사람 자리 중 연결이 끊긴 사람 표시
+        const gp = g.players[vp.seat];
+        if (gp && gp.gone) vp.gone = true;   // 나간 사람 자리('칩 없음'으로 탈락한 것처럼 보이지 않게)
+        if (!gp || !gp.acct || gp.gone) continue;
+        const mm = this.members.find((x) => x.pid === vp.id);
+        if (!mm || !mm.ws) vp.off = true;
+      }
       if (this.mode === 'friends') {
         const res = this.pending ? [...this.pending].find(([, x]) => x.u === m) : null;
         view.watch = !p || !!p.gone;                       // 관전 중(자리에 안 앉음)
@@ -716,23 +761,25 @@ class Room {
     if (this.status !== 'playing' || !this.game) return;
     this.lastActive = now();
     const p = this.game.players.find((x) => x.id === u.pid);
-    if (p) { p.away = false; p.preFold = false; p.preCall = null; }
+    if (p) { p.away = false; p.preFold = false; p.preCall = null; p.timeouts = 0; this.endAfterHand = false; }
     if (this.game.act(u.pid, type, amount)) this.tick();
   }
   reveal(u, mask) {
     if (this.status !== 'playing' || !this.game) return;
-    if (this.game.reveal(u.pid, mask)) this.broadcastState();
+    if (this.game.reveal(u.pid, mask)) { this.revealSeq = (this.revealSeq || 0) + 1; this.broadcastState(); }
   }
 
   finish() {
     clearTimeout(this.timer); clearTimeout(this.nagT);
     if (this.status === 'over') return;
+    ev('방 끝', this.mode, this.code, '핸드', this.game ? this.game.handNo : 0);
     this.status = 'over';
     const g = this.game;
     this.refundPending('게임이 끝나 자리 예약 취소 — 칩 반환');
     const standings = g.players.filter((p) => !p.empty && (!p.gone || p.acct)).sort((a, b) => b.stack - a.stack)
       .map((p) => ({ pid: p.id, name: p.name, avatar: p.avatar, stack: p.stack }));
     const cash = {};
+    if (g.stage !== 'done') for (const p of g.players) if (p.acct && !p.cashed && p.total > 0) { p.stack += p.total; p.total = 0; p.bet = 0; }   // 핸드 도중 끝나면(모두 나감·오래 방치) 이번 핸드에 건 칩은 각자에게 돌려줌 — 승자를 정할 수 없고, 돌려주지 않으면 그 칩이 사라짐
     for (const p of g.players) if (p.acct) cash[p.acct] = this.cashOut(p);
     this.members.forEach((m) => send(m, { t: 'over', mode: this.mode, standings, cashOut: cash[m.id] || 0, balance: m.acct.balance }));
     if (this.mode === 'solo') { for (const m of this.members) m.room = null; return this.destroy(); }
@@ -859,9 +906,11 @@ app.post('/admin/api/login', (req, res) => {
   const pw = String((req.body || {}).password || '');
   const T = TEN(req.tid);
   const sup = safeEq(pw, ADMIN_PASSWORD);   // 슈퍼 관리자는 모든 사업장 관리자 페이지에 들어갈 수 있음
+  // 잠금은 '틀린 시도'만 막음 — 슈퍼 비밀번호는 잠금 중에도 통과(공격자가 진짜 관리자를 잠그는 DoS 방지).
+  // 사업장 비밀번호 검사(scrypt, 약 50ms 동기)는 잠금 확인 뒤에만 — 잠긴 상태에서 반복 요청으로 서버 전체를 느리게 만들지 못하게
+  if (!sup && checkFail(key)) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' });
   const own = !sup && T.adminSalt && safeEq(hashPin(pw, T.adminSalt), T.adminHash);
-  // 잠금은 '틀린 시도'만 막음 — 맞는 비밀번호는 잠금 중에도 통과(공격자가 진짜 관리자를 잠그는 DoS 방지)
-  if (!sup && !own) { if (checkFail(key)) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요' }); addFail(key); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
+  if (!sup && !own) { addFail(key); return res.status(401).json({ error: '비밀번호가 틀렸어요' }); }
   adminFails.delete(key);
   const t = rid(24); adminTokens.set(t, { exp: now() + 12 * 3600e3, tid: req.tid, sup });
   res.json({ token: t });
@@ -990,7 +1039,7 @@ app.post('/admin/api/user/:id', adminAuth, (req, res) => {
 app.post('/admin/api/settings', adminAuth, (req, res) => {
   const b = req.body || {};
   const S = SET(req.tid);
-  const num = (v, min, max) => Math.max(min, Math.min(max, Math.round(Number(v))));
+  const num = (v, min, max, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : (def != null ? def : min); };   // 숫자가 아니면 NaN이 저장되지 않게
   if (b.welcomeChips != null) S.welcomeChips = num(b.welcomeChips, 0, 1e8);
   if (b.buyIn != null) S.buyIn = num(b.buyIn, 1000, 1e8);
   if (b.minBuyIn != null) S.minBuyIn = num(b.minBuyIn, 200, S.buyIn);
@@ -1115,7 +1164,7 @@ app.post('/super/api/tenant/:id', superAuth, (req, res) => {
   if (r.error) return res.status(400).json({ error: r.error });
   Object.assign(T, r.out);
   if (r.out.active === false) {   // 운영 중지: 그 사업장 접속자 모두 내보냄(칩은 정산)
-    for (const u of users.values()) if (u.acct.tid === T.id) kick(u, '운영이 멈췄어요');
+    for (const u of users.values()) if (u.acct.tid === T.id) { kick(u, '운영이 멈췄어요'); if (u.ws) { try { u.ws.close(); } catch (e) { /* */ } } }
   }
   save();
   res.json({ ok: true, tenant: tenantRow(T) });
@@ -1135,10 +1184,15 @@ server.on('upgrade', (req, sock, head) => {
   if (!t || !t.active) return sock.destroy();
   wss.handleUpgrade(req, sock, head, (ws) => { ws.tid = t.id; wss.emit('connection', ws, req); });
 });
+const SILENT_MS = 45e3;   // 화면에서 45초 넘게 아무 소식(ping 포함)이 없으면 끊긴 것으로 봄 — 휴대폰 앱을 닫거나 화면이 꺼져도 소켓이 살아 있는 척하던 문제
 wss.on('connection', (ws) => {
-  ws.isAlive = true;
+  ws.isAlive = true; ws.lastRx = now();
+  // 오류(너무 큰 프레임 4096바이트 초과·깨진 프레임 등)는 그 연결만 끊음 — 리스너가 없으면 미처리 예외로 서버 전체(모든 방)가 죽음
+  ws.on('error', (e) => { try { ws.terminate(); } catch (e2) { /* */ } });
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('message', (raw) => {
+    ws.lastRx = now();
+    if (!TEN(ws.tid).active) return ws.close();   // 운영이 멈춘 사업장: 이미 붙어 있던 연결도 더는 못 씀
     let m;
     try { m = JSON.parse(raw); } catch (e) { return; }
     if (!m || typeof m !== 'object') return;
@@ -1150,7 +1204,7 @@ wss.on('connection', (ws) => {
     u.ws = null; u.offAt = now();
     u.acct.lastSeen = now(); save();
     const r = rooms.get(u.room);
-    if (r) { r.sendRoom(); if (r.status === 'playing') r.schedule(); }
+    if (r) { ev('끊김', r.mode, r.code, u.acct.name, r.status); r.sendRoom(); if (r.status === 'playing' && r.game) { r.schedule(); r.broadcastState(); } }   // 남은 사람 화면에 바로 '연결 끊김'
   });
 });
 
@@ -1167,7 +1221,7 @@ function createAccount(ws, name, pin, avatar) {
 }
 function attach(ws, acct, token) {
   const u = userOf(acct);
-  if (u.ws && u.ws !== ws) { sendWs(u.ws, { t: 'kicked', msg: '다른 곳에서 접속했어요' }); try { u.ws.close(); } catch (e) { /* */ } }
+  if (u.ws && u.ws !== ws) { sendWs(u.ws, { t: 'kicked', reason: 'dup', msg: '다른 곳에서 접속했어요. 이 화면은 더 이상 연결되지 않아요.' }); const old = u.ws; u.ws = null; try { old.close(); } catch (e) { /* */ } }   // 옛 연결은 다시 붙지 않음(reason: dup → 화면이 재접속을 멈춤). 서로 밀어내는 핑퐁 방지
   // 오래 끊겼다 들어오면 입장 승인을 다시 받아야 함(접속할 때마다 승인)
   if (u.offAt && now() - u.offAt > APPROVAL_GRACE_MS && !u.room) { u.approved = false; u.req = 0; }
   u.ws = ws; u.offAt = 0; ws.user = u;
@@ -1175,11 +1229,21 @@ function attach(ws, acct, token) {
   if (token) sendWs(ws, { t: 'session', token });
   send(u, meMsg(u));
   const r = rooms.get(u.room);
-  if (r && u.approved) { send(u, r.roomMsg(u)); r.sendRoom(); if (r.status === 'playing') r.tick(); }
+  if (r && u.approved) {
+    ev('다시 접속', r.mode, r.code, acct.name); send(u, r.roomMsg(u)); r.sendRoom();
+    if (r.status === 'playing' && r.game) { const p = r.game.players.find((x) => x.id === u.pid); if (p) p.away = false; r.tick(); }   // 돌아왔으니 자리비움(4초) 해제. tick은 같은 차례면 남은 시간을 이어 감
+  }
+  else send(u, { t: 'noRoom' });   // 그사이 방에서 빠졌거나(시간 초과) 게임이 끝났으면 화면을 홈으로
   return u;
 }
 
 function handle(ws, m) {
+  if (m.t === 'ping') return sendWs(ws, { t: 'pong' });
+  if (m.t === 'clientErr') {   // 화면(브라우저)에서 난 오류 — 연결마다 30개까지만
+    ws.errN = (ws.errN || 0) + 1;
+    if (ws.errN <= 30) console.error('[화면 오류]', ws.user ? ws.user.acct.name : '-', ws.user && ws.user.room ? ws.user.room : '-', String(m.ua || '').slice(0, 120), '|', String(m.msg || '').slice(0, 300), '|', String(m.stack || '').slice(0, 600), '|', String(m.ctx || '').slice(0, 300));
+    return;
+  }   // 화면 쪽 연결 확인(휴대폰 화면이 꺼졌다 켜진 뒤 죽은 연결을 알아채려고)
   switch (m.t) {
     case 'hello': {
       const id = db.sessions[String(m.token || '')];
@@ -1312,6 +1376,7 @@ function handle(ws, m) {
       if (room.status !== 'lobby') return send(u, { t: 'error', msg: '이미 게임이 진행 중인 방이에요' });
       if (room.members.length >= MAX_SEATS) return send(u, { t: 'error', msg: '방이 가득 찼어요' });
       if (a.balance < room.minIn) return send(u, { t: 'error', msg: `이 방은 최소 ${room.minIn.toLocaleString()}이 필요해요` });
+      if (r && r !== room) leaveRoom(u, true);   // 다른 방(대기실·게임)에 앉은 채 들어오면 먼저 그 방 칩을 정산(inPlay가 0으로 덮이는 문제)
       const err = room.sit(u, m.buyIn);
       if (err) return send(u, { t: 'error', msg: err });
       room.add(u);
@@ -1329,9 +1394,10 @@ function handle(ws, m) {
       const why = r.start();
       if (why === 'seat') send(u, { t: 'error', msg: '모두 칩을 가져와 앉아야 시작할 수 있어요' });
       else if (why === 'few') send(u, { t: 'error', msg: '2명 이상이어야 시작할 수 있어요' });
+      else if (why === 'full') send(u, { t: 'error', msg: '자리는 9개예요. 9명까지만 앉을 수 있어요' });
       break;
     }
-    case 'act': if (r) r.act(u, String(m.type), Number(m.amount)); break;
+    case 'act': if (r) { if (m.seq != null && r.game && Number(m.seq) !== r.game.actionSeq) break; r.act(u, String(m.type), Number(m.amount)); } break;   // 화면이 보낸 행동 번호가 지금과 다르면(두 번 터치·늦게 도착) 버림
     case 'reveal': if (r) r.reveal(u, Number(m.mask)); break;
     case 'rebuy': if (r) r.rebuy(u, m.amount); break;
     case 'pre': if (r) { if ('call' in m) r.setPreCall(u, m.call); else r.setPreFold(u, !!m.fold); } break;
@@ -1347,6 +1413,12 @@ function handle(ws, m) {
       break;
     }
     case 'leave': leaveRoom(u); break;
+    case 'resync': {   // 화면이 뒤처졌을 때 지금 방·상태를 다시 보냄
+      if (!r) return send(u, { t: 'noRoom' });
+      send(u, r.roomMsg(u));
+      if (r.status === 'playing' && r.game) r.broadcastState();
+      break;
+    }
     case 'daily': {
       const date = kstDate();
       const board = dayBoard(a.tid, date);
@@ -1370,6 +1442,10 @@ function handle(ws, m) {
 setInterval(() => {
   wss.clients.forEach((ws) => {
     if (!ws.isAlive) return ws.terminate();
+    if (ws.user && now() - (ws.lastRx || 0) > SILENT_MS) {   // 브라우저가 망 단에서 pong만 자동 응답하고 화면은 멈춘(앱이 뒤로 간) 경우
+      ev('응답 없음 → 끊음', ws.user.acct.name, ws.user.room || '-');
+      return ws.terminate();
+    }
     ws.isAlive = false;
     try { ws.ping(); } catch (e) { /* */ }
   });
@@ -1389,5 +1465,16 @@ setInterval(() => {
   }
 }, 20000);
 
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { saveNow(); process.exit(0); });
+// 예상 못 한 오류 하나로 서버(모든 방)가 죽지 않게 — 기록만 남기고 계속. 그래도 죽어야 하면 데이터부터 저장
+process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
+process.on('uncaughtException', (e) => { console.error('[uncaughtException]', e); try { saveNow(); } catch (e2) { /* */ } });
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
+  // 배포로 서버가 다시 켜지면 진행 중인 판은 사라짐(방은 메모리에만 있음) → 멈춘 것처럼 보이지 않게 알리고, 칩은 다시 켜질 때 보유 칩으로 돌려줌
+  let n = 0;
+  for (const r of rooms.values()) for (const m of r.members) if (m.ws) { send(m, { t: 'restart', mode: r.mode }); n++; }
+  ev('서버 종료', sig, '방', rooms.size, '알린 사람', n);
+  saveNow();
+  setTimeout(() => process.exit(0), n ? 300 : 0);
+});
+server.on('error', (e) => { console.error('[서버 시작 실패]', e); process.exit(1); });   // 포트 충돌 같은 시작 오류는 위 안전망에 삼켜지지 않고 바로 종료(Railway가 다시 띄움)
 server.listen(PORT, () => console.log('로열 홀덤 서버 :' + PORT));
