@@ -533,3 +533,10 @@ body.gs-full{overflow:hidden}
 .gs-side .gs-mis.ok.op{background:rgba(255,77,121,.18)}
 .gs-side .gs-mis.no{opacity:.6}
 .gs-side .gs-mis.no .gs-mx{text-decoration:line-through}
+
+/* 2026-10-22 경제 수정: 미리 고른 판(E-7)·상한 줄(E-3) */
+.gs-room.pick{outline:4px solid #FFC93C; outline-offset:3px}
+.gs-lobby.up .gs-room.pick{outline-width:3px; outline-offset:2px}
+.gs-room:focus-visible{outline:4px solid #2E8FE8; outline-offset:3px}
+.gs-pay.cap{background:#FFF4CC} .gs-pay.cap span{color:#7A5A00} .gs-pay.cap b{color:#5A4A6A; font-size:22px; font-weight:800}
+.gs-end .gs-pay.cap b{font-size:20px}

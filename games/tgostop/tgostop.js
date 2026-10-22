@@ -454,7 +454,7 @@ NG.tgostop = (() => {
     /* v1.11 캐릭터 메뉴(Figma 개편안): 얼굴+시계 왼쪽 · 이름/골드/설명/상태 칩 오른쪽 한 덩어리 */
     return `<span class="gs-pav">${av}<svg class="gs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="46"/><circle class="fg" cx="50" cy="50" r="46" pathLength="100"/></svg><b class="gs-sec"></b><i class="gs-sweat"></i></span>
       <div class="gs-ptx"><div class="gs-pn">${S.first === p ? '<i class="gs-sun">先</i>' : ''}<b>${name}</b></div>
-      <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt != null ? fmtP(g.oppPt) : '') : '<span title="판돈 무제한" aria-label="판돈 무제한">∞</span>'}</div>
+      <div class="gs-pl gs-ptv">${me ? fmtP(wallet().pt) : g.mode === 'pvp' ? (g.oppPt != null ? fmtP(g.oppPt) : '') : (capOf(g) ? `<span title="이 판에서 오갈 수 있는 가장 큰 금액(이기든 지든)">최대 ${fmtP(capOf(g))}</span>` : '<span title="골드가 오가지 않는 연습 판">연습</span>')}</div>
       <div class="gs-pl gs-sub" ${me ? '' : 'id="gsOH"'}>${me ? '' : `<span class="gs-left" aria-label="남은 패 ${view.h[p].length}장">${HAND_ICO}${view.h[p].length}</span>`}</div>
       ${st ? `<div class="gs-ps">${st}</div>` : ''}</div>`;
   }
@@ -715,10 +715,11 @@ NG.tgostop = (() => {
     g.k = 0; g.log = []; g.raw = []; g.own = []; g.src = []; g.busy = true; g.picking = false; g.stepT0 = Date.now() + DEAL_MS;   /* 패 돌리는 동안은 대신 두기 금지 */
     g.began = true; g.inGame = true; g.ended = false; g.paid = false; g.res = null; g.phase = 'play'; g.epoch = (g.epoch || 0) + 1;
     g.nxSent = false; clearInterval(g.nxIv); g.fpPaid = [0, 0]; g.fpd = 0;
+    try{ const pen = penaltyOf(g); store.set(LIVE_KEY, pen ? { p:pen, at:Date.now() } : null); }catch(_){}   /* E-5 */
     $('#gsSun').hidden = true; $('#gsLobby').hidden = true; $('#gsSearch').hidden = true;
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     $('#gsBody').hidden = false; fit();
-    const rm0 = g.room || ROOMS[0], tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${rm0.name}${rm0.stake ? ' · 1점 ' + fmtP(rm0.stake) : ''}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
+    const rm0 = g.room || ROOMS[0], tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${roomLabel(g)}${rm0.stake ? ' · 점당 ' + fmtP(rm0.stake) : ''}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
     const gate = $('#gsGate'); if(gate) gate.remove();
     byeUI();
     draw(liveView());
@@ -1012,11 +1013,10 @@ NG.tgostop = (() => {
     if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d + (g.fpd || 0); if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt + (pay.opp || 0)); }
     g.lastW = r.w;
     draw(liveView());
-    const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${g.room.name}</span><b>${pay.d > 0 ? '+' : ''}${fmtP(pay.d)}</b></div>` : '<div class="gs-pay"><span>연습 판</span><b>골드 변화 없음</b></div>')
-      + (pay.lvx && pay.lvx !== 1 ? `<div class="gs-pay sm"><span>난이도 ${LV_KO[g.ai] || ''} · 보상 ×${pay.lvx}</span><b>${fmtP(pay.gross)}</b></div>` : '')
-      + (pay.fee ? `<div class="gs-pay down sm"><span>관리비 5% (이긴 금액에서)</span><b>−${fmtP(pay.fee)}</b></div>` : '')
+    const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${roomLabel(g)}</span><b>${pay.d > 0 ? '+' : pay.d < 0 ? '−' : ''}${fmtP(Math.abs(pay.d))}</b></div>` : `<div class="gs-pay"><span>${roomLabel(g)}</span><b>골드 변화 없음</b></div>`)
+      + (pay.capped ? `<div class="gs-pay sm cap"><span>${pay.capped === 'win' ? '최대 이김' : '최대 잃음'} ±${fmtP(pay.cap)}</span><b>${fmt(r.final)}점 × ${fmtP(g.room.stake)} = ${fmtP(pay.raw)}</b></div>` : '')
       + (pay.item ? '<div class="gs-pay up sm"><span>챕터 첫 클리어 · 충전권</span><b>+1장</b></div>' : '')
-      + (g.fpd ? `<div class="gs-pay ${g.fpd > 0 ? 'up' : 'down'} sm"><span>첫뻑·연뻑 (판돈 ×5·×10·×15, 판 중에 받음)</span><b>${g.fpd > 0 ? '+' : '−'}${fmtP(Math.abs(g.fpd))}</b></div>` : '')
+      + (g.fpd ? `<div class="gs-pay ${g.fpd > 0 ? 'up' : 'down'} sm"><span>뻑 보너스 (판 중에 받음)</span><b>${g.fpd > 0 ? '+' : '−'}${fmtP(Math.abs(g.fpd))}</b></div>` : '')
       + (pay.bonus ? `<div class="gs-pay up sm"><span>솔로 새 판 첫 클리어</span><b>+${fmtP(pay.bonus)}</b></div>` : '')
       + pay.got.map(a => `<div class="gs-pay up sm"><span>업적 · ${a.name}</span><b>+${fmtP(a.pt)}</b></div>`).join('')
       + `<p class="gs-after">보유 골드 <b>${fmtP(pay.after)}</b>${pay.after < ROOMS[1].min ? (wallet().items.charge > 0 ? ' · 올인! 판 고르기에서 충전권으로 1만 G를 채워요' : ' · 올인! 충전권이 없으면 3시간마다 무료 충전') : ''}</p>`;
@@ -1141,6 +1141,15 @@ NG.tgostop = (() => {
   const LV_KO = { easy:'초급', normal:'중급', hard:'고급' }, LV_X = { easy:1, normal:1, hard:1 };   /* 2026-10-21 사용자 지시: 난이도 보상 배율 없앰(모두 ×1) */
   /* 2026-10-21 사용자 지시: 컴퓨터와 둘 때는 난이도 = 판돈(초급 점당 100 G · 중급 500 G · 고급 1,000 G). 연습 판은 따로, 왕 판은 실시간 대전에만 */
   const AI_ROOMS = [{ lv:'easy', r:1 }, { lv:'normal', r:2 }, { lv:'hard', r:3 }];
+  /* 2026-10-22 경제 수정(docs/34 3-4절, 결정로그 253~256)
+     E-3 컴퓨터 판(솔로 포함) 한 판 상한 = 그 판 입장 금액(이기든 지든, 뻑 보너스는 상한 밖). 실시간 대전은 상한 없음(상대 보유까지)
+     E-4 솔로는 판 고르기 없이 점당 100 G(작은 판과 같은 값, 상한 2,000 G) · 컴퓨터 세기 = stageLevel(n)
+     E-5 판 도중 나가기·창 닫기 벌점 = 컴퓨터 판은 상한과 같게, 실시간 대전은 점당 ×10. 판 시작 때 '진행 중'을 저장해 강제 종료도 다음 실행에 한 번 정산 */
+  const SOLO_ROOM_K = 1;
+  const capOf = g => { const rm = (g && g.room) || ROOMS[0]; return rm.stake && g.mode !== 'pvp' ? rm.min : 0; };   /* 0 = 상한 없음(연습 판·실시간 대전) */
+  const penaltyOf = g => { const rm = (g && g.room) || ROOMS[0]; return !rm.stake ? 0 : g.mode === 'pvp' ? rm.stake * 10 : rm.min; };
+  const roomLabel = g => { const rm = (g && g.room) || ROOMS[0]; if(G.adv) return '스테이지 ' + G.adv + (rm.stake ? '' : ' · 연습'); if(!rm.stake) return rm.name; return g.mode === 'pvp' ? rm.name : (LV_KO[g.ai] || rm.name); };
+  const LIVE_KEY = 'hp:tg:live';   /* 진행 중인 판(골드가 오가는 판만) { p:벌점, at } — 정산·벌점 때 지움 */
   const CHARGE_TO = 10000, CHARGE_MAX = 5, CHARGE_START = 3;
   const ROOMS = [
     { k:0, stake:0, min:0, name:'연습 판', sub:'골드가 오가지 않아요' },
@@ -1165,7 +1174,7 @@ NG.tgostop = (() => {
     const w = store.get(PT_KEY, null) || { pt:START_PT, peak:START_PT, att:'', streak:0, rescue:'', free:0, ach:{}, games:0, wins:0 };
     w.ach = w.ach || {};
     if(!w.items) w.items = { charge:CHARGE_START };
-    if(!LV_X[w.lv]) w.lv = 'normal';
+    if(!LV_X[w.lv]) w.lv = 'easy';   /* E-7: 처음엔 초급이 미리 골라져 있음 */
     return w;
   }
   function saveW(w){ w.pt = Math.max(0, Math.round(w.pt)); w.peak = Math.max(w.peak || 0, w.pt); store.set(PT_KEY, w); }
@@ -1197,6 +1206,7 @@ NG.tgostop = (() => {
   function lobby(){
     const g = GS(); if(!g || G.over) return;
     if(g.link && g.mode === 'pvp'){ const r = ROOMS[g.link.k] || ROOMS[0]; g.room = wallet().pt >= r.min ? r : ROOMS[0]; turnHint(); linkJoin(); return; }
+    if(G.adv && g.mode !== 'pvp'){ soloStart(); return; }   /* E-4: 솔로는 판 고르기 없음 */
     const att = attendance();
     const box = $('#gsLobby'); box.hidden = false; $('#gsBody').hidden = true;
     const draw0 = msg => {
@@ -1207,13 +1217,14 @@ NG.tgostop = (() => {
       box.innerHTML = `<div class="pbar gs-lbar"><button class="iconbtn" id="gsLbBack" aria-label="나가기">${ic('back')}</button><div class="ptitle">${esc(NG[ID].name)} ${BADGE19}</div><button class="iconbtn" id="gsLbHelp" aria-label="게임 방법">${ic('help')}</button></div>
         <div class="gs-lb">${msg ? `<p class="gs-lnote" role="status">${msg}</p>` : ''}
         <div class="gs-wal" aria-label="내 고스톱 골드 ${fmtP(w.pt)} · 최고 ${fmtP(w.peak)}"><span class="gs-coin">G</span><div><b>${fmtP(w.pt)}</b><em title="최고 ${fmtP(w.peak)}">${titleOf(w.peak)}</em></div></div>
-        <div class="gs-rooms">${(vsAi ? [ROOMS[0], ...AI_ROOMS.map(a => ({ ...ROOMS[a.r], lv:a.lv }))] : ROOMS).map(r => { const ok = w.pt >= r.min, nm = r.lv ? LV_KO[r.lv] : r.name, sub = r.lv ? AI_NAME[r.lv] + ' · 점당 ' + fmtP(r.stake) : r.sub; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}" data-r="${r.k}"${r.lv ? ` data-lv="${r.lv}"` : ''} ${ok ? '' : 'disabled'} aria-label="${nm} · ${ok ? sub : fmtP(r.min) + ' 필요'}"><b>${nm}</b><small>${r.lv ? (ok ? '' : LOCK_ICO) + AI_NAME[r.lv] + ' · 점당 ' + fmt(r.stake) + ' G' + (ok ? '' : ' · ' + fmtP(r.min) + '~') : r.stake ? (ok ? '' : LOCK_ICO) + '×' + fmt(r.stake) + ' · ' + fmtP(r.min) + '~' : '±0'}</small></button>`; }).join('')}</div>
+        <div class="gs-rooms">${(vsAi ? [ROOMS[0], ...AI_ROOMS.map(a => ({ ...ROOMS[a.r], lv:a.lv }))] : ROOMS).map(r => { const ok = w.pt >= r.min, pk = vsAi && r.lv && r.lv === pickLv(w), nm = r.lv ? LV_KO[r.lv] : r.name, sub = r.lv ? AI_NAME[r.lv] + ' · 점당 ' + fmtP(r.stake) : r.sub; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}${pk ? ' pick' : ''}" data-r="${r.k}"${r.lv ? ` data-lv="${r.lv}"` : ''} ${ok ? '' : 'disabled'} aria-label="${nm} · ${ok ? sub : fmtP(r.min) + ' 필요'}"><b>${nm}</b><small>${r.lv ? (ok ? '' : LOCK_ICO) + AI_NAME[r.lv] + ' · 점당 ' + fmt(r.stake) + ' G · 최대 ±' + fmtP(r.min) + (ok ? '' : ' · ' + fmtP(r.min) + ' 필요') : r.stake ? (ok ? '' : LOCK_ICO) + '×' + fmt(r.stake) + ' · ' + fmtP(r.min) + '~' : '±0'}</small></button>`; }).join('')}</div>
         <div class="gs-earn" aria-label="골드 얻는 법">
           <div class="${w.att === dayKey() ? 'done' : ''}" aria-label="매일 출석 · ${w.streak || 1}일 연속"><span>출석</span><i>${att ? '+' + fmtP(att) : '✓'}</i></div>
           <div class="${canCharge ? 'hot' : ''}" aria-label="충전권 ${nC}장"><span>충전권</span>${canCharge ? '<button id="gsCharge">쓰기</button>' : `<i>${nC}장</i>`}</div>
           <div aria-label="무료 충전"><span>충전</span>${canFree ? '<button id="gsFree">받기</button>' : `<i>${broke(w) && !nC ? hm(fl) : '—'}</i>`}</div>
           <div aria-label="업적"><span>업적</span><i>${nAch}/${ACH.length}</i></div>
         </div></div>`;
+      X(() => { const pb = box.querySelector('.gs-room.pick'); if(pb && matchMedia('(any-pointer: fine)').matches) pb.focus({ preventScroll:true }); });
       if(msg) try{ sfx('toast'); }catch(_){}   /* 알림은 판 위 글 칸(.gs-lnote)으로 — 공용 토스트가 '골드 얻는 법' 글을 가리던 문제. 소리는 예전 토스트와 같게 한 번 */
       const lb = $('#gsLbBack'); if(lb) lb.onclick = () => confirmQuit();
       const lh = $('#gsLbHelp'); if(lh) lh.onclick = () => openHelp(ID);
@@ -1228,6 +1239,40 @@ NG.tgostop = (() => {
     draw0(att ? `출석 보상 +${fmtP(att)} · 충전권 +1장!` : '');
     if(att) sfx('gsBig');
   }
+  /* E-7: 미리 고를 컴퓨터 판 = 지난번 난이도(처음엔 초급). 잠겼으면 그 아래 열린 가장 큰 줄 */
+  function pickLv(w){
+    const order = ['easy', 'normal', 'hard'], i0 = Math.max(0, order.indexOf(w.lv));
+    for(let i = i0; i >= 0; i--){ const a = AI_ROOMS.find(x => x.lv === order[i]); if(w.pt >= ROOMS[a.r].min) return order[i]; }
+    return '';
+  }
+  /* E-4 솔로 시작: 판 고르기 없이 점당 100 G(상한 2,000 G), 컴퓨터 세기는 스테이지가 정함(init의 cfg.ai = stageLevel).
+     보유가 2,000 G보다 적으면 한 번 묻는다: 충전권 쓰기(있을 때) / 연습 판(골드 안 오감, 클리어·별·첫 클리어 보상은 그대로) */
+  function soloStart(){
+    const g = GS(); if(!g || G.over) return;
+    const att = attendance(); if(att){ X(() => toast(`출석 보상 +${fmtP(att)} · 충전권 +1장!`)); try{ sfx('gsBig'); }catch(_){} }
+    const go = room => {
+      const box = $('#gsLobby'); if(box){ box.hidden = true; box.innerHTML = ''; }
+      g.room = room; turnHint();
+      g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = g.ended ? g.gi + 1 : 0; startPlay();
+    };
+    const SR = ROOMS[SOLO_ROOM_K];
+    if(wallet().pt >= SR.min){ go(SR); return; }
+    const box = $('#gsLobby'); box.hidden = false; $('#gsBody').hidden = true;
+    const draw1 = () => {
+      const w = wallet(), nC = w.items.charge || 0;
+      box.innerHTML = `<div class="pbar gs-lbar"><button class="iconbtn" id="gsLbBack" aria-label="나가기">${ic('back')}</button><div class="ptitle">${esc(NG[ID].name)} ${BADGE19}</div><button class="iconbtn" id="gsLbHelp" aria-label="게임 방법">${ic('help')}</button></div>
+        <div class="gs-lb"><p class="gs-lnote" role="status">골드가 ${fmtP(SR.min)}보다 적어요 · 스테이지 ${G.adv}</p>
+        <div class="gs-wal"><span class="gs-coin">G</span><div><b>${fmtP(w.pt)}</b><em>${titleOf(w.peak)}</em></div></div>
+        <div class="gs-rooms">${nC ? `<button class="gs-room r1 pick" id="gsSoloCharge"><b>충전권 쓰기</b><small>+${fmtP(CHARGE_TO - w.pt)} · 남은 충전권 ${nC}장 · 점당 ${fmtP(SR.stake)}로 시작</small></button>` : ''}
+          <button class="gs-room r0${nC ? '' : ' pick'}" id="gsSoloPrac"><b>연습 판으로 하기</b><small>골드는 오가지 않아요 · 별·클리어·첫 클리어 보상은 그대로</small></button></div></div>`;
+      $('#gsLbBack').onclick = () => confirmQuit();
+      $('#gsLbHelp').onclick = () => openHelp(ID);
+      const cb = $('#gsSoloCharge'); if(cb) cb.onclick = () => { if(useCharge()){ try{ sfx('gsWin'); }catch(_){} go(SR); } else draw1(); };
+      $('#gsSoloPrac').onclick = () => go(ROOMS[0]);
+      X(() => { const pb = box.querySelector('.gs-room.pick'); if(pb && matchMedia('(any-pointer: fine)').matches) pb.focus({ preventScroll:true }); });
+    };
+    draw1();
+  }
   /* 정산(판이 끝날 때 한 번): 이기면 최종 점수 × 점당(상대가 가진 만큼까지), 지면 잃음(내가 가진 만큼까지) */
   function settle(){
     const g = GS(); if(!g || g.paid) return null;
@@ -1235,9 +1280,12 @@ NG.tgostop = (() => {
     const r = g.S.result, room = g.room || ROOMS[0], w = wallet(), win = r && r.w === g.me, lose = r && r.w >= 0 && !win;
     let d = 0;
     /* 이기면: 최종 점수 × 점당(난이도 배율은 없앰, LV_X 모두 1) → 관리비 없음(FEE = 0). 지면: 그대로 잃음. opp = 상대 보유의 변화(실시간 대전 표시용, 상대 기기도 같은 식) */
-    let gross = 0, fee = 0, lvx = 1, opp = 0;
-    if(room.stake && win){ lvx = g.mode === 'pvp' ? 1 : (LV_X[g.ai] || 1); gross = Math.min(Math.round(r.final * room.stake * lvx), g.mode === 'pvp' ? (g.oppPt ?? Infinity) : Infinity); fee = feeOf(gross); d = gross - fee; opp = -gross; }
-    else if(room.stake && lose){ const loss = Math.min(r.final * room.stake, w.pt); d = -loss; opp = loss - feeOf(loss); }
+    let gross = 0, fee = 0, lvx = 1, opp = 0, raw = 0, capped = '';
+    const cap = capOf(g);   /* E-3: 컴퓨터 판은 이기든 지든 입장 금액까지 */
+    if(room.stake && (win || lose)){ raw = Math.round(r.final * room.stake); if(cap && raw > cap) capped = win ? 'win' : 'lose'; }
+    if(room.stake && win){ gross = Math.min(raw, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : cap || Infinity); fee = feeOf(gross); d = gross - fee; opp = -gross; }
+    else if(room.stake && lose){ const loss = Math.min(raw, cap || Infinity, w.pt); d = -loss; opp = loss - feeOf(loss); }
+    try{ store.set(LIVE_KEY, null); }catch(_){}
     w.pt += d; w.games = (w.games || 0) + 1; if(win) w.wins = (w.wins || 0) + 1; saveW(w);
     const keys = [];
     if(win){ keys.push('win1'); if(r.mults && r.mults.some(m => /피박|광박/.test(m[0]))) keys.push('bak'); if(g.S.P[g.me].go >= 3) keys.push('go3'); if(g.S.P[g.me].shake) keys.push('shake'); if(r.final >= 20) keys.push('big');
@@ -1245,7 +1293,7 @@ NG.tgostop = (() => {
     let bonus = 0, item = 0;
     if(win && G.adv && !(advProg(ID).stars || {})[G.adv]){ bonus = 500 * Math.ceil(G.adv / 10); const w2 = wallet(); w2.pt += bonus; if(G.adv % 10 === 0 && w2.items.charge < CHARGE_MAX){ w2.items.charge++; item = 1; } saveW(w2); }
     const got = achieve(keys);
-    return { d, bonus, got, after:wallet().pt, gross, fee, lvx, opp, item };
+    return { d, bonus, got, after:wallet().pt, gross, fee, lvx, opp, item, raw, capped, cap };
   }
   /* 첫뻑·연뻑·3연뻑: 게임 시작부터 자기 차례마다 뻑이 이어지면 판돈(점당)의 5배 → 10배 → 15배를 상대에게서 바로 받음.
      (점당 100 G → 500 G · 1,000 G · 1,500 G, 3연뻑이면 판 끝) 연습 판은 표시만.
@@ -1276,11 +1324,21 @@ NG.tgostop = (() => {
       }
     }
   }
-  /* 판 도중 나가면 기권 벌점(점당 × 10, 가진 만큼까지) */
+  /* 판 도중 나가면 기권 벌점(E-5): 컴퓨터 판 = 그 판 상한(입장 금액), 실시간 대전 = 점당 × 10, 가진 만큼까지 */
   function quitPenalty(){
     const g = GS(); if(!g || !g.inGame || g.paid || !g.room || !g.room.stake) return;
-    g.paid = true; const w = wallet(), p = Math.min(w.pt, g.room.stake * 10); w.pt -= p; saveW(w);
+    g.paid = true; const w = wallet(), p = Math.min(w.pt, penaltyOf(g)); w.pt -= p; saveW(w);
+    try{ store.set(LIVE_KEY, null); }catch(_){}
     try{ toast(`판 도중에 나가서 ${fmtP(p)}을 잃었어요`); }catch(_){}
+  }
+  /* 창 닫기·강제 종료로 끝난 판: 다음 실행 때 한 번만 같은 벌점을 매기고 알림 */
+  function livePenalty(){
+    let l = null; try{ l = store.get(LIVE_KEY, null); }catch(_){}
+    if(!l || !(l.p > 0)) return 0;
+    try{ store.set(LIVE_KEY, null); }catch(_){}
+    const w = wallet(), p = Math.min(w.pt, Math.round(l.p)); w.pt -= p; saveW(w);
+    if(p) setTimeout(() => { try{ toast(`지난 판을 끝내지 않고 닫아서 ${fmtP(p)}을 잃었어요`); }catch(_){} }, 900);
+    return p;
   }
 
   /* ----- 19세 확인 ----- */
@@ -1527,6 +1585,7 @@ NG.tgostop = (() => {
     G.cleanup = cleanup;
     /* 아직 19세 확인 전이면 엔진의 첫 도움말을 막아 두고(이미 본 것으로 표시) 확인 뒤에 연다 → 확인 전에는 규칙 창이 뜨지 않음 */
     if(!ageOk() && !store.get('hp:help:' + ID, false)){ store.set('hp:help:' + ID, 1); G.gs.helpAfterGate = true; }
+    livePenalty();   /* E-5: 지난번에 판 도중 창을 닫았으면 여기서 한 번 */
   }
   const AI_NAME = { easy:'컴퓨터 새내기', normal:'컴퓨터 고수', hard:'컴퓨터 타짜' };
   function render(st){
@@ -1612,7 +1671,7 @@ NG.tgostop = (() => {
     levelCfg(lv){ const k = LV[lv] ? lv : 'normal'; return { name:lv === 'pvp' ? '사람과' : AI_NAME[k], mult:1, [ID]:LV[k] }; },
     stage:n => ({ limit:0, ai:stageLevel(n), aiFirst:aiFirst(n) }),
     stageLevel,
-    stageDesc:n => (aiFirst(n) ? '컴퓨터가 선' : '내가 선') + ' · 난이도(초급·중급·고급)는 판 고르기에서 · 이기면 클리어',
+    stageDesc:n => { let first = false; try{ first = !(advProg(ID).stars || {})[n]; }catch(_){} return (aiFirst(n) ? '컴퓨터가 선' : '내가 선') + ' · ' + AI_NAME[stageLevel(n)] + ' · 점당 ' + fmtP(ROOMS[SOLO_ROOM_K].stake) + ' · 최대 ±' + fmtP(ROOMS[SOLO_ROOM_K].min) + (first ? ' · 첫 클리어 +' + fmtP(500 * Math.ceil(n / 10)) : '') + ' · 이기면 클리어'; },
     init(cfg, rng, lv){ init(cfg, rng, lv); },
     render:st => render(st),
     titleExtra:() => ' ' + BADGE19,
@@ -1653,14 +1712,15 @@ NG.tgostop = (() => {
     startGate(go){ ageGate(go); },
     /* 화면 안내(2026-10-18 판 위 글자 줄이기, docs/29): 판 위에서 뺀 설명 문장 */
     tips:() => [
-      ['난이도', '컴퓨터와 둘 때는 난이도가 곧 판돈이에요: 초급(컴퓨터 새내기) 점당 100 G · 중급(컴퓨터 고수) 500 G · 고급(컴퓨터 타짜) 1,000 G. 연습 판은 골드가 오가지 않아요. 왕 판은 실시간 대전에서만'],
+      ['난이도', '컴퓨터와 둘 때는 난이도가 곧 판돈이에요: 초급(컴퓨터 새내기) 점당 100 G · 중급(컴퓨터 고수) 500 G · 고급(컴퓨터 타짜) 1,000 G. 컴퓨터와 두는 판은 이기든 지든 한 판에 입장 금액까지만 오가요(초급 최대 ±2,000 G · 중급 ±10,000 G · 고급 ±30,000 G, 뻑 보너스는 따로). 처음엔 초급이 골라져 있어요. 왕 판은 실시간 대전에서만.'],
       ['판 고르기', '연습 판은 골드가 오가지 않아요(±0). ' + ROOMS.filter(r => r.stake).map(r => `${r.name}: ${fmtP(r.min)} 이상 보유 · 판 크기 ×${fmt(r.stake)}`).join(' / ') + '. 자물쇠 = 골드가 모자라 못 들어가는 판.'],
+      ['솔로·나가기', '솔로 스테이지는 판 고르기 없이 점당 100 G(최대 ±2,000 G)로 두고, 컴퓨터 세기는 스테이지마다 정해져 있어요. 골드가 2,000 G보다 적으면 충전권을 쓰거나 연습 판으로 둘 수 있어요(별·클리어는 그대로). 판 도중에 나가거나 창을 닫으면 벌점: 컴퓨터 판은 그 판 최대 금액, 실시간 대전은 점당 ×10(창을 닫은 경우 다음에 켤 때 한 번).'],
       ['골드', '솔로·컴퓨터 대전에서 모은 골드로 실시간 대전 판에 들어가요. 이기면 최종 점수 × 판 크기만큼 받고, 지면 그만큼 잃어요(가진 골드까지만). 골드는 게임 안에서만 쓰고 돈으로 사고팔 수 없어요. 금색 글 = 내 칭호(최고 보유 골드 기준).'],
       ['골드 얻기', '출석: 매일 1,000 G + 연속 하루마다 400 G(최대 +2,400 G). 출석하면 충전권도 1장(최대 5장). 충전권: 올인(2천 G 미만)일 때 1장 써서 1만 G로 채워요 — 처음 3장, 솔로 챕터 첫 클리어마다 1장. 충전(무료 충전): 충전권이 없으면 3시간마다 3천 G. 업적: ' + ACH.map(a => `${a.name} +${fmt(a.pt / 1000)}천`).join(' · ') + '. 솔로 새 판 첫 클리어: 챕터마다 +500 G씩 커져요. ✓ = 오늘 받음, — = 필요 없음.'],
       ['선 뽑기', '엎어 둔 8장을 한 장씩 뒤집어 높은 숫자(Q가 가장 높음)가 선(먼저 침). 같은 숫자면 다시 뽑아요. 5초 안에 안 고르면 아무거나 뒤집어 줘요.'],
       ['내 차례', '금테 두른 손패 = 바닥에 같은 짝이 있는 패. 낼 패를 누르세요(대전은 8초 안에, 넘기면 자동으로 내요). 보너스패는 먼저 내도 돼요.'],
       ['내 패 칸', '0 / 7점 = 지금 점수 / 고·스톱까지 필요한 점수. 아래 광·열끗·띠·피 장수(피는 쌍피 2장으로 셈).'],
-      ['상대 칸', '∞ = 컴퓨터는 판돈 무제한. 카드 그림 옆 수 = 상대가 든 패 수. (자동) = 연결이 끊겨 자동으로 대신 쳐요.'],
+      ['상대 칸', '최대 2,000 G = 컴퓨터와 두는 이 판에서 오갈 수 있는 가장 큰 금액(이기든 지든). 연습 = 골드가 오가지 않는 판. 카드 그림 옆 수 = 상대가 든 패 수. (자동) = 연결이 끊겨 자동으로 대신 쳐요.'],
       ['단추', '자동 치기: 알맞은 패를 대신 골라 내요. 나가기: 대전 중엔 나가기 예약(이번 판이 끝나면 나감, 다시 누르면 취소).']
     ],
     /* 도움말 v2(공용 WP3): 첫 화면 3줄, 점수 계산 표는 '더 알아보기' */
