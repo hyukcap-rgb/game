@@ -11,7 +11,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', 
 function dayKey(d = new Date()){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-function fmt(n){ return n.toLocaleString('ko-KR'); }
+function fmt(n){ return n.toLocaleString(typeof I18N !== 'undefined' && I18N.lang === 'en' ? 'en-US' : 'ko-KR'); }   /* 천 단위 쉼표(두 언어 같은 모양, core/i18n.js) */
 function mmss(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
 let toastT;
 function toast(msg, kind){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); if(typeof sfx === 'function') sfx(kind === 'err' ? 'error' : 'toast'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 2600); }

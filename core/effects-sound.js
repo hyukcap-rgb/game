@@ -543,16 +543,16 @@ document.addEventListener('click', e => {
 function openSoundSheet(back){
   const s = AUD.set, pc = v => Math.round(v * 100);
   const big = typeof bigOn === 'function' && bigOn();   /* 큰 글씨(WP3, core/engine.js) */
-  openModal(`<h3>소리 · 글씨</h3>
+  openModal(`<h3>${T('core.snd.title')}</h3>
     <div class="sset">
-      <div class="srow2"><span><b>큰 글씨</b><small>글자를 조금 크게</small></span><button class="sw${big ? ' on' : ''}" id="ssBig" role="switch" aria-checked="${big}" aria-label="큰 글씨"><i></i></button></div>
-      <div class="srow2"><span><b>전체 소리</b><small>끄면 모든 효과음과 배경 소리가 꺼져요</small></span><button class="sw${SND.on ? ' on' : ''}" id="ssOn" role="switch" aria-checked="${SND.on}" aria-label="전체 소리"><i></i></button></div>
-      <label class="srow2 col"><span><b>효과음</b><small>맞힘·깨짐·폭발·버튼 소리</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.sfx)}" id="ssSfx" aria-label="효과음 크기"><em id="ssSfxV">${pc(s.sfx)}</em></span></label>
-      <label class="srow2 col"><span><b>배경 소리</b><small>함대 = 바다, 디펜스 = 숲, 구슬 = 별밤 분위기</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.amb)}" id="ssAmb" aria-label="배경 소리 크기"><em id="ssAmbV">${pc(s.amb)}</em></span></label>
-      <div class="srow2"><span><b>진동</b><small>맞힘·틀림·폭발 때 짧게 떨려요(안드로이드)</small></span><button class="sw${s.hap ? ' on' : ''}" id="ssHap" role="switch" aria-checked="${s.hap}" aria-label="진동"><i></i></button></div>
+      <div class="srow2"><span><b>${T('core.snd.big')}</b><small>${T('core.snd.bigSub')}</small></span><button class="sw${big ? ' on' : ''}" id="ssBig" role="switch" aria-checked="${big}" aria-label="${T('core.snd.big')}"><i></i></button></div>
+      <div class="srow2"><span><b>${T('core.snd.all')}</b><small>${T('core.snd.allSub')}</small></span><button class="sw${SND.on ? ' on' : ''}" id="ssOn" role="switch" aria-checked="${SND.on}" aria-label="${T('core.snd.all')}"><i></i></button></div>
+      <label class="srow2 col"><span><b>${T('core.snd.sfx')}</b><small>${T('core.snd.sfxSub')}</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.sfx)}" id="ssSfx" aria-label="${T('core.snd.sfxVol')}"><em id="ssSfxV">${pc(s.sfx)}</em></span></label>
+      <label class="srow2 col"><span><b>${T('core.snd.amb')}</b><small>${T('core.snd.ambSub')}</small></span><span class="rg"><input type="range" min="0" max="100" value="${pc(s.amb)}" id="ssAmb" aria-label="${T('core.snd.ambVol')}"><em id="ssAmbV">${pc(s.amb)}</em></span></label>
+      <div class="srow2"><span><b>${T('core.snd.hap')}</b><small>${T('core.snd.hapSub')}</small></span><button class="sw${s.hap ? ' on' : ''}" id="ssHap" role="switch" aria-checked="${s.hap}" aria-label="${T('core.snd.hap')}"><i></i></button></div>
     </div>
-    <div class="snd-row"><button class="sdemo" data-d="fOk">맞힘</button><button class="sdemo" data-d="bBreak">깨짐</button><button class="sdemo" data-d="flBoom">폭발</button><button class="sdemo" data-d="fanfare">축하</button></div>
-    <div class="mbtns one"><button class="b1" id="ssOk">${back ? '돌아가기' : '닫기'}</button></div>`);
+    <div class="snd-row"><button class="sdemo" data-d="fOk">${T('core.snd.dOk')}</button><button class="sdemo" data-d="bBreak">${T('core.snd.dBreak')}</button><button class="sdemo" data-d="flBoom">${T('core.snd.dBoom')}</button><button class="sdemo" data-d="fanfare">${T('core.snd.dFan')}</button></div>
+    <div class="mbtns one"><button class="b1" id="ssOk">${back ? T('core.snd.back') : T('core.close')}</button></div>`);
   const upd = () => { $('#ssOn').classList.toggle('on', SND.on); $('#ssOn').setAttribute('aria-checked', SND.on); $('#ssHap').classList.toggle('on', AUD.set.hap); $('#ssHap').setAttribute('aria-checked', AUD.set.hap); };
   $('#ssBig').onclick = () => { const on = !(typeof bigOn === 'function' && bigOn()); if(typeof bigSet === 'function') bigSet(on); const b = $('#ssBig'); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); sfx('toggle', { on }); };
   $('#ssOn').onclick = () => { sndSetOn(!SND.on); upd(); if(SND.on) sfx('toggle', { on:true }); };
@@ -564,7 +564,7 @@ function openSoundSheet(back){
   $('#ssOk').onclick = () => { if(typeof back === 'function') back(); else closeModal(); };
 }
 /* 일시정지 창 안의 소리 켜기/끄기 버튼 */
-function sndBtnHtml(){ return `<button class="psnd" id="mSnd">${SND.on ? UI_ICON.snd : UI_ICON.mute}<span>${SND.on ? '소리 켜짐 · 누르면 끄기' : '소리 꺼짐 · 누르면 켜기'}</span></button>`; }
+function sndBtnHtml(){ return `<button class="psnd" id="mSnd">${SND.on ? UI_ICON.snd : UI_ICON.mute}<span>${SND.on ? T('core.snd.on') : T('core.snd.off')}</span></button>`; }
 function sndBtnBind(){ const b = $('#mSnd'); if(!b) return; b.onclick = () => { sndSetOn(!SND.on); ambDuck(true); b.outerHTML = sndBtnHtml(); sndBtnBind(); if(SND.on) sfx('toggle', { on:true }); }; }
 function fxBubble(el, text){
   const p = fxCenter(el), d = document.createElement('div'); d.className = 'fxbubble'; d.textContent = text;
@@ -575,19 +575,19 @@ function fxBubble(el, text){
   setTimeout(() => d.classList.add('out'), 1500); setTimeout(() => d.remove(), 1900);
 }
 function fxVignette(){ const v = document.createElement('div'); v.className = 'fxvig'; document.body.appendChild(v); setTimeout(() => v.remove(), 650); }
-const COMBO_WORD = ['', '', '좋아요!', '멋져요!', '대단해요!', '완벽해요!'];
+const COMBO_WORD = ['', '', T('core.combo.2'), T('core.combo.3'), T('core.combo.4'), T('core.combo.5')];
 function fxCombo(n){
   const bd = $('#bd'); if(!bd) return;
   const old = document.querySelector('.fxcombo'); if(old) old.remove();
   const p = bd.getBoundingClientRect(), d = document.createElement('div'); d.className = 'fxcombo' + (n >= 5 ? ' max' : '');
-  d.innerHTML = `<b>연속 ${n}</b><span>${COMBO_WORD[Math.min(n, 5)]}</span>`;
+  d.innerHTML = `<b>${T('core.combo', { n })}</b><span>${COMBO_WORD[Math.min(n, 5)]}</span>`;
   d.style.left = (p.left + p.width / 2) + 'px'; d.style.top = (p.top + 18) + 'px';
   document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
 }
 /* ===== 아이템(누적 보유) =====
    여우 힌트·자동 ✕는 판마다 새로 주지 않고 쌓아 둔 개수에서 쓴다. 한 판에 각각 1번까지.
    지금은 이 브라우저에 저장(hp:items). 로그인(카카오)이 붙으면 계정별 서버 저장으로 옮긴다. */
-const ITEM_DEF = { foxHint:{ name:'여우 힌트', start:3 }, foxAuto:{ name:'자동 ✕', start:3 } };
+const ITEM_DEF = { foxHint:{ name:T('core.item.foxHint'), start:3 }, foxAuto:{ name:T('core.item.foxAuto'), start:3 } };
 const ITEM_MAX = 20, FOX_ITEM_PER_GAME = 1;
 function items(){ const s = store.get('hp:items', null) || {}; for(const k in ITEM_DEF) if(typeof s[k] !== 'number') s[k] = ITEM_DEF[k].start; return s; }
 const itemN = k => items()[k];

@@ -16,10 +16,10 @@ const rd = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const wr = (p, s) => { fs.mkdirSync(path.dirname(path.join(ROOT, p)), { recursive:true }); fs.writeFileSync(path.join(ROOT, p), s); };
 let esbuild = null; try{ esbuild = require('esbuild'); }catch(_){ console.warn('※ esbuild가 없어 압축 없이 만듭니다(npm install 하면 압축).'); }
 
-/* 엔진·사이트 파일(순서 중요) */
+/* 엔진·사이트 파일(순서 중요). core/i18n.js(언어 사전 T)는 맨 앞: 다른 파일이 맨 위 상수에서도 T를 쓴다 */
 const CORE_CSS = ['core/base.css', 'core/effects.css'];
 const PLAY_CSS = ['core/play.css', 'core/duel.css'];   /* duel.css: 대전 v3 화면(칩 줄·알림·찾기 창) */
-const CORE_JS = ['core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/scene.js', 'core/net.js', 'core/duel.js'];
+const CORE_JS = ['core/i18n.js', 'core/util.js', 'core/engine.js', 'core/effects-sound.js', 'core/scene.js', 'core/net.js', 'core/duel.js'];
 const PORTAL_CSS = ['portal/portal.css', 'portal/theme.css'];
 const PORTAL_JS = ['portal/theme.js', 'portal/portal.js', 'portal/viral.js', 'portal/friends.js', 'portal/events.js', 'portal/duel-ui.js', 'portal/qr.js', 'portal/rooms.js', 'portal/replay.js', 'portal/start.js'];
 const EMBED_CSS = ['embed/shell.css'], EMBED_JS = ['embed/shell.js'];

@@ -4,12 +4,12 @@
 const HOST = {
   heartCost:false,          /* true면 버튼에 하트 1개 표시(사이트) */
   flatMult:false,           /* true면 오늘의 문제는 난이도 배율 없이 */
-  soloFreeNote:'솔로는 언제든 다시 할 수 있어요.',
+  soloFreeNote:T('core.quit.soloFree'),
   duelQuitNote:'',
   beforeStart:(id, lv, o) => ({ attempt:0 }),
   showPlay(){ $('#play').style.display = 'block'; },
   subtitle:(L, attempt, ex) => L.name + ex,
-  quitInfo:() => ({ note:'지금 나가면 이번 판은 기록되지 않아요.', label:'그만하기' }),
+  quitInfo:() => ({ note:T('core.quit.note'), label:T('core.quit.go') }),
   finish(win){},
   exit(){},
   canDuel:() => true,
@@ -43,7 +43,7 @@ const costTag = () => HOST.heartCost ? `<span class="cost">${ic('heart')}1</span
 /* 게임 표: registerGames()가 게임 정의에서 채운다 */
 const GAMES = {}, GAME_META = {}, GAME_IDS = [], GCOL = {}, HELP = {}, ADV_CH = {}, ADV_RULE = {}, ABIL = {}, ART = {};
 /* 오늘의 문제·연습 난이도 이름과 점수 배율(게임별 판 크기는 게임 정의 levels) */
-const LEVELS = { easy:{ name:'쉬움', mult:0.6 }, normal:{ name:'보통', mult:1.0 }, hard:{ name:'어려움', mult:1.4 } };
+const LEVELS = { easy:{ name:T('core.lv.easy'), mult:0.6 }, normal:{ name:T('core.lv.normal'), mult:1.0 }, hard:{ name:T('core.lv.hard'), mult:1.4 } };
 /* ===================== 난이도 v2: 개념 사이클 (기획팀, 2026-09-30 · 17·18번 문서) =====================
    벤치마크: 로얄 매치(약 8판마다 새 블록, 5·9로 끝나는 판 어려움, 10판마다 아주 어려움), 컷 더 로프(박스마다 새 기믹),
    닌텐도 기승전결(소개 → 전개 → 반전 → 정리). → 5판마다 새 개념 하나.
@@ -53,9 +53,9 @@ const LEVELS = { easy:{ name:'쉬움', mult:0.6 }, normal:{ name:'보통', mult:
                  또는 이미 등장 판이 정해진 게임은 { fixed:[{ at, key, name, desc }] } (카드·표시만).
                  각 게임의 stage(n)/advLevel은 planOf(id, n)을 읽어 mj(켜진 규칙)·tw(변주)·easy/hard/boss를 반영한다. */
 const TWISTS = {
-  flash:{ name:'빠른 판', desc:'시간(또는 기준 이동·턴)이 짧아요. 빠르고 정확하게!' },
-  tight:{ name:'외줄 타기', desc:'실수는 딱 한 번까지만 허용돼요.' },
-  bare:{ name:'맨손', desc:'힌트와 아이템 없이 오직 실력으로 풀어요.' }
+  flash:{ name:T('core.tw.flash'), desc:T('core.tw.flashD') },
+  tight:{ name:T('core.tw.tight'), desc:T('core.tw.tightD') },
+  bare:{ name:T('core.tw.bare'), desc:T('core.tw.bareD') }
 };
 const CONCEPTS = {};
 function cyclePlan(n, majors, twists){
@@ -97,10 +97,10 @@ function conceptInfo(id, key){
 /* 스테이지 설명에 붙는 한 줄: "새 규칙: 바위 칸" / "변주: 번개" / "리믹스: A + B" */
 function conceptLine(id, n){
   const p = planOf(id, n), nm = k => (conceptInfo(id, k) || {}).name || k, bits = [];
-  if(p.intro) bits.push((p.introKind === 'twist' ? '새 변주' : '새 규칙') + ': ' + nm(p.intro));
-  else if(p.mj.length) bits.push((p.remix ? '섞기' : '규칙') + ': ' + p.mj.map(nm).join(' + '));
-  if(p.tw && p.intro !== p.tw) bits.push('변주: ' + nm(p.tw));
-  if(p.boss) bits.unshift('대장 판(아주 어려움)'); else if(p.hard) bits.unshift('어려움');
+  if(p.intro) bits.push((p.introKind === 'twist' ? T('core.c.newTwist') : T('core.c.newRule')) + ': ' + nm(p.intro));
+  else if(p.mj.length) bits.push((p.remix ? T('core.c.mix') : T('core.c.rule')) + ': ' + p.mj.map(nm).join(' + '));
+  if(p.tw && p.intro !== p.tw) bits.push(T('core.c.twist') + ': ' + nm(p.tw));
+  if(p.boss) bits.unshift(T('core.c.boss')); else if(p.hard) bits.unshift(T('core.c.hard'));
   return bits.join(' · ');
 }
 function stageClass(id, n){ const p = planOf(id, n); return (p.boss ? ' xhard' : p.hard ? ' hard' : '') + (p.intro ? ' newc' : ''); }
@@ -108,10 +108,10 @@ function stageClass(id, n){ const p = planOf(id, n); return (p.boss ? ' xhard' :
 function conceptCard(id, n, go){
   const p = planOf(id, n), inf = conceptInfo(id, p.intro); if(!inf){ go(); return; }
   const tw = p.introKind === 'twist';
-  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">처음 나와요</p><div class="ttl">${tw ? '새 변주' : '새 규칙'} · ${inf.name}</div>
+  openModal(`<div class="burst" aria-hidden="true"></div><p class="kick">${T('core.c.first')}</p><div class="ttl">${tw ? T('core.c.newTwist') : T('core.c.newRule')} · ${inf.name}</div>
     <div class="ncard" style="--gc:${GCOL[id][1]}"><span class="nc-ic">${ic(id)}</span><p>${inf.desc}</p></div>
-    <p class="note">스테이지 ${n} · ${GAMES[id].name}<br>${tw ? '익숙한 판에 조건 하나가 더해져요.' : p.fixed ? '이 판부터 새로 나와요. 챕터 끝 대장 판에서 제대로 시험해요!' : '첫 판은 이 규칙만 나와서 쉬워요. 챕터 끝 대장 판에서 제대로 시험해요!'}</p>
-    <div class="mbtns one"><button class="b1" id="ncGo">도전!</button></div>`);
+    <p class="note">${T('core.c.stageOf', { n, name:GAMES[id].name })}<br>${tw ? T('core.c.twNote') : p.fixed ? T('core.c.fixedNote') : T('core.c.majorNote')}</p>
+    <div class="mbtns one"><button class="b1" id="ncGo">${T('core.c.go')}</button></div>`);
   $('#modal').classList.add('celebrate'); sfx('fanfare');
   $('#ncGo').onclick = () => { store.set('hp:seenC:' + id + ':' + p.intro, 1); closeModal(); go(); };
 }
@@ -122,6 +122,7 @@ function registerGames(order){
   GAME_IDS.length = 0;
   for(const id of ids){
     const m = NG[id];
+    if(m.i18n && typeof m.i18n === 'object') for(const l in m.i18n) i18nAdd(l, m.i18n[l]);   /* 게임 문구 사전(선택 항목 i18n, core/i18n.js). 이름 등을 읽기 전에 */
     GAMES[id] = { name:m.name, ico:'', rule:m.help.map(h => h[1]).join(' ') };
     GAME_META[id] = { col:m.col[1], time:m.time };
     GCOL[id] = m.col; HELP[id] = m.help; ADV_CH[id] = m.chapters; ADV_RULE[id] = m.starRule; ABIL[id] = m.abil;
@@ -136,6 +137,7 @@ function registerGames(order){
 /* 게임 화면 위 막대(그만하기·도움말) 단추 */
 function playChromeInit(){
   $('#quitBtn').innerHTML = ic('back'); $('#helpBtn').innerHTML = ic('help');
+  if(I18N.lang !== 'ko'){ $('#quitBtn').setAttribute('aria-label', T('core.quit.go')); $('#helpBtn').setAttribute('aria-label', T('core.m.help')); const pw = $('#paws'); if(pw) pw.setAttribute('aria-label', T('core.pawsAria')); }   /* 한국어는 페이지에 적힌 이름 그대로 */
   $('#quitBtn').onclick = confirmQuit;
   $('#helpBtn').onclick = () => { if(G && !G.over) openHelp(G.id); };
 }
@@ -288,7 +290,7 @@ function chCleared(id, c){ return !!advProg(id).stars[c * 10]; }
 /* ---- 난이도(오늘의 시험지·연습) · 솔로 스테이지 설정: 모두 게임 정의에서 ---- */
 function advLevel(id, n){
   const m = NG[id];
-  return { name:'스테이지 ' + n, mult:1, ai:m.stageLevel ? m.stageLevel(n) : 'normal', [id]:m.stage(n) };
+  return { name:T('core.stageN', { n }), mult:1, ai:m.stageLevel ? m.stageLevel(n) : 'normal', [id]:m.stage(n) };
 }
 function advDesc(id, n){ return NG[id].stageDesc(n); }
 function levelOf(id, lv, adv){
@@ -320,7 +322,7 @@ function advBestSave(id, n){   /* 성공한 판이 끝날 때 엔진이 부름 �
   if(!prev || better) store.set(bestKey(id, n), m != null ? { t, m } : { t });
   return { t, m, prev, better };
 }
-const recTxt = r => r ? clock2(r.t).replace(/^0(?=\d:)/, '') + (r.m != null ? ' · ' + r.m + '수' : '') : '';
+const recTxt = r => r ? clock2(r.t).replace(/^0(?=\d:)/, '') + (r.m != null ? ' · ' + T('core.rec.moves', { n:r.m }) : '') : '';
 const starTxt = s => '★'.repeat(s) + '☆'.repeat(3 - s);
 function openAdvMap(id, want){
   const p = advProg(id), send = HOST.sendStage && !NG[id].noSend && !NG[id].age;   /* 판 보내기는 사이트만(HOST.sendStage). 연령 제한 게임(age)·noSend는 빼요 */
@@ -328,23 +330,23 @@ function openAdvMap(id, want){
   const draw = () => {
     const cs = (c - 1) * 10;
     const cells = [1,2,3,4,5,10,9,8,7,6].map(k => { const n = cs + k, lock = n > p.max, s = p.stars[n] || 0;
-      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id].stageTag ? ' ' + NG[id].stageTag(n) : stageClass(id, n)}" data-n="${n}" ${lock ? 'disabled aria-label="' + n + '판 잠김"' : 'aria-label="' + n + '판' + (k === 10 ? ' 대장 판' : WARMUP(n) ? ' 몸풀기' : '') + ', 별 ' + s + '개"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}${WARMUP(n) && !lock ? '<em class="wu">몸풀기</em>' : ''}</button>`; }).join('');
+      return `<button class="st${lock ? ' lock' : ''}${n === p.max ? ' cur' : ''}${n === pick ? ' sel' : ''}${k === 10 ? ' boss' : ''}${NG[id].stageTag ? ' ' + NG[id].stageTag(n) : stageClass(id, n)}" data-n="${n}" ${lock ? 'disabled aria-label="' + T('core.map.locked', { n }) + '"' : 'aria-label="' + T('core.map.cellAria', { n, tag:k === 10 ? T('core.map.ariaBoss') : WARMUP(n) ? T('core.map.ariaWarm') : '', s }) + '"'}>${lock ? ic('lock') : n}${lock ? '' : `<i>${[1,2,3].map(j => `<span class="${j <= s ? 'on' : 'off'}">★</span>`).join('')}</i>`}${WARMUP(n) && !lock ? '<em class="wu">' + T('core.map.warm') + '</em>' : ''}</button>`; }).join('');
     const canNext = p.max > c * 10, s = p.stars[pick] || 0, rec = advBest(id, pick), done = s > 0;
-    const info = `<b>${pick}판</b>${WARMUP(pick) ? ' · 몸풀기' : ''} · ${rec ? '내 기록 ' + recTxt(rec) : done ? '기록 없음' : '아직 안 깼어요'}${done ? ' · <span class="stx">' + starTxt(s) + '</span>' : ''}`;
-    openModal(`<h3>${GAMES[id].name} 판 고르기</h3><button class="amx" id="mClose" aria-label="닫기">✕</button>
-      <form class="amgo" id="amForm"><label for="amNum">판 번호</label><input id="amNum" type="number" inputmode="numeric" min="1" max="${p.max}" placeholder="1~${p.max}" enterkeyhint="go"><button class="b2" id="amGo" type="submit">가기</button></form>
-      <div class="chhead"><button type="button" id="chPrev" aria-label="이전 챕터" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>챕터 ${c} · 별 ${chStars(id, c)}/30${chCleared(id, c) ? ' · 클리어' : ''}</small></div><button type="button" id="chNext" aria-label="다음 챕터" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
+    const info = `<b>${T('core.map.stage', { n:pick })}</b>${WARMUP(pick) ? ' · ' + T('core.map.warm') : ''} · ${rec ? T('core.map.best', { t:recTxt(rec) }) : done ? T('core.map.noRec') : T('core.map.notYet')}${done ? ' · <span class="stx">' + starTxt(s) + '</span>' : ''}`;
+    openModal(`<h3>${T('core.map.title', { name:GAMES[id].name })}</h3><button class="amx" id="mClose" aria-label="${T('core.close')}">✕</button>
+      <form class="amgo" id="amForm"><label for="amNum">${T('core.map.num')}</label><input id="amNum" type="number" inputmode="numeric" min="1" max="${p.max}" placeholder="${T('core.map.numPh', { n:p.max })}" enterkeyhint="go"><button class="b2" id="amGo" type="submit">${T('core.map.go')}</button></form>
+      <div class="chhead"><button type="button" id="chPrev" aria-label="${T('core.map.prev')}" ${c <= 1 ? 'disabled' : ''}>${ic('chev', 'rot')}</button><div class="chname">${chName(id, c)}<small>${T('core.map.chapter', { c, s:chStars(id, c) })}${chCleared(id, c) ? ' · ' + T('core.map.cleared') : ''}</small></div><button type="button" id="chNext" aria-label="${T('core.map.next')}" ${canNext ? '' : 'disabled'}>${ic('chev')}</button></div>
       <div class="path">${cells}</div>
-      <p class="rule">${ADV_RULE[id]}<br>${pick}판: <b>${advDesc(id, pick)}</b>${conceptLine(id, pick) ? `<br><span class="cline">${conceptLine(id, pick)}</span>` : ''}</p>
-      <p class="legend3"><span class="lg-n">새 규칙</span> · <span class="lg-h"></span> 어려움 · <span class="lg-x"></span> 대장 판</p>
-      <div class="amfoot"><p class="aminfo">${info}</p><div class="ambtns${send && done ? '' : ' one'}">${send && done ? `<button class="b2" id="amSend">${ic('share')} 친구에게 보내기</button>` : ''}<button class="b1" id="mGo">${done ? '다시 풀기' : pick + '판 시작'} · 무료</button></div></div>`);
+      <p class="rule">${ADV_RULE[id]}<br>${T('core.map.stage', { n:pick })}: <b>${advDesc(id, pick)}</b>${conceptLine(id, pick) ? `<br><span class="cline">${conceptLine(id, pick)}</span>` : ''}</p>
+      <p class="legend3"><span class="lg-n">${T('core.map.legendNew')}</span> · <span class="lg-h"></span> ${T('core.map.legendHard')} · <span class="lg-x"></span> ${T('core.map.boss')}</p>
+      <div class="amfoot"><p class="aminfo">${info}</p><div class="ambtns${send && done ? '' : ' one'}">${send && done ? `<button class="b2" id="amSend">${ic('share')} ${T('core.map.send')}</button>` : ''}<button class="b1" id="mGo">${done ? T('core.map.replay') : T('core.map.start', { n:pick })} · ${T('core.map.free')}</button></div></div>`);
     const m = $('#modal'); m.classList.add('amap'); m.style.setProperty('--gc', GCOL[id][1]);
     $('#mClose').onclick = closeModal;
     $('#mGo').onclick = () => { closeModal(); startGame(id, null, { adv:pick }); };
     const sb = $('#amSend'); if(sb) sb.onclick = () => HOST.sendStage(id, pick, { t:rec ? rec.t : 0, st:s }, () => openAdvMap(id, pick));
     $('#amForm').onsubmit = e => { e.preventDefault(); const v = parseInt($('#amNum').value, 10);
-      if(!(v >= 1)){ toast('판 번호를 넣어 주세요'); return; }
-      if(v > p.max){ toast(p.max + '판까지 열려 있어요'); $('#amNum').value = p.max; return; }
+      if(!(v >= 1)){ toast(T('core.map.numErr')); return; }
+      if(v > p.max){ toast(T('core.map.numMax', { n:p.max })); $('#amNum').value = p.max; return; }
       pick = v; c = chOf(v); draw(); };
     $('#chPrev').onclick = () => { c--; pick = Math.min(p.max, c * 10); draw(); };
     $('#chNext').onclick = () => { c++; pick = Math.min(p.max, c * 10); draw(); };
@@ -442,7 +444,7 @@ function navBack(){
   if(playing){ HOST.exit(); return false; }
   if(HOST.back && HOST.back()) return false;
   if(Date.now() - NAV.last < 2000) return true;
-  NAV.last = Date.now(); toast('한 번 더 누르면 나가요');
+  NAV.last = Date.now(); toast(T('core.exitAgain'));
   return false;
 }
 
@@ -464,18 +466,18 @@ function openHelp(id, first){
     let pic = ''; try{ pic = ho.pic ? ho.pic() : ''; }catch(_){ pic = ''; }
     body = `${pic ? `<div class="hpic" style="--gc:${col}" aria-hidden="true">${pic}</div>` : ''}
       <ol class="h3l">${ho.lines.slice(0, 3).map((l, i) => `<li><span class="hn" style="background:${col}">${i + 1}</span><span>${l}</span></li>`).join('')}</ol>
-      ${steps.length ? `<details class="hmore"><summary>더 알아보기 <span aria-hidden="true">▾</span></summary><div class="help">${stepHtml}</div></details>` : ''}`;
+      ${steps.length ? `<details class="hmore"><summary>${T('core.help.more')} <span aria-hidden="true">▾</span></summary><div class="help">${stepHtml}</div></details>` : ''}`;
   } else body = `<div class="help">${stepHtml}</div>`;
   /* UI팀 2026-10-18: 판 위에서 뺀 글은 여기서 본다 — 화면 안내(게임 정의 tips) · 이번 판(제목 전체) · 별 목표(솔로) */
   let tips = []; try{ tips = typeof m.tips === 'function' ? m.tips() : (m.tips || []); }catch(_){ tips = []; }
   let goals = []; try{ goals = G && G.id === id && G.adv && !G.duel ? hstarItems() : []; }catch(_){ goals = []; }
   const extra = (G && G.id === id && PLAY_SUB ? `<p class="hnow">${PLAY_SUB}</p>` : '')
-    + (goals.length ? `<div class="hgoal"><b>별 목표</b>${goals.map(x => `<span><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i>${x.text}</span>`).join('')}</div>` : '')
-    + (tips.length ? `<div class="htips"><b>화면 안내</b>${tips.map(t => `<div class="htip"><em>${t[0]}</em><span>${t[1]}</span></div>`).join('')}</div>` : '')
+    + (goals.length ? `<div class="hgoal"><b>${T('core.help.goals')}</b>${goals.map(x => `<span><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i>${x.text}</span>`).join('')}</div>` : '')
+    + (tips.length ? `<div class="htips"><b>${T('core.help.tips')}</b>${tips.map(t => `<div class="htip"><em>${t[0]}</em><span>${t[1]}</span></div>`).join('')}</div>` : '')
     + hsymHtml(id);
   body = body + extra;
-  openModal(`<h3>${GAMES[id].name} 방법</h3>${body}
-    <div class="hfoot"><button class="b1" id="mOk">${first ? '시작하기' : '계속하기'}</button></div>`);
+  openModal(`<h3>${T('core.help.title', { name:GAMES[id].name })}</h3>${body}
+    <div class="hfoot"><button class="b1" id="mOk">${first ? T('core.help.start') : T('core.help.cont')}</button></div>`);
   $('#modal').classList.add('helpm');
   $('#mOk').onclick = () => { closeModal(); if(first && coachWant(id)){ coachStart(id, paused); return; } if(paused) gResume(); };
 }
@@ -492,19 +494,19 @@ function hsymHtml(id){
       else if(v){ const i = v.querySelector('.ico, svg, .hlives'); if(i) pic = i.classList && i.classList.contains('hlives') ? '<span class="hlives"><i>★</i></span>' : i.outerHTML; }
       out.push({ t, pic });
     });
-    return out.length ? `<div class="htips"><b>표시 안내</b><div class="hsym">${out.map(o => `<span>${o.pic}${o.t}</span>`).join('')}</div></div>` : '';
+    return out.length ? `<div class="htips"><b>${T('core.help.sym')}</b><div class="hsym">${out.map(o => `<span>${o.pic}${o.t}</span>`).join('')}</div></div>` : '';
   }catch(_){ return ''; }
 }
 function confirmQuit(){
   if(!G || G.over){ HOST.exit(); return; }
   const paused = gPause();
   /* 솔로·대전 문구는 엔진이, 그 밖(사이트의 오늘의 시험지, 모듈의 연습 판)은 HOST가 정한다 */
-  const q = G.adv ? { note:'지금 나가면 이번 도전은 기록되지 않아요. ' + HOST.soloFreeNote, label:'그만하기' }
-    : G.duel ? { note:'지금 나가면 이번 대전은 기권패예요. ' + HOST.duelQuitNote + (duelNoStop() ? ' 시간은 계속 가요.' : ''), label:'기권하고 나가기' }
-    : G.practice ? { note:'계속 풀기는 기록되지 않아요.', label:'나가기' }
+  const q = G.adv ? { note:T('core.quit.solo') + ' ' + HOST.soloFreeNote, label:T('core.quit.go') }
+    : G.duel ? { note:T('core.quit.duel') + ' ' + HOST.duelQuitNote + (duelNoStop() ? ' ' + T('core.quit.timeRuns') : ''), label:T('core.quit.forfeit') }
+    : G.practice ? { note:T('core.quit.cont'), label:T('core.leave') }
     : HOST.quitInfo();
-  openModal(`<h3>그만할까요?</h3><p class="note">${q.note}</p>
-    <div class="mbtns two"><button class="b2" id="mQuit">${q.label}</button><button class="b1" id="mStay">계속하기</button></div>`);
+  openModal(`<h3>${T('core.quit.title')}</h3><p class="note">${q.note}</p>
+    <div class="mbtns two"><button class="b2" id="mQuit">${q.label}</button><button class="b1" id="mStay">${T('core.quit.stay')}</button></div>`);
   $('#mStay').onclick = () => { closeModal(); if(paused) gResume(); };
   $('#mQuit').onclick = () => {
     if(!G.adv && !G.duel && !G.practice && q.onQuit) q.onQuit();
@@ -536,7 +538,7 @@ function bodyModeSet(cls){ GAME_IDS.forEach(g => { const c = NG[g].bodyClass; if
 function renderPaws(){
   const p = $('#paws'); const prev = +(p.dataset.n || 3);
   p.innerHTML = [0,1,2].map(i => ic('paw', i >= G.paws ? 'off' + (i === G.paws && G.paws < prev ? ' lost' : '') : '')).join('');
-  p.dataset.n = G.paws; p.setAttribute('aria-label', '남은 기회 ' + G.paws + '번');
+  p.dataset.n = G.paws; p.setAttribute('aria-label', T('core.paws', { n:G.paws }));
 }
 
 let G = null, tick = null;
@@ -570,14 +572,14 @@ function startGame(id, lv = 'normal', o = {}){
   const ex = m.titleExtra ? m.titleExtra() : '';
   /* 제목 아래 작은 글(UI팀 2026-10-18: 화면 글자 50% 줄이기) — 한 단어만. 자세한 건 도움말(?)의 '이번 판' 칸 */
   const aiNick = duel && duel.fleet ? (lv === 'pvp' ? '' : esc((duel.opp && duel.opp.nick) || '')) : duel ? esc(duel.vs || (duel.opp && duel.opp.nick) || '') : '';
-  const sub = adv ? (G.replay && G.replay.kind === 'gift' ? '친구 판' : adv + '판')
-    : duel ? (aiNick ? 'VS ' + aiNick : '대전')
-    : G.replay && G.replay.kind === 'duel' ? '다시 풀기'
+  const sub = adv ? (G.replay && G.replay.kind === 'gift' ? T('core.sub.gift') : T('core.map.stage', { n:adv }))
+    : duel ? (aiNick ? 'VS ' + aiNick : T('core.sub.duel'))
+    : G.replay && G.replay.kind === 'duel' ? T('core.map.replay')
     : HOST.subtitle(L, attempt, '');
   $('#ptitle').innerHTML = GAMES[id].name + `<small>${sub}${ex}</small>`;
-  PLAY_SUB = adv ? (G.replay && G.replay.kind === 'gift' ? '친구가 보낸 판 · ' + adv + '판' : '솔로 · ' + (WARMUP(adv) ? '몸풀기 판' : chName(id, chOf(adv))) + ' · ' + adv + '판')
-    : duel ? '대전 · ' + L.name + (duel.mode === 'ai' ? ' · 컴퓨터 상대' : '')
-    : G.replay && G.replay.kind === 'duel' ? (G.replay.from ? esc(G.replay.from) + '님이 보낸 대전 판' : '대전 판 다시 풀기') + ' · 기록 안 됨'
+  PLAY_SUB = adv ? (G.replay && G.replay.kind === 'gift' ? T('core.sub.giftFull', { n:adv }) : T('core.sub.solo', { ch:WARMUP(adv) ? T('core.sub.warm') : chName(id, chOf(adv)), n:adv }))
+    : duel ? T('core.sub.duelFull', { lv:L.name }) + (duel.mode === 'ai' ? ' · ' + T('core.sub.vsCpu') : '')
+    : G.replay && G.replay.kind === 'duel' ? (G.replay.from ? T('core.sub.dsFrom', { name:esc(G.replay.from) }) : T('core.sub.dsReplay')) + ' · ' + T('core.noRec')
     : (HOST.subtitleFull ? HOST.subtitleFull(L, attempt, '') : '');
   hstarTick();   /* 솔로 별 목표선(판을 그리기 전에 자리를 잡아 판 크기 계산이 맞게) */
   $('.stats').style.display = 'none'; document.body.dataset.mode = id; bodyModeSet(m.bodyClass);
@@ -641,8 +643,8 @@ function hstarTick(){
     if(bar && el.previousElementSibling !== bar) bar.after(el);
     /* UI팀 2026-10-18: 판 위에는 별만(글은 누르면 잠깐 보이고, 도움말 '별 목표' 칸에 늘 있음) */
     const html = items.map((x, i) => { const ok = typeof x.ok === 'function' ? x.ok() : x.ok;
-      return `<button type="button" class="hs${ok === false ? ' miss' : ok ? ' keep' : ''}" data-i="${i}" aria-label="별 ${x.s || 3}개 목표: ${x.text}"><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i></button>`; }).join('');
-    if(el.dataset.h !== html){ el.dataset.h = html; el.innerHTML = html; el.setAttribute('aria-label', '별 목표: ' + items.map(x => (x.s || 3) + '개 ' + x.text).join(', '));
+      return `<button type="button" class="hs${ok === false ? ' miss' : ok ? ' keep' : ''}" data-i="${i}" aria-label="${T('core.star.goalAria', { s:x.s || 3, text:x.text })}"><i aria-hidden="true">${'★'.repeat(x.s || 3)}</i></button>`; }).join('');
+    if(el.dataset.h !== html){ el.dataset.h = html; el.innerHTML = html; el.setAttribute('aria-label', T('core.star.goals', { list:items.map(x => T('core.star.item', { s:x.s || 3, text:x.text })).join(', ') }));
       el.querySelectorAll('.hs').forEach(b => b.onclick = () => { const it = hstarItems()[+b.dataset.i]; if(it) toast('★'.repeat(it.s || 3) + ' ' + it.text); }); }
   }catch(_){}
 }
@@ -652,7 +654,7 @@ function hstarDrop(){ const el = $('#hstar'); if(el) el.remove(); }
    warmSkip(id, n, 별, after?) → resBtns의 pair 버튼 하나 또는 null ---- */
 function warmSkip(id, n, st, after){
   if(n !== 1 || st < 3 || (G && G.replay) || advProg(id).max >= 5) return null;
-  return { id:'mSkip', label:'너무 쉬웠나요?<small>5판으로 건너뛰기</small>', cls:'b2', fn:() => {
+  return { id:'mSkip', label:T('core.map.skip5Q') + '<small>' + T('core.map.skip5Go') + '</small>', cls:'b2', fn:() => {
     const p = advProg(id); p.max = Math.max(p.max, 5); store.set(advKey(id), p);
     if(after) try{ after(p); }catch(_){}
     startGame(id, null, { adv:5 }); } };
@@ -661,7 +663,7 @@ function warmSkip(id, n, st, after){
 /* ---- 기록 갱신 도장: 결과 창 기록 옆 "기록 갱신!"(다시 풀어 가장 좋은 기록을 넘었을 때) ---- */
 function recHtml(){
   const r = G && G.rec; if(!r) return '';
-  return `<p class="recl">기록 <b class="num">${recTxt(r)}</b>${r.better ? '<span class="recst">기록 갱신!</span>' : r.prev ? `<small>내 최고 ${recTxt(r.prev)}</small>` : ''}</p>`;
+  return `<p class="recl">${T('core.rec')} <b class="num">${recTxt(r)}</b>${r.better ? '<span class="recst">' + T('core.res.newBest') + '</span>' : r.prev ? `<small>${T('core.res.prevBest', { t:recTxt(r.prev) })}</small>` : ''}</p>`;
 }
 function recFx(){ try{ const s = $('#modal .recst'); if(!s) return; setTimeout(() => { if(!s.isConnected) return; s.classList.add('on'); sfx('newRecord'); if(typeof fxPunch === 'function') fxPunch(s, 1.25); }, 900); }catch(_){} }
 
@@ -674,8 +676,8 @@ function coachWant(id){ const c = NG[id] && NG[id].coach; return !!(c && c.lengt
 function coachStart(id, paused){
   coachStop();
   const steps = NG[id].coach || [];
-  const el = document.createElement('div'); el.className = 'coach'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '따라 해 보세요');
-  el.innerHTML = `<div class="ch-hole"></div><div class="ch-hand">${HAND_SVG}</div><p class="ch-tx" aria-live="polite"></p><button class="ch-skip" type="button">건너뛰기</button>`;
+  const el = document.createElement('div'); el.className = 'coach'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', T('core.coach.aria'));
+  el.innerHTML = `<div class="ch-hole"></div><div class="ch-hand">${HAND_SVG}</div><p class="ch-tx" aria-live="polite"></p><button class="ch-skip" type="button">${T('core.coach.skip')}</button>`;
   document.body.appendChild(el);
   const C = COACH = { el, id, paused, i:0, a:null, b:null, down:null, h:{} };
   const pos = v => { if(!v) return null; if(v.getBoundingClientRect){ const r = v.getBoundingClientRect(); if(!r.width && !r.height) return null; return { x:r.left + r.width / 2, y:r.top + r.height / 2, r:Math.max(26, Math.min(80, Math.max(r.width, r.height) / 2 + 8)) }; } return isFinite(v.x) && isFinite(v.y) ? { x:v.x, y:v.y, r:v.r || 34 } : null; };
@@ -688,7 +690,7 @@ function coachStart(id, paused){
     const s = el.style; s.setProperty('--x', a.x + 'px'); s.setProperty('--y', a.y + 'px'); s.setProperty('--r', a.r + 'px');
     s.setProperty('--dx', ((b ? b.x : a.x + (C.act === 'swipe' ? 80 : 0)) - a.x) + 'px'); s.setProperty('--dy', ((b ? b.y : a.y) - a.y) + 'px');
     el.dataset.act = C.act; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
-    const tx = el.querySelector('.ch-tx'); tx.textContent = st.text || (C.act === 'tap' ? '여기를 눌러요' : '손가락을 대고 밀어요');
+    const tx = el.querySelector('.ch-tx'); tx.textContent = st.text || (C.act === 'tap' ? T('core.coach.tap') : T('core.coach.drag'));
     tx.classList.toggle('up', a.y > innerHeight * .6);
   };
   const near = e => C.a && Math.hypot(e.clientX - C.a.x, e.clientY - C.a.y) <= C.a.r * 1.7;
@@ -713,7 +715,7 @@ function coachStop(){
    dpadHtml({ okText:'확인', ok:false면 가운데 비움, cls, label }) → ▲▼◀▶ + [확인] 56px 버튼 묶음(엄지 자리)
    dpadBind(rootEl, dir => …, { repeat:ms }) : dir = 'up'|'down'|'left'|'right'|'ok'. repeat를 주면 길게 누르는 동안 되풀이. 반환 = 풀기 함수 */
 function dpadHtml(o = {}){
-  return `<div class="dpad${o.cls ? ' ' + o.cls : ''}" role="group" aria-label="${o.label || '방향 버튼'}"><button type="button" class="dp-u" data-d="up" aria-label="위">▲</button><button type="button" class="dp-l" data-d="left" aria-label="왼쪽">◀</button>${o.ok === false ? '<span class="dp-c"></span>' : `<button type="button" class="dp-ok" data-d="ok">${o.okText || '확인'}</button>`}<button type="button" class="dp-r" data-d="right" aria-label="오른쪽">▶</button><button type="button" class="dp-d" data-d="down" aria-label="아래">▼</button></div>`;
+  return `<div class="dpad${o.cls ? ' ' + o.cls : ''}" role="group" aria-label="${o.label || T('core.dpad')}"><button type="button" class="dp-u" data-d="up" aria-label="${T('core.dpad.up')}">▲</button><button type="button" class="dp-l" data-d="left" aria-label="${T('core.dpad.left')}">◀</button>${o.ok === false ? '<span class="dp-c"></span>' : `<button type="button" class="dp-ok" data-d="ok">${o.okText || T('core.ok')}</button>`}<button type="button" class="dp-r" data-d="right" aria-label="${T('core.dpad.right')}">▶</button><button type="button" class="dp-d" data-d="down" aria-label="${T('core.dpad.down')}">▼</button></div>`;
 }
 function dpadBind(root, fn, o = {}){
   const pad = root && (root.classList && root.classList.contains('dpad') ? root : root.querySelector('.dpad')); if(!pad) return () => {};
