@@ -13,6 +13,7 @@
  *      ns:'siteA', user:'u123',      // 기록을 사이트·사용자별로 나눔
  *      height:'720px',               // '720px' | '100%' | 'auto'(내용 높이에 맞춤)
  *      sound:true,
+ *      lang:'en',                    // (더함) 화면 언어 — 'en' 영어, 생략하면 한국어
  *      onEvent(e){ ... },            // 모든 이벤트(ready start finish progress menu quit close resize state)
  *      onFinish(e){ ... }            // 한 판이 끝날 때(점수·별·승패)
  *    });
@@ -43,6 +44,7 @@
     if(o.user) q.set('user', o.user);
     if(o.sound === false) q.set('sound', '0');
     if(o.close) q.set('close', '1');
+    if(o.lang) q.set('lang', String(o.lang));   /* 더함(2026-10-22 DEV-01): 화면 언어 'en'(없으면 한국어) */
     q.set('origin', location.origin);
     var f = document.createElement('iframe');
     f.src = (o.base || BASE) + o.game + '.html?' + q.toString();
@@ -83,7 +85,7 @@
     for(var i = 0; i < nodes.length; i++){
       var n = nodes[i], d = n.dataset; n.setAttribute('data-haru-on', '1');
       mount(n, { game:d.haruGame, mode:d.mode, modes:d.modes ? d.modes.split(',') : null, level:d.level, stage:d.stage ? +d.stage : 0,
-        ns:d.ns, user:d.user, height:d.height, sound:d.sound !== '0', close:d.close === '1' });
+        ns:d.ns, user:d.user, height:d.height, sound:d.sound !== '0', close:d.close === '1', lang:d.lang });
     }
   }
   window.HaruPuzzle = { mount:mount, scan:scan, games:GAMES.slice(), base:BASE, list:function(){ return list.slice(); } };

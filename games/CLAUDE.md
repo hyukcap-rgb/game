@@ -30,7 +30,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 | `score()` | 성공 판 점수 `{ base, time, extra, rows:[줄1, 줄2, 줄3] }` → 엔진이 `(base+time+extra)×배율` |
 | `stars()` | 솔로 별 1~3 |
 
-게임 코드는 끝날 때 `finish(true|false)`를 부른다. 엔진 도구: `G`, `elapsed()`, `openModal/closeModal`, `openHelp`, `confirmQuit`, `gPause/gResume`, `sfx(이름)`, `fx*` 효과, `store`, `toast`, `planOf/conceptInfo`, `toyImg/toyImage`(공용 캐릭터).
+게임 코드는 끝날 때 `finish(true|false)`를 부른다. 엔진 도구: `T(키, 값)`(언어 사전, 아래 선택 항목 `i18n`), `G`, `elapsed()`, `openModal/closeModal`, `openHelp`, `confirmQuit`, `gPause/gResume`, `sfx(이름)`, `fx*` 효과, `store`, `toast`, `planOf/conceptInfo`, `toyImg/toyImage`(공용 캐릭터).
 
 자기 방식 대전(`duelLaunch` + `duel:{ fleet:true }`)은 끝내기 전에 `G.duel.r`('w'·'l'·'d' 무승부), `G.duel.a`/`G.duel.b`(`{ sc }` 결과 창 점수), `G.duel.why`(판정 문구)를 정해 두면 엔진이 그대로 쓴다(없으면 승/패만).
 
@@ -69,6 +69,7 @@ game.json의 `version`은 게임을 바꿀 때 올린다(작은 수정 1.0.1, �
 공용 조작 부품(엔진, 게임이 붙여 씀): `dpadHtml({ okText, ok:false, cls })` + `dpadBind(요소, dir => …, { repeat:ms })`(▲▼◀▶ + [확인] 56px), `tapPlace(요소, { item:'.조각', cell:'.칸', place:(조각, 칸) => false면 못 놓음, pick? })`(끌기 대신 누르고 놓기, 고른 것에 `.tp-sel`). 큰 글씨는 `body.big`(글자 +2px) — 게임 CSS에서 필요하면 `body.big .내클래스{…}`로 맞춘다.
 | `entry` | 입구형 게임(독립 서비스를 사이트 안에서 여는 게임, 예: 홀덤) `{ tag, solo, duel, free }`. 있으면 사이트 솔로 목록 카드는 챕터·별·판 고르기 없이 [`solo` 글] 버튼 하나(`startGame(id, 'normal', { entry:'solo' })`), 대전 목록 줄은 인원·전적 없이 [`duel` 글] 버튼(누르면 `gateThen` → `duelLaunch({ entry:'duel' })`, 빠른 대전·방 목록 안 거침). `free:true`면 하트·시험지 기회·대전 판 수를 쓰지 않음. 솔로 레벨 게임 수·배지 수에서 빠짐(`stageIds`) |
 | `scene` | 움직이는 배경 `{ kind:'stars'|'sea'|'forest'|'bubbles'|'petals'|'shapes'|'motes', colors:[…], density, alpha }`(core/scene.js). 보이기만 하고 게임·대전에 영향 없음 |
+| `i18n` | (2026-10-22 DEV-01) 게임 문구 사전 `{ en:{ 'tg.xxx':'…' }, ko:{ 'tg.xxx':'…' } }`. `registerGames`가 공용 사전(`core/i18n.js`)에 합친다. 화면을 그릴 때 `T('tg.xxx', { name, n, g })`로 읽는다 — 그 언어에 키가 없으면 ko, ko에도 없으면 키 글자 그대로(멈추지 않음). 값 자리는 `{이름}`, 값이 함수면 `v => …`(영어 복수·서수). **키 앞부분은 게임마다 따로**(예: 트럼프 고스톱 `tg.*`·`app.*`, 공용은 `core.*`만). 언어는 모듈 주소 옵션 `lang=en`(사이트는 늘 ko) — 정의 객체의 글(`name`·`help`·`howto`·`starRule` 등)을 영어로 하려면 getter나 함수 안에서 `T`를 부른다(게임 파일이 읽힐 때는 아직 i18n이 합쳐지기 전이라 맨 위 상수에서는 `i18nAdd('en', {…})`를 먼저 부르고 쓴다). 숫자는 `fmt(n)`, 골드는 `fmtG(n)` → `12,400 G`(U+00A0), `fmtSG(n)` → `+1,500 G`·`−2,000 G`(U+2212), 지금 언어는 `i18nLang()` |
 
 ## 대전 v3 (선택, `core/duel.js`, docs/21 3절) — 2~5명 · 순위 · 사건 · 선점 · 차례
 아무것도 안 넣으면 지금처럼 **1:1 경주**(먼저 다 푼 사람이 1위, 그 순간 0.7초 뒤 모두 끝)로 돈다.
