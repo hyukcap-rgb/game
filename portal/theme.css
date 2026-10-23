@@ -405,3 +405,13 @@ html[data-theme="neon"] body:not([data-mode]) .pool .ico:last-child{color:#C9CEF
 html[data-theme="neon"] body:not([data-mode]) .acard .chn{background:rgba(11,15,42,.88)}
 html[data-theme="ticket"] body:not([data-mode]) .acard .chn{background:rgba(43,27,18,.9)}
 html[data-theme="jelly"] body:not([data-mode]) .acard .chn{background:rgba(42,35,64,.86)}
+
+/* 2026-10-18 대표 지적("하단 메뉴가 저게 맞아?"): 떠 있는 알약 메뉴라 아래 틈으로 목록이 비쳐 보이고 가려진 듯 보이던 것
+   → 화면 바닥에 딱 붙는 탭바(아이폰 홈 막대 자리까지 메뉴 색으로 채움, 위쪽만 둥글게) */
+.th body:not([data-mode]) .dock{left:0; right:0; bottom:0; width:100%; max-width:460px; margin:0 auto;
+  padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px)); border-radius:20px 20px 0 0; border:0; border-top:1.5px solid var(--t-line)}
+html[data-theme="neon"] body:not([data-mode]) .dock{border:0; border-top:1.5px solid #3A44A0; box-shadow:0 -8px 24px rgba(0,0,0,.45)}
+html[data-theme="jelly"] body:not([data-mode]) .dock{border-top-color:#E6DFFF; box-shadow:0 -6px 20px rgba(124,92,255,.16)}
+html[data-theme="ticket"] body:not([data-mode]) .dock{border-top:2.5px solid #2B1B12}
+/* 마지막 목록이 메뉴 뒤에 숨지 않게 아래 여백 = 메뉴 높이 + 홈 막대 + 여유 */
+.th body:not([data-mode]) .wrap{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
