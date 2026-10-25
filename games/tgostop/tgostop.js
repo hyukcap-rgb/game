@@ -15,6 +15,9 @@
 NG.tgostop = (() => {
   const INK = '#2B1B12';
   const ID = 'tgostop';
+  /* 2026-10-25 스팀판 전용(docs/37): 랭크 대전 줄다리기·단순 티어·다음 판 3초. 하루퍼즐 사이트·웹 모듈에는 바뀌는 것 없음.
+     스팀 앱(steam/preload.js)이 window.SteamApp을 넣어 준다. 점검 도구는 주소에 tgsteam=1 */
+  const STEAM = (() => { try{ return !!(window.SteamApp && window.SteamApp.isDesktop) || /[?&]tgsteam=1\b/.test(location.search); }catch(_){ return false; } })();
   /* 효과·소리 연출(gostop-fx.js). 없으면 아무것도 안 하는 대역 */
   const GX = typeof TGFX !== 'undefined' ? TGFX : { land(){}, flip(){}, grab(){}, toss(){}, play(n, o){ sfx(n, o); }, event(){}, clear(){}, sounds:{}, gate:{} };
   /* ---------- 패 ---------- */
@@ -507,6 +510,8 @@ NG.tgostop = (() => {
     $('#gsCapMe').innerHTML = capHtml(view.c[g.me], 558);
     $('#gsPtsOp').innerHTML = `<b>${scoreOf(view.c[op]).total}</b><small>점</small>`;
     $('#gsPtsMe').innerHTML = `<b>${scoreOf(view.c[g.me]).total}</b><small>점</small>`;
+    const tg = $('#gsTug');   /* 스팀 줄다리기: 두 점수 동전 사이 세로 줄(위 = 상대 · 아래 = 나), 붉은 천이 내 쪽으로 내려올수록 이기는 중 */
+    if(tg){ tg.hidden = !(isTug(g) && g.began); if(!tg.hidden){ const v = Math.max(-1.1, Math.min(1.1, (g.rope || 0) / tugGoal(g))); tg.querySelector('.knot').style.top = (50 + v * 40).toFixed(1) + '%'; tg.setAttribute('aria-label', `줄다리기 ${g.rope || 0}점`); } }
     $('#gsFloor').innerHTML = floorHtml(view);
     const [dw, dh] = CW.deck;
     $('#gsDeck').innerHTML = view.d ? `${view.d > 1 ? `<div class="gs-c back" style="${px(630 - dw / 2 + 7, 334 - dh / 2 + 7, dw, dh)}">${BACK}</div>` : ''}<div class="gs-c back" data-cid="deck" style="${px(630 - dw / 2, 334 - dh / 2, dw, dh)}">${BACK}</div><span class="gs-dn" style="left:${630 - 40}px;top:${334 + dh / 2 + 14}px">${view.d}</span>` : `<span class="gs-dn" style="left:${630 - 90}px;top:325px;width:180px">더미 끝</span>`;
@@ -679,7 +684,7 @@ NG.tgostop = (() => {
      한 판 = 결정(step)의 줄. 결정마다 주인(S 자리)이 있다: 패 내기(S.turn) · 고/스톱(S.pendingGS).
      g.k = 지금 결정 번호, g.log[k] = 실제로 둔 수, g.raw[k] = 받은 그대로의 수, g.own[k] = 내 결정이었는지, g.src[k] = 'mine'|'opp'(누구 기록으로 뒀는지).
      대전(g.sess: 사람·AI 대전)에서는 결정마다 8초 시계 — 시간이 다 되면 비풍초똥팔삼 순서로 자동(autoAct, 무작위 없음 → 대신 내 줘도 두 기기가 같은 수). */
-  const TURN_SEC = 8, GS_SEC = 8, SUN_SEC = 5, GRACE = 3, GONE_SEC = 2.5, NEXT_SEC = 4;
+  const TURN_SEC = 8, GS_SEC = 8, SUN_SEC = 5, GRACE = 3, GONE_SEC = 2.5, NEXT_SEC = STEAM ? 3 : 4;   /* 스팀판: 결과 창에서 3초 동안 나가기 예약을 안 하면 다음 판 */
   const PRI = [12, 10, 5, 11, 8, 3, 9, 7, 6, 4, 2, 1];   /* 비·풍·초·똥·팔·삼, 그다음 남은 월(큰 월부터) */
   const val = id => { const c = C[id]; return !c ? 0 : c.g ? 5 : c.y ? 4 : c.tt ? 3 : c.pv >= 2 ? 2 : 1; };
   const bestOf = L => L.slice().sort((a, b) => val(b) - val(a) || a - b)[0];
@@ -1012,6 +1017,16 @@ NG.tgostop = (() => {
     const pay = settle() || { d:0, bonus:0, got:[], after:wallet().pt, fee:0, lvx:1, opp:0 };
     if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d + (g.fpd || 0); if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt + (pay.opp || 0)); }
     g.lastW = r.w;
+    if(isTug(g) && !g.tgDone){   /* 스팀 랭크·친선: 줄다리기 */
+      g.rope = g.rope || 0; g.tgHist = g.tgHist || [];
+      const from = g.rope, dl = draw0 ? 0 : win ? (r.final || 0) : -(r.final || 0), T0 = tugGoal(g);
+      g.rope += dl; g.tgHist.push(draw0 ? 'd' : win ? 'w' : 'l');
+      const n = g.tgHist.length;
+      let done = g.rope >= T0 ? 'w' : g.rope <= -T0 ? 'l' : '';
+      if(!done && n >= tugMax(g)) done = g.rope > 0 ? 'w' : g.rope < 0 ? 'l' : 'd';
+      g.tgLast = { from, dl, n, one:!!done && n === 1 };
+      if(done){ g.tgDone = done; if(isRank(g)){ g.tgRank = rankApply(done, 0); store.set(RK_LIVE, 0); } }
+    }
     draw(liveView());
     const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${roomLabel(g)}</span><b>${pay.d > 0 ? '+' : pay.d < 0 ? '−' : ''}${fmtP(Math.abs(pay.d))}</b></div>` : `<div class="gs-pay"><span>${roomLabel(g)}</span><b>골드 변화 없음</b></div>`)
       + (pay.capped ? `<div class="gs-pay sm cap"><span>${pay.capped === 'win' ? '최대 이김' : '최대 잃음'} ±${fmtP(pay.cap)}</span><b>${fmt(r.final)}점 × ${fmtP(g.room.stake)} = ${fmtP(pay.raw)}</b></div>` : '')
@@ -1026,8 +1041,8 @@ NG.tgostop = (() => {
     const html = `<div class="gs-askc gs-end ${draw0 ? 'd' : win ? 'w' : 'l'}"><div class="gs-el">${g.sess ? `<span class="gs-eno">${t.n}판째 · ${t.w}승 ${t.l}패${t.d ? ' ' + t.d + '무' : ''}</span>` : ''}<b class="gs-et">${draw0 ? '나가리' : win ? '이겼어요!' : '졌어요'}</b>
       <p class="gs-ew">${draw0 ? '아무도 7점을 못 내고 패가 다 떨어졌어요(무승부)' : (win ? '내가 ' : esc(g.oppNick) + '님이 ') + (r.why === '스톱' ? '스톱했어요' : r.why === '마지막 패' ? '마지막 패로 났어요' : r.why + '로 이겼어요')}</p>
       ${draw0 ? '' : `<div class="gs-erows">${(r.rows || []).map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}${mult}<div class="tot"><span>최종</span><b>${fmt(r.final)}점</b></div></div>`}</div>
-      <div class="gs-er">${payHtml}
-      ${g.sess ? `<div class="gs-nx" id="gsNx"><i></i><span id="gsNxT"></span></div><div class="gs-askb"><button class="${g.bye ? 'on' : ''}" id="gsEndBye">${g.bye ? '나가기 예약 취소' : '나가기 예약'}</button></div>`
+      <div class="gs-er">${isTug(g) ? tugHtml(g) : payHtml}
+      ${g.sess ? `<div class="gs-nx" id="gsNx"><i></i><span id="gsNxT"></span></div>${g.tgDone ? '' : `<div class="gs-askb"><button class="${g.bye ? 'on' : ''}" id="gsEndBye">${g.bye ? '나가기 예약 취소' : '나가기 예약'}</button></div>`}`
         : '<div class="gs-askb two"><button id="gsEndOk">결과 보기</button><button class="pri" id="gsAgain">한 판 더</button></div>'}</div></div>`;
     /* 결과 창은 '승리!/졌어요' 큰 글자 연출이 끝난 뒤에 띄움(글자가 창을 가리던 문제) */
     setMsg(draw0 ? '나가리 · 무승부' : win ? '<b>이겼어요!</b>' : '졌어요', win ? 'me' : 'op');
@@ -1039,7 +1054,8 @@ NG.tgostop = (() => {
     (r.mults || []).filter(m => /피박|광박|고박|멍따/.test(m[0])).slice(0, 2).forEach(m => { setTimeout(() => X(() => GX.event('bak', { who, text:m[0].replace(/\(.*\)/, '') })), at); at += 650; });
     setTimeout(() => { if(GS() === g) X(() => GX.event(draw0 ? 'draw' : win ? 'win' : 'lose', { who })); }, at);
     const showAt = at + (FXR.reduce ? 300 : 1400);
-    setTimeout(() => { if(GS() === g && !G.over && box && g.phase === 'between' && box.innerHTML){ X(() => GX.clear()); box.hidden = false; } }, showAt);   /* 남은 큰 글자는 지우고 창만 */
+    setTimeout(() => { if(GS() === g && !G.over && box && g.phase === 'between' && box.innerHTML){ X(() => GX.clear()); box.hidden = false;
+      X(() => { const k = box.querySelector('.gs-tugw .knot'); if(k) requestAnimationFrame(() => requestAnimationFrame(() => { k.style.left = k.dataset.to; })); }); } }, showAt);   /* 남은 큰 글자는 지우고 창만 */
     if(!draw0){ faceFor(r.w, 'joy', 5000); faceFor(1 - r.w, 'sad', 5000); }
     if(g.sess){
       const eb = $('#gsEndBye'); if(eb) eb.onclick = () => toggleBye();
@@ -1050,7 +1066,7 @@ NG.tgostop = (() => {
         const left = Math.max(0, tot - Math.max(0, Date.now() - t0)), n = $('#gsNx'), tx = $('#gsNxT');
         if(n) n.firstChild.style.width = (100 - left / tot * 100) + '%';
         if(!g.nxSent){
-          if(tx) tx.textContent = g.bye ? `나가기 예약 · ${Math.ceil(left / 1000)}초 뒤 대전을 마쳐요` : `${Math.ceil(left / 1000)}초 뒤 다음 판을 시작해요`;
+          if(tx) tx.textContent = g.bye || g.tgDone ? `${g.tgDone ? '' : '나가기 예약 · '}${Math.ceil(left / 1000)}초 뒤 ${g.tgDone ? '경기를' : '대전을'} 마쳐요` : `${Math.ceil(left / 1000)}초 뒤 다음 판을 시작해요`;
           if(left <= 0) nxSend();
         } else if(tx && g.phase === 'between') tx.textContent = `${esc(g.oppNick)}님을 기다리는 중…`;
       }, 150);
@@ -1095,11 +1111,12 @@ NG.tgostop = (() => {
     const g = GS(); if(!g || g.phase !== 'between') return;
     g.phase = 'decide'; clearInterval(g.nxIv);
     if(typeof oppPt === 'number') g.oppPt = oppPt;
+    if(g.tgDone){ sessionEnd(''); return; }   /* 줄다리기 승부가 났음(두 기기가 같은 결론) */
     const room = g.room || ROOMS[0], myPt = wallet().pt;
     let end = '';
     if(g.nxBye) end = '나가기 예약대로 대전을 마쳐요';
     else if(oppBye) end = why || '상대가 나가기를 예약해서 대전을 마쳐요';
-    else if(myPt < room.min) end = '골드가 모자라 대전을 마쳐요';
+    else if(myPt < room.min && !isTug(g)) end = '골드가 모자라 대전을 마쳐요';
     else if(g.mode === 'pvp' && g.oppPt != null && g.oppPt < room.min) end = '상대 골드가 모자라 대전을 마쳐요';
     if(end){ sessionEnd(end); return; }
     /* 다음 판 선 = 이번 판 이긴 사람(나가리면 그대로) */
@@ -1112,6 +1129,23 @@ NG.tgostop = (() => {
     g.phase = 'done'; clockStop(); clearInterval(g.nxIv);
     const box = $('#gsAsk'); if(box){ box.hidden = true; box.innerHTML = ''; }
     const t = g.tot;
+    if(isTug(g) && g.began){
+      let res = g.tgDone;
+      if(!res){   /* 승부 전에 끝남: 내가 나가기 예약·연결 끊김 = 패배(+감점), 상대가 나감 = 승리 */
+        const mine = !!g.nxBye || /내 연결/.test(why || '');
+        res = mine ? 'l' : 'w';
+        if(isRank(g)) g.tgRank = rankApply(res, mine ? RK_LEAVE : 0);
+      }
+      store.set(RK_LIVE, 0);
+      const rk = g.tgRank;
+      if(G.duel){
+        G.duel.r = res; G.duel.a = { sc:Math.max(0, g.rope || 0), pg:null }; G.duel.b = { sc:Math.max(0, -(g.rope || 0)), pg:null };
+        G.duel.why = `줄다리기 ${t.n}판 · ${res === 'w' ? '승리' : res === 'l' ? '패배' : '무승부'}${rk ? ` · ${tierName(rk.a)} ${fmt(rk.a.lp)} LP (${rk.dl >= 0 ? '+' : '−'}${fmt(Math.abs(rk.dl))})` : ' · 친선전'}${why ? ' · ' + why : ''}`;
+      }
+      if(why) X(() => toast(why));
+      finish(res === 'w');
+      return;
+    }
     if(G.duel){
       G.duel.r = t.w > t.l ? 'w' : t.w < t.l ? 'l' : 'd';
       G.duel.a = { sc:t.w, pg:null }; G.duel.b = { sc:t.l, pg:null };
@@ -1146,9 +1180,68 @@ NG.tgostop = (() => {
      E-4 솔로는 판 고르기 없이 점당 100 G(작은 판과 같은 값, 상한 2,000 G) · 컴퓨터 세기 = stageLevel(n)
      E-5 판 도중 나가기·창 닫기 벌점 = 컴퓨터 판은 상한과 같게, 실시간 대전은 점당 ×10. 판 시작 때 '진행 중'을 저장해 강제 종료도 다음 실행에 한 번 정산 */
   const SOLO_ROOM_K = 1;
+  /* ----- 스팀판 랭크 대전(docs/37, 결정로그 276~278) -----
+     경기 = 줄다리기: 이긴 판 점수만큼 줄(+ = 내 쪽)을 당겨 점수 차 50이면 승리, 한 판 최대 없음, 최대 10판(넘으면 줄이 자기 쪽인 사람).
+     승급전은 차 70 · 최대 12판(둘 중 한 사람이라도 승급전이면 그 경기 전체). 두 기기가 같은 판 결과로 같은 줄을 계산한다.
+     티어 = 단순 규칙: 이기면 +25 · 지면 −20(누구나 같음), 100이면 한 칸 위·0 아래로 내려가면 한 칸 아래, 티어가 바뀔 때만 승급전 한 경기,
+     시즌·리셋 없음, 처음 닿은 티어는 기록(보상 해금). 골드는 오가지 않는다(판돈 0). 친구 방(방 코드)은 줄다리기만, LP 없음.
+     LP는 지금은 이 기기에만 저장(순위표·서버 검증은 다음 단계) */
+  const TUG = { goal:50, max:10, pGoal:70, pMax:12 };
+  const RANK_KEY = 'hp:tg:rank', RK_LIVE = 'hp:tg:rklive', RK_WIN = 25, RK_LOSE = 20, RK_LEAVE = 10, RK_TOP = 200;
+  const TIERS = ['나무', '돌', '구리', '은', '비취', '진주', '금강', '달인', '대가', '국수'], DIVS = ['', 'I', 'II', 'III', 'IV'];
+  const DV = STEAM ? 's1' : 4;   /* 대전 짝 표식: 스팀판끼리만(줄다리기 규칙) · 웹은 그대로 4 */
+  const isTug = g => STEAM && !!g && g.mode === 'pvp';
+  const isRank = g => isTug(g) && !g.link;
+  const tugGoal = g => g.tgPr ? TUG.pGoal : TUG.goal, tugMax = g => g.tgPr ? TUG.pMax : TUG.max;
+  function rank(){ const r = store.get(RANK_KEY, null) || {}; return { t:r.t | 0, d:r.d || 4, lp:r.lp | 0, pr:!!r.pr, best:r.best | 0, w:r.w | 0, l:r.l | 0 }; }
+  const tierName = r => TIERS[r.t] + (r.t < 7 ? ' ' + DIVS[r.d] : '');
+  /* 경기 결과 반영: res = 'w'|'l'|'d', extra = 나가기 추가 감점 */
+  function rankApply(res, extra){
+    const r = rank(), b = { ...r }; let note = '';
+    if(res === 'd') return { b, a:r, dl:0, note };
+    const top = r.t >= 7, cap = top ? RK_TOP : 100;
+    if(r.pr){   /* 승급전 경기 */
+      r.pr = false;
+      if(res === 'w'){ r.t++; r.d = 4; r.lp = 0; note = 'up'; }
+      else { r.lp = cap - 25; note = 'pfail'; }
+    } else {
+      r.lp += res === 'w' ? RK_WIN : -(RK_LOSE + (extra || 0));
+      if(r.lp >= cap && r.t < TIERS.length - 1){
+        if(!top && r.d > 1){ r.d--; r.lp -= 100; note = 'div'; }
+        else { r.lp = cap; r.pr = true; note = 'promo'; }   /* 다음 경기 = 승급전 */
+      } else if(r.lp < 0){
+        if(!top && r.d < 4){ r.d++; r.lp = 75; note = 'down'; }
+        else if(r.t > 0){ r.t--; r.d = r.t >= 7 ? 4 : 1; r.lp = (r.t >= 7 ? RK_TOP : 100) - 25; note = 'down'; }
+        else r.lp = 0;
+      }
+    }
+    if(res === 'w') r.w++; else r.l++;
+    const first = r.t > r.best; if(first) r.best = r.t;
+    store.set(RANK_KEY, r);
+    return { b, a:r, dl:res === 'w' ? RK_WIN : -(RK_LOSE + (extra || 0)), note, first };
+  }
+  const rankNote = x => !x ? '' : x.note === 'up' ? `${TIERS[x.a.t]} 승급!` : x.note === 'promo' ? '다음 경기는 승급전!' : x.note === 'pfail' ? '승급전 실패 · 다시 도전해요' : x.note === 'div' ? '한 칸 올라갔어요' : x.note === 'down' ? '한 칸 내려갔어요' : '';
+  /* 판 끝 결과 창 오른쪽 칸: 줄다리기(가로) + 경기 상황. 천은 지난 자리에서 새 자리로 끌려간다(창이 뜬 뒤 .knot의 data-to) */
+  function tugHtml(g){
+    const T0 = tugGoal(g), L = g.tgLast || { from:0, dl:0, n:0 }, rope = g.rope || 0;
+    const at = v => (50 - Math.max(-1.12, Math.min(1.12, v / T0)) * 40).toFixed(1) + '%';
+    const done = g.tgDone, rk = g.tgRank, face = (w, m) => typeof TG_FACE !== 'undefined' && TG_FACE[w] ? `<img alt="" src="${TG_FACE[w][m] || TG_FACE[w]['']}">` : '';
+    const title = done ? (L.one && done === 'w' ? '한 판에 끝!' : done === 'w' ? '경기 승리!' : done === 'l' ? '경기 패배' : '경기 무승부')
+      : L.dl > 0 ? `${fmt(L.dl)}점 당겼어요!` : L.dl < 0 ? `${fmt(-L.dl)}점 끌려갔어요` : '나가리 · 줄은 그대로';
+    const dots = (g.tgHist || []).concat(Array(Math.max(0, tugMax(g) - (g.tgHist || []).length)).fill('')).map(x => `<i class="${x}"></i>`).join('');
+    const info = done ? (rk ? `<b>${tierName(rk.a)}${rk.a.pr ? ' · 승급전' : ''} · ${fmt(rk.a.lp)} LP <em class="${rk.dl < 0 ? 'dn' : ''}">${rk.dl > 0 ? '+' : rk.dl < 0 ? '−' : '±'}${fmt(Math.abs(rk.dl))}</em></b>${rankNote(rk) ? `<span class="nt">${rankNote(rk)}${rk.first ? ' · 처음 도달! 보상 해금' : ''}</span>` : ''}`
+        : '<b>친선전 · LP 변화 없음</b>')
+      : `<b>승리까지 ${fmt(Math.max(0, T0 - rope))}점</b>`;
+    return `<div class="gs-tugr${done ? ' done ' + done : ''}${g.tgPr ? ' pr' : ''}" aria-label="줄다리기 ${rope >= 0 ? '내 쪽 ' + rope : '상대 쪽 ' + -rope}점 · 승리선 ${T0}">
+      <div class="gs-tugt">${g.tgPr ? '<small>승급전</small>' : ''}${title}</div>
+      <div class="gs-tugl"><span class="gs-tugf me">${face('me', done === 'l' ? 'sad' : done === 'w' || L.dl > 0 ? 'joy' : '')}</span>
+        <div class="gs-tugw"><i class="gl me"></i><i class="gl op"></i><div class="rope"></div><i class="ghost" style="left:${at(L.from)}"></i><i class="knot" style="left:${at(L.from)}" data-to="${at(rope)}"></i></div>
+        <span class="gs-tugf op">${face('op', done === 'w' ? 'sad' : done === 'l' || L.dl < 0 ? 'joy' : '')}</span></div>
+      <div class="gs-tugi">${info}<span class="dots">${dots}</span><span class="nn">${L.n}판째 / 최대 ${tugMax(g)}판</span></div></div>`;
+  }
   const capOf = g => { const rm = (g && g.room) || ROOMS[0]; return rm.stake && g.mode !== 'pvp' ? rm.min : 0; };   /* 0 = 상한 없음(연습 판·실시간 대전) */
   const penaltyOf = g => { const rm = (g && g.room) || ROOMS[0]; return !rm.stake ? 0 : g.mode === 'pvp' ? rm.stake * 10 : rm.min; };
-  const roomLabel = g => { const rm = (g && g.room) || ROOMS[0]; if(G.adv) return '스테이지 ' + G.adv + (rm.stake ? '' : ' · 연습'); if(!rm.stake) return rm.name; return g.mode === 'pvp' ? rm.name : (LV_KO[g.ai] || rm.name); };
+  const roomLabel = g => { const rm = (g && g.room) || ROOMS[0]; if(isTug(g)) return isRank(g) ? (g.tgPr ? '랭크 승급전' : '랭크 대전') : '친선전'; if(G.adv) return '스테이지 ' + G.adv + (rm.stake ? '' : ' · 연습'); if(!rm.stake) return rm.name; return g.mode === 'pvp' ? rm.name : (LV_KO[g.ai] || rm.name); };
   const LIVE_KEY = 'hp:tg:live';   /* 진행 중인 판(골드가 오가는 판만) { p:벌점, at } — 정산·벌점 때 지움 */
   const CHARGE_TO = 10000, CHARGE_MAX = 5, CHARGE_START = 3;
   const ROOMS = [
@@ -1205,7 +1298,7 @@ NG.tgostop = (() => {
   /* 방 고르기 + 골드 얻기 화면(판 안). 2026-10-18 글자 줄이기: 설명 문장은 도움말(tips)로 */
   function lobby(){
     const g = GS(); if(!g || G.over) return;
-    if(g.link && g.mode === 'pvp'){ const r = ROOMS[g.link.k] || ROOMS[0]; g.room = wallet().pt >= r.min ? r : ROOMS[0]; turnHint(); linkJoin(); return; }
+    if(g.link && g.mode === 'pvp'){ const r = STEAM ? ROOMS[0] : ROOMS[g.link.k] || ROOMS[0]; g.room = wallet().pt >= r.min ? r : ROOMS[0]; turnHint(); linkJoin(); return; }
     if(G.adv && g.mode !== 'pvp'){ soloStart(); return; }   /* E-4: 솔로는 판 고르기 없음 */
     const att = attendance();
     const box = $('#gsLobby'); box.hidden = false; $('#gsBody').hidden = true;
@@ -1217,7 +1310,7 @@ NG.tgostop = (() => {
       box.innerHTML = `<div class="pbar gs-lbar"><button class="iconbtn" id="gsLbBack" aria-label="나가기">${ic('back')}</button><div class="ptitle">${esc(NG[ID].name)} ${BADGE19}</div><button class="iconbtn" id="gsLbHelp" aria-label="게임 방법">${ic('help')}</button></div>
         <div class="gs-lb">${msg ? `<p class="gs-lnote" role="status">${msg}</p>` : ''}
         <div class="gs-wal" aria-label="내 고스톱 골드 ${fmtP(w.pt)} · 최고 ${fmtP(w.peak)}"><span class="gs-coin">G</span><div><b>${fmtP(w.pt)}</b><em title="최고 ${fmtP(w.peak)}">${titleOf(w.peak)}</em></div></div>
-        <div class="gs-rooms">${(vsAi ? [ROOMS[0], ...AI_ROOMS.map(a => ({ ...ROOMS[a.r], lv:a.lv }))] : ROOMS).map(r => { const ok = w.pt >= r.min, pk = vsAi && r.lv && r.lv === pickLv(w), nm = r.lv ? LV_KO[r.lv] : r.name, sub = r.lv ? AI_NAME[r.lv] + ' · 점당 ' + fmtP(r.stake) : r.sub; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}${pk ? ' pick' : ''}" data-r="${r.k}"${r.lv ? ` data-lv="${r.lv}"` : ''} ${ok ? '' : 'disabled'} aria-label="${nm} · ${ok ? sub : fmtP(r.min) + ' 필요'}"><b>${nm}</b><small>${r.lv ? (ok ? '' : LOCK_ICO) + AI_NAME[r.lv] + ' · 점당 ' + fmt(r.stake) + ' G · 최대 ±' + fmtP(r.min) + (ok ? '' : ' · ' + fmtP(r.min) + ' 필요') : r.stake ? (ok ? '' : LOCK_ICO) + '×' + fmt(r.stake) + ' · ' + fmtP(r.min) + '~' : '±0'}</small></button>`; }).join('')}</div>
+        <div class="gs-rooms">${!vsAi && STEAM ? (rk => `<button class="gs-room r1 pick gs-rank" data-rank="1" aria-label="랭크 대전 · ${tierName(rk)} · ${rk.lp} LP"><b>랭크 대전</b><small>${tierName(rk)} · ${fmt(rk.lp)} LP${rk.pr ? ' · 승급전' : ''} · 줄다리기 ${TUG.goal}점</small></button>`)(rank()) : (vsAi ? [ROOMS[0], ...AI_ROOMS.map(a => ({ ...ROOMS[a.r], lv:a.lv }))] : ROOMS).map(r => { const ok = w.pt >= r.min, pk = vsAi && r.lv && r.lv === pickLv(w), nm = r.lv ? LV_KO[r.lv] : r.name, sub = r.lv ? AI_NAME[r.lv] + ' · 점당 ' + fmtP(r.stake) : r.sub; return `<button class="gs-room r${r.k}${ok ? '' : ' lock'}${pk ? ' pick' : ''}" data-r="${r.k}"${r.lv ? ` data-lv="${r.lv}"` : ''} ${ok ? '' : 'disabled'} aria-label="${nm} · ${ok ? sub : fmtP(r.min) + ' 필요'}"><b>${nm}</b><small>${r.lv ? (ok ? '' : LOCK_ICO) + AI_NAME[r.lv] + ' · 점당 ' + fmt(r.stake) + ' G · 최대 ±' + fmtP(r.min) + (ok ? '' : ' · ' + fmtP(r.min) + ' 필요') : r.stake ? (ok ? '' : LOCK_ICO) + '×' + fmt(r.stake) + ' · ' + fmtP(r.min) + '~' : '±0'}</small></button>`; }).join('')}</div>
         <div class="gs-earn" aria-label="골드 얻는 법">
           <div class="${w.att === dayKey() ? 'done' : ''}" aria-label="매일 출석 · ${w.streak || 1}일 연속"><span>출석</span><i>${att ? '+' + fmtP(att) : '✓'}</i></div>
           <div class="${canCharge ? 'hot' : ''}" aria-label="충전권 ${nC}장"><span>충전권</span>${canCharge ? '<button id="gsCharge">쓰기</button>' : `<i>${nC}장</i>`}</div>
@@ -1232,6 +1325,7 @@ NG.tgostop = (() => {
         if(g.mode === 'pvp') search();
         else if(g.sess){ g.seed0 = 'tg:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판 */
         else { g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = g.ended ? g.gi + 1 : 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 · 한 판 더에서 방을 다시 고르면 새 패 */
+      box.querySelectorAll('[data-rank]').forEach(b => b.onclick = () => { g.room = ROOMS[0]; box.hidden = true; box.innerHTML = ''; turnHint(); search(); });   /* 스팀 랭크 대전: 판돈 없음 */
       const rb = $('#gsRescue'); if(rb) rb.onclick = () => { const b = rescue(); if(b){ sfx('gsWin'); draw0(`파산 구제 +${fmtP(b)}! 다시 도전해요`); } };
       const cb = $('#gsCharge'); if(cb) cb.onclick = () => { const b = useCharge(); if(b){ sfx('gsWin'); draw0(`충전권 사용 +${fmtP(b)}! 다시 도전해요`); } };
       const fb = $('#gsFree'); if(fb) fb.onclick = () => { const b = freeCharge(); if(b){ sfx('gsCap'); draw0(`무료 충전 +${fmtP(b)}`); } };
@@ -1292,7 +1386,7 @@ NG.tgostop = (() => {
       if(G.adv === 10 && !(advProg(ID).stars || {})[10]) keys.push('ch1'); }
     let bonus = 0, item = 0;
     if(win && G.adv && !(advProg(ID).stars || {})[G.adv]){ bonus = 500 * Math.ceil(G.adv / 10); const w2 = wallet(); w2.pt += bonus; if(G.adv % 10 === 0 && w2.items.charge < CHARGE_MAX){ w2.items.charge++; item = 1; } saveW(w2); }
-    const got = achieve(keys);
+    const got = isTug(g) ? [] : achieve(keys);   /* 스팀 랭크·친선 경기는 골드가 오가지 않음(업적 골드도 솔로·컴퓨터 판에서만) */
     return { d, bonus, got, after:wallet().pt, gross, fee, lvx, opp, item, raw, capped, cap };
   }
   /* 첫뻑·연뻑·3연뻑: 게임 시작부터 자기 차례마다 뻑이 이어지면 판돈(점당)의 5배 → 10배 → 15배를 상대에게서 바로 받음.
@@ -1422,13 +1516,13 @@ NG.tgostop = (() => {
     const g = GS(); g.phase = 'search'; g.mmT0 = Date.now(); searchUI();
     const room = ROOM; if(!room){ switchAI(); return; }
     g.dt = Date.now();
-    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:4 }).catch(() => {});
+    room.presence({ du:'wait', dg:ID, dt:g.dt, nk:g.nick, dp:null, dr:g.room.k, dv:DV }).catch(() => {});
     const check = () => {
       if(GS() !== g || G.over || (g.phase !== 'search' && g.phase !== 'nobody')) return;
       let ps; try{ ps = room.peers(); }catch(_){ return; }
       const me = ps.find(p => p.sameTab); if(!me) return;
       g.myPeer = me.peer;
-      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === 4;   /* dv:3 = 같은 규칙·기록 방식끼리만(v3: 처음 바닥 3장 뻑) */
+      const ok = p => p.presence && p.presence.dg === ID && p.presence.dr === g.room.k && p.presence.dv === DV;   /* dv:3 = 같은 규칙·기록 방식끼리만(v3: 처음 바닥 3장 뻑) */
       const claim = ps.find(p => !p.sameTab && ok(p) && p.presence.du === 'play' && p.presence.dp === me.peer);
       if(claim){ match(claim); return; }
       const list = ps.filter(p => ok(p) && p.presence.du === 'wait' && typeof p.presence.dt === 'number')
@@ -1466,7 +1560,7 @@ NG.tgostop = (() => {
     try{ nr = await ROOM.join(('fl-g-' + a[0] + '-' + a[1]).slice(0, 50)); }catch(_){ if(GS() === g) matchFail(); return; }
     if(GS() !== g || g.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
     g.nr = nr; g.joinT = Date.now(); g.ev = []; g.oev = [];
-    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt }).catch(() => {});
+    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt, pr:isRank(g) && rank().pr ? 1 : 0 }).catch(() => {});
     g.seat = g.myPeer < opp.peer ? 0 : 1;
     try{ g.nrUn = nr.onPeers(ch => {
         if(GS() !== g) return;
@@ -1494,7 +1588,7 @@ NG.tgostop = (() => {
     if(GS() !== g || g.phase !== 'joining' || G.over){ try{ nr.leave(); }catch(_){} return; }
     g.nr = nr; g.joinT = Date.now(); g.ev = []; g.oev = [];
     try{ const mine = nr.peers().find(p => p.sameTab); if(mine) g.myPeer = mine.peer; }catch(_){}
-    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt }).catch(() => {});
+    nr.presence({ v:2, nk:g.nick, ev:[], bye:0, pt:wallet().pt, pr:isRank(g) && rank().pr ? 1 : 0 }).catch(() => {});
     try{ g.nrUn = nr.onPeers(ch => {
         if(GS() !== g) return;
         if(g.oppSeen && ch.left.some(p => p.peer === g.oppPeer) && !g.began){ g.oppSeen = false; g.oppPeer = null; searchText(); return; }
@@ -1524,6 +1618,7 @@ NG.tgostop = (() => {
     if(!g.began){
       if(g.phase === 'joining' && o && o.nk){
         lobbyClear(); g.mode = 'pvp'; g.oppPt = typeof o.pt === 'number' ? o.pt : 0;
+        if(isTug(g)){ g.rope = 0; g.tgHist = []; g.tgDone = ''; g.tgRank = null; g.tgPr = isRank(g) && (rank().pr || !!o.pr); if(isRank(g)) store.set(RK_LIVE, 1); }
         const a = [g.myPeer, g.oppPeer].map(String).sort();
         g.seed0 = 'tg:pvp:' + a[0] + ':' + a[1];
         if(g.link){
@@ -1586,6 +1681,7 @@ NG.tgostop = (() => {
     /* 아직 19세 확인 전이면 엔진의 첫 도움말을 막아 두고(이미 본 것으로 표시) 확인 뒤에 연다 → 확인 전에는 규칙 창이 뜨지 않음 */
     if(!ageOk() && !store.get('hp:help:' + ID, false)){ store.set('hp:help:' + ID, 1); G.gs.helpAfterGate = true; }
     livePenalty();   /* E-5: 지난번에 판 도중 창을 닫았으면 여기서 한 번 */
+    if(STEAM && store.get(RK_LIVE, 0)){ store.set(RK_LIVE, 0); rankApply('l', RK_LEAVE); setTimeout(() => X(() => toast(`지난 랭크 경기를 끝내지 않고 나가서 패배로 쳤어요 · −${RK_LOSE + RK_LEAVE} LP`)), 900); }   /* 스팀 랭크: 경기 중 창 닫기 = 패배 + 감점 */
   }
   const AI_NAME = { easy:'컴퓨터 새내기', normal:'컴퓨터 고수', hard:'컴퓨터 타짜' };
   function render(st){
@@ -1596,6 +1692,7 @@ NG.tgostop = (() => {
         <div class="gs-pts op" id="gsPtsOp"></div>
         <div id="gsFloor"></div><div id="gsDeck"></div>
         <div class="gs-pts me" id="gsPtsMe"></div>
+        <div class="gs-tug" id="gsTug" hidden aria-hidden="true"><div class="rope"></div><i class="gl op"></i><i class="gl me"></i><i class="knot"></i></div>
         <div id="gsCapMe"></div>
         <div class="gs-side">
           <div class="gs-tag" id="gsTag">${BADGE19}<span>고스톱</span></div>
@@ -1666,6 +1763,7 @@ NG.tgostop = (() => {
     chapters:['동네 사랑방', '시장 골목', '장터 한마당', '명절 큰집', '고수의 방'],
     starRule:'★ 승리 · ★★ 10점 이상으로 승리 · ★★★ 20점 이상으로 승리',
     _pt:{ wallet, ROOMS, ACH, attendance, rescue, freeCharge, useCharge, FEE, LV_X },
+    _rank:{ rank, rankApply, tierName, STEAM, TUG },   /* 점검 도구용(스팀 랭크) */
     levels:LV,
     levelDesc:lv => (AI_NAME[lv] || '컴퓨터') + '와 한 판',
     levelCfg(lv){ const k = LV[lv] ? lv : 'normal'; return { name:lv === 'pvp' ? '사람과' : AI_NAME[k], mult:1, [ID]:LV[k] }; },

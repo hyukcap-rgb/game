@@ -540,3 +540,41 @@ body.gs-full{overflow:hidden}
 .gs-room:focus-visible{outline:4px solid #2E8FE8; outline-offset:3px}
 .gs-pay.cap{background:#FFF4CC} .gs-pay.cap span{color:#7A5A00} .gs-pay.cap b{color:#5A4A6A; font-size:22px; font-weight:800}
 .gs-end .gs-pay.cap b{font-size:20px}
+
+/* ===== 스팀판 랭크 대전 줄다리기(docs/37 1-2 시안) — 스팀에서만 보임 ===== */
+.gs-tug{position:absolute; left:1173px; top:248px; width:48px; height:186px; border-radius:24px; z-index:2; pointer-events:none;
+  background:linear-gradient(#E04563 0 50%, #2F4AA8 50% 100%); box-shadow:inset 0 0 0 4px rgba(255,255,255,.8), 0 4px 0 #1A0F45}
+.gs-tug .rope, .gs-tugw .rope{position:absolute; border-radius:999px; box-shadow:0 3px 6px rgba(0,0,0,.3)}
+.gs-tug .rope{left:14px; width:20px; top:6px; bottom:6px;
+  background:linear-gradient(90deg, rgba(255,255,255,.35), rgba(255,255,255,0) 35%, rgba(60,35,5,.45)), repeating-linear-gradient(28deg, #F0D698 0 6px, #D9B46A 6px 11px, #9B7330 11px 13px)}
+.gs-tug .gl{position:absolute; left:6px; right:6px; height:4px; border-radius:2px; background:#fff}
+.gs-tug .gl.op{top:12%} .gs-tug .gl.me{top:88%}
+.gs-tug .knot{position:absolute; left:50%; top:50%; width:38px; height:20px; margin:-10px 0 0 -19px; border-radius:6px;
+  background:linear-gradient(90deg,#9E1426,#E23A48 45%,#B81D30); box-shadow:0 3px 6px rgba(0,0,0,.35); transition:top .6s cubic-bezier(.2,1.3,.4,1)}
+.gs-tugr{margin:0 0 6px; padding:14px 16px 12px; border-radius:20px; background:radial-gradient(ellipse at 50% 45%, #5FCF4A, #37A02F 75%); border:3px solid #1A0F45; box-shadow:0 5px 0 #1A0F45; color:#fff; text-align:center}
+.gs-tugr.pr{box-shadow:0 0 0 4px #FFD34D, 0 5px 0 #1A0F45}
+.gs-tugt{font-size:34px; font-weight:900; line-height:1.15; text-shadow:0 3px 0 rgba(0,0,0,.25)}
+.gs-tugt small{display:block; font-size:18px; color:#FFE27A}
+.gs-tugr.done.w .gs-tugt{font-size:44px; color:#FFE27A; -webkit-text-stroke:2px #6B3F00; paint-order:stroke}
+.gs-tugl{display:flex; align-items:center; gap:6px; margin:10px 0 6px}
+.gs-tugf{flex:0 0 66px; height:66px; border-radius:50%; overflow:hidden; background:#FFF7E2; box-shadow:0 0 0 4px #FFF7E2, 0 0 0 7px var(--c)}
+.gs-tugf.me{--c:#2F4AA8} .gs-tugf.op{--c:#E04563}
+.gs-tugf img{width:100%; height:100%; display:block}
+.gs-tugw{position:relative; flex:1; height:70px}
+.gs-tugw .rope{left:0; right:0; top:28px; height:16px;
+  background:linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0) 35%, rgba(60,35,5,.45)), repeating-linear-gradient(118deg, #F0D698 0 6px, #D9B46A 6px 11px, #9B7330 11px 13px)}
+.gs-tugw .gl{position:absolute; top:8px; height:56px; width:4px; margin-left:-2px; background:repeating-linear-gradient(#fff 0 8px, transparent 8px 13px)}
+.gs-tugw .gl.me{left:10%} .gs-tugw .gl.op{left:90%}
+.gs-tugw .ghost{position:absolute; top:22px; width:16px; height:28px; margin-left:-8px; border-radius:5px; border:2px dashed rgba(255,255,255,.85)}
+.gs-tugw .knot{position:absolute; top:18px; width:20px; height:36px; margin-left:-10px; border-radius:6px; background:linear-gradient(90deg,#9E1426,#E23A48 45%,#B81D30);
+  box-shadow:0 3px 6px rgba(0,0,0,.35); transition:left .6s cubic-bezier(.2,1.3,.4,1)}
+.gs-tugw .knot::after{content:""; position:absolute; left:3px; top:30px; width:14px; height:22px; background:#D22C3C; clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)}
+.gs-tugi{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 12px; font-size:20px; font-weight:800}
+.gs-tugi b{width:100%; font-size:24px}
+.gs-tugi b em{font-style:normal; margin-left:6px; padding:0 8px; border-radius:10px; background:#2F4AA8}
+.gs-tugi b em.dn{background:#E04563}
+.gs-tugi .nt{width:100%; color:#FFE27A}
+.gs-tugi .dots{display:flex; gap:4px}
+.gs-tugi .dots i{width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,.3); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
+.gs-tugi .dots i.w{background:#2F4AA8} .gs-tugi .dots i.l{background:#E04563} .gs-tugi .dots i.d{background:#C9C2B0}
+@media (prefers-reduced-motion:reduce){ .gs-tug .knot, .gs-tugw .knot{transition:none} }
