@@ -74,8 +74,9 @@ NG.tgostop = (() => {
       const S = { P:[0, 1].map(i => ({ hand:ids.slice(i * 10, i * 10 + 10), cap:[], go:0, goScore:0, shake:0, ppuk:0, nt:0, fp:0 })), floor:[], deck:ids.slice(28),
         turn:0, ppuk:{}, pendingGS:-1, over:false, result:null, dn:0, nAct:0 };
       /* 바닥 8장: 보너스패는 선(0번 자리)이 먹고 더미에서 채움 */
+      S.d0 = { f:ids.slice(20, 28), r:[] };   /* 패 돌리기 연출용(보이기만): 처음 깔린 바닥 8장 · 보너스 대신 더미에서 나온 패 */
       for(const id of ids.slice(20, 28)){ if(C[id].bonus) S.P[0].cap.push(id); else S.floor.push(id); }
-      while(S.floor.length < 8 && S.deck.length){ const d = S.deck.shift(); if(C[d].bonus) S.P[0].cap.push(d); else S.floor.push(d); }
+      while(S.floor.length < 8 && S.deck.length){ const d = S.deck.shift(); S.d0.r.push(d); if(C[d].bonus) S.P[0].cap.push(d); else S.floor.push(d); }
       if(Object.values(monthCount(S.floor)).some(v => v >= 4)) continue;   /* 바닥에 같은 월 4장 → 다시 섞기 */
       /* 처음 바닥에 같은 월 3장 = 뻑(주인 없음 -1): 나중에 4번째로 먹는 사람이 상대 피 1장(자뻑 아님) */
       { const mc = monthCount(S.floor); for(const m in mc) if(mc[m] === 3) S.ppuk[m] = -1; }
@@ -725,37 +726,85 @@ NG.tgostop = (() => {
     const rm0 = g.room || ROOMS[0], tg = $('#gsTag'); if(tg) tg.innerHTML = `${BADGE19}<b>${roomLabel(g)}${rm0.stake ? ' · 점당 ' + fmtP(rm0.stake) : ''}</b>${g.sess ? `<small>${g.gi + 1}판째</small>` : ''}`;
     const gate = $('#gsGate'); if(gate) gate.remove();
     byeUI();
-    draw(liveView());
-    /* 패 돌리기 연출 */
-    const dealN = dealAnim();
+    /* 패 돌리기 연출(2026-10-25): 선 아닌 사람 5 → 선 5 → 바닥 4 → 다시 5 · 5 · 4를 아주 빠르게.
+       바닥에 보너스(K)가 깔렸으면 돌린 뒤 선에게 날아가고 더미에서 새 패가 나와 채움 */
+    const v0 = dealView(g.S), bon = v0 ? v0.bon : [];
+    draw(v0 || liveView());
+    let dealT = DEAL_MS;
+    X(() => { if(v0) dealT = dealAnim(v0); });
     X(() => GX.play('gsfxStart'));   /* v1.18 판 시작 징글(매 판) */
     if(!g.gi) X(() => GX.say('op', 'greet', 2500));   /* 첫 판: 징글이 끝난 뒤 상대가 인사 */
-    X(() => GX.event('deal', { n:dealN, gap:DEAL_GAP / 1000 }));
-    if(g.S.over){ setTimeout(() => endGame(), 900); return; }
-    const ep = g.epoch;
-    setTimeout(() => { if(GS() === g && g.epoch === ep) nextStep(); }, DEAL_MS);
+    X(() => GX.event('deal', { n:28, gap:DEAL_GAP / 1000 }));
+    const ep = g.epoch, live = () => GS() === g && g.epoch === ep && !G.over;
+    let endT = dealT;
+    if(v0 && bon.length){
+      setTimeout(() => { if(!live()) return; X(() => flipTo(liveView(), v0, 340)); X(() => GX.event('bonus', { who:g.me === 0 ? 'me' : 'op', n:bon.reduce((t, id) => t + (C[id].pv || 0), 0) })); faceFor(0, 'joy', 1400); }, dealT + 120);
+      endT = dealT + 120 + 620;
+    } else if(v0) setTimeout(() => { if(live()) draw(liveView()); }, dealT);
+    g.stepT0 = Date.now() + endT;
+    if(g.S.over){ setTimeout(() => { if(live()) endGame(); }, endT + 200); return; }
+    setTimeout(() => { if(live()) nextStep(); }, endT);
   }
-  /* 패 돌리기 v1.11: 더미 자리에서 바닥·내 손으로 번갈아 한 장씩 휙 날아와 착(앞 장이 끝나기 전에 다음 장) */
-  const DEAL_GAP = 20, DEAL_MS = 780;
-  function dealAnim(){
-    let n = 0;
-    X(() => {
-      const fl = [...document.querySelectorAll('#gsFloor .gs-c')], hd = [...document.querySelectorAll('#gsHand .gs-c.hd')];
-      if(FXR.reduce){ fl.concat(hd).forEach(el => el.animate([{ opacity:0 }, { opacity:1 }], { duration:300 })); n = 8; return; }
-      const seq = []; for(let i = 0; i < Math.max(fl.length, hd.length); i += 2) seq.push(...fl.slice(i, i + 2), ...hd.slice(i, i + 2));
-      const dk = document.querySelector('#gsb [data-cid="deck"]'), d = dk ? dk.getBoundingClientRect() : null, g = GS();
-      seq.forEach((el, i) => {
-        const r = el.getBoundingClientRect(); let tf = 'translateY(-40px) scale(.6)';
-        if(d && d.width && r.width){
-          const sx = (d.left + d.width / 2) - (r.left + r.width / 2), sy = (d.top + d.height / 2) - (r.top + r.height / 2);
-          const dx = g.rot ? sy / g.sc : sx / g.sc, dy = g.rot ? -sx / g.sc : sy / g.sc, s = Math.max(d.width, d.height) / Math.max(r.width, r.height);
-          tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${i % 2 ? -10 : 10}deg)`;
+  /* 돌리기 전 장면: 손패 그대로 · 바닥 = 처음 깔린 8장(보너스는 빈 월 자리에) · 선의 먹은 패에서 보너스 빼기 · 더미는 채우기 전 장수 */
+  function dealView(S){
+    if(!S || !S.d0) return null;
+    const v = Object.assign(snap(S), { ppuk:{} }), bon = S.d0.f.filter(id => C[id].bonus).concat(S.d0.r.filter(id => C[id].bonus));
+    v.f = S.d0.f.filter(id => !C[id].bonus);
+    v.c = [S.P[0].cap.filter(id => !bon.includes(id)), S.P[1].cap.slice()];
+    v.d = S.deck.length + S.d0.r.length;
+    v.bon = S.d0.f.filter(id => C[id].bonus);   /* 바닥에 보이는 보너스(더미에서 채우다 나온 보너스도 마지막에 함께 날아감) */
+    v.order = S.d0.f;
+    return v;
+  }
+  /* 패 돌리기 v2(2026-10-25): 실제로 나눠 주는 순서 — 선 아닌 사람 5 · 선 5 · 바닥 4 · 선 아닌 사람 5 · 선 5 · 바닥 4.
+     더미 자리에서 한 장씩 휙(앞 장이 끝나기 전에 다음 장). 상대 손패는 뒷면이 상대 얼굴 쪽으로 날아가 사라짐. 돌려주는 값 = 끝나는 시각(ms) */
+  const DEAL_GAP = 18, DEAL_PAUSE = 50, DEAL_DUR = 200, DEAL_MS = 1050;
+  function dealAnim(v0){
+    const g = GS(), root = $('#gsb'), fl = $('#gsFloor'); if(!root || !fl) return DEAL_MS;
+    /* 보너스는 바닥의 빈 월 자리에 앞면으로(그리기 칸 안에 두어 다음 draw 때 자동으로 사라짐 → FLIP으로 선의 먹은 패로 날아감) */
+    const used = new Set(v0.f.map(id => C[id].m)), free = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(m => !used.has(m)), [fw, fh] = CW.floor;
+    v0.bon.forEach((id, i) => { const [cx, cy] = SLOT[free[i % free.length]]; fl.insertAdjacentHTML('beforeend', `<div class="gs-c fl" data-cid="${id}" style="${px(cx - fw / 2, cy - fh / 2, fw, fh)};z-index:2">${cardSvg(id)}</div>`); });
+    const hd = [...document.querySelectorAll('#gsHand .gs-c.hd')];
+    const flEl = id => fl.querySelector(`[data-cid="${id}"]`);
+    if(FXR.reduce){ hd.concat([...fl.querySelectorAll('.gs-c')]).forEach(el => el.animate([{ opacity:0 }, { opacity:1 }], { duration:300 })); return 400; }
+    const dk = root.querySelector('[data-cid="deck"]'), d = dk ? dk.getBoundingClientRect() : null;
+    const oa = $('#gsOpp .gs-pav'), oR = oa ? oa.getBoundingClientRect() : null;
+    const toBoard = (o, n) => { const sx = (o.left + o.width / 2) - (n.left + n.width / 2), sy = (o.top + o.height / 2) - (n.top + n.height / 2); return [g.rot ? sy / g.sc : sx / g.sc, g.rot ? -sx / g.sc : sy / g.sc]; };
+    /* 상대 손패용 뒷면: 더미 자리에 놓고 상대 얼굴로 날려 보냄 */
+    let fx = $('#gsDealFx'); if(fx) fx.remove();
+    fx = document.createElement('div'); fx.id = 'gsDealFx'; fx.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:70'; root.appendChild(fx);
+    const [dw, dh] = CW.deck;
+    const oppCard = () => { const e = document.createElement('div'); e.className = 'gs-c back'; e.style.cssText = px(630 - dw / 2, 334 - dh / 2, dw, dh); e.innerHTML = BACK; fx.appendChild(e); return e; };
+    const sunMe = g.me === 0;
+    const meG = [hd.slice(0, 5), hd.slice(5, 10)], flG = [v0.order.slice(0, 4), v0.order.slice(4, 8)].map(L => L.map(flEl).filter(Boolean));
+    const seq = [];
+    for(const r of [0, 1]){
+      const opp = [{ op:true, n:5 }], mine = meG[r].map(el => ({ el }));
+      seq.push(sunMe ? opp : mine, sunMe ? mine : opp, flG[r].map(el => ({ el })));   /* 선 아닌 사람 → 선 → 바닥 */
+    }
+    let t = 0;
+    seq.forEach(grp => {
+      grp.forEach(it => {
+        if(it.op){
+          for(let k = 0; k < it.n; k++){
+            const e = oppCard(), n = e.getBoundingClientRect();
+            if(oR && oR.width && n.width){ const [dx, dy] = toBoard(oR, n);
+              e.animate([{ transform:'none', opacity:0 }, { transform:'translateY(-8px) scale(1.04)', opacity:1, offset:.15 }, { transform:`translate(${dx}px,${dy}px) scale(.35) rotate(${k % 2 ? -14 : 14}deg)`, opacity:.85, offset:.9 }, { transform:`translate(${dx}px,${dy}px) scale(.3)`, opacity:0 }],
+                { duration:DEAL_DUR + 40, delay:t, easing:'cubic-bezier(.3,.7,.35,1)', fill:'both' }); }
+            t += DEAL_GAP;
+          }
+          return;
         }
-        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:220, delay:i * DEAL_GAP, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
+        const el = it.el, r = el.getBoundingClientRect(); let tf = 'translateY(-40px) scale(.6)';
+        if(d && d.width && r.width){ const [dx, dy] = toBoard(d, r), s = Math.max(d.width, d.height) / Math.max(r.width, r.height); tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${(t / DEAL_GAP | 0) % 2 ? -10 : 10}deg)`; }
+        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:DEAL_DUR, delay:t, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
+        t += DEAL_GAP;
       });
-      n = seq.length;
+      t += DEAL_PAUSE;
     });
-    return n || 18;
+    const end = t + DEAL_DUR;
+    setTimeout(() => { if(fx.parentNode) fx.remove(); }, end + 300);
+    return end;
   }
   function nextStep(){
     const g = GS(); if(!g || G.over || g.phase !== 'play') return;
