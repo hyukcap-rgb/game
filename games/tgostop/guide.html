@@ -97,13 +97,13 @@ footer{color:#BFD8C6;font-size:13px;text-align:center}
     <h2>1. Read a card <small>카드 읽기</small></h2>
     <p class="lead">Every card tells you two things: its <b>rank</b> (big number in the corner) and its <b>type</b> (the badge on the right and the label strip at the bottom).</p>
     <div class="step"><b class="n">A</b><div><b>Rank = month.</b> Go-Stop is normally played with Korean flower cards, one suit per month. Here the ranks <b>A, 2 … 10, J, Q</b> stand for months 1 to 12. <b>You capture cards of the same rank</b> — suit does not matter for matching.</div></div>
-    <div class="step"><b class="n">B</b><div><b>Type = how many points it is worth.</b> Look for the gold, deer, bird or purple badge and the coloured strip. No badge and no strip means a plain <b>Junk</b> card.</div></div>
+    <div class="step"><b class="n">B</b><div><b>Type = how many points it is worth.</b> The suit shows it at a glance: <b>♠ Bright · ♦ Animal · ♥ Ribbon · ♣ Junk</b>. Badges and strips mark the special ones (birds, ribbon sets, Double Junk).</div></div>
     <div class="legend" id="legend"></div>
   </section>
 
   <section class="panel" id="turn">
     <h2>2. Your turn <small>차례</small></h2>
-    <p class="lead">Each player starts with 10 cards; 8 cards lie face up on the table and the rest form the draw pile. On every turn you do two things:</p>
+    <p class="lead">Each player starts with 10 cards; 8 cards lie face up on the table and the rest form the draw pile. <b>The winner of the last round goes first</b> — against the computer too. On every turn you do two things:</p>
     <div class="step"><b class="n">1</b><div><b>Play a card from your hand.</b> If a table card has the same rank, your card lands on it. Glowing cards in your hand have a match.</div></div>
     <div class="step"><b class="n">2</b><div><b>Flip the top card of the draw pile.</b> It also lands on a matching rank, or stays on the table.</div></div>
     <div class="step"><b class="n">3</b><div><b>Take every pair you made.</b> Captured cards go to your side, sorted by type. Then it is your opponent's turn.</div></div>
@@ -174,7 +174,7 @@ footer{color:#BFD8C6;font-size:13px;text-align:center}
 
   <section class="panel" id="deck">
     <h2>All 52 cards <small>카드 전체</small></h2>
-    <p>One row per suit. ♠ holds the Brights and Animals, ♥ the Ribbons, ♦ and ♣ the Junk. The four Ks are bonus cards.</p>
+    <p>The suit tells you the type: ♠ = the 5 Brights, ♦ = Animals, ♥ = Ribbons, ♣ = Junk (Double Junk and the four bonus Kings too). Some cards repeat — just like the matching Junk cards in Hwatu.</p>
     <div class="tbl"><div class="deck" id="deckgrid"></div></div>
   </section>
 
@@ -209,28 +209,28 @@ footer{color:#BFD8C6;font-size:13px;text-align:center}
     const t = T[m][k], id = (m - 1) * 4 + k;
     C[id] = { id, m, k, g:t === 'g', y:t === 'y', tt:['hong','cheong','cho','rain'].includes(t) ? t : null, pv:t === 'p' ? 1 : t === 's' ? 2 : 0,
       bird:t === 'y' && (m === 2 || m === 4 || m === 8), rg:t === 'g' && m === 12, kj:t === 'y' && m === 9 };
-    C[id].su = m === 11 ? [0, 3, 2, 1][k] : m === 12 ? [0, 2, 1, 3][k] : k;
+    C[id].su = C[id].g ? 0 : C[id].y ? 2 : C[id].tt ? 1 : 3;
   }
-  [[48, 2, 2], [49, 3, 2], [50, 0, 3], [51, 1, 3]].forEach(([id, su, pv]) => C[id] = { id, m:0, bonus:true, pv, su });
+  [[48, 3, 2], [49, 3, 2], [50, 3, 3], [51, 3, 3]].forEach(([id, su, pv]) => C[id] = { id, m:0, bonus:true, pv, su });
   const RANK = { A:1, J:11, Q:12, K:13 };
-  const find = code => { const r = code.slice(0, -1), s = '♠♥♦♣'.indexOf(code.slice(-1)), m = RANK[r] || +r; return C.find(c => c && c.su === s && (m === 13 ? c.bonus : !c.bonus && c.m === m)); };
+  const find = (code, pv) => { const r = code.slice(0, -1), s = '♠♥♦♣'.indexOf(code.slice(-1)), m = RANK[r] || +r; return C.find(c => c && c.su === s && (m === 13 ? c.bonus && (!pv || c.pv === pv) : !c.bonus && c.m === m)); };
   const svg = (code, label) => { const c = find(code); return `<svg viewBox="${TGART.VB}" role="img" aria-label="${label || code}">${TGART.face(c)}</svg>`; };
   const $ = s => document.querySelector(s);
 
-  $('#fan').innerHTML = [['A♠', -18, 0, 20], ['J♠', 0, 62, 4], ['8♥', 16, 122, 22]].map(([c, r, x, y]) => svg(c).replace('<svg', `<svg style="left:${x}px;top:${y}px;transform:rotate(${r}deg)"`)).join('');
+  $('#fan').innerHTML = [['A♠', -18, 0, 20], ['J♠', 0, 62, 4], ['8♦', 16, 122, 22]].map(([c, r, x, y]) => svg(c).replace('<svg', `<svg style="left:${x}px;top:${y}px;transform:rotate(${r}deg)"`)).join('');
 
   const LEG = [
     ['A♠', 'Bright', '광 gwang', 'Gold sun badge and gold frame. Only 5 exist: A, 3, 8, J and Q of spades.'],
     ['Q♠', 'Rain Bright', '비광 bi-gwang', 'The weakest Bright: 3 Brights that include it score 2 instead of 3.'],
-    ['5♠', 'Animal', '열끗 yeol-kkeut', 'Deer badge, dark strip. 9 Animal cards in the deck.'],
-    ['2♠', 'Bird (Godori)', '고도리 go-do-ri', 'Bird badge, red strip. Collect all three birds (2♠, 4♠, 8♥) for 5 points.'],
+    ['5♦', 'Animal', '열끗 yeol-kkeut', 'Deer badge, dark strip. 9 Animal cards, all diamonds.'],
+    ['2♦', 'Bird (Godori)', '고도리 go-do-ri', 'Bird badge, red strip. Collect all three birds (2♦, 4♦, 8♦) for 5 points.'],
     ['A♥', 'Red ribbon', '홍단 hong-dan', 'Red ribbon strip: A, 2, 3 of hearts. All three = 3 points.'],
     ['6♥', 'Blue ribbon', '청단 cheong-dan', 'Blue ribbon strip: 6, 9, 10 of hearts. All three = 3 points.'],
     ['4♥', 'Green ribbon', '초단 cho-dan', 'Green ribbon strip: 4, 5, 7 of hearts. All three = 3 points.'],
     ['Q♥', 'Plain ribbon', '띠 tti', 'Grey ribbon. Counts toward 5+ Ribbons only.'],
-    ['7♦', 'Junk', '피 pi', 'No badge, no strip. Most of the deck: you need 10 for a point.'],
+    ['7♣', 'Junk', '피 pi', 'No badge, no strip. All clubs — most of the deck: you need 10 for a point.'],
     ['J♣', 'Double Junk', '쌍피 ssang-pi', 'Purple double-leaf badge. Counts as 2 Junk.'],
-    ['K♥', 'Bonus King', '보너스 bonus', 'Free card: K♠ and K♥ = 3 Junk, K♦ and K♣ = 2 Junk.']
+    ['K♣', 'Bonus King', '보너스 bonus', 'Free card. All four Kings are clubs: two count as 3 Junk, two as 2 Junk (see the badge).']
   ];
   $('#legend').innerHTML = LEG.map(([c, n, ko, d]) => `<div class="lg">${svg(c, n)}<div><h4>${n} <span class="ko" style="color:#5D6472;font-size:13px">${ko}</span></h4><p>${d}</p></div></div>`).join('');
 
@@ -238,15 +238,22 @@ footer{color:#BFD8C6;font-size:13px;text-align:center}
 
   const SC = [
     ['3 Brights', ['A♠', '3♠', '8♠'], '3'], ['3 Brights incl. Rain Bright (Q♠)', ['A♠', '3♠', 'Q♠'], '2'], ['4 Brights', ['A♠', '3♠', '8♠', 'J♠'], '4'], ['5 Brights', ['A♠', '3♠', '8♠', 'J♠', 'Q♠'], '15'],
-    ['Godori — the 3 Birds', ['2♠', '4♠', '8♥'], '5'],
+    ['Godori — the 3 Birds', ['2♦', '4♦', '8♦'], '5'],
     ['Red ribbons', ['A♥', '2♥', '3♥'], '3'], ['Blue ribbons', ['6♥', '9♥', '10♥'], '3'], ['Green ribbons', ['4♥', '5♥', '7♥'], '3'],
-    ['5 Animals (any)', ['5♠', '6♠', '7♠', '10♠', 'Q♦'], '1, +1 each extra'], ['5 Ribbons (any)', ['A♥', '4♥', '6♥', '9♥', 'Q♥'], '1, +1 each extra'],
-    ['10 Junk (Double = 2, K = 2 or 3)', ['2♦', '3♣', '5♦', '6♣', '7♦', '8♣', 'J♣', 'K♦'], '1, +1 each extra']
+    ['5 Animals (any)', ['5♦', '6♦', '7♦', '10♦', 'Q♦'], '1, +1 each extra'], ['5 Ribbons (any)', ['A♥', '4♥', '6♥', '9♥', 'Q♥'], '1, +1 each extra'],
+    ['10 Junk (Double = 2, K = 2 or 3)', ['2♣', '3♣', '5♣', '6♣', '7♣', '8♣', 'J♣', 'K♣'], '1, +1 each extra']
   ];
   $('#score-rows').innerHTML = SC.map(([n, cs, p]) => `<tr><td><b>${n}</b></td><td><div class="cards sm" style="margin:0">${cs.map(c => svg(c)).join('')}</div></td><td class="pts">${p}</td></tr>`).join('');
 
-  const R = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-  $('#deckgrid').innerHTML = '♠♥♦♣'.split('').map(s => `<span class="s" style="color:${s === '♥' || s === '♦' ? '#C8102E' : '#1A1F2E'}">${s}</span>` + R.map(r => svg(r + s)).join('')).join('');
+  /* 무늬마다 한 줄(13장씩 줄바꿈): ♠ 광 5 · ♥ 띠 10 · ♦ 열끗 9 · ♣ 피 28(보너스 K 포함) */
+  const RK = ['K', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q'];
+  const face = c => `<svg viewBox="${TGART.VB}" role="img" aria-label="${RK[c.m]}">${TGART.face(c)}</svg>`;
+  $('#deckgrid').innerHTML = '♠♥♦♣'.split('').map((s, si) => {
+    const cs = C.filter(c => c && c.su === si).sort((a, b) => (a.bonus ? 13 : a.m) - (b.bonus ? 13 : b.m));
+    let h = '';
+    for (let i = 0; i < cs.length; i += 13) h += (i ? '<span></span>' : `<span class="s" style="color:${si === 1 || si === 2 ? '#C8102E' : '#1A1F2E'}">${s}</span>`) + cs.slice(i, i + 13).map(face).join('') + '<span></span>'.repeat(13 - cs.slice(i, i + 13).length);
+    return h;
+  }).join('');
 })();
 </script>
 </body>
