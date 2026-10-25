@@ -707,9 +707,8 @@ NG.tgostop = (() => {
   const X = (f) => { try{ f(); }catch(_){} };   /* 효과는 보이기만: 오류가 나도 판은 계속 */
   const seedOf = gi => GS().seed0 + ':' + gi;
   const seatOf = si => { const g = GS(); return si === 0 ? g.first : 1 - g.first; };
-  /* 컴퓨터 판 선(2026-10-25): 지난 판 이긴 사람이 다음 판 선 — 솔로·컴퓨터 대전 모두, 나갔다 들어와도 기억('me'|'ai', 나가리면 그대로) */
-  const AI_NEXT = 'hp:tg:aiNext';
-  const aiNext = () => { const v = store.get(AI_NEXT, null); return v === 'me' || v === 'ai' ? v : null; };
+  /* 선(2026-10-25): 게임에 새로 들어오면 늘 선 뽑기, 이어지는 판은 지난 판 이긴 사람이 선(나가리면 그대로) — 솔로·컴퓨터·실시간 대전 모두 */
+  const nextFirst = () => { const g = GS(); if(g.lastW >= 0) g.first = seatOf(g.lastW); };
 
   function startPlay(){
     const g = GS(); if(!g || G.over) return;
@@ -1016,7 +1015,6 @@ NG.tgostop = (() => {
     const pay = settle() || { d:0, bonus:0, got:[], after:wallet().pt, fee:0, lvx:1, opp:0 };
     if(g.sess){ const t = g.tot; t.n++; if(draw0) t.d++; else if(win) t.w++; else t.l++; t.pt += pay.d + (g.fpd || 0); if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt + (pay.opp || 0)); }
     g.lastW = r.w;
-    if(g.mode !== 'pvp') X(() => store.set(AI_NEXT, (r.w >= 0 ? seatOf(r.w) : g.first) === g.seat ? 'me' : 'ai'));
     draw(liveView());
     const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${roomLabel(g)}</span><b>${pay.d > 0 ? '+' : pay.d < 0 ? '−' : ''}${fmtP(Math.abs(pay.d))}</b></div>` : `<div class="gs-pay"><span>${roomLabel(g)}</span><b>골드 변화 없음</b></div>`)
       + (pay.capped ? `<div class="gs-pay sm cap"><span>${pay.capped === 'win' ? '최대 이김' : '최대 잃음'} ±${fmtP(pay.cap)}</span><b>${fmt(r.final)}점 × ${fmtP(g.room.stake)} = ${fmtP(pay.raw)}</b></div>` : '')
@@ -1076,7 +1074,7 @@ NG.tgostop = (() => {
       clearTimeout(g.endT);
       if(box){ box.hidden = true; box.innerHTML = ''; }
       if(wallet().pt < (g.room || ROOMS[0]).min){ toast('골드가 모자라 판 크기를 다시 골라요'); lobby(); return; }
-      if(g.lastW >= 0) g.first = seatOf(g.lastW);   /* 다음 판 선 = 이번 판 이긴 사람 */
+      nextFirst();   /* 다음 판 선 = 이번 판 이긴 사람 */
       g.gi++; startPlay();
     };
     const ok = $('#gsEndOk'); if(ok) ok.onclick = done;
@@ -1236,8 +1234,8 @@ NG.tgostop = (() => {
       const lh = $('#gsLbHelp'); if(lh) lh.onclick = () => openHelp(ID);
       box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const r = ROOMS[+b.dataset.r]; if(wallet().pt < r.min) return; g.room = r; if(b.dataset.lv){ const w2 = wallet(); w2.lv = b.dataset.lv; saveW(w2); } if(g.mode !== 'pvp'){ g.ai = wallet().lv; g.oppNick = AI_NAME[g.ai] || g.oppNick; } box.hidden = true; box.innerHTML = ''; turnHint();
         if(g.mode === 'pvp') search();
-        else if(g.sess){ g.seed0 = 'tg:ai:' + g.seedBase; g.seat = 0; const nx = aiNext(); if(nx){ g.first = nx === 'ai' ? 1 : 0; g.gi = 0; startPlay(); } else sunStart(); }   /* AI 대전: 지난 판 이긴 사람이 선(기록 없으면 선 뽑기) · 연속 판 */
-        else { g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = g.ended ? g.gi + 1 : 0; startPlay(); } });   /* 솔로: 선은 스테이지가 정함 · 한 판 더에서 방을 다시 고르면 새 패 */
+        else if(g.sess){ g.seed0 = 'tg:ai:' + g.seedBase; g.seat = 0; sunStart(); }   /* AI 대전도 선 뽑기 · 연속 판은 이긴 사람이 선 */
+        else { g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; if(g.ended){ nextFirst(); g.gi++; startPlay(); } else sunStart(); } });   /* 솔로: 처음엔 선 뽑기 · 한 판 더에서 방을 다시 고르면 새 패, 선은 이긴 사람 */
       const rb = $('#gsRescue'); if(rb) rb.onclick = () => { const b = rescue(); if(b){ sfx('gsWin'); draw0(`파산 구제 +${fmtP(b)}! 다시 도전해요`); } };
       const cb = $('#gsCharge'); if(cb) cb.onclick = () => { const b = useCharge(); if(b){ sfx('gsWin'); draw0(`충전권 사용 +${fmtP(b)}! 다시 도전해요`); } };
       const fb = $('#gsFree'); if(fb) fb.onclick = () => { const b = freeCharge(); if(b){ sfx('gsCap'); draw0(`무료 충전 +${fmtP(b)}`); } };
@@ -1259,7 +1257,7 @@ NG.tgostop = (() => {
     const go = room => {
       const box = $('#gsLobby'); if(box){ box.hidden = true; box.innerHTML = ''; }
       g.room = room; turnHint();
-      g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; g.gi = g.ended ? g.gi + 1 : 0; startPlay();
+      g.seed0 = 'tg:solo:' + G.adv + ':' + g.seedBase; g.seat = 0; if(g.ended){ nextFirst(); g.gi++; startPlay(); } else sunStart();   /* 처음엔 선 뽑기 */
     };
     const SR = ROOMS[SOLO_ROOM_K];
     if(wallet().pt >= SR.min){ go(SR); return; }
@@ -1584,9 +1582,8 @@ NG.tgostop = (() => {
     const n = (store.get('hp:tg:n', 0) || 0) + 1; store.set('hp:tg:n', n);   /* 같은 스테이지라도 판마다 다른 패(문제 공유가 없는 게임) */
     const seedBase = Math.floor(rng() * 1e9) + ':' + n;
     /* 자리(seat): 대전은 peer 순서, AI와는 나 0 · AI 1. 판마다 선 자리(first)가 S의 0번 자리가 된다.
-       컴퓨터 판은 지난 판 이긴 사람이 선(aiNext, 기록 없으면 솔로는 스테이지 aiFirst · AI 대전은 선 뽑기), 실시간 대전은 선 뽑기 → 다음 판부터 이긴 사람이 선 */
-    const nx = mode === 'ai' ? aiNext() : null;
-    G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:nx ? (nx === 'ai' ? 1 : 0) : G.adv && cfg.aiFirst ? 1 : 0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : '컴퓨터 고수'),
+       솔로·컴퓨터·실시간 대전 모두 들어올 때마다 선 뽑기 → 다음 판부터 이긴 사람이 선(2026-10-25) */
+    G.gs = { mode, ai:cfg.ai || 'normal', me:0, seat:0, first:0, gi:0, sess:!!G.duel && !G.adv, nick:duelNick(), oppNick:mode === 'pvp' ? '상대' : (G.adv ? AI_NAME[cfg.ai] : '컴퓨터 고수'),
       seedBase, ev:[], oev:[], tot:{ n:0, w:0, l:0, d:0, pt:0 }, bye:false, epoch:0, sel:null, busy:false, began:false, inGame:false, phase:'lobby', link:mode === 'pvp' ? linkNext : null };
     G.mode = mode;
     G.cleanup = cleanup;
@@ -1678,7 +1675,7 @@ NG.tgostop = (() => {
     levelCfg(lv){ const k = LV[lv] ? lv : 'normal'; return { name:lv === 'pvp' ? '사람과' : AI_NAME[k], mult:1, [ID]:LV[k] }; },
     stage:n => ({ limit:0, ai:stageLevel(n), aiFirst:aiFirst(n) }),
     stageLevel,
-    stageDesc:n => { let first = false; try{ first = !(advProg(ID).stars || {})[n]; }catch(_){} const nx = aiNext(); return ((nx ? nx === 'ai' : aiFirst(n)) ? '컴퓨터가 선' : '내가 선') + ' · ' + AI_NAME[stageLevel(n)] + ' · 점당 ' + fmtP(ROOMS[SOLO_ROOM_K].stake) + ' · 최대 ±' + fmtP(ROOMS[SOLO_ROOM_K].min) + (first ? ' · 첫 클리어 +' + fmtP(500 * Math.ceil(n / 10)) : '') + ' · 이기면 클리어'; },
+    stageDesc:n => { let first = false; try{ first = !(advProg(ID).stars || {})[n]; }catch(_){} return AI_NAME[stageLevel(n)] + ' · 점당 ' + fmtP(ROOMS[SOLO_ROOM_K].stake) + ' · 최대 ±' + fmtP(ROOMS[SOLO_ROOM_K].min) + (first ? ' · 첫 클리어 +' + fmtP(500 * Math.ceil(n / 10)) : '') + ' · 이기면 클리어'; },
     init(cfg, rng, lv){ init(cfg, rng, lv); },
     render:st => render(st),
     titleExtra:() => ' ' + BADGE19,
