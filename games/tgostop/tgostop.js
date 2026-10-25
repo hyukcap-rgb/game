@@ -478,7 +478,7 @@ NG.tgostop = (() => {
     return out;
   }
   function handHtml(view){
-    const g = GS(), hand = view.h[g.me].slice().sort((a, b) => ((C[a] && C[a].m) || 99) - ((C[b] && C[b].m) || 99) || a - b);
+    const g = GS(), hand = view.raw ? view.h[g.me].slice() : view.h[g.me].slice().sort((a, b) => ((C[a] && C[a].m) || 99) - ((C[b] && C[b].m) || 99) || a - b);
     const fm = new Set(view.f.map(id => C[id].m)), mt = myTurn() && !g.busy && !g.picking, [w, h] = CW.hand, n = hand.length;
     const step = n > 1 ? Math.min(150, (1448 - 12 - w) / (n - 1)) : 0;   /* 오른쪽 끝 1448 < 자동 치기(1474) */
     return hand.map((id, i) => { const c = C[id], hit = c && !c.bonus && fm.has(c.m), bon = (c && c.bonus) || isDummy(id);
@@ -737,10 +737,10 @@ NG.tgostop = (() => {
     X(() => GX.event('deal', { n:28, gap:DEAL_GAP / 1000 }));
     const ep = g.epoch, live = () => GS() === g && g.epoch === ep && !G.over;
     let endT = dealT;
-    if(v0 && bon.length){
-      setTimeout(() => { if(!live()) return; X(() => flipTo(liveView(), v0, 340)); X(() => GX.event('bonus', { who:g.me === 0 ? 'me' : 'op', n:bon.reduce((t, id) => t + (C[id].pv || 0), 0) })); faceFor(0, 'joy', 1400); }, dealT + 120);
-      endT = dealT + 120 + 620;
-    } else if(v0) setTimeout(() => { if(live()) draw(liveView()); }, dealT);
+    /* 다 돌리면: 손패가 월 순서로 정리되며 자리를 옮기고(FLIP), 바닥 보너스는 선에게 · 더미에서 새 패가 나와 채움 */
+    if(v0) setTimeout(() => { if(!live()) return; X(() => flipTo(liveView(), v0, 300));
+      if(bon.length){ X(() => GX.event('bonus', { who:g.me === 0 ? 'me' : 'op', n:bon.reduce((t, id) => t + (C[id].pv || 0), 0) })); faceFor(0, 'joy', 1400); } }, dealT + 80);
+    if(v0) endT = dealT + 80 + (bon.length ? 620 : 360);
     g.stepT0 = Date.now() + endT;
     if(g.S.over){ setTimeout(() => { if(live()) endGame(); }, endT + 200); return; }
     setTimeout(() => { if(live()) nextStep(); }, endT);
@@ -754,27 +754,39 @@ NG.tgostop = (() => {
     v.d = S.deck.length + S.d0.r.length;
     v.bon = S.d0.f.filter(id => C[id].bonus);   /* 바닥에 보이는 보너스(더미에서 채우다 나온 보너스도 마지막에 함께 날아감) */
     v.order = S.d0.f;
+    v.raw = true;   /* 손패는 받은 순서대로 왼쪽부터(다 받은 뒤 정리) */
     return v;
   }
-  /* 패 돌리기 v2(2026-10-25): 실제로 나눠 주는 순서 — 선 아닌 사람 5 · 선 5 · 바닥 4 · 선 아닌 사람 5 · 선 5 · 바닥 4.
-     더미 자리에서 한 장씩 휙(앞 장이 끝나기 전에 다음 장). 상대 손패는 뒷면이 상대 얼굴 쪽으로 날아가 사라짐. 돌려주는 값 = 끝나는 시각(ms) */
-  const DEAL_GAP = 18, DEAL_PAUSE = 50, DEAL_DUR = 200, DEAL_MS = 1050;
+  /* 패 돌리기 v3(2026-10-25, 사용자가 보낸 다른 맞고 영상 기준): 더미에서 **한 장씩 뒷면으로** 휙 날아가 자리에 닿는 순간 **뒤집혀 앞면**.
+     순서 = 선 아닌 사람 5 · 선 5 · 바닥 4 · 선 아닌 사람 5 · 선 5 · 바닥 4. 내 손패는 받은 순서대로 왼쪽 칸부터 채움(다 받은 뒤 월 순서로 정리),
+     상대 손패는 작은 뒷면이 상대 칸으로 날아가고 남은 패 수가 하나씩 올라감. 돌려주는 값 = 끝나는 시각(ms) */
+  const DEAL_GAP = 42, DEAL_PAUSE = 60, DEAL_DUR = 260, DEAL_MS = 1500;
+  function dealCss(){
+    if(document.getElementById('gsDealCss')) return;
+    const st = document.createElement('style'); st.id = 'gsDealCss';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${TGART.VB}">${TGART.back}</svg>`;
+    st.textContent = `.gsb .gs-c.gs-dbk::before{content:''; position:absolute; inset:0; z-index:3; pointer-events:none; background:url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 0 0/100% 100% no-repeat; animation:gs-dbk var(--dd,260ms) linear var(--dl,0ms) both}
+@keyframes gs-dbk{0%,82%{opacity:1} 83%,100%{opacity:0}}`;
+    document.head.appendChild(st);
+  }
   function dealAnim(v0){
     const g = GS(), root = $('#gsb'), fl = $('#gsFloor'); if(!root || !fl) return DEAL_MS;
-    /* 보너스는 바닥의 빈 월 자리에 앞면으로(그리기 칸 안에 두어 다음 draw 때 자동으로 사라짐 → FLIP으로 선의 먹은 패로 날아감) */
+    /* 보너스는 바닥의 빈 월 자리에(그리기 칸 안에 두어 다음 draw 때 사라짐 → FLIP으로 선의 먹은 패로 날아감) */
     const used = new Set(v0.f.map(id => C[id].m)), free = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(m => !used.has(m)), [fw, fh] = CW.floor;
     v0.bon.forEach((id, i) => { const [cx, cy] = SLOT[free[i % free.length]]; fl.insertAdjacentHTML('beforeend', `<div class="gs-c fl" data-cid="${id}" style="${px(cx - fw / 2, cy - fh / 2, fw, fh)};z-index:2">${cardSvg(id)}</div>`); });
-    const hd = [...document.querySelectorAll('#gsHand .gs-c.hd')];
-    const flEl = id => fl.querySelector(`[data-cid="${id}"]`);
+    const hd = [...document.querySelectorAll('#gsHand .gs-c.hd')], flEl = id => fl.querySelector(`[data-cid="${id}"]`);
     if(FXR.reduce){ hd.concat([...fl.querySelectorAll('.gs-c')]).forEach(el => el.animate([{ opacity:0 }, { opacity:1 }], { duration:300 })); return 400; }
+    X(dealCss);
     const dk = root.querySelector('[data-cid="deck"]'), d = dk ? dk.getBoundingClientRect() : null;
     const oa = $('#gsOpp .gs-pav'), oR = oa ? oa.getBoundingClientRect() : null;
     const toBoard = (o, n) => { const sx = (o.left + o.width / 2) - (n.left + n.width / 2), sy = (o.top + o.height / 2) - (n.top + n.height / 2); return [g.rot ? sy / g.sc : sx / g.sc, g.rot ? -sx / g.sc : sy / g.sc]; };
-    /* 상대 손패용 뒷면: 더미 자리에 놓고 상대 얼굴로 날려 보냄 */
     let fx = $('#gsDealFx'); if(fx) fx.remove();
     fx = document.createElement('div'); fx.id = 'gsDealFx'; fx.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:70'; root.appendChild(fx);
     const [dw, dh] = CW.deck;
     const oppCard = () => { const e = document.createElement('div'); e.className = 'gs-c back'; e.style.cssText = px(630 - dw / 2, 334 - dh / 2, dw, dh); e.innerHTML = BACK; fx.appendChild(e); return e; };
+    /* 상대 남은 패 수: 0에서 한 장씩 */
+    const lc = $('#gsOH .gs-left'), setOpp = n => { if(lc && lc.lastChild) lc.lastChild.nodeValue = n; };
+    setOpp(0);
     const sunMe = g.me === 0;
     const meG = [hd.slice(0, 5), hd.slice(5, 10)], flG = [v0.order.slice(0, 4), v0.order.slice(4, 8)].map(L => L.map(flEl).filter(Boolean));
     const seq = [];
@@ -782,23 +794,27 @@ NG.tgostop = (() => {
       const opp = [{ op:true, n:5 }], mine = meG[r].map(el => ({ el }));
       seq.push(sunMe ? opp : mine, sunMe ? mine : opp, flG[r].map(el => ({ el })));   /* 선 아닌 사람 → 선 → 바닥 */
     }
-    let t = 0;
+    let t = 0, k = 0, on = 0;
     seq.forEach(grp => {
       grp.forEach(it => {
         if(it.op){
-          for(let k = 0; k < it.n; k++){
-            const e = oppCard(), n = e.getBoundingClientRect();
+          for(let j = 0; j < it.n; j++){
+            const e = oppCard(), n = e.getBoundingClientRect(), at = t;
             if(oR && oR.width && n.width){ const [dx, dy] = toBoard(oR, n);
-              e.animate([{ transform:'none', opacity:0 }, { transform:'translateY(-8px) scale(1.04)', opacity:1, offset:.15 }, { transform:`translate(${dx}px,${dy}px) scale(.35) rotate(${k % 2 ? -14 : 14}deg)`, opacity:.85, offset:.9 }, { transform:`translate(${dx}px,${dy}px) scale(.3)`, opacity:0 }],
-                { duration:DEAL_DUR + 40, delay:t, easing:'cubic-bezier(.3,.7,.35,1)', fill:'both' }); }
-            t += DEAL_GAP;
+              e.animate([{ transform:'none', opacity:0 }, { transform:'translateY(-6px)', opacity:1, offset:.1 }, { transform:`translate(${dx}px,${dy}px) scale(.28) rotate(${k % 2 ? -12 : 12}deg)`, opacity:1, offset:.92 }, { transform:`translate(${dx}px,${dy}px) scale(.24)`, opacity:0 }],
+                { duration:DEAL_DUR, delay:at, easing:'cubic-bezier(.3,.7,.35,1)', fill:'both' }); }
+            setTimeout(() => setOpp(++on), at + DEAL_DUR - 20);
+            t += DEAL_GAP; k++;
           }
           return;
         }
+        /* 뒷면으로 날아와(살짝 기울어) 닿는 순간 가로로 접혔다 펴지며 앞면 */
         const el = it.el, r = el.getBoundingClientRect(); let tf = 'translateY(-40px) scale(.6)';
-        if(d && d.width && r.width){ const [dx, dy] = toBoard(d, r), s = Math.max(d.width, d.height) / Math.max(r.width, r.height); tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${(t / DEAL_GAP | 0) % 2 ? -10 : 10}deg)`; }
-        el.animate([{ transform:tf, opacity:.2 }, { transform:'translateY(-10px) scale(1.06)', opacity:1, offset:.8 }, { transform:'none', opacity:1 }], { duration:DEAL_DUR, delay:t, easing:'cubic-bezier(.25,.8,.35,1)', fill:'backwards' });
-        t += DEAL_GAP;
+        if(d && d.width && r.width){ const [dx, dy] = toBoard(d, r), s = Math.max(d.width, d.height) / Math.max(r.width, r.height); tf = `translate(${dx}px,${dy}px) scale(${s}) rotate(${k % 2 ? -8 : 8}deg)`; }
+        el.style.setProperty('--dd', DEAL_DUR + 'ms'); el.style.setProperty('--dl', t + 'ms'); el.classList.add('gs-dbk');
+        el.animate([{ transform:tf, easing:'cubic-bezier(.25,.8,.35,1)' }, { transform:'none', offset:.7, easing:'ease-in' }, { transform:'scaleX(.04)', offset:.83, easing:'ease-out' }, { transform:'none' }],
+          { duration:DEAL_DUR, delay:t, fill:'backwards' });
+        t += DEAL_GAP; k++;
       });
       t += DEAL_PAUSE;
     });
