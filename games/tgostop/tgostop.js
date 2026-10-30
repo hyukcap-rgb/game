@@ -1084,7 +1084,7 @@ NG.tgostop = (() => {
     const payHtml = (g.room && g.room.stake ? `<div class="gs-pay ${pay.d > 0 ? 'up' : pay.d < 0 ? 'down' : ''}"><span>${roomLabel(g)}</span><b>${pay.d > 0 ? '+' : pay.d < 0 ? '−' : ''}${fmtP(Math.abs(pay.d))}</b></div>` : `<div class="gs-pay"><span>${roomLabel(g)}</span><b>골드 변화 없음</b></div>`)
       + (pay.capped ? `<div class="gs-pay sm cap"><span>${pay.capped === 'win' ? '최대 이김' : '최대 잃음'} ±${fmtP(pay.cap)}</span><b>${fmt(r.final)}점 × ${fmtP(g.room.stake)} = ${fmtP(pay.raw)}</b></div>` : '')
       + (pay.item ? '<div class="gs-pay up sm"><span>챕터 첫 클리어 · 충전권</span><b>+1장</b></div>' : '')
-      + (g.fpd ? `<div class="gs-pay ${g.fpd > 0 ? 'up' : 'down'} sm"><span>뻑 보너스 (판 중에 받음)</span><b>${g.fpd > 0 ? '+' : '−'}${fmtP(Math.abs(g.fpd))}</b></div>` : '')
+      + (g.fpd ? `<div class="gs-pay ${g.fpd > 0 ? 'up' : 'down'} sm"><span>첫뻑 (판 중에 받음)</span><b>${g.fpd > 0 ? '+' : '−'}${fmtP(Math.abs(g.fpd))}</b></div>` : '')
       + (pay.bonus ? `<div class="gs-pay up sm"><span>솔로 새 판 첫 클리어</span><b>+${fmtP(pay.bonus)}</b></div>` : '')
       + pay.got.map(a => `<div class="gs-pay up sm"><span>업적 · ${a.name}</span><b>+${fmtP(a.pt)}</b></div>`).join('')
       + `<p class="gs-after">보유 골드 <b>${fmtP(pay.after)}</b>${pay.after < ROOMS[1].min ? (wallet().items.charge > 0 ? ' · 올인! 판 고르기에서 충전권으로 1만 G를 채워요' : ' · 올인! 충전권이 없으면 3시간마다 무료 충전') : ''}</p>`;
@@ -1211,7 +1211,7 @@ NG.tgostop = (() => {
   /* 2026-10-21 사용자 지시: 컴퓨터와 둘 때는 난이도 = 판돈(초급 점당 100 G · 중급 500 G · 고급 1,000 G). 연습 판은 따로, 왕 판은 실시간 대전에만 */
   const AI_ROOMS = [{ lv:'easy', r:1 }, { lv:'normal', r:2 }, { lv:'hard', r:3 }];
   /* 2026-10-22 경제 수정(docs/34 3-4절, 결정로그 253~256)
-     E-3 컴퓨터 판(솔로 포함) 한 판 상한 = 그 판 입장 금액(이기든 지든, 뻑 보너스는 상한 밖). 실시간 대전은 상한 없음(상대 보유까지)
+     E-3 컴퓨터 판(솔로 포함) 한 판 상한 = 그 판 입장 금액(이기든 지든, 2026-10-31부터 첫뻑·연뻑·3연뻑도 상한 안). 실시간 대전은 상한 없음(상대 보유까지)
      E-4 솔로는 판 고르기 없이 점당 100 G(작은 판과 같은 값, 상한 2,000 G) · 컴퓨터 세기 = stageLevel(n)
      E-5 판 도중 나가기·창 닫기 벌점 = 컴퓨터 판은 상한과 같게, 실시간 대전은 점당 ×10. 판 시작 때 '진행 중'을 저장해 강제 종료도 다음 실행에 한 번 정산 */
   const SOLO_ROOM_K = 1;
@@ -1351,9 +1351,10 @@ NG.tgostop = (() => {
     /* 이기면: 최종 점수 × 점당(난이도 배율은 없앰, LV_X 모두 1) → 관리비 없음(FEE = 0). 지면: 그대로 잃음. opp = 상대 보유의 변화(실시간 대전 표시용, 상대 기기도 같은 식) */
     let gross = 0, fee = 0, lvx = 1, opp = 0, raw = 0, capped = '';
     const cap = capOf(g);   /* E-3: 컴퓨터 판은 이기든 지든 입장 금액까지 */
-    if(room.stake && (win || lose)){ raw = Math.round(r.final * room.stake); if(cap && raw > cap) capped = win ? 'win' : 'lose'; }
-    if(room.stake && win){ gross = Math.min(raw, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : cap || Infinity); fee = feeOf(gross); d = gross - fee; opp = -gross; }
-    else if(room.stake && lose){ const loss = Math.min(raw, cap || Infinity, w.pt); d = -loss; opp = loss - feeOf(loss); }
+    const fpd = g.fpd || 0, roomW = cap ? Math.max(0, cap - fpd) : Infinity, roomL = cap ? Math.max(0, cap + fpd) : Infinity;   /* 2026-10-31 사용자 지시: 첫뻑도 상한 안 — 첫뻑으로 오간 골드 + 판 정산 = 한 판 ±상한 */
+    if(room.stake && (win || lose)){ raw = Math.round(r.final * room.stake); if(cap && raw > (win ? roomW : roomL)) capped = win ? 'win' : 'lose'; }
+    if(room.stake && win){ gross = Math.min(raw, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : roomW); fee = feeOf(gross); d = gross - fee; opp = -gross; }
+    else if(room.stake && lose){ const loss = Math.min(raw, roomL, w.pt); d = -loss; opp = loss - feeOf(loss); }
     try{ store.set(LIVE_KEY, null); }catch(_){}
     w.pt += d; w.games = (w.games || 0) + 1; if(win) w.wins = (w.wins || 0) + 1; saveW(w);
     const keys = [];
@@ -1378,7 +1379,8 @@ NG.tgostop = (() => {
         let d = 0;
         if(amt){
           const w = wallet();
-          const gross = mine ? Math.min(amt, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : Infinity) : Math.min(amt, w.pt);
+          const cap = capOf(g), f0 = g.fpd || 0;   /* 컴퓨터 판: 첫뻑까지 합쳐 한 판 ±상한(2026-10-31) */
+          const gross = mine ? Math.min(amt, g.mode === 'pvp' ? (g.oppPt ?? Infinity) : cap ? Math.max(0, cap - f0) : Infinity) : Math.min(amt, w.pt, cap ? Math.max(0, cap + f0) : Infinity);
           d = mine ? gross - feeOf(gross) : -gross;   /* 받는 쪽은 관리비 5% 빼고 */
           w.pt += d; saveW(w);
           if(g.mode === 'pvp' && g.oppPt != null) g.oppPt = Math.max(0, g.oppPt + (mine ? -gross : gross - feeOf(gross)));

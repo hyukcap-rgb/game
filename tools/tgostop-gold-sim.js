@@ -1,7 +1,7 @@
 // 트럼프 고스톱 골드(G) 점검: 진짜 규칙·AI로 판을 두고, tgostop.js의 settle()·fpCheck() 식을 그대로 옮겨 골드가 맞게 오가는지 본다.
 //   node tools/tgostop-gold-sim.js [판 수=4000]
-//  1) 판마다 불변식: 보유 < 0 없음 · 컴퓨터 판 정산 |d| ≤ 상한 · 실시간 대전 두 기기 합 = 0 · 연습 판 ±0
-//  2) 방별 골드 흐름(사람 대신 'normal' AI): 판당 평균·뻑 보너스 포함 최대 손실(표시 '최대 ±' 넘는지)
+//  1) 판마다 불변식: 보유 < 0 없음 · 컴퓨터 판 첫뻑+정산 ≤ ±상한 · 실시간 대전 두 기기 합 = 0 · 연습 판 ±0
+//  2) 방별 골드 흐름(사람 대신 'normal' AI): 첫뻑 + 판 정산 합이 한 판 ±상한 안인지(2026-10-31부터 첫뻑도 상한 안)
 //  3) 솔로 [한 판 더] 반복: 첫 클리어 보상이 매번 다시 나오는지(연습 판 포함)
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
@@ -25,7 +25,8 @@ function playGame(seed, lv, me, room, mode, w, opp){
   const fpPaid = [0, 0]; let fpd = 0, oppFp = 0, guard = 0;
   const fp = () => { for(const i of [0, 1]) while((S.P[i].fp || 0) > fpPaid[i]){
     const lvl = ++fpPaid[i], amt = room.stake * FP_X * lvl, mine = i === me; if(!amt) continue;
-    const gross = mine ? Math.min(amt, mode === 'pvp' ? opp.pt : Infinity) : Math.min(amt, w.pt);
+    const cap = capOf(room, mode);
+    const gross = mine ? Math.min(amt, mode === 'pvp' ? opp.pt : cap ? Math.max(0, cap - fpd) : Infinity) : Math.min(amt, w.pt, cap ? Math.max(0, cap + fpd) : Infinity);
     const d = mine ? gross - feeOf(gross) : -gross;
     w.pt += d; fpd += d;
     if(mode === 'pvp'){ const od = mine ? -gross : gross - feeOf(gross); opp.pt = Math.max(0, opp.pt + od); oppFp += od; }
@@ -38,10 +39,10 @@ function playGame(seed, lv, me, room, mode, w, opp){
   }
   /* settle() 그대로 */
   const r = S.result, win = r.w === me, lose = r.w >= 0 && !win, cap = capOf(room, mode);
-  let d = 0, raw = 0, opD = 0;
+  let d = 0, raw = 0, opD = 0; const roomW = cap ? Math.max(0, cap - fpd) : Infinity, roomL = cap ? Math.max(0, cap + fpd) : Infinity;
   if(room.stake && (win || lose)) raw = Math.round(r.final * room.stake);
-  if(room.stake && win){ const gross = Math.min(raw, mode === 'pvp' ? opp.pt : cap || Infinity); d = gross - feeOf(gross); opD = -gross; }
-  else if(room.stake && lose){ const loss = Math.min(raw, cap || Infinity, w.pt); d = -loss; opD = loss - feeOf(loss); }
+  if(room.stake && win){ const gross = Math.min(raw, mode === 'pvp' ? opp.pt : roomW); d = gross - feeOf(gross); opD = -gross; }
+  else if(room.stake && lose){ const loss = Math.min(raw, roomL, w.pt); d = -loss; opD = loss - feeOf(loss); }
   w.pt += d; if(mode === 'pvp') opp.pt = Math.max(0, opp.pt + opD);   /* endGame: g.oppPt += pay.opp */
   return { S, r, d, fpd, raw, cap, opD, oppFp };
 }
@@ -58,14 +59,13 @@ for(const [rk, lvAi] of [[1, 'easy'], [2, 'normal'], [3, 'hard']]){
     const g = playGame('gold:' + rk + ':' + i, lv, me, room, 'ai', w, null);
     const tot = g.d + g.fpd;
     if(w.pt < 0) bad(`방${rk} 판${i}: 보유 음수 ${w.pt}`);
-    if(Math.abs(g.d) > g.cap) bad(`방${rk} 판${i}: 정산 ${g.d} > 상한 ${g.cap}`);
     if(g.r.why === '3연뻑' && g.r.w === me) cap3++;
     if(g.r.w === me) wins++;
-    if(-tot > room.min) overLabel++;
+    if(Math.abs(tot) > room.min){ overLabel++; bad(`방${rk} 판${i}: 첫뻑 포함 ${tot} G — 상한 ±${room.min} 넘음`); }
     if(g.fpd < 0) fpLossGames++;
     sum += tot; maxLoss = Math.min(maxLoss, g.d); maxLossFp = Math.min(maxLossFp, tot);
   }
-  out.push(`방 점당 ${room.stake} G(입장·상한 ${room.min} G, 컴퓨터 ${lvAi}): 승률 ${(wins / N * 100).toFixed(1)}% · 판당 평균 ${Math.round(sum / N)} G · 정산 최대 손실 ${-maxLoss} G · 뻑 포함 최대 손실 ${-maxLossFp} G · '최대 ±${room.min}' 넘게 잃은 판 ${overLabel}(${(overLabel / N * 100).toFixed(2)}%) · 뻑으로 잃은 판 ${fpLossGames}`);
+  out.push(`방 점당 ${room.stake} G(입장·상한 ${room.min} G, 컴퓨터 ${lvAi}): 승률 ${(wins / N * 100).toFixed(1)}% · 판당 평균 ${Math.round(sum / N)} G · 판 정산만 최대 손실 ${-maxLoss} G · 첫뻑 포함 최대 손실 ${-maxLossFp} G · ±${room.min} 넘게 오간 판 ${overLabel}(${(overLabel / N * 100).toFixed(2)}%) · 첫뻑으로 잃은 판 ${fpLossGames}`);
 }
 
 /* ---- 실시간 대전: 두 기기 따로 계산해도 합 = 0(골드가 생기거나 사라지지 않음) ---- */
