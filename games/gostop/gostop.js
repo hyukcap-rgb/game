@@ -1233,8 +1233,8 @@ NG.gostop = (() => {
     const keys = [];
     if(win){ keys.push('win1'); if(r.mults && r.mults.some(m => /피박|광박/.test(m[0]))) keys.push('bak'); if(g.S.P[g.me].go >= 3) keys.push('go3'); if(g.S.P[g.me].shake) keys.push('shake'); if(r.final >= 20) keys.push('big');
       if(G.adv === 10 && !(advProg(ID).stars || {})[10]) keys.push('ch1'); }
-    let bonus = 0, item = 0;
-    if(win && G.adv && !(advProg(ID).stars || {})[G.adv]){ bonus = 500 * Math.ceil(G.adv / 10); const w2 = wallet(); w2.pt += bonus; if(G.adv % 10 === 0 && w2.items.charge < CHARGE_MAX){ w2.items.charge++; item = 1; } saveW(w2); }
+    let bonus = 0, item = 0;   /* 첫 클리어 보상은 이 스테이지에서 한 번만: 별은 [결과 보기] 때 저장되므로 [한 판 더]로 이어 이겨도 다시 주지 않게 G.advPaid로 막음 */
+    if(win && G.adv && !(advProg(ID).stars || {})[G.adv] && !G.advPaid){ G.advPaid = 1; bonus = 500 * Math.ceil(G.adv / 10); const w2 = wallet(); w2.pt += bonus; if(G.adv % 10 === 0 && w2.items.charge < CHARGE_MAX){ w2.items.charge++; item = 1; } saveW(w2); }
     const got = achieve(keys);
     return { d, bonus, got, after:wallet().pt, gross, fee, lvx, opp, item };
   }

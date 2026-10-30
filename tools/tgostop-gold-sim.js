@@ -92,10 +92,10 @@ for(const [adv, rk] of [[10, 0], [50, 0], [50, 1]]){
   for(let i = 0; i < 100; i++){
     games++;
     const g = playGame('farm:' + adv + ':' + rk + ':' + i, ['easy', 'easy'], i % 2, room, 'ai', w, null);
-    if(g.r.w === i % 2){ winsN++; if(!stars){ const b = 500 * Math.ceil(adv / 10); w.pt += b; bonus += b; if(adv % 10 === 0) item++; } }
-    /* stars = true 는 [결과 보기]를 눌러야 됨 → 계속 [한 판 더]면 그대로 false */
+    if(g.r.w === i % 2){ winsN++; if(!stars){ stars = true; const b = 500 * Math.ceil(adv / 10); w.pt += b; bonus += b; if(adv % 10 === 0) item++; } }
+    /* 별은 [결과 보기] 때 저장되지만, 같은 스테이지 안에서는 G.advPaid로 한 번만 줌(2026-10-31 고침) */
   }
-  farm.push(`스테이지 ${adv} ${rk ? '점당 100 G' : '연습 판'} [한 판 더] 100판: ${winsN}승 · 첫 클리어 보상 ${winsN}번 = +${bonus} G · 충전권 +${item}장(최대 5장까지) · 보유 ${start} → ${w.pt} G`);
+  farm.push(`스테이지 ${adv} ${rk ? '점당 100 G' : '연습 판'} [한 판 더] 100판: ${winsN}승 · 첫 클리어 보상 ${bonus ? Math.round(bonus / (500 * Math.ceil(adv / 10))) : 0}번 = +${bonus} G · 충전권 +${item}장(최대 5장까지) · 보유 ${start} → ${w.pt} G`);
 }
 
 console.log(`골드 점검 ${N}판 × 방 3개 + 대전 ${pvpN}판`);
