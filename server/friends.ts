@@ -2,6 +2,7 @@
 // 친구 코드로 친구 맺기·끊기, 친구 오늘 점수, 하트·"같이 하자"·도전장 알림함.
 // 저장: DATABASE_URL(Postgres)이 있으면 Postgres, 없으면 메모리(로컬 시험용 — 껐다 켜면 사라짐).
 // 대전 서버(server/index.ts)와는 완전히 따로 돈다. 대전에는 영향 없음.
+// 원본: GitHub hyukcap-rgb/game · server/friends.ts
 //
 // 모든 요청: POST /api/<이름>, 본문 JSON. 로그인 대신 기기마다 받은 pid + secret(비밀 열쇠)로 본인 확인.
 //   register {nick}                         → {pid, secret, code, nick}
@@ -11,6 +12,9 @@
 //   score    {pid, secret, day, total, detail, streak} → {ok}
 //   send     {pid, secret, fid, kind:'heart'|'play'|'challenge', data} → {ok}
 //   ack      {pid, secret, ids:[…]}         → {ok}
+//   2026-10-31 Brain Gostop(트럼프 고스톱 스팀판) 랭킹 — 더하기만, 하루퍼즐 친구 기능과 따로:
+//   tgput    {pid, secret, nick, t, dv, lp, s, wins, games, wk, wb} → {ok, rank}   (s = 정렬 점수, wb = 이번 주 최고 한 판 점수)
+//   tgtop    {pid?, secret?}                 → {wk, top:[…50], week:[…10], me:{rank, wrank}|null}
 
 import { SQL } from "bun";
 
@@ -25,6 +29,7 @@ const newId = () => crypto.randomUUID().replace(/-/g, "");
 const newSecret = () => [...rnd(24)].map(b => b.toString(16).padStart(2, "0")).join("");
 
 type Player = { pid: string; secret: string; code: string; nick: string; created: number; seen: number };
+type TgRow = { pid: string; nick: string; t: number; dv: number; lp: number; s: number; wins: number; games: number; wk: string; wb: number; updated: number };
 type Msg = { id: number; to_pid: string; from_pid: string; kind: string; data: any; created: number; done: boolean };
 
 interface Store {
@@ -43,9 +48,18 @@ interface Store {
   inbox(pid: string): Promise<Msg[]>;
   ack(pid: string, ids: number[]): Promise<void>;
   sentSince(from: string, since: number, kind?: string, to?: string): Promise<number>;
+  tgPut(r: TgRow): Promise<void>;
+  tgTop(n: number): Promise<TgRow[]>;
+  tgWeek(wk: string, n: number): Promise<TgRow[]>;
+  tgRank(pid: string, wk: string): Promise<{ rank: number; wrank: number } | null>;
 }
 
 class MemStore implements Store {
+  T = new Map<string, TgRow>();
+  async tgPut(r: TgRow) { this.T.set(r.pid, r); }
+  async tgTop(n: number) { return [...this.T.values()].filter(r => r.games > 0).sort((a, b) => b.s - a.s || b.wins - a.wins).slice(0, n); }
+  async tgWeek(wk: string, n: number) { return [...this.T.values()].filter(r => r.wk === wk && r.wb > 0).sort((a, b) => b.wb - a.wb || a.updated - b.updated).slice(0, n); }
+  async tgRank(pid: string, wk: string) { const r = this.T.get(pid); if (!r) return null; const all = [...this.T.values()]; return { rank: all.filter(x => x.games > 0 && (x.s > r.s || (x.s === r.s && x.wins > r.wins))).length + 1, wrank: r.wk === wk && r.wb > 0 ? all.filter(x => x.wk === wk && x.wb > r.wb).length + 1 : 0 }; }
   P = new Map<string, Player>(); F = new Map<string, Map<string, number>>(); S = new Map<string, any>(); M: Msg[] = []; seq = 1;
   async init() { console.warn("DATABASE_URL 없음 → 메모리 저장(시험용)"); }
   async player(pid: string) { return this.P.get(pid) || null; }
@@ -75,6 +89,20 @@ class PgStore implements Store {
     await db`create table if not exists inbox(id bigserial primary key, to_pid text not null, from_pid text not null, kind text not null, data jsonb, created bigint not null, done boolean not null default false)`;
     await db`create index if not exists inbox_to on inbox(to_pid, done)`;
     await db`create index if not exists inbox_from on inbox(from_pid, created)`;
+    await db`create table if not exists tg_rank(pid text primary key, nick text not null, t int not null, dv int not null, lp int not null, s real not null, wins int not null, games int not null, wk text not null, wb int not null, updated bigint not null)`;
+    await db`create index if not exists tg_rank_s on tg_rank(s desc)`;
+    await db`create index if not exists tg_rank_wk on tg_rank(wk, wb desc)`;
+  }
+  async tgPut(r: TgRow) {
+    await this.db`insert into tg_rank ${this.db(r)} on conflict (pid) do update set nick = excluded.nick, t = excluded.t, dv = excluded.dv, lp = excluded.lp, s = excluded.s, wins = excluded.wins, games = excluded.games, wk = excluded.wk, wb = excluded.wb, updated = excluded.updated`;
+  }
+  async tgTop(n: number) { return (await this.db`select * from tg_rank where games > 0 order by s desc, wins desc limit ${n}`).map((x: any) => ({ ...x, updated: Number(x.updated) })); }
+  async tgWeek(wk: string, n: number) { return (await this.db`select * from tg_rank where wk = ${wk} and wb > 0 order by wb desc, updated asc limit ${n}`).map((x: any) => ({ ...x, updated: Number(x.updated) })); }
+  async tgRank(pid: string, wk: string) {
+    const r = (await this.db`select * from tg_rank where pid = ${pid}`)[0]; if (!r) return null;
+    const a = await this.db`select count(*)::int as n from tg_rank where games > 0 and (s > ${r.s} or (s = ${r.s} and wins > ${r.wins}))`;
+    const b = r.wk === wk && r.wb > 0 ? await this.db`select count(*)::int as n from tg_rank where wk = ${wk} and wb > ${r.wb}` : null;
+    return { rank: (a[0]?.n || 0) + 1, wrank: b ? (b[0]?.n || 0) + 1 : 0 };
   }
   async player(pid: string) { const r = await this.db`select * from players where pid = ${pid}`; return r[0] ? { ...r[0], created: Number(r[0].created), seen: Number(r[0].seen) } : null; }
   async byCode(code: string) { const r = await this.db`select * from players where code = ${code}`; return r[0] || null; }
@@ -138,7 +166,27 @@ async function inboxView(pid: string) {
   return out;
 }
 
+/* ISO 주(월요일 시작, UTC) — 게임(tgostop.js weekKey)과 같은 식 */
+function isoWeek(ms = now()) { const d = new Date(ms); const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const dn = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - dn); const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() + "-W" + String(Math.ceil(((+t - +y0) / 86400000 + 1) / 7)).padStart(2, "0"); }
+const int = (v: unknown, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
+const tgView = (r: TgRow) => ({ nick: r.nick, t: r.t, dv: r.dv, lp: r.lp, wins: r.wins, games: r.games, wb: r.wb });
+const tgPutAt = new Map<string, number>();
+
 const API: Record<string, (b: any) => Promise<Response>> = {
+  async tgput(b) {
+    const p = await auth(b); if (!p) return fail("auth", 401);
+    const t0 = tgPutAt.get(p.pid) || 0; if (now() - t0 < 5000) return fail("slow down", 429); tgPutAt.set(p.pid, now()); if (tgPutAt.size > 100000) tgPutAt.clear();
+    const games = int(b.games, 0, 1e6), wins = Math.min(games, int(b.wins, 0, 1e6));
+    const wk = isoWeek(), wb = typeof b.wk === "string" && b.wk === wk ? int(b.wb, 0, 5000) : 0;   /* 다른 주 기록은 받지 않음(주가 바뀌면 0부터) */
+    const r: TgRow = { pid: p.pid, nick: String(b.nick ?? "").replace(/[<>&"'`\\\n\r\t]/g, "").trim().slice(0, 16) || "Player", t: int(b.t, 0, 9), dv: int(b.dv, 0, 4), lp: int(b.lp, 0, 100000), s: Math.max(0, Math.min(100000, Number(b.s) || 0)), wins, games, wk, wb, updated: now() };
+    await store.tgPut(r);
+    return json({ ok: true, ...(await store.tgRank(p.pid, wk)) });
+  },
+  async tgtop(b) {
+    const wk = isoWeek(), me = await auth(b);
+    const [top, week] = await Promise.all([store.tgTop(50), store.tgWeek(wk, 10)]);
+    return json({ wk, top: top.map(tgView), week: week.map(tgView), me: me ? await store.tgRank(me.pid, wk) : null });
+  },
   async register(b) {
     const nick = cleanNick(b.nick);
     for (let i = 0; i < 8; i++) {
